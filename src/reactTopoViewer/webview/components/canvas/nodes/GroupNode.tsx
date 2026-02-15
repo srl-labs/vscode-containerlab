@@ -1,11 +1,9 @@
-/**
- * GroupNode - Custom React Flow node for group annotations
- * Renders groups as transparent containers with dashed borders
- */
+// Group annotation node.
 import React, { memo, useCallback } from "react";
 import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 
 import { SELECTION_COLOR } from "../types";
+import { vscodePalette } from "../../../theme/vscodeTheme";
 import { useIsLocked } from "../../../stores/topoViewerStore";
 import { useAnnotationHandlers } from "../../../stores/canvasStore";
 
@@ -40,12 +38,12 @@ export interface GroupNodeData {
 
 const MIN_WIDTH = 100;
 const MIN_HEIGHT = 80;
-const DEFAULT_BACKGROUND = "color-mix(in srgb, var(--vscode-focusBorder) 16%, transparent)";
-const DEFAULT_BORDER_COLOR = "var(--vscode-editor-foreground)";
+const DEFAULT_BACKGROUND = vscodePalette.action.hover;
+const DEFAULT_BORDER_COLOR = vscodePalette.text.primary;
 const DEFAULT_BORDER_WIDTH = 2;
 const DEFAULT_BORDER_STYLE = "dashed";
 const DEFAULT_BORDER_RADIUS = 8;
-const DEFAULT_LABEL_COLOR = "var(--vscode-editor-foreground)";
+const DEFAULT_LABEL_COLOR = vscodePalette.text.primary;
 
 // ============================================================================
 // Helper Functions

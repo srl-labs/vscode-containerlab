@@ -1,12 +1,11 @@
-/**
- * FreeShapeEditorView - Shape annotation editor content for the ContextPanel
- */
+// Shape annotation editor for the ContextPanel.
 import React from "react";
+import Box from "@mui/material/Box";
 
 import type { FreeShapeAnnotation } from "../../../../../shared/types/topology";
 import { useGenericFormState, useEditorHandlersWithFooterRef } from "../../../../hooks/editor";
 import { normalizeShapeAnnotationColors } from "../../../../utils/color";
-import { EditorFieldset } from "../ContextPanelScrollArea";
+import { FIELDSET_RESET_STYLE } from "../ContextPanelScrollArea";
 import { FreeShapeFormContent } from "../../free-shape-editor/FreeShapeFormContent";
 
 export interface FreeShapeEditorViewProps {
@@ -22,6 +21,7 @@ export interface FreeShapeEditorViewProps {
 export interface FreeShapeEditorFooterRef {
   handleApply: () => void;
   handleSave: () => void;
+  handleDiscard: () => void;
   hasChanges: boolean;
 }
 
@@ -33,33 +33,29 @@ export const FreeShapeEditorView: React.FC<FreeShapeEditorViewProps> = ({
   readOnly = false,
   onFooterRef
 }) => {
-  const { formData, updateField, hasChanges, resetInitialData, isNew } = useGenericFormState(
-    annotation,
-    { transformData: normalizeShapeAnnotationColors }
-  );
+  const { formData, updateField, hasChanges, resetInitialData, discardChanges } =
+    useGenericFormState(annotation, { transformData: normalizeShapeAnnotationColors });
 
-  const { handleDelete } = useEditorHandlersWithFooterRef({
+  useEditorHandlersWithFooterRef({
     formData,
     onSave,
     onClose,
     onDelete,
     resetInitialData,
+    discardChanges,
     onFooterRef,
     hasChangesForFooter: hasChanges
   });
 
   if (!formData) return null;
 
-  const effectiveUpdateField: typeof updateField = readOnly ? (() => {}) : updateField;
+  const effectiveUpdateField: typeof updateField = readOnly ? () => {} : updateField;
 
   return (
-    <EditorFieldset readOnly={readOnly}>
-      <FreeShapeFormContent
-        formData={formData}
-        updateField={effectiveUpdateField}
-        isNew={isNew}
-        onDelete={!readOnly && onDelete ? handleDelete : undefined}
-      />
-    </EditorFieldset>
+    <Box sx={{ flex: 1, overflow: "auto" }}>
+      <fieldset disabled={readOnly} style={FIELDSET_RESET_STYLE}>
+        <FreeShapeFormContent formData={formData} updateField={effectiveUpdateField} />
+      </fieldset>
+    </Box>
   );
 };

@@ -1,14 +1,7 @@
-/**
- * Edge to SVG conversion utilities for export
- * Renders topology edges with bezier curves for parallel edges
- */
+// Edge-to-SVG conversion for export.
 import type { Node, Edge } from "@xyflow/react";
 
-import {
-  getEdgePoints,
-  calculateControlPoint,
-  getLabelPosition
-} from "../../canvas/edgeGeometry";
+import { getEdgePoints, calculateControlPoint, getLabelPosition } from "../../canvas/edgeGeometry";
 
 import {
   NODE_ICON_SIZE,
@@ -77,7 +70,10 @@ function getCanonicalEdgeKey(source: string, target: string): string {
  * Similar to useEdgeInfo hook but for static export
  */
 export function buildEdgeInfoForExport(edges: Edge[]): EdgeInfo {
-  const parallelInfo = new Map<string, { index: number; total: number; isCanonicalDirection: boolean }>();
+  const parallelInfo = new Map<
+    string,
+    { index: number; total: number; isCanonicalDirection: boolean }
+  >();
   const loopInfo = new Map<string, { loopIndex: number }>();
 
   // Group edges by canonical key
@@ -128,11 +124,7 @@ export function buildEdgeInfoForExport(edges: Edge[]): EdgeInfo {
 /**
  * Build SVG for edge endpoint label
  */
-function buildEndpointLabelSvg(
-  text: string,
-  x: number,
-  y: number
-): string {
+function buildEndpointLabelSvg(text: string, x: number, y: number): string {
   if (!text) return "";
 
   // Estimate text dimensions
@@ -179,7 +171,11 @@ function buildLoopEdgePath(
   nodeWidth: number,
   nodeHeight: number,
   loopIndex: number
-): { path: string; sourceLabelPos: { x: number; y: number }; targetLabelPos: { x: number; y: number } } {
+): {
+  path: string;
+  sourceLabelPos: { x: number; y: number };
+  targetLabelPos: { x: number; y: number };
+} {
   const centerX = nodeX + nodeWidth / 2;
   const centerY = nodeY + nodeHeight / 2;
   const size = LOOP_EDGE_SIZE + loopIndex * LOOP_EDGE_OFFSET;
@@ -237,11 +233,7 @@ function buildEdgeLabels(
 /**
  * Render a loop edge (self-referencing) to SVG
  */
-function renderLoopEdge(
-  ctx: EdgeRenderContext,
-  sourceNode: Node,
-  loopIndex: number
-): string {
+function renderLoopEdge(ctx: EdgeRenderContext, sourceNode: Node, loopIndex: number): string {
   const nodeX = sourceNode.position.x;
   const nodeY = sourceNode.position.y;
 
@@ -289,8 +281,14 @@ function renderRegularEdge(
   const isCanonical = parallelInfo?.isCanonicalDirection ?? true;
 
   const controlPoint = calculateControlPoint(
-    points.sx, points.sy, points.tx, points.ty,
-    index, total, isCanonical, CONTROL_POINT_STEP_SIZE
+    points.sx,
+    points.sy,
+    points.tx,
+    points.ty,
+    index,
+    total,
+    isCanonical,
+    CONTROL_POINT_STEP_SIZE
   );
 
   const path = controlPoint
@@ -303,12 +301,20 @@ function renderRegularEdge(
 
   if (ctx.includeLabels) {
     const sourceLabelPos = getLabelPosition(
-      points.sx, points.sy, points.tx, points.ty,
-      EDGE_LABEL.offset, controlPoint ?? undefined
+      points.sx,
+      points.sy,
+      points.tx,
+      points.ty,
+      EDGE_LABEL.offset,
+      controlPoint ?? undefined
     );
     const targetLabelPos = getLabelPosition(
-      points.tx, points.ty, points.sx, points.sy,
-      EDGE_LABEL.offset, controlPoint ?? undefined
+      points.tx,
+      points.ty,
+      points.sx,
+      points.sy,
+      EDGE_LABEL.offset,
+      controlPoint ?? undefined
     );
     svg += buildEdgeLabels(ctx, sourceLabelPos, targetLabelPos);
   }
@@ -364,11 +370,9 @@ export function renderEdgesToSvg(
   includeLabels: boolean,
   annotationNodeTypes?: Set<string>
 ): string {
-  const skipTypes = annotationNodeTypes ?? new Set([
-    "free-text-annotation",
-    "free-shape-annotation",
-    "group-annotation"
-  ]);
+  const skipTypes =
+    annotationNodeTypes ??
+    new Set(["free-text-annotation", "free-shape-annotation", "group-annotation"]);
 
   // Build node map for position lookup
   const nodeMap = new Map<string, Node>();

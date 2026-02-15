@@ -1,8 +1,8 @@
-/**
- * LabSettingsModal - MUI Dialog wrapper for lab settings
- */
-import React from "react";
+// Lab settings dialog.
+import React, { useRef } from "react";
+import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
@@ -26,21 +26,48 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
   mode,
   isLocked,
   labSettings
-}) => (
-  <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth data-testid="lab-settings-modal">
-    <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
-      Lab Settings
-      <IconButton size="small" onClick={onClose} data-testid="lab-settings-close-btn">
-        <CloseIcon fontSize="small" />
-      </IconButton>
-    </DialogTitle>
-    <DialogContent dividers sx={{ p: 0 }}>
-      <LabSettingsSection
-        mode={mode}
-        isLocked={isLocked}
-        labSettings={labSettings}
-        onClose={onClose}
-      />
-    </DialogContent>
-  </Dialog>
-);
+}) => {
+  const saveRef = useRef<(() => Promise<void>) | null>(null);
+  const isReadOnly = mode === "view" || isLocked;
+
+  return (
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      data-testid="lab-settings-modal"
+      PaperProps={{ sx: { height: "80vh", maxHeight: "80vh" } }}
+    >
+      <DialogTitle
+        sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
+      >
+        Lab Settings
+        <IconButton size="small" onClick={onClose} data-testid="lab-settings-close-btn">
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers sx={{ p: 0, overflow: "auto" }}>
+        <LabSettingsSection
+          mode={mode}
+          isLocked={isLocked}
+          labSettings={labSettings}
+          onClose={onClose}
+          saveRef={saveRef}
+        />
+      </DialogContent>
+      {!isReadOnly && (
+        <DialogActions>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => void saveRef.current?.()}
+            data-testid="lab-settings-save-btn"
+          >
+            Apply
+          </Button>
+        </DialogActions>
+      )}
+    </Dialog>
+  );
+};

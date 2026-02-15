@@ -1,9 +1,4 @@
-/**
- * topoViewerStore - Zustand store for TopoViewer UI state
- *
- * This store handles UI state, selections, editing state, and settings.
- * Graph data (nodes/edges) is managed separately in graphStore.
- */
+// Zustand store for TopoViewer UI state.
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/shallow";
 
@@ -12,6 +7,7 @@ import type { EdgeAnnotation } from "../../shared/types/topology";
 import type { CustomIconInfo } from "../../shared/types/icons";
 import type { LabSettings } from "../../shared/types/labSettings";
 import { upsertEdgeAnnotation } from "../annotations/edgeAnnotations";
+import { useAnnotationUIStore } from "./annotationUIStore";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   clampEndpointLabelOffset
@@ -165,7 +161,7 @@ export function parseInitialData(data: unknown): Partial<TopoViewerState> {
 // Store Creation
 // ============================================================================
 
-export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) => ({
+export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, get) => ({
   ...initialState,
 
   // Selection (mutually exclusive)
@@ -222,9 +218,23 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) =>
     });
   },
 
-  // Mode and state
+  // Mode and state — clear selection & editing so stale tabs disappear
   setMode: (mode) => {
-    set({ mode });
+    set({
+      mode,
+      selectedNode: null,
+      selectedEdge: null,
+      editingNode: null,
+      editingEdge: null,
+      editingNetwork: null,
+      editingImpairment: null,
+      editingCustomTemplate: null
+    });
+    // Also clear annotation editing state (separate store)
+    const annotationUI = useAnnotationUIStore.getState();
+    if (annotationUI.editingTextAnnotation) annotationUI.setEditingTextAnnotation(null);
+    if (annotationUI.editingShapeAnnotation) annotationUI.setEditingShapeAnnotation(null);
+    if (annotationUI.editingGroup) annotationUI.closeGroupEditor();
   },
 
   setDeploymentState: (deploymentState) => {
@@ -334,14 +344,30 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) =>
     set((state) => ({
       selectedEdge: state.selectedEdge === edgeId ? null : state.selectedEdge,
       editingEdge: state.editingEdge === edgeId ? null : state.editingEdge,
-      editingImpairment:
-        state.editingImpairment === edgeId ? null : state.editingImpairment
+      editingImpairment: state.editingImpairment === edgeId ? null : state.editingImpairment
     }));
   },
 
-  // Initial data
+  // Initial data — if mode changes, clear selection & editing so stale tabs disappear
   setInitialData: (data) => {
-    set(data);
+    if (data.mode && data.mode !== get().mode) {
+      set({
+        ...data,
+        selectedNode: null,
+        selectedEdge: null,
+        editingNode: null,
+        editingEdge: null,
+        editingNetwork: null,
+        editingImpairment: null,
+        editingCustomTemplate: null
+      });
+      const annotationUI = useAnnotationUIStore.getState();
+      if (annotationUI.editingTextAnnotation) annotationUI.setEditingTextAnnotation(null);
+      if (annotationUI.editingShapeAnnotation) annotationUI.setEditingShapeAnnotation(null);
+      if (annotationUI.editingGroup) annotationUI.closeGroupEditor();
+    } else {
+      set(data);
+    }
   }
 }));
 
@@ -371,8 +397,7 @@ export const useEditingNode = () => useTopoViewerStore((state) => state.editingN
 export const useEditingEdge = () => useTopoViewerStore((state) => state.editingEdge);
 
 /** Get editing impairment edge */
-export const useEditingImpairment = () =>
-  useTopoViewerStore((state) => state.editingImpairment);
+export const useEditingImpairment = () => useTopoViewerStore((state) => state.editingImpairment);
 
 /** Get lock state */
 export const useIsLocked = () =>

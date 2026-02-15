@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useCallback } from "react";
 import * as monaco from "monaco-editor";
-import { conf as yamlConf, language as yamlLanguage } from "monaco-editor/esm/vs/basic-languages/yaml/yaml";
+import {
+  conf as yamlConf,
+  language as yamlLanguage
+} from "monaco-editor/esm/vs/basic-languages/yaml/yaml";
 import * as YAML from "yaml";
 import Ajv from "ajv";
 
@@ -20,7 +23,6 @@ function getCssVar(name: string, fallback: string): string {
   const value = window.getComputedStyle(document.body).getPropertyValue(name).trim();
   return value || fallback;
 }
-
 
 function detectColorMode(): "light" | "dark" {
   const isDevMock = Boolean(window.vscode && window.vscode.__isDevMock__);
@@ -73,7 +75,7 @@ function ensureMonacoConfiguredOnce(): void {
 /** Hardcoded Monaco colours per mode – used in dev where CSS vars lag behind the class toggle. */
 const DEV_MONACO_COLORS = {
   light: { bg: "#ffffff", fg: "#333333", sel: "#add6ff", inactiveSel: "#e5ebf1" },
-  dark:  { bg: "#1e1e1e", fg: "#cccccc", sel: "#264f78", inactiveSel: "#3a3d41" }
+  dark: { bg: "#1e1e1e", fg: "#cccccc", sel: "#264f78", inactiveSel: "#3a3d41" }
 } as const;
 
 function isDevMock(): boolean {
@@ -90,10 +92,12 @@ function applyVscodeThemeToMonaco(): void {
   // hold the *previous* theme's values when the MutationObserver fires.
   // Use hardcoded colours keyed off the detected mode instead.
   const dev = isDevMock();
-  const background        = dev ? c.bg          : getCssVar("--vscode-editor-background", c.bg);
-  const foreground        = dev ? c.fg          : getCssVar("--vscode-editor-foreground", c.fg);
-  const selection         = dev ? c.sel         : getCssVar("--vscode-editor-selectionBackground", c.sel);
-  const inactiveSelection = dev ? c.inactiveSel : getCssVar("--vscode-editor-inactiveSelectionBackground", c.inactiveSel);
+  const background = dev ? c.bg : getCssVar("--vscode-editor-background", c.bg);
+  const foreground = dev ? c.fg : getCssVar("--vscode-editor-foreground", c.fg);
+  const selection = dev ? c.sel : getCssVar("--vscode-editor-selectionBackground", c.sel);
+  const inactiveSelection = dev
+    ? c.inactiveSel
+    : getCssVar("--vscode-editor-inactiveSelectionBackground", c.inactiveSel);
 
   monaco.editor.defineTheme(themeName, {
     base: mode === "light" ? "vs" : "vs-dark",
@@ -150,12 +154,14 @@ function offsetToLineCol(text: string, offset: number): { line: number; col: num
  * These produce noise like "must match 'then' schema" and should be dropped
  * when more specific child errors exist.
  */
-const STRUCTURAL_KEYWORDS = new Set([
-  "if", "then", "else", "allOf", "anyOf", "oneOf", "not"
-]);
+const STRUCTURAL_KEYWORDS = new Set(["if", "then", "else", "allOf", "anyOf", "oneOf", "not"]);
 
 /** Build a human-readable message from an ajv error. */
-function formatAjvError(error: { keyword: string; message?: string; params?: Record<string, unknown> }): string {
+function formatAjvError(error: {
+  keyword: string;
+  message?: string;
+  params?: Record<string, unknown>;
+}): string {
   if (error.keyword === "enum" && error.params?.["allowedValues"]) {
     const vals = error.params["allowedValues"] as string[];
     const list = vals.map((v) => `"${v}"`).join(", ");
@@ -190,10 +196,7 @@ function resolveYamlPosition(
 }
 
 /** Validate YAML `text` against a JSON `schema` and return Monaco markers. */
-function validateYaml(
-  text: string,
-  schema: object
-): monaco.editor.IMarkerData[] {
+function validateYaml(text: string, schema: object): monaco.editor.IMarkerData[] {
   // 1. Parse YAML — collect syntax errors
   let doc: YAML.Document;
   try {
@@ -201,8 +204,10 @@ function validateYaml(
   } catch {
     return [
       {
-        startLineNumber: 1, startColumn: 1,
-        endLineNumber: 1, endColumn: 1,
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: 1,
+        endColumn: 1,
         message: "Invalid YAML syntax",
         severity: monaco.MarkerSeverity.Error
       }
@@ -215,8 +220,10 @@ function validateYaml(
     const start = offsetToLineCol(text, s0);
     const end = offsetToLineCol(text, s1);
     markers.push({
-      startLineNumber: start.line, startColumn: start.col,
-      endLineNumber: end.line, endColumn: end.col,
+      startLineNumber: start.line,
+      startColumn: start.col,
+      endLineNumber: end.line,
+      endColumn: end.col,
       message: err.message,
       severity: monaco.MarkerSeverity.Error
     });
@@ -246,8 +253,10 @@ function validateYaml(
 
     const pos = resolveYamlPosition(doc, text, error.instancePath);
     markers.push({
-      startLineNumber: pos.startLine, startColumn: pos.startCol,
-      endLineNumber: pos.endLine, endColumn: pos.endCol,
+      startLineNumber: pos.startLine,
+      startColumn: pos.startCol,
+      endLineNumber: pos.endLine,
+      endColumn: pos.endCol,
       message: msg,
       severity: monaco.MarkerSeverity.Warning
     });
@@ -298,15 +307,21 @@ function searchPatternProps(schema: SchemaObj, key: string, root: SchemaObj): Sc
   const pp = schema["patternProperties"] as SchemaObj | undefined;
   if (!pp) return null;
   for (const pat of Object.keys(pp)) {
-    try { if (new RegExp(pat).test(key) && isObj(pp[pat])) return deref(pp[pat] as SchemaObj, root); }
-    catch { /* invalid regex in schema – skip */ }
+    try {
+      if (new RegExp(pat).test(key) && isObj(pp[pat])) return deref(pp[pat] as SchemaObj, root);
+    } catch {
+      /* invalid regex in schema – skip */
+    }
   }
   return null;
 }
 
 /** Search oneOf/anyOf branches for a key. */
 function searchCombinators(
-  schema: SchemaObj, key: string, root: SchemaObj, yamlSiblings?: SchemaObj | null
+  schema: SchemaObj,
+  key: string,
+  root: SchemaObj,
+  yamlSiblings?: SchemaObj | null
 ): SchemaObj | null {
   for (const kw of ["oneOf", "anyOf"] as const) {
     const arr = schema[kw];
@@ -352,18 +367,25 @@ function lookupProperty(
 
 /** Try to find a key in a single allOf item (if/then/else or direct properties). */
 function searchAllOfItem(
-  sub: SchemaObj, key: string, root: SchemaObj, yamlSiblings?: SchemaObj | null
+  sub: SchemaObj,
+  key: string,
+  root: SchemaObj,
+  yamlSiblings?: SchemaObj | null
 ): { result: SchemaObj; fromCondition: boolean } | null {
   const fromCond = searchIfThenElse(sub, key, root, yamlSiblings);
   if (fromCond) return { result: fromCond, fromCondition: true };
   const direct = sub["properties"] as SchemaObj | undefined;
-  if (direct && isObj(direct[key])) return { result: deref(direct[key] as SchemaObj, root), fromCondition: false };
+  if (direct && isObj(direct[key]))
+    return { result: deref(direct[key] as SchemaObj, root), fromCondition: false };
   return null;
 }
 
 /** Search allOf items for a property, preferring a branch whose if-condition matches. */
 function searchAllOf(
-  items: unknown[], key: string, root: SchemaObj, yamlSiblings?: SchemaObj | null
+  items: unknown[],
+  key: string,
+  root: SchemaObj,
+  yamlSiblings?: SchemaObj | null
 ): SchemaObj | null {
   let fallback: SchemaObj | null = null;
   for (const item of items) {
@@ -417,8 +439,10 @@ function lookupInDirect(rawSchema: SchemaObj, key: string, root: SchemaObj): Sch
 /** Check a single if-property constraint against a YAML value. */
 function checkConstraint(constraint: SchemaObj, yamlValue: unknown): boolean {
   const strValue = String(yamlValue ?? "");
-  if (constraint["pattern"] && !new RegExp(constraint["pattern"] as string).test(strValue)) return false;
-  if (Array.isArray(constraint["enum"]) && !(constraint["enum"] as unknown[]).includes(yamlValue)) return false;
+  if (constraint["pattern"] && !new RegExp(constraint["pattern"] as string).test(strValue))
+    return false;
+  if (Array.isArray(constraint["enum"]) && !(constraint["enum"] as unknown[]).includes(yamlValue))
+    return false;
   return true;
 }
 
@@ -526,7 +550,11 @@ function ensureHoverProvider(): void {
 
       // Parse YAML for context-aware schema resolution (e.g. kind → type enum)
       let yamlData: unknown;
-      try { yamlData = YAML.parse(text); } catch { yamlData = undefined; }
+      try {
+        yamlData = YAML.parse(text);
+      } catch {
+        yamlData = undefined;
+      }
 
       const info = getSchemaHoverInfo(path, activeSchema, yamlData);
       if (!info) return null;
@@ -545,8 +573,18 @@ function ensureHoverProvider(): void {
       const word = model.getWordAtPosition(position);
       return {
         range: word
-          ? new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn)
-          : new monaco.Range(position.lineNumber, 1, position.lineNumber, model.getLineMaxColumn(position.lineNumber)),
+          ? new monaco.Range(
+              position.lineNumber,
+              word.startColumn,
+              position.lineNumber,
+              word.endColumn
+            )
+          : new monaco.Range(
+              position.lineNumber,
+              1,
+              position.lineNumber,
+              model.getLineMaxColumn(position.lineNumber)
+            ),
         contents: [{ value: parts.join("\n") }]
       };
     }
@@ -584,8 +622,7 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
 
   const getEditorFontSize = () => {
     const raw =
-      getCssVar("--vscode-editor-font-size", "") ||
-      getCssVar("--vscode-font-size", "13px");
+      getCssVar("--vscode-editor-font-size", "") || getCssVar("--vscode-font-size", "13px");
     const parsed = parseInt(raw, 10);
     return Number.isFinite(parsed) ? parsed : 13;
   };
@@ -605,7 +642,10 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
       }
     });
     observer.observe(document.body, { attributes: true, attributeFilter: ["class", "style"] });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class", "style"]
+    });
     return () => observer.disconnect();
   }, []);
 

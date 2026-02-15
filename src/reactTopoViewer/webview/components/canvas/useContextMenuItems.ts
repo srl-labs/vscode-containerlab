@@ -4,7 +4,11 @@ import type { Node } from "@xyflow/react";
 import type { useCanvasHandlers } from "../../hooks/canvas";
 import type { ContextMenuItem } from "../context-menu/ContextMenu";
 
-import { buildEdgeContextMenu, buildNodeContextMenu, buildPaneContextMenu } from "./contextMenuBuilders";
+import {
+  buildEdgeContextMenu,
+  buildNodeContextMenu,
+  buildPaneContextMenu
+} from "./contextMenuBuilders";
 import type { AnnotationHandlers } from "./types";
 
 /** Parameters for useContextMenuItems hook */
@@ -31,7 +35,6 @@ interface ContextMenuItemsParams {
   onAddTextAtPosition?: (position: { x: number; y: number }) => void;
   onAddShapes?: (shapeType?: string) => void;
   onAddShapeAtPosition?: (position: { x: number; y: number }, shapeType?: string) => void;
-  onShowBulkLink?: () => void;
 }
 
 /**
@@ -60,8 +63,7 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
     onAddText,
     onAddTextAtPosition,
     onAddShapes,
-    onAddShapeAtPosition,
-    onShowBulkLink
+    onAddShapeAtPosition
   } = params;
   const { type, targetId, position: menuPosition } = handlers.contextMenu;
 
@@ -120,8 +122,7 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
         onAddText,
         onAddTextAtPosition,
         onAddShapes,
-        onAddShapeAtPosition,
-        onShowBulkLink
+        onAddShapeAtPosition
       });
     }
     return [];
@@ -152,7 +153,6 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
     onAddText,
     onAddTextAtPosition,
     onAddShapes,
-    onAddShapeAtPosition,
-    onShowBulkLink
+    onAddShapeAtPosition
   ]);
 }

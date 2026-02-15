@@ -56,10 +56,7 @@ function snapLayoutPositions(nodes: Node[]): {
     }
     const snappedPosition = snapToGrid(node.position);
     positions.push({ id: node.id, position: snappedPosition });
-    if (
-      snappedPosition.x === node.position.x &&
-      snappedPosition.y === node.position.y
-    ) {
+    if (snappedPosition.x === node.position.x && snappedPosition.y === node.position.y) {
       return node;
     }
     return {
@@ -160,7 +157,10 @@ function applyGeoCoordinatesToNodes(
   nodeAnnotations: NodeAnnotation[] | undefined,
   networkNodeAnnotations: NetworkNodeAnnotation[] | undefined
 ): TopoNode[] {
-  if ((!nodeAnnotations || nodeAnnotations.length === 0) && (!networkNodeAnnotations || networkNodeAnnotations.length === 0)) {
+  if (
+    (!nodeAnnotations || nodeAnnotations.length === 0) &&
+    (!networkNodeAnnotations || networkNodeAnnotations.length === 0)
+  ) {
     return nodes;
   }
 

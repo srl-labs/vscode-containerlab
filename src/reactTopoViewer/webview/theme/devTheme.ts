@@ -1,23 +1,11 @@
-/**
- * Standalone dev theme — uses real hex values instead of CSS variables.
- * Injects --vscode-* CSS custom properties via CssBaseline :root overrides
- * so that sx props referencing var(--vscode-*) still resolve correctly
- * in the Vite dev view.
- */
-import { createTheme, type ThemeOptions } from "@mui/material/styles";
-import deepmerge from "@mui/utils/deepmerge";
+// Dev mode --vscode-* CSS variable maps for the Vite dev view.
 
-import { structuralOverrides } from "./vscodeTheme";
-
-/** Map of --vscode-* variable name → value, per mode. */
-interface VarMap {
+export interface VarMap {
   [cssVar: string]: string;
 }
 
-// ---------------------------------------------------------------------------
 // Dark palette
-// ---------------------------------------------------------------------------
-const DARK_VARS: VarMap = {
+export const DARK_VARS: VarMap = {
   "--vscode-editor-background": "#1e1e1e",
   "--vscode-editor-foreground": "#cccccc",
   "--vscode-sideBar-background": "#252526",
@@ -82,22 +70,25 @@ const DARK_VARS: VarMap = {
   "--vscode-menu-selectionForeground": "#ffffff",
   "--vscode-inputValidation-errorBackground": "#5a1d1d",
   "--vscode-inputValidation-errorBorder": "#be1100",
+  "--vscode-inputValidation-errorForeground": "#ffffff",
   "--vscode-inputValidation-warningBackground": "#352a05",
   "--vscode-inputValidation-warningBorder": "#9d8600",
+  "--vscode-inputValidation-warningForeground": "#000000",
   "--vscode-inputValidation-infoBackground": "#063b49",
   "--vscode-inputValidation-infoBorder": "#007acc",
-  "--vscode-testing-iconPassed": "#73c991",
-  "--vscode-progressBar-background": "#0e70c0",
+  "--vscode-inputValidation-infoForeground": "#ffffff",
   "--vscode-editorError-foreground": "#f48771",
+  "--vscode-editorWarning-foreground": "#cca700",
+  "--vscode-editorInfo-foreground": "#3794ff",
+  "--vscode-testing-iconPassed": "#73c991",
   "--vscode-charts-green": "#4ec9b0",
+  "--vscode-progressBar-background": "#0e70c0",
   "--vscode-font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   "--vscode-font-size": "13px"
 };
 
-// ---------------------------------------------------------------------------
 // Light palette
-// ---------------------------------------------------------------------------
-const LIGHT_VARS: VarMap = {
+export const LIGHT_VARS: VarMap = {
   "--vscode-editor-background": "#ffffff",
   "--vscode-editor-foreground": "#333333",
   "--vscode-sideBar-background": "#f3f3f3",
@@ -162,111 +153,28 @@ const LIGHT_VARS: VarMap = {
   "--vscode-menu-selectionForeground": "#ffffff",
   "--vscode-inputValidation-errorBackground": "#fce4e4",
   "--vscode-inputValidation-errorBorder": "#be1100",
+  "--vscode-inputValidation-errorForeground": "#333333",
   "--vscode-inputValidation-warningBackground": "#fefce4",
   "--vscode-inputValidation-warningBorder": "#9d8600",
+  "--vscode-inputValidation-warningForeground": "#333333",
   "--vscode-inputValidation-infoBackground": "#e6f3fb",
   "--vscode-inputValidation-infoBorder": "#007acc",
-  "--vscode-testing-iconPassed": "#388a34",
-  "--vscode-progressBar-background": "#007acc",
+  "--vscode-inputValidation-infoForeground": "#333333",
   "--vscode-editorError-foreground": "#a1260d",
+  "--vscode-editorWarning-foreground": "#bf8803",
+  "--vscode-editorInfo-foreground": "#1a85ff",
+  "--vscode-testing-iconPassed": "#388a34",
   "--vscode-charts-green": "#16825d",
+  "--vscode-progressBar-background": "#007acc",
   "--vscode-font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   "--vscode-font-size": "13px"
 };
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Build a MUI palette directly from a VarMap. */
-function buildDevPalette(v: VarMap, mode: "light" | "dark") {
-  return {
-    mode,
-    divider: v["--vscode-panel-border"],
-    background: {
-      default: v["--vscode-editor-background"],
-      paper:
-        "var(--topoviewer-surface-panel, var(--vscode-editorWidget-background, var(--vscode-editor-background)))"
-    },
-    text: {
-      primary: v["--vscode-foreground"],
-      secondary: v["--vscode-descriptionForeground"],
-      disabled: v["--vscode-disabledForeground"]
-    },
-    primary: {
-      main: v["--vscode-button-background"],
-      dark: v["--vscode-button-hoverBackground"],
-      light: v["--vscode-focusBorder"],
-      contrastText: v["--vscode-button-foreground"]
-    },
-    secondary: {
-      main: v["--vscode-badge-background"],
-      dark: v["--vscode-badge-background"],
-      light: v["--vscode-badge-background"],
-      contrastText: v["--vscode-badge-foreground"]
-    },
-    error: {
-      main: v["--vscode-errorForeground"],
-      dark: v["--vscode-errorForeground"],
-      light: v["--vscode-errorForeground"],
-      contrastText: v["--vscode-button-foreground"]
-    },
-    warning: {
-      main: v["--vscode-inputValidation-warningBorder"],
-      dark: v["--vscode-inputValidation-warningBorder"],
-      light: v["--vscode-inputValidation-warningBackground"],
-      contrastText: v["--vscode-foreground"]
-    },
-    info: {
-      main: v["--vscode-focusBorder"],
-      dark: v["--vscode-focusBorder"],
-      light: v["--vscode-inputValidation-infoBackground"],
-      contrastText: v["--vscode-button-foreground"]
-    },
-    success: {
-      main: v["--vscode-testing-iconPassed"],
-      dark: v["--vscode-testing-iconPassed"],
-      light: v["--vscode-testing-iconPassed"],
-      contrastText: v["--vscode-button-foreground"]
-    },
-    action: {
-      active: v["--vscode-icon-foreground"],
-      hover: v["--vscode-list-hoverBackground"],
-      selected:
-        v["--vscode-list-inactiveSelectionBackground"] ?? v["--vscode-list-hoverBackground"],
-      disabled: v["--vscode-disabledForeground"],
-      disabledBackground: v["--vscode-input-background"],
-      focus: v["--vscode-focusBorder"]
-    }
-  } as const;
-}
-
-/**
- * Create a standalone dev theme for the Vite HMR dev view.
- * Injects `--vscode-*` custom properties via CssBaseline `:root` overrides
- * so that component sx props referencing CSS variables still resolve.
- */
-export function createDevTheme(mode: "light" | "dark") {
+// Apply CSS variable map as inline styles on <html> for dev mode.
+export function applyDevVars(mode: "light" | "dark"): void {
   const vars = mode === "light" ? LIGHT_VARS : DARK_VARS;
-
-  // Deep-merge CssBaseline to add :root CSS variable injection
-  const baseStyleOverrides =
-    (structuralOverrides.MuiCssBaseline as Record<string, unknown>)?.styleOverrides ?? {};
-  const cssBaselineOverride: ThemeOptions["components"] = {
-    MuiCssBaseline: {
-      styleOverrides: deepmerge(baseStyleOverrides as Record<string, unknown>, {
-        ":root": { ...vars }
-      }) as Record<string, unknown>
-    }
-  };
-
-  return createTheme({
-    palette: buildDevPalette(vars, mode),
-    typography: {
-      fontFamily: vars["--vscode-font-family"],
-      fontSize: 13
-    },
-    shape: { borderRadius: 4 },
-    components: deepmerge(structuralOverrides, cssBaselineOverride) as ThemeOptions["components"]
-  });
+  const root = document.documentElement;
+  for (const [key, value] of Object.entries(vars)) {
+    root.style.setProperty(key, value);
+  }
 }

@@ -1,6 +1,4 @@
-/**
- * Toast Component - Simple notification toast
- */
+// Notification toast.
 import React, { useState, useCallback } from "react";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
@@ -28,7 +26,11 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismis
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
         sx={{ bottom: `${24 + index * 60}px !important` }}
       >
-        <Alert onClose={() => onDismiss(toast.id)} severity={toast.type ?? "info"} variant="standard">
+        <Alert
+          onClose={() => onDismiss(toast.id)}
+          severity={toast.type ?? "info"}
+          variant="standard"
+        >
           {toast.message}
         </Alert>
       </Snackbar>

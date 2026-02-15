@@ -4,8 +4,10 @@
 
 import type * as vscode from "vscode";
 
+import * as path from "path";
 import { log, logWithLocation } from "../services/logger";
 import { labLifecycleService } from "../services/LabLifecycleService";
+import { nodeFsAdapter } from "../../shared/io";
 import { nodeCommandService } from "../services/NodeCommandService";
 import type { SplitViewManager } from "../services/SplitViewManager";
 import { customNodeConfigManager } from "../services/CustomNodeConfigManager";
@@ -467,7 +469,28 @@ export class MessageRouter {
       return true;
     }
 
+    if (command === "dump-css-vars") {
+      await this.handleDumpCssVars(message);
+      return true;
+    }
+
     return false;
+  }
+
+  private async handleDumpCssVars(message: WebviewMessage): Promise<void> {
+    const vars = message.vars;
+    if (!vars || typeof vars !== "object") {
+      log.warn("[MessageRouter] dump-css-vars: no vars payload");
+      return;
+    }
+    const yamlDir = this.context.yamlFilePath
+      ? path.dirname(this.context.yamlFilePath)
+      : undefined;
+    const outPath = yamlDir
+      ? path.join(yamlDir, "vscode-css-vars.json")
+      : "/tmp/vscode-css-vars.json";
+    await nodeFsAdapter.writeFile(outPath, JSON.stringify(vars, null, 2));
+    log.info(`[MessageRouter] Wrote CSS vars to ${outPath}`);
   }
 
   /**

@@ -1,19 +1,15 @@
-/**
- * ContextPanel - Context-sensitive left panel that replaces LabDrawer + floating panels
- *
- * Content changes based on selection/editing state:
- * - Default: Palette
- * - Node selected (view mode): Node info
- * - Node editing: Node editor with tabs
- * - Link selected (view mode): Link info
- * - Link editing: Link editor with tabs
- * - etc.
- */
+// Context-sensitive panel with palette, info, and editor tabs.
 import React, { useCallback, useRef, useState } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
-import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, DeleteOutline as DeleteOutlineIcon, EditOutlined as EditOutlinedIcon, ErrorOutline as ErrorOutlineIcon, Lock as LockIcon, SwapHoriz as SwapHorizIcon } from "@mui/icons-material";
-import { Box, Button, Divider, Drawer, IconButton, Tooltip, Typography } from "@mui/material";
-
+import {
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  EditOutlined as EditOutlinedIcon,
+  ErrorOutline as ErrorOutlineIcon,
+  Lock as LockIcon,
+  SwapHoriz as SwapHorizIcon
+} from "@mui/icons-material";
+import { Box, Button, Divider, Drawer, Tooltip, Typography } from "@mui/material";
 
 import { useIsLocked } from "../../../stores/topoViewerStore";
 import type { NodeData, LinkData } from "../../../hooks/ui";
@@ -22,89 +18,76 @@ import type { NodeEditorData } from "../node-editor/types";
 import type { LinkEditorData } from "../link-editor/types";
 import type { NetworkEditorData } from "../network-editor/types";
 import type { LinkImpairmentData } from "../link-impairment/types";
-import type { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation } from "../../../../shared/types/topology";
+import type {
+  FreeTextAnnotation,
+  FreeShapeAnnotation,
+  GroupStyleAnnotation
+} from "../../../../shared/types/topology";
 import type { GroupEditorData } from "../../../hooks/canvas";
 
-import {
-  PaletteView,
-  NodeInfoView,
-  LinkInfoView,
-  NodeEditorView,
-  LinkEditorView,
-  NetworkEditorView,
-  LinkImpairmentView,
-  FreeTextEditorView,
-  FreeShapeEditorView,
-  GroupEditorView
-} from "./views";
+import { PaletteView } from "./views";
 
-const MIN_WIDTH = 400;
+const MIN_WIDTH = 500;
 function getMaxWidth() {
   return Math.floor(window.innerWidth / 2);
 }
 const TEXT_SECONDARY = "text.secondary";
 const ACTION_HOVER = "action.hover";
 
-/** Banner ref for validation errors shown below the header */
 interface BannerRef {
   errors: string[];
 }
 
-/** Generic footer ref shape - all editor views expose the same interface */
 interface FooterRef {
   handleApply: () => void;
   handleSave: () => void;
+  handleDiscard: () => void;
   hasChanges: boolean;
 }
 
-// ─── Palette props ───
 export interface ContextPanelPaletteProps {
   mode?: "edit" | "view";
-  requestedTab?: { tab: number };
+  requestedTab?: { tabId: string };
   onEditCustomNode: (name: string) => void;
   onDeleteCustomNode: (name: string) => void;
   onSetDefaultCustomNode: (name: string) => void;
 }
 
-// ─── View mode props ───
 export interface ContextPanelViewProps {
   selectedNodeData: NodeData | null;
   selectedLinkData: (LinkData & { extraData?: Record<string, unknown> }) | null;
 }
 
-// ─── Editor props ───
 export interface ContextPanelEditorProps {
-  // Node editor
   editingNodeData: NodeEditorData | null;
   editingNodeInheritedProps: string[];
   nodeEditorHandlers: {
     handleClose: () => void;
     handleSave: (data: NodeEditorData) => void;
     handleApply: (data: NodeEditorData) => void;
+    handleDelete?: () => void;
   };
-  // Link editor
   editingLinkData: LinkEditorData | null;
   linkEditorHandlers: {
     handleClose: () => void;
     handleSave: (data: LinkEditorData) => void;
     handleApply: (data: LinkEditorData) => void;
-    handleAutoApplyOffset?: (data: LinkEditorData) => void;
+    previewOffset: (data: LinkEditorData) => void;
+    revertOffset: () => void;
+    handleDelete?: () => void;
   };
-  // Network editor
   editingNetworkData: NetworkEditorData | null;
   networkEditorHandlers: {
     handleClose: () => void;
     handleSave: (data: NetworkEditorData) => void;
     handleApply: (data: NetworkEditorData) => void;
   };
-  // Custom template editor
   customTemplateEditorData: NodeEditorData | null;
   customTemplateHandlers: {
     handleClose: () => void;
     handleSave: (data: NodeEditorData) => void;
     handleApply: (data: NodeEditorData) => void;
   };
-  // Link impairment
   linkImpairmentData: LinkImpairmentData | null;
   linkImpairmentHandlers: {
     onError: (error: string) => void;
@@ -112,7 +95,6 @@ export interface ContextPanelEditorProps {
     onSave: (data: LinkImpairmentData) => void;
     onClose: () => void;
   };
-  // Annotations
   editingTextAnnotation: FreeTextAnnotation | null;
   textAnnotationHandlers: {
     onSave: (annotation: FreeTextAnnotation) => void;
@@ -130,122 +112,31 @@ export interface ContextPanelEditorProps {
     onSave: (data: GroupEditorData) => void;
     onClose: () => void;
     onDelete: (groupId: string) => void;
-    onStyleChange: (groupId: string, style: Partial<GroupStyleAnnotation>) => void;
+    onStylePreview: (groupId: string, style: Partial<GroupStyleAnnotation>) => void;
   };
 }
 
 function renderContextPanelContent(
-  kind: string,
   palette: ContextPanelPaletteProps,
   view: ContextPanelViewProps,
   editor: ContextPanelEditorProps,
   isLocked: boolean,
-  isReadOnly: boolean,
   setFooterRef: (ref: FooterRef | null) => void,
   setBannerRef: (ref: BannerRef | null) => void
 ): React.ReactElement {
-  switch (kind) {
-    case "palette":
-      return <PaletteView {...palette} isLocked={isLocked} />;
-    case "nodeInfo":
-      return <NodeInfoView nodeData={view.selectedNodeData} />;
-    case "linkInfo":
-      return <LinkInfoView linkData={view.selectedLinkData} />;
-    case "nodeEditor":
-      return (
-        <NodeEditorView
-          nodeData={editor.editingNodeData}
-          onSave={editor.nodeEditorHandlers.handleSave}
-          onApply={editor.nodeEditorHandlers.handleApply}
-          inheritedProps={editor.editingNodeInheritedProps}
-          onFooterRef={setFooterRef}
-          readOnly={isReadOnly}
-        />
-      );
-    case "customTemplateEditor":
-      return (
-        <NodeEditorView
-          nodeData={editor.customTemplateEditorData}
-          onSave={editor.customTemplateHandlers.handleSave}
-          onApply={editor.customTemplateHandlers.handleApply}
-          onFooterRef={setFooterRef}
-          readOnly={isReadOnly}
-        />
-      );
-    case "linkEditor":
-      return (
-        <LinkEditorView
-          linkData={editor.editingLinkData}
-          onSave={editor.linkEditorHandlers.handleSave}
-          onApply={editor.linkEditorHandlers.handleApply}
-          onAutoApplyOffset={editor.linkEditorHandlers.handleAutoApplyOffset}
-          onFooterRef={setFooterRef}
-          onBannerRef={setBannerRef}
-          readOnly={isReadOnly}
-        />
-      );
-    case "networkEditor":
-      return (
-        <NetworkEditorView
-          nodeData={editor.editingNetworkData}
-          onSave={editor.networkEditorHandlers.handleSave}
-          onApply={editor.networkEditorHandlers.handleApply}
-          onFooterRef={setFooterRef}
-          readOnly={isReadOnly}
-        />
-      );
-    case "linkImpairment":
-      return (
-        <LinkImpairmentView
-          linkData={editor.linkImpairmentData}
-          onError={editor.linkImpairmentHandlers.onError}
-          onSave={editor.linkImpairmentHandlers.onSave}
-          onApply={editor.linkImpairmentHandlers.onApply}
-          onClose={editor.linkImpairmentHandlers.onClose}
-          onFooterRef={setFooterRef}
-          readOnly={isReadOnly}
-        />
-      );
-    case "freeTextEditor":
-      return (
-        <FreeTextEditorView
-          annotation={editor.editingTextAnnotation}
-          onSave={editor.textAnnotationHandlers.onSave}
-          onClose={editor.textAnnotationHandlers.onClose}
-          onDelete={editor.textAnnotationHandlers.onDelete}
-          onFooterRef={setFooterRef}
-          readOnly={isReadOnly}
-        />
-      );
-    case "freeShapeEditor":
-      return (
-        <FreeShapeEditorView
-          annotation={editor.editingShapeAnnotation}
-          onSave={editor.shapeAnnotationHandlers.onSave}
-          onClose={editor.shapeAnnotationHandlers.onClose}
-          onDelete={editor.shapeAnnotationHandlers.onDelete}
-          onFooterRef={setFooterRef}
-          readOnly={isReadOnly}
-        />
-      );
-    case "groupEditor":
-      return (
-        <GroupEditorView
-          groupData={editor.editingGroup}
-          onSave={editor.groupHandlers.onSave}
-          onClose={editor.groupHandlers.onClose}
-          onDelete={editor.groupHandlers.onDelete}
-          onStyleChange={editor.groupHandlers.onStyleChange}
-          onFooterRef={setFooterRef}
-          readOnly={isReadOnly}
-        />
-      );
-    default:
-      return <PaletteView {...palette} isLocked={isLocked} />;
-  }
+  return (
+    <PaletteView
+      {...palette}
+      isLocked={isLocked}
+      selectedNodeData={view.selectedNodeData}
+      selectedLinkData={view.selectedLinkData}
+      editor={editor}
+      onFooterRef={setFooterRef}
+      onBannerRef={setBannerRef}
+    />
+  );
 }
 
-/** Toggle handle shown on the side of the panel — extracted to reduce component complexity. */
 const ToggleHandle: React.FC<{
   isOpen: boolean;
   panelWidth: number;
@@ -259,7 +150,6 @@ const ToggleHandle: React.FC<{
   const isLeft = side === "left";
   const tooltipPlacement = isLeft ? "right" : "left";
   const positionProp = isLeft ? "left" : "right";
-  const transitionProp = `${positionProp} 0.25s ease`;
   const OpenIcon = isLeft ? ChevronRightIcon : ChevronLeftIcon;
   const CloseChevron = isLeft ? ChevronLeftIcon : ChevronRightIcon;
 
@@ -284,24 +174,37 @@ const ToggleHandle: React.FC<{
         [isLeft ? "left" : "right"]: isOpen ? panelWidth : 0,
         top: "50%",
         transform: "translateY(-50%)",
-        transition: isDragging ? "none" : transitionProp,
+        transition: isDragging
+          ? "none"
+          : (theme) =>
+              theme.transitions.create(positionProp, {
+                duration: theme.transitions.duration.short
+              }),
         zIndex: 15,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 0.5,
+        gap: 0.5
       }}
     >
       <Tooltip title={isOpen ? "Close panel" : "Open panel"} placement={tooltipPlacement}>
         <Box
-          onClick={isOpen ? () => { onBack(); onClose(); } : onOpen}
+          onClick={
+            isOpen
+              ? () => {
+                  onBack();
+                  onClose();
+                }
+              : onOpen
+          }
           data-testid="panel-toggle-btn"
           sx={{ ...handleStyle, height: 48 }}
         >
-          {isOpen
-            ? <CloseChevron sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
-            : <OpenIcon sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
-          }
+          {isOpen ? (
+            <CloseChevron sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
+          ) : (
+            <OpenIcon sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
+          )}
         </Box>
       </Tooltip>
       {isOpen && (
@@ -320,26 +223,27 @@ function usePanelResize(sideRef: React.RefObject<string>) {
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(false);
 
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isDraggingRef.current = true;
-    setIsDragging(true);
-    const onMouseMove = (ev: MouseEvent) => {
-      if (!isDraggingRef.current) return;
-      const newWidth = sideRef.current === "left"
-        ? ev.clientX
-        : window.innerWidth - ev.clientX;
-      setPanelWidth(Math.min(getMaxWidth(), Math.max(MIN_WIDTH, newWidth)));
-    };
-    const onMouseUp = () => {
-      isDraggingRef.current = false;
-      setIsDragging(false);
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
-    };
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
-  }, [sideRef]);
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      isDraggingRef.current = true;
+      setIsDragging(true);
+      const onMouseMove = (ev: MouseEvent) => {
+        if (!isDraggingRef.current) return;
+        const newWidth = sideRef.current === "left" ? ev.clientX : window.innerWidth - ev.clientX;
+        setPanelWidth(Math.min(getMaxWidth(), Math.max(MIN_WIDTH, newWidth)));
+      };
+      const onMouseUp = () => {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [sideRef]
+  );
 
   return { panelWidth, isDragging, handleResizeStart };
 }
@@ -351,7 +255,6 @@ export interface ContextPanelProps {
   onClose: () => void;
   onBack: () => void;
   onToggleSide: () => void;
-  onDelete?: () => void;
   rfInstance: ReactFlowInstance | null;
   palette: ContextPanelPaletteProps;
   view: ContextPanelViewProps;
@@ -365,7 +268,6 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   onClose,
   onBack,
   onToggleSide,
-  onDelete,
   palette,
   view,
   editor
@@ -395,17 +297,30 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
     ? { border: "borderRight", resize: "right" }
     : { border: "borderLeft", resize: "left" };
 
-  const showBackButton = panelView.kind !== "palette";
-  const showDelete = onDelete && (panelView.kind === "nodeEditor" || panelView.kind === "linkEditor") && !isLocked;
-
-  const content = renderContextPanelContent(panelView.kind, palette, view, editor, isLocked, isReadOnly, setFooterRef, setBannerRef);
+  const content = renderContextPanelContent(
+    palette,
+    view,
+    editor,
+    isLocked,
+    setFooterRef,
+    setBannerRef
+  );
 
   const footer = footerRef.current;
   const showFooter = panelView.hasFooter && footer;
 
   return (
     <>
-      <ToggleHandle isOpen={isOpen} panelWidth={panelWidth} isDragging={isDragging} side={side} onOpen={onOpen} onClose={onClose} onBack={onBack} onToggleSide={onToggleSide} />
+      <ToggleHandle
+        isOpen={isOpen}
+        panelWidth={panelWidth}
+        isDragging={isDragging}
+        side={side}
+        onOpen={onOpen}
+        onClose={onClose}
+        onBack={onBack}
+        onToggleSide={onToggleSide}
+      />
       <Drawer
         variant="persistent"
         anchor={side}
@@ -423,43 +338,10 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             boxShadow: 4,
             [sideLayout.border]: 1,
             borderColor: "divider",
-            pointerEvents: "auto",
+            pointerEvents: "auto"
           }
         }}
       >
-          {/* Header */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            px: 1,
-            py: 0.5,
-            minHeight: 40
-          }}
-        >
-          {showBackButton ? (
-            <IconButton size="small" onClick={onBack} sx={{ mr: 0.5 }} data-testid="panel-back-btn">
-              <ArrowBackIcon fontSize="small" />
-            </IconButton>
-          ) : (
-            <IconButton size="small" onClick={() => { onBack(); onClose(); }} sx={{ mr: 0.5 }} data-testid="panel-close-btn">
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          )}
-          <Typography variant="panelHeading" sx={{ flexGrow: 1 }} data-testid="panel-title">
-            {panelView.title}
-          </Typography>
-          {showDelete && (
-            <Tooltip title={panelView.kind === "nodeEditor" ? "Delete node" : "Delete link"}>
-              <IconButton size="small" onClick={onDelete} data-testid="panel-delete-btn">
-                <DeleteOutlineIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
-        <Divider />
-
-        {/* Read-only indicator */}
         {isLocked && (
           <>
             <Box
@@ -470,41 +352,39 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                 gap: 0.5,
                 px: 2,
                 py: 0.5,
-                bgcolor: ACTION_HOVER,
+                bgcolor: "error.main",
+                color: "error.contrastText"
               }}
             >
-              <LockIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
-              <Typography variant="caption" color="text.secondary">
-                Read-only — unlock lab to edit
-              </Typography>
+              <LockIcon sx={{ fontSize: 14 }} />
+              <Typography variant="caption">Read-only — unlock lab to edit</Typography>
             </Box>
             <Divider />
           </>
         )}
 
-        {/* Validation banners */}
-        {bannerRef.current && bannerRef.current.errors.map((err, i) => (
-          <React.Fragment key={i}>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.5,
-                px: 2,
-                py: 0.5,
-                bgcolor: ACTION_HOVER,
-                color: "error.main",
-              }}
-            >
-              <ErrorOutlineIcon sx={{ fontSize: 14 }} />
-              <Typography variant="caption">{err}</Typography>
-            </Box>
-            <Divider />
-          </React.Fragment>
-        ))}
+        {bannerRef.current &&
+          bannerRef.current.errors.map((err, i) => (
+            <React.Fragment key={i}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  px: 2,
+                  py: 0.5,
+                  bgcolor: ACTION_HOVER,
+                  color: "error.main"
+                }}
+              >
+                <ErrorOutlineIcon sx={{ fontSize: 14 }} />
+                <Typography variant="caption">{err}</Typography>
+              </Box>
+              <Divider />
+            </React.Fragment>
+          ))}
 
-        {/* Unsaved changes banner */}
-        {footer?.hasChanges && !isReadOnly && (
+        {panelView.hasFooter && footer?.hasChanges && !isReadOnly && (
           <>
             <Box
               sx={{
@@ -513,7 +393,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                 gap: 0.5,
                 px: 2,
                 py: 0.5,
-                bgcolor: ACTION_HOVER,
+                bgcolor: ACTION_HOVER
               }}
             >
               <EditOutlinedIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
@@ -525,7 +405,6 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           </>
         )}
 
-        {/* Content */}
         <Box
           sx={{
             flexGrow: 1,
@@ -535,7 +414,6 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           {content}
         </Box>
 
-        {/* Footer (for editor views, hidden when read-only) */}
         {showFooter && !isReadOnly && (
           <>
             <Divider />
@@ -552,7 +430,6 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           </>
         )}
 
-        {/* Resize handle */}
         <Box
           onMouseDown={handleResizeStart}
           sx={{

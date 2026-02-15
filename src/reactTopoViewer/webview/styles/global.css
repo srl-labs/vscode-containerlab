@@ -5,7 +5,6 @@
 /* Third-party CSS imports */
 /* Use explicit paths so Madge can resolve these imports (lint:circular). */
 @import "../../../../node_modules/maplibre-gl/dist/maplibre-gl.css";
-@import "../../../../node_modules/uplot/dist/uPlot.min.css";
 @import "../../../../node_modules/@xyflow/react/dist/style.css";
 @import "../../../../node_modules/monaco-editor/min/vs/editor/editor.main.css";
 

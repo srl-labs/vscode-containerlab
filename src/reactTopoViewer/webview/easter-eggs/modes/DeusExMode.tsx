@@ -107,7 +107,14 @@ const DeusExCanvas: React.FC<{
     <Box
       component="canvas"
       ref={canvasRef}
-      sx={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 99998, width: "100%", height: "100%" }}
+      sx={{
+        position: "fixed",
+        inset: 0,
+        pointerEvents: "none",
+        zIndex: 99998,
+        width: "100%",
+        height: "100%"
+      }}
     />
   );
 };
@@ -259,7 +266,19 @@ export const DeusExMode: React.FC<BaseModeProps> = ({
     <>
       <DeusExCanvas isActive={isActive} getRotationAngle={getRotationAngle} />
 
-      <Box sx={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 99999, display: "flex", alignItems: "flex-end", justifyContent: "center", pb: 4, gap: 2 }}>
+      <Box
+        sx={{
+          position: "fixed",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 99999,
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          pb: 4,
+          gap: 2
+        }}
+      >
         <Box
           component="button"
           onClick={handleSwitch}
@@ -269,7 +288,9 @@ export const DeusExMode: React.FC<BaseModeProps> = ({
             borderRadius: "9999px",
             pointerEvents: "auto",
             transition: "all 0.5s",
-            ...(visible ? { opacity: 1, transform: "translateY(0)" } : { opacity: 0, transform: "translateY(16px)" }),
+            ...(visible
+              ? { opacity: 1, transform: "translateY(0)" }
+              : { opacity: 0, transform: "translateY(16px)" }),
             background:
               "linear-gradient(135deg, rgba(113, 121, 126, 0.4) 0%, rgba(70, 75, 80, 0.4) 100%)",
             border: "2px solid rgba(192, 192, 192, 0.5)",
@@ -294,7 +315,9 @@ export const DeusExMode: React.FC<BaseModeProps> = ({
             borderRadius: "9999px",
             pointerEvents: "auto",
             transition: "all 0.5s",
-            ...(visible ? { opacity: 1, transform: "translateY(0)" } : { opacity: 0, transform: "translateY(16px)" }),
+            ...(visible
+              ? { opacity: 1, transform: "translateY(0)" }
+              : { opacity: 0, transform: "translateY(16px)" }),
             background:
               "linear-gradient(135deg, rgba(192, 192, 192, 0.7) 0%, rgba(113, 121, 126, 0.7) 100%)",
             border: "2px solid rgba(220, 220, 225, 0.5)",

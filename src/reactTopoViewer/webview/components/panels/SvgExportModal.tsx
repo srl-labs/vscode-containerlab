@@ -1,23 +1,30 @@
-/**
- * SvgExportModal - MUI Dialog wrapper for SVG export
- * Extracts the content from SvgExportPanel into a Dialog.
- */
+// SVG export dialog.
 import React, { useState, useCallback } from "react";
 import type { ReactFlowInstance, Edge } from "@xyflow/react";
-import { AccountTree as AccountTreeIcon, Close as CloseIcon, Download as DownloadIcon, GridOn as GridOnIcon, Lightbulb as LightbulbIcon, Palette as PaletteIcon } from "@mui/icons-material";
 import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  InputAdornment,
-  TextField,
-  Typography
-} from "@mui/material";
+  AccountTree as AccountTreeIcon,
+  Close as CloseIcon,
+  Download as DownloadIcon,
+  Lightbulb as LightbulbIcon
+} from "@mui/icons-material";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Checkbox from "@mui/material/Checkbox";
+import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import Divider from "@mui/material/Divider";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import IconButton from "@mui/material/IconButton";
+import Radio from "@mui/material/Radio";
+import RadioGroup from "@mui/material/RadioGroup";
+import InputAdornment from "@mui/material/InputAdornment";
+import Paper from "@mui/material/Paper";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 
 import type {
   FreeTextAnnotation,
@@ -30,8 +37,7 @@ import {
   GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
 import { log } from "../../utils/logger";
-import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG_SX } from "../ui/form";
-
+import { ColorField, PREVIEW_GRID_BG_SX } from "../ui/form";
 
 import {
   buildSvgDefs,
@@ -52,38 +58,11 @@ export interface SvgExportModalProps {
   customIcons?: CustomIconMap;
 }
 
-const ANNOTATION_NODE_TYPES: Set<string> = new Set([FREE_TEXT_NODE_TYPE, FREE_SHAPE_NODE_TYPE, GROUP_NODE_TYPE]);
-
-const JUSTIFY_SPACE_BETWEEN = "space-between";
-
-const ToggleSettingRow: React.FC<{
-  label: React.ReactNode;
-  active: boolean;
-  onToggle: () => void;
-}> = ({ label, active, onToggle }) => (
-  <Box
-    sx={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: JUSTIFY_SPACE_BETWEEN,
-      p: 1.5,
-      borderRadius: 0.5,
-      border: 1,
-    }}
-  >
-    <Box component="span" sx={{ fontSize: "0.875rem" }}>
-      {label}
-    </Box>
-    <Toggle active={active} onClick={onToggle}>
-      {active ? "Included" : "Excluded"}
-    </Toggle>
-  </Box>
-);
-
-function formatCount(count: number, singular: string): string {
-  const label = count === 1 ? singular : `${singular}s`;
-  return `${count} ${label}`;
-}
+const ANNOTATION_NODE_TYPES: Set<string> = new Set([
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE,
+  GROUP_NODE_TYPE
+]);
 
 function getViewportSize(): { width: number; height: number } | null {
   const container = document.querySelector(".react-flow") as HTMLElement | null;
@@ -105,14 +84,24 @@ function buildViewportTransform(
   return { width, height, transform, scaleFactor };
 }
 
-function buildGraphSvg(rfInstance: ReactFlowInstance, zoomPercent: number, customIcons?: CustomIconMap, includeEdgeLabels?: boolean) {
+function buildGraphSvg(
+  rfInstance: ReactFlowInstance,
+  zoomPercent: number,
+  customIcons?: CustomIconMap,
+  includeEdgeLabels?: boolean
+) {
   const viewport = rfInstance.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
   const size = getViewportSize();
   if (!size) return null;
   const { width, height, transform } = buildViewportTransform(viewport, size, zoomPercent);
   const nodes = rfInstance.getNodes?.() ?? [];
   const edges = rfInstance.getEdges?.() ?? [];
-  const edgesSvg = renderEdgesToSvg(edges as Edge[], nodes, includeEdgeLabels ?? true, ANNOTATION_NODE_TYPES);
+  const edgesSvg = renderEdgesToSvg(
+    edges as Edge[],
+    nodes,
+    includeEdgeLabels ?? true,
+    ANNOTATION_NODE_TYPES
+  );
   const nodesSvg = renderNodesToSvg(nodes, customIcons, ANNOTATION_NODE_TYPES);
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
   svg += buildSvgDefs();
@@ -135,7 +124,10 @@ function applyPadding(svgContent: string, padding: number): string {
   const [x, y, vWidth, vHeight] = viewBox.split(" ").map(parseFloat);
   const paddingX = padding * (vWidth / width);
   const paddingY = padding * (vHeight / height);
-  svgEl.setAttribute("viewBox", `${x - paddingX} ${y - paddingY} ${vWidth + 2 * paddingX} ${vHeight + 2 * paddingY}`);
+  svgEl.setAttribute(
+    "viewBox",
+    `${x - paddingX} ${y - paddingY} ${vWidth + 2 * paddingX} ${vHeight + 2 * paddingY}`
+  );
   svgEl.setAttribute("width", newWidth.toString());
   svgEl.setAttribute("height", newHeight.toString());
   return new XMLSerializer().serializeToString(svgEl);
@@ -151,11 +143,7 @@ function downloadSvg(content: string, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-type BackgroundOption = "transparent" | "white" | "custom";
-
-const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Typography variant="subtitle2" fontWeight={600}>{children}</Typography>
-);
+type BackgroundOption = "transparent" | "custom";
 
 export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   isOpen,
@@ -169,7 +157,10 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   const [borderZoom, setBorderZoom] = useState(100);
   const [borderPadding, setBorderPadding] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
-  const [exportStatus, setExportStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [exportStatus, setExportStatus] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
   const [includeAnnotations, setIncludeAnnotations] = useState(true);
   const [includeEdgeLabels, setIncludeEdgeLabels] = useState(true);
   const [backgroundOption, setBackgroundOption] = useState<BackgroundOption>("transparent");
@@ -177,8 +168,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   const [filename, setFilename] = useState("topology");
 
   const isExportAvailable = rfInstance ? Boolean(getViewportSize()) : false;
-  const annotationCounts = { groups: groups.length, text: textAnnotations.length, shapes: shapeAnnotations.length };
-  const totalAnnotations = annotationCounts.groups + annotationCounts.text + annotationCounts.shapes;
+  const totalAnnotations = groups.length + textAnnotations.length + shapeAnnotations.length;
 
   const handleExport = useCallback(async () => {
     if (!isExportAvailable || !rfInstance) {
@@ -194,11 +184,14 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       let finalSvg = graphSvg.svg;
       if (borderPadding > 0) finalSvg = applyPadding(finalSvg, borderPadding);
       if (includeAnnotations && totalAnnotations > 0) {
-        finalSvg = compositeAnnotationsIntoSvg(finalSvg, { groups, textAnnotations, shapeAnnotations }, borderZoom / 100);
+        finalSvg = compositeAnnotationsIntoSvg(
+          finalSvg,
+          { groups, textAnnotations, shapeAnnotations },
+          borderZoom / 100
+        );
       }
-      if (backgroundOption !== "transparent") {
-        const bgColor = backgroundOption === "white" ? "#ffffff" : customBackgroundColor;
-        finalSvg = addBackgroundRect(finalSvg, bgColor);
+      if (backgroundOption === "custom") {
+        finalSvg = addBackgroundRect(finalSvg, customBackgroundColor);
       }
       downloadSvg(finalSvg, `${filename || "topology"}.svg`);
       setExportStatus({ type: "success", message: "SVG exported successfully" });
@@ -208,9 +201,22 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     } finally {
       setIsExporting(false);
     }
-	  }, [isExportAvailable, borderZoom, borderPadding, includeAnnotations, includeEdgeLabels, totalAnnotations, groups, textAnnotations, shapeAnnotations, backgroundOption, customBackgroundColor, filename, rfInstance, customIcons]);
-
-  const annotationsLabel = totalAnnotations > 0 ? formatCount(totalAnnotations, "annotation") : "No annotations";
+  }, [
+    isExportAvailable,
+    borderZoom,
+    borderPadding,
+    includeAnnotations,
+    includeEdgeLabels,
+    totalAnnotations,
+    groups,
+    textAnnotations,
+    shapeAnnotations,
+    backgroundOption,
+    customBackgroundColor,
+    filename,
+    rfInstance,
+    customIcons
+  ]);
 
   const previewBackgroundSx = (() => {
     if (backgroundOption === "transparent") {
@@ -221,153 +227,226 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         backgroundPosition: "0 0, 0 4px, 4px -4px, -4px 0px"
       } as const;
     }
-    if (backgroundOption === "white") return { backgroundColor: "#ffffff" } as const;
     return { backgroundColor: customBackgroundColor } as const;
   })();
 
   return (
     <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth data-testid="svg-export-modal">
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: JUSTIFY_SPACE_BETWEEN, py: 1.5 }}>
+      <DialogTitle
+        sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
+      >
         Export SVG
-        <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
+        <IconButton size="small" onClick={onClose}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
       </DialogTitle>
-      <DialogContent dividers>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {/* Quality section */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-            <SectionHeader>Quality & Size</SectionHeader>
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-              <NumberInput label="Zoom" value={borderZoom} onChange={(v) => setBorderZoom(Math.max(10, Math.min(300, v)))} min={10} max={300} unit="%" />
-              <NumberInput label="Padding" value={borderPadding} onChange={(v) => setBorderPadding(Math.max(0, v))} min={0} max={500} unit="px" />
-            </Box>
-          </Box>
+      <DialogContent dividers sx={{ p: 0 }}>
+        <Box sx={{ p: 2 }}>
+          <TextField
+            label="Filename"
+            size="small"
+            fullWidth
+            value={filename}
+            onChange={(e) => setFilename(e.target.value)}
+            placeholder="topology"
+            data-testid="svg-export-filename"
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Typography variant="caption" color="text.secondary">
+                      .svg
+                    </Typography>
+                  </InputAdornment>
+                )
+              }
+            }}
+          />
+        </Box>
 
-          {/* Background section */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-            <SectionHeader>Background</SectionHeader>
-            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, flexWrap: "wrap" }}>
-              <Box sx={{ display: "flex", gap: 1, pt: 2 }}>
-                <Toggle active={backgroundOption === "transparent"} onClick={() => setBackgroundOption("transparent")}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}><GridOnIcon sx={{ fontSize: 14 }} />Transparent</Box>
-                </Toggle>
-	                <Toggle active={backgroundOption === "white"} onClick={() => setBackgroundOption("white")}>
-	                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-	                    <Box component="span" sx={{ display: "inline-block", width: 12, height: 12, bgcolor: "white", borderRadius: 0.5, border: 1 }} />White
-	                  </Box>
-	                </Toggle>
-                <Toggle active={backgroundOption === "custom"} onClick={() => setBackgroundOption("custom")}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}><PaletteIcon sx={{ fontSize: 14 }} />Custom</Box>
-                </Toggle>
-              </Box>
-              {backgroundOption === "custom" && <ColorSwatch label="Color" value={customBackgroundColor} onChange={setCustomBackgroundColor} />}
-            </Box>
-          </Box>
-
-		          {/* Annotations section */}
-		          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-		            <SectionHeader>Annotations</SectionHeader>
-                <ToggleSettingRow
-                  label={annotationsLabel}
-                  active={includeAnnotations}
-                  onToggle={() => setIncludeAnnotations(!includeAnnotations)}
-                />
-		          </Box>
-
-		          {/* Edge Labels */}
-		          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-		            <SectionHeader>Edge Labels</SectionHeader>
-                <ToggleSettingRow
-                  label="Interface labels"
-                  active={includeEdgeLabels}
-                  onToggle={() => setIncludeEdgeLabels(!includeEdgeLabels)}
-                />
-		          </Box>
-
-          {/* Filename */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-            <SectionHeader>Filename</SectionHeader>
+        <Divider />
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography variant="subtitle2">Quality & Size</Typography>
+        </Box>
+        <Divider />
+        <Box sx={{ p: 2 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
             <TextField
+              label="Zoom"
+              type="number"
               size="small"
-              fullWidth
-              value={filename}
-              onChange={(e) => setFilename(e.target.value)}
-              placeholder="topology"
-              data-testid="svg-export-filename"
+              value={borderZoom}
+              onChange={(e) =>
+                setBorderZoom(Math.max(10, Math.min(300, parseFloat(e.target.value) || 0)))
+              }
               slotProps={{
-                input: {
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <Typography variant="caption" color="text.secondary">
-                        .svg
-                      </Typography>
-                    </InputAdornment>
-                  )
-                }
+                htmlInput: { min: 10, max: 300, step: 1 },
+                input: { endAdornment: <InputAdornment position="end">%</InputAdornment> }
               }}
-              sx={{ "& .MuiInputBase-input": { fontSize: "0.75rem" } }}
+            />
+            <TextField
+              label="Padding"
+              type="number"
+              size="small"
+              value={borderPadding}
+              onChange={(e) => setBorderPadding(Math.max(0, parseFloat(e.target.value) || 0))}
+              slotProps={{
+                htmlInput: { min: 0, max: 500, step: 1 },
+                input: { endAdornment: <InputAdornment position="end">px</InputAdornment> }
+              }}
             />
           </Box>
+        </Box>
 
-	          {/* Preview */}
-	          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-	            <SectionHeader>Preview</SectionHeader>
-	            <Box sx={{ position: "relative", p: 2, borderRadius: 0.5, border: 1, overflow: "hidden" }}>
-	              <Box sx={{ position: "absolute", inset: 0, opacity: 0.3, ...PREVIEW_GRID_BG_SX }} />
-	              <Box sx={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
-	                <Box
-                  sx={{
-                    width: 96,
-                    height: 64,
-	                    borderRadius: 0.5,
-	                    boxShadow: 3,
-	                    border: 1,
-	                    display: "flex",
-	                    alignItems: "center",
-	                    justifyContent: "center",
-	                    transition: "all 200ms",
-	                    ...previewBackgroundSx,
-	                    padding: `${Math.min(borderPadding / 20, 8)}px`,
-	                    transform: `scale(${0.8 + borderZoom / 500})`
-	                  }}
-	                >
-                  <AccountTreeIcon sx={{ fontSize: 24, color: "primary.main", opacity: 0.8 }} />
-                </Box>
+        <Divider />
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography variant="subtitle2">Background</Typography>
+        </Box>
+        <Divider />
+        <Box sx={{ display: "flex", flexDirection: "column", px: 2, py: 1 }}>
+          <RadioGroup
+            value={backgroundOption}
+            onChange={(e) => setBackgroundOption(e.target.value as BackgroundOption)}
+          >
+            <FormControlLabel
+              value="transparent"
+              control={<Radio size="small" />}
+              label="Transparent"
+            />
+            <FormControlLabel value="custom" control={<Radio size="small" />} label="Custom" />
+          </RadioGroup>
+          {backgroundOption === "custom" && (
+            <Box sx={{ pl: 4, pt: 1 }}>
+              <ColorField
+                label="Color"
+                value={customBackgroundColor}
+                onChange={setCustomBackgroundColor}
+              />
+            </Box>
+          )}
+        </Box>
+
+        <Divider />
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography variant="subtitle2">Include</Typography>
+        </Box>
+        <Divider />
+        <Box sx={{ display: "flex", flexDirection: "column", px: 2, py: 1 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={includeAnnotations}
+                onChange={(e) => setIncludeAnnotations(e.target.checked)}
+              />
+            }
+            label="Annotations"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={includeEdgeLabels}
+                onChange={(e) => setIncludeEdgeLabels(e.target.checked)}
+              />
+            }
+            label="Edge labels"
+          />
+        </Box>
+
+        <Divider />
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography variant="subtitle2">Preview</Typography>
+        </Box>
+        <Divider />
+        <Box sx={{ p: 2 }}>
+          <Box
+            sx={{
+              position: "relative",
+              p: 2,
+              borderRadius: 1,
+              overflow: "hidden",
+              border: 1,
+              borderColor: "divider"
+            }}
+          >
+            <Box sx={{ position: "absolute", inset: 0, opacity: 0.3, ...PREVIEW_GRID_BG_SX }} />
+            <Box
+              sx={{
+                position: "relative",
+                zIndex: 10,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+            >
+              <Box
+                sx={{
+                  width: 96,
+                  height: 64,
+                  borderRadius: 1,
+                  boxShadow: 3,
+                  border: 1,
+                  borderColor: "divider",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 200ms",
+                  ...previewBackgroundSx,
+                  padding: `${Math.min(borderPadding / 20, 8)}px`,
+                  transform: `scale(${0.8 + borderZoom / 500})`
+                }}
+              >
+                <AccountTreeIcon sx={{ fontSize: 24, color: "primary.main", opacity: 0.8 }} />
               </Box>
             </Box>
           </Box>
+        </Box>
 
-          {/* Export button */}
-          <Button
-            variant="contained"
-            fullWidth
-            onClick={() => void handleExport()}
-            disabled={isExporting || !isExportAvailable}
-            startIcon={isExporting ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
-            data-testid="svg-export-btn"
-          >
-            {isExporting ? "Exporting..." : "Export SVG"}
-          </Button>
-
-          {exportStatus && (
-            <Alert severity={exportStatus.type === "success" ? "success" : "error"}>
-              {exportStatus.message}
-            </Alert>
-          )}
-
-	          {/* Tips */}
-	          <Box sx={{ p: 1.5, borderRadius: 0.5, border: 1 }}>
-	            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-	              <LightbulbIcon sx={{ fontSize: 14, color: "warning.main" }} />
-	              <Typography variant="caption" color="text.secondary">Tips</Typography>
-	            </Box>
-            <Typography variant="caption" color="text.secondary" component="ul" sx={{ pl: 2, m: 0, "& li": { mb: 0.25 } }}>
+        <Divider />
+        <Box sx={{ p: 2 }}>
+          <Paper variant="outlined" sx={{ p: 1.5 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+              <LightbulbIcon sx={{ fontSize: 14, color: "warning.main" }} />
+              <Typography variant="caption" color="text.secondary">
+                Tips
+              </Typography>
+            </Box>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              component="ul"
+              sx={{ pl: 2, m: 0, "& li": { mb: 0.25 } }}
+            >
               <li>Higher zoom = better quality, larger file</li>
               <li>SVG files scale without quality loss</li>
               <li>Transparent background for layering</li>
             </Typography>
-          </Box>
+          </Paper>
         </Box>
+
+        {exportStatus && (
+          <Box sx={{ px: 2, pb: 2 }}>
+            <Alert severity={exportStatus.type === "success" ? "success" : "error"}>
+              {exportStatus.message}
+            </Alert>
+          </Box>
+        )}
       </DialogContent>
+      <DialogActions>
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={() => void handleExport()}
+          disabled={isExporting || !isExportAvailable}
+          startIcon={
+            isExporting ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />
+          }
+          data-testid="svg-export-btn"
+        >
+          {isExporting ? "Exporting..." : "Export SVG"}
+        </Button>
+      </DialogActions>
     </Dialog>
   );
 };

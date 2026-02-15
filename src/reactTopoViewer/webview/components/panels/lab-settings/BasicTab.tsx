@@ -1,6 +1,4 @@
-/**
- * BasicTab - Basic settings tab for Lab Settings panel
- */
+// Basic settings tab for lab settings.
 import React from "react";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
@@ -8,7 +6,6 @@ import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
-import FormHelperText from "@mui/material/FormHelperText";
 
 import type { PrefixType } from "./types";
 
@@ -32,17 +29,16 @@ export const BasicTab: React.FC<BasicTabProps> = ({
   onCustomPrefixChange
 }) => {
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
       {/* Lab Name */}
       <TextField
         label="Lab Name"
-        placeholder="Enter lab name"
+        placeholder="Unique name for this topology"
         value={labName}
         onChange={(e) => onLabNameChange(e.target.value)}
         disabled={isViewMode}
         size="small"
         fullWidth
-        helperText="Unique name to identify and distinguish this topology from others"
       />
 
       {/* Prefix */}
@@ -57,9 +53,6 @@ export const BasicTab: React.FC<BasicTabProps> = ({
           <MenuItem value="custom">Custom</MenuItem>
           <MenuItem value="no-prefix">No prefix</MenuItem>
         </Select>
-        <FormHelperText>
-          Default: clab-&lt;lab-name&gt;-&lt;node-name&gt; | No prefix: &lt;node-name&gt;
-        </FormHelperText>
       </FormControl>
 
       {prefixType === "custom" && (

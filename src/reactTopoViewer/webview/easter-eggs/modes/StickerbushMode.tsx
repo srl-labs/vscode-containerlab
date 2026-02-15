@@ -9,7 +9,14 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 
 import { useStickerbushAudio } from "../audio";
-import { BTN_VISIBLE_SX, BTN_HIDDEN_SX, BTN_BLUR, lerpColor, useNodeGlow, MuteButton } from "../shared";
+import {
+  BTN_VISIBLE_SX,
+  BTN_HIDDEN_SX,
+  BTN_BLUR,
+  lerpColor,
+  useNodeGlow,
+  MuteButton
+} from "../shared";
 import type { RGBColor, BaseModeProps } from "../shared";
 
 /** Forest/bramble color palette */
@@ -144,7 +151,14 @@ const StickerbushCanvas: React.FC<{
     <Box
       component="canvas"
       ref={canvasRef}
-      sx={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 99998, width: "100%", height: "100%" }}
+      sx={{
+        position: "fixed",
+        inset: 0,
+        pointerEvents: "none",
+        zIndex: 99998,
+        width: "100%",
+        height: "100%"
+      }}
     />
   );
 };
@@ -361,7 +375,19 @@ export const StickerbushMode: React.FC<BaseModeProps> = ({
         getCurrentSection={audio.getCurrentSection}
       />
 
-      <Box sx={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 99999, display: "flex", alignItems: "flex-end", justifyContent: "center", pb: 4, gap: 2 }}>
+      <Box
+        sx={{
+          position: "fixed",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 99999,
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          pb: 4,
+          gap: 2
+        }}
+      >
         <Box
           component="button"
           onClick={handleSwitch}

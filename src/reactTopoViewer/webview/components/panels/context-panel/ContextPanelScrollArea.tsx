@@ -14,11 +14,13 @@ export const ContextPanelScrollArea: React.FC<{ children: React.ReactNode }> = (
 );
 
 /** Scroll area with a reset fieldset that disables inputs when readOnly. */
-export const EditorFieldset: React.FC<{ readOnly: boolean; children: React.ReactNode }> = ({ readOnly, children }) => (
+export const EditorFieldset: React.FC<{ readOnly: boolean; children: React.ReactNode }> = ({
+  readOnly,
+  children
+}) => (
   <ContextPanelScrollArea>
     <fieldset disabled={readOnly} style={FIELDSET_RESET_STYLE}>
       {children}
     </fieldset>
   </ContextPanelScrollArea>
 );
-

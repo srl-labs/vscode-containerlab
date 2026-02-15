@@ -8,6 +8,7 @@ interface UseEditorHandlersWithFooterRefOptions<T extends { id: string }> {
   onClose: () => void;
   onDelete?: (id: string) => void;
   resetInitialData: () => void;
+  discardChanges?: () => void;
   canSave?: (data: T) => boolean;
 
   onFooterRef?: (ref: FooterControlsRef | null) => void;
@@ -27,6 +28,7 @@ export function useEditorHandlersWithFooterRef<T extends { id: string }>(
     onClose,
     onDelete,
     resetInitialData,
+    discardChanges,
     canSave,
     onFooterRef,
     hasChangesForFooter
@@ -38,6 +40,7 @@ export function useEditorHandlersWithFooterRef<T extends { id: string }>(
     onClose,
     onDelete,
     resetInitialData,
+    discardChanges,
     canSave
   });
 
@@ -46,7 +49,8 @@ export function useEditorHandlersWithFooterRef<T extends { id: string }>(
     Boolean(formData),
     handlers.handleApply,
     handlers.handleSaveAndClose,
-    hasChangesForFooter
+    hasChangesForFooter,
+    handlers.handleDiscard
   );
 
   return handlers;

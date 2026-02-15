@@ -1,7 +1,9 @@
 import type React from "react";
 import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
+import Typography from "@mui/material/Typography";
 
-import { FormField, InputField } from "../../ui/form";
+import { InputField } from "../../ui/form";
 
 import type { NetemState } from "./types";
 
@@ -12,47 +14,49 @@ interface LinkImpairmentTabProps {
 
 export const LinkImpairmentTab: React.FC<LinkImpairmentTabProps> = ({ data, onChange }) => {
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <FormField label="delay" unit="ms/s">
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      {/* Impairment Settings */}
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Impairment Settings</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         <InputField
           id="delay"
+          label="Delay"
           value={data.delay ?? ""}
           onChange={(value) => onChange({ delay: value })}
-          placeholder="0ms"
+          placeholder="Delay (with units). i.e. 50ms, 5s"
         />
-      </FormField>
-      <FormField label="jitter" unit="ms/s">
         <InputField
           id="jitter"
+          label="Jitter"
           value={data.jitter ?? ""}
           onChange={(value) => onChange({ jitter: value })}
-          placeholder="0ms"
+          placeholder="Jitter (with units). i.e. 10ms, 500ms"
         />
-      </FormField>
-      <FormField label="loss" unit="%">
         <InputField
           id="loss"
+          label="Loss"
           value={data.loss ?? ""}
           onChange={(value) => onChange({ loss: value })}
-          placeholder="0"
+          placeholder="Loss in percent. i.e. 5, 0.1"
         />
-      </FormField>
-      <FormField label="rate limit" unit="kbps">
         <InputField
           id="rate"
+          label="Rate Limit"
           value={data.rate ?? ""}
           onChange={(value) => onChange({ rate: value })}
-          placeholder="0"
+          placeholder="Rate in kbps. i.e. 1000, 10000"
         />
-      </FormField>
-      <FormField label="corruption" unit="%">
         <InputField
           id="corruption"
+          label="Corruption"
           value={data.corruption ?? ""}
           onChange={(value) => onChange({ corruption: value })}
-          placeholder="0"
+          placeholder="Corruption in percent. i.e. 5, 0.1"
         />
-      </FormField>
+      </Box>
     </Box>
   );
 };

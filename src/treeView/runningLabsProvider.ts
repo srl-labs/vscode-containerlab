@@ -703,10 +703,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     return changed;
   }
 
-  private areObjectValuesEqual<T extends object>(
-    a: T | undefined,
-    b: T | undefined
-  ): boolean {
+  private areObjectValuesEqual<T extends object>(a: T | undefined, b: T | undefined): boolean {
     if (!a && !b) return true;
     if (!a || !b) return false;
     const aRecord = a as Record<string, unknown>;

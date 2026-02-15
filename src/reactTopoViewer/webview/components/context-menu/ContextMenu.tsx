@@ -1,7 +1,4 @@
-/**
- * Context Menu Component
- * Displays a dropdown context menu at a specified position
- */
+// Context menu dropdown at a given position.
 import React, { useCallback } from "react";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
@@ -36,20 +33,26 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onClose,
   onBackdropContextMenu
 }) => {
-  const handleBackdropContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (onBackdropContextMenu) {
-      onBackdropContextMenu(e);
-    } else {
-      onClose();
-    }
-  }, [onClose, onBackdropContextMenu]);
+  const handleBackdropContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (onBackdropContextMenu) {
+        onBackdropContextMenu(e);
+      } else {
+        onClose();
+      }
+    },
+    [onClose, onBackdropContextMenu]
+  );
 
-  const suppressNativeMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    onClose();
-  }, [onClose]);
+  const suppressNativeMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      onClose();
+    },
+    [onClose]
+  );
 
   if (!isVisible || items.length === 0) return null;
 
@@ -111,7 +114,11 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({ item, onClose }) => 
       data-testid={`context-menu-item-${item.id}`}
       sx={item.danger ? { color: "error.main" } : undefined}
     >
-      {item.icon && <ListItemIcon sx={item.danger ? { color: "error.main" } : undefined}>{item.icon}</ListItemIcon>}
+      {item.icon && (
+        <ListItemIcon sx={item.danger ? { color: "error.main" } : undefined}>
+          {item.icon}
+        </ListItemIcon>
+      )}
       <ListItemText>{item.label}</ListItemText>
     </MenuItem>
   );

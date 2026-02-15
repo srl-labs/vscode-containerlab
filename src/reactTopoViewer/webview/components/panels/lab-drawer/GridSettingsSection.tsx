@@ -1,13 +1,11 @@
-/**
- * GridSettingsSection - Grid settings controls for the Settings Drawer
- */
+// Grid settings controls for the settings drawer.
 import React from "react";
 import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
+import Divider from "@mui/material/Divider";
 import Slider from "@mui/material/Slider";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
-import FormLabel from "@mui/material/FormLabel";
+import Typography from "@mui/material/Typography";
 
 import type { GridStyle } from "../../../hooks/ui";
 
@@ -28,26 +26,25 @@ export const GridSettingsSection: React.FC<GridSettingsSectionProps> = ({
     onGridLineWidthChange(value as number);
   };
 
-  const handleStyleChange = (
-    _event: React.MouseEvent<HTMLElement>,
-    newStyle: GridStyle | null
-  ) => {
+  const handleStyleChange = (_event: React.MouseEvent<HTMLElement>, newStyle: GridStyle | null) => {
     if (newStyle !== null) {
       onGridStyleChange(newStyle);
     }
   };
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>
+    <Box>
+      <Typography variant="subtitle1" sx={{ px: 2, pt: 2, mb: "1rem" }}>
         Grid Settings
       </Typography>
 
       {/* Grid Line Width */}
-      <Box sx={{ mb: 3 }}>
-        <FormLabel sx={{ display: "block", mb: 1, fontSize: "0.875rem" }}>
-          Grid Line Width
-        </FormLabel>
+      <Divider />
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Line Width</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ px: 3, py: 2 }}>
         <Slider
           value={gridLineWidth}
           onChange={handleSliderChange}
@@ -58,16 +55,15 @@ export const GridSettingsSection: React.FC<GridSettingsSectionProps> = ({
           valueLabelFormat={(value) => value.toFixed(1)}
           size="small"
         />
-        <Typography variant="caption" color="text.secondary">
-          Adjust the thickness of grid lines (0 = hidden, 2 = maximum)
-        </Typography>
       </Box>
 
       {/* Grid Style */}
-      <Box>
-        <FormLabel sx={{ display: "block", mb: 1, fontSize: "0.875rem" }}>
-          Grid Style
-        </FormLabel>
+      <Divider />
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Style</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
         <ToggleButtonGroup
           value={gridStyle}
           exclusive
@@ -78,9 +74,6 @@ export const GridSettingsSection: React.FC<GridSettingsSectionProps> = ({
           <ToggleButton value="dotted">Dotted</ToggleButton>
           <ToggleButton value="quadratic">Quadratic</ToggleButton>
         </ToggleButtonGroup>
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-          Choose between dotted grid pattern or quadratic (lines)
-        </Typography>
       </Box>
     </Box>
   );

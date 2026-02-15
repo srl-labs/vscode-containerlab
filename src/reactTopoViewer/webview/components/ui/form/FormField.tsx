@@ -1,6 +1,4 @@
-/**
- * FormField - Label wrapper with optional tooltip and inheritance badge
- */
+// Label wrapper with optional tooltip and inheritance badge.
 import React from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -34,7 +32,11 @@ export const FormField: React.FC<FormFieldProps> = ({
       <Typography
         component="label"
         variant="body2"
-        sx={{ fontWeight: 500, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: 0.5 }}
+        sx={{
+          fontWeight: (theme) => theme.typography.fontWeightMedium,
+          textTransform: "uppercase",
+          letterSpacing: 0.5
+        }}
       >
         {label}
         {unit && (

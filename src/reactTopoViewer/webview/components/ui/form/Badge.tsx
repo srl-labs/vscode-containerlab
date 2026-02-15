@@ -1,6 +1,4 @@
-/**
- * Badge components for form fields
- */
+// Badge components for form fields.
 import React from "react";
 import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
@@ -15,9 +13,7 @@ export const InheritanceBadge: React.FC = () => (
     variant="outlined"
     sx={{
       ml: 1,
-      height: 18,
-      fontSize: "0.625rem",
-      fontWeight: 500
+      height: 18
     }}
   />
 );
@@ -33,8 +29,7 @@ export const ReadOnlyBadge: React.FC<{ children: React.ReactNode }> = ({ childre
       px: 1,
       py: 0.5,
       borderRadius: 0.5,
-      bgcolor: "action.hover",
-      fontSize: "1rem"
+      bgcolor: "action.hover"
     }}
   >
     {children}

@@ -1,181 +1,82 @@
-/**
- * VS Code MUI theme — single-file theme config.
- *
- * Exports:
- * - `vscodePalette`        – MUI palette slots mapped to CSS `var(--vscode-*)` strings
- * - `structuralOverrides`  – colour-free MUI component overrides (sizing, layout, defaults)
- * - `createVscodeTheme()`  – ready-to-use MUI theme for a VS Code webview
- *
- * Fork-friendly: import `vscodePalette` and/or `structuralOverrides` individually
- * and deep-merge your own additions via `createTheme(base, overrides)`.
- */
+// VS Code MUI theme config.
+// Palette values are CSS var() references — VS Code swaps them for light/dark.
 import { createTheme, type ThemeOptions } from "@mui/material/styles";
 
-declare module "@mui/material/styles" {
-  interface TypographyVariants {
-    panelHeading: React.CSSProperties;
-  }
-  interface TypographyVariantsOptions {
-    panelHeading?: React.CSSProperties;
-  }
-}
-
-declare module "@mui/material/Typography" {
-  interface TypographyPropsVariantOverrides {
-    panelHeading: true;
-  }
-}
-
-const VSCODE_BUTTON_FOREGROUND = "var(--vscode-button-foreground)";
-const VSCODE_FOCUS_BORDER = "var(--vscode-focusBorder)";
-const VSCODE_BADGE_BACKGROUND = "var(--vscode-badge-background)";
-const VSCODE_ERROR_FOREGROUND = "var(--vscode-errorForeground)";
-const VSCODE_FOREGROUND = "var(--vscode-foreground)";
-const VSCODE_SUCCESS_FOREGROUND =
-  "var(--vscode-testing-iconPassed, var(--vscode-inputValidation-infoBorder))";
-const TOPOVIEWER_SURFACE_ELEVATED = "var(--topoviewer-surface-elevated)";
-
-type ColorManipulator = (color: string, coefficient: number | string) => string;
-
-function toCssPercent(coefficient: number | string): string {
-  if (typeof coefficient === "number") {
-    return `${Math.round(coefficient * 100)}%`;
-  }
-  return `calc((${coefficient}) * 100%)`;
-}
-
-function wrapColorManipulator(
-  base: ColorManipulator,
-  fallback: ColorManipulator
-): ColorManipulator {
-  return (color: string, coefficient: number | string) => {
-    try {
-      return base(color, coefficient);
-    } catch {
-      return fallback(color, coefficient);
-    }
-  };
-}
-
-/**
- * Patch MUI color manipulation helpers so CSS variable colors are handled
- * through CSS (`color-mix`) instead of JS parsing.
- */
-function patchThemeColorManipulators(theme: ReturnType<typeof createTheme>) {
-  const baseAlpha = theme.alpha.bind(theme) as ColorManipulator;
-  const baseLighten = theme.lighten.bind(theme) as ColorManipulator;
-  const baseDarken = theme.darken.bind(theme) as ColorManipulator;
-
-  theme.alpha = wrapColorManipulator(baseAlpha, (color, coefficient) => {
-    return `color-mix(in srgb, ${color} ${toCssPercent(coefficient)}, transparent)`;
-  });
-
-  theme.lighten = wrapColorManipulator(baseLighten, (color, coefficient) => {
-    return `color-mix(in srgb, ${color}, #fff ${toCssPercent(coefficient)})`;
-  });
-
-  theme.darken = wrapColorManipulator(baseDarken, (color, coefficient) => {
-    return `color-mix(in srgb, ${color}, #000 ${toCssPercent(coefficient)})`;
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Palette — every slot MUI would otherwise try to derive is filled explicitly
-// so that no color-math runs on opaque var() strings.
-// ---------------------------------------------------------------------------
-
-/**
- * Full MUI palette backed by VS Code CSS custom properties.
- * Can be spread into `createTheme({ palette: { ...vscodePalette, mode } })`.
- */
+// Palette — single source of truth for all colors.
+// dark/light repeat main to prevent createTheme from deriving them (crashes on CSS vars).
 export const vscodePalette = {
   divider: "var(--vscode-panel-border)",
   background: {
     default: "var(--vscode-editor-background)",
-    paper:
-      "var(--topoviewer-surface-panel, var(--vscode-editorWidget-background, var(--vscode-editor-background)))"
+    paper: "var(--vscode-sideBar-background)"
   },
   text: {
-    primary: VSCODE_FOREGROUND,
+    primary: "var(--vscode-foreground)",
     secondary: "var(--vscode-descriptionForeground)",
     disabled: "var(--vscode-disabledForeground)"
   },
   primary: {
     main: "var(--vscode-button-background)",
-    dark: "var(--vscode-button-hoverBackground)",
-    light: VSCODE_FOCUS_BORDER,
-    contrastText: VSCODE_BUTTON_FOREGROUND
+    dark: "var(--vscode-button-background)",
+    light: "var(--vscode-button-background)",
+    contrastText: "var(--vscode-button-foreground)"
   },
   secondary: {
-    main: VSCODE_BADGE_BACKGROUND,
-    dark: VSCODE_BADGE_BACKGROUND,
-    light: VSCODE_BADGE_BACKGROUND,
-    contrastText: "var(--vscode-badge-foreground)"
+    main: "var(--vscode-button-secondaryBackground)",
+    dark: "var(--vscode-button-secondaryBackground)",
+    light: "var(--vscode-button-secondaryBackground)",
+    contrastText: "var(--vscode-button-secondaryForeground)"
   },
   error: {
-    main: VSCODE_ERROR_FOREGROUND,
-    dark: VSCODE_ERROR_FOREGROUND,
-    light: VSCODE_ERROR_FOREGROUND,
-    contrastText: VSCODE_BUTTON_FOREGROUND
+    main: "var(--vscode-editorError-foreground)",
+    dark: "var(--vscode-editorError-foreground)",
+    light: "var(--vscode-editorError-foreground)",
+    contrastText: "var(--vscode-inputValidation-errorForeground)"
   },
   warning: {
-    main: "var(--vscode-inputValidation-warningBorder)",
-    dark: "var(--vscode-inputValidation-warningBorder)",
-    light: "var(--vscode-inputValidation-warningBackground)",
-    contrastText: VSCODE_FOREGROUND
+    main: "var(--vscode-editorWarning-foreground)",
+    dark: "var(--vscode-editorWarning-foreground)",
+    light: "var(--vscode-editorWarning-foreground)",
+    contrastText: "var(--vscode-inputValidation-warningForeground)"
   },
   info: {
-    main: VSCODE_FOCUS_BORDER,
-    dark: VSCODE_FOCUS_BORDER,
-    light: "var(--vscode-inputValidation-infoBackground)",
-    contrastText: VSCODE_BUTTON_FOREGROUND
+    main: "var(--vscode-editorInfo-foreground)",
+    dark: "var(--vscode-editorInfo-foreground)",
+    light: "var(--vscode-editorInfo-foreground)",
+    contrastText: "var(--vscode-inputValidation-infoForeground)"
   },
   success: {
-    main: VSCODE_SUCCESS_FOREGROUND,
-    dark: VSCODE_SUCCESS_FOREGROUND,
-    light: VSCODE_SUCCESS_FOREGROUND,
-    contrastText: VSCODE_BUTTON_FOREGROUND
+    main: "var(--vscode-testing-iconPassed, var(--vscode-charts-green))",
+    dark: "var(--vscode-testing-iconPassed, var(--vscode-charts-green))",
+    light: "var(--vscode-testing-iconPassed, var(--vscode-charts-green))",
+    contrastText: "var(--vscode-button-foreground)"
   },
   action: {
     active: "var(--vscode-icon-foreground)",
     hover: "var(--vscode-list-hoverBackground)",
-    selected: "var(--vscode-list-inactiveSelectionBackground, var(--vscode-list-hoverBackground))",
+    selected: "var(--vscode-list-inactiveSelectionBackground)",
     disabled: "var(--vscode-disabledForeground)",
     disabledBackground: "var(--vscode-input-background)",
-    focus: VSCODE_FOCUS_BORDER
+    focus: "var(--vscode-focusBorder)"
   }
 } as const;
 
-// ---------------------------------------------------------------------------
-// Structural overrides — no colors, just sizing / layout / defaults
-// ---------------------------------------------------------------------------
-
-/**
- * Colour-free MUI component overrides shared between VS Code and dev themes.
- * Forks can import this and deep-merge their own additions.
- */
+// Component overrides
 export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
   MuiCssBaseline: {
     styleOverrides: {
+      // Bridge vars for non-MUI components (React Flow canvas)
       ":root": {
-        "--topoviewer-surface-panel":
-          "color-mix(in srgb, var(--vscode-sideBar-background) 72%, var(--vscode-editor-background) 28%)",
-        "--topoviewer-surface-elevated":
-          "color-mix(in srgb, var(--vscode-editorWidget-background, var(--vscode-sideBar-background)) 75%, var(--vscode-editor-background) 25%)",
-        "--topoviewer-grid-color": "color-mix(in srgb, var(--vscode-foreground) 24%, transparent)",
-        "--topoviewer-node-label-background":
-          "var(--vscode-badge-background, color-mix(in srgb, var(--vscode-editor-background) 30%, var(--vscode-foreground) 70%))",
-        "--topoviewer-node-label-foreground":
-          "var(--vscode-badge-foreground, var(--vscode-foreground))",
-        "--topoviewer-node-label-outline":
-          "color-mix(in srgb, var(--vscode-editor-background) 85%, transparent)",
-        "--topoviewer-edge-label-background":
-          "color-mix(in srgb, var(--vscode-editor-background) 88%, var(--vscode-foreground) 12%)",
-        "--topoviewer-edge-label-foreground": "var(--vscode-foreground)",
-        "--topoviewer-edge-label-outline":
-          "color-mix(in srgb, var(--vscode-editor-background) 78%, transparent)",
-        "--topoviewer-network-node-background":
-          "color-mix(in srgb, var(--vscode-editor-background) 84%, var(--vscode-foreground) 16%)"
+        "--topoviewer-surface-panel": vscodePalette.background.paper,
+        "--topoviewer-surface-elevated": vscodePalette.background.paper,
+        "--topoviewer-grid-color": vscodePalette.divider,
+        "--topoviewer-node-label-background": "var(--vscode-badge-background)",
+        "--topoviewer-node-label-foreground": vscodePalette.text.primary,
+        "--topoviewer-node-label-outline": vscodePalette.background.default,
+        "--topoviewer-edge-label-background": vscodePalette.background.default,
+        "--topoviewer-edge-label-foreground": vscodePalette.text.primary,
+        "--topoviewer-edge-label-outline": vscodePalette.background.default,
+        "--topoviewer-network-node-background": vscodePalette.background.paper
       },
       "*::-webkit-scrollbar": { width: 8, height: 8 },
       "*::-webkit-scrollbar-track": { background: "transparent" },
@@ -189,172 +90,94 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
       }
     }
   },
-  MuiButton: {
-    styleOverrides: {
-      root: { textTransform: "none", minWidth: 0 },
-      contained: { "&.Mui-disabled": { opacity: 0.5 } }
-    },
-    defaultProps: { disableElevation: true }
-  },
-  MuiPaper: {
-    styleOverrides: {
-      root: { backgroundImage: "none" }
-    }
-  },
+  MuiButton: { defaultProps: { disableElevation: true } },
+  MuiTabs: { styleOverrides: { root: { minHeight: 36 } } },
+  MuiTab: { styleOverrides: { root: { minHeight: 36, padding: "6px 12px" } } },
+  MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } },
   MuiAppBar: {
     styleOverrides: {
-      root: {
-        backgroundColor: "var(--topoviewer-surface-panel)",
-        color: VSCODE_FOREGROUND
-      }
+      root: { backgroundColor: vscodePalette.background.paper, color: vscodePalette.text.primary }
     }
   },
   MuiDrawer: {
     styleOverrides: {
-      paper: {
-        backgroundColor: "var(--topoviewer-surface-panel)",
-        color: VSCODE_FOREGROUND
+      paper: { backgroundColor: vscodePalette.background.paper, color: vscodePalette.text.primary }
+    }
+  },
+  MuiInputBase: {
+    styleOverrides: {
+      root: {
+        color: "var(--vscode-input-foreground)"
       }
     }
   },
-  MuiTextField: {
-    defaultProps: { size: "small", variant: "outlined" }
-  },
-  MuiSelect: {
-    defaultProps: { size: "small" }
-  },
-  MuiInputBase: {},
   MuiOutlinedInput: {
     styleOverrides: {
       root: {
-        "&.Mui-disabled": { opacity: 0.5 }
+        "&:hover .MuiOutlinedInput-notchedOutline": {
+          borderColor: "var(--vscode-focusBorder)"
+        },
+        "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+          borderColor: "var(--vscode-focusBorder)"
+        }
+      },
+      notchedOutline: {
+        borderColor: "var(--vscode-input-border)"
       }
     }
   },
+  MuiTextField: { defaultProps: { size: "small", variant: "outlined" } },
+  MuiSelect: { defaultProps: { size: "small" } },
   MuiMenu: {
     styleOverrides: {
       paper: {
-        backgroundColor: TOPOVIEWER_SURFACE_ELEVATED,
-        color: VSCODE_FOREGROUND,
-        border: "1px solid var(--vscode-menu-border)"
-      },
-      list: { padding: "4px 0" }
+        backgroundColor: vscodePalette.background.paper,
+        color: vscodePalette.text.primary,
+        border: `1px solid ${vscodePalette.divider}`
+      }
     }
   },
   MuiPopover: {
     styleOverrides: {
       paper: {
-        backgroundColor: TOPOVIEWER_SURFACE_ELEVATED,
-        color: VSCODE_FOREGROUND,
-        border: "1px solid var(--vscode-panel-border)"
+        backgroundColor: vscodePalette.background.paper,
+        color: vscodePalette.text.primary,
+        border: `1px solid ${vscodePalette.divider}`
       }
-    }
-  },
-  MuiMenuItem: {
-    styleOverrides: {
-      root: { "&.Mui-disabled": { opacity: 0.5 } }
-    }
-  },
-  MuiTabs: {
-    styleOverrides: {
-      root: { minHeight: 36 }
-    }
-  },
-  MuiTab: {
-    styleOverrides: {
-      root: { textTransform: "none", minHeight: 36 }
     }
   },
   MuiDialog: {
     styleOverrides: {
       paper: {
-        backgroundColor: TOPOVIEWER_SURFACE_ELEVATED,
-        color: VSCODE_FOREGROUND,
-        border: "1px solid var(--vscode-panel-border)"
+        backgroundColor: vscodePalette.background.paper,
+        color: vscodePalette.text.primary,
+        border: `1px solid ${vscodePalette.divider}`
       }
     },
     defaultProps: {
-      slotProps: {
-        backdrop: { sx: { backgroundColor: "rgba(0, 0, 0, 0.5)" } }
-      }
+      slotProps: { backdrop: { sx: { backgroundColor: "rgba(0, 0, 0, 0.5)" } } }
     }
   },
-  MuiTooltip: {
-    styleOverrides: {
-      tooltip: {}
-    }
-  },
-  MuiChip: {
-    styleOverrides: {
-      root: { "&.Mui-disabled": { opacity: 0.5 } }
-    }
-  },
-  MuiAlert: {
-    styleOverrides: {
-      icon: { color: "inherit" }
-    }
-  },
-  MuiSwitch: {
-    styleOverrides: {
-      root: { width: 42, height: 26, padding: 0 },
-      switchBase: {
-        padding: 1,
-        "&.Mui-checked": {
-          transform: "translateX(16px)",
-          "& + .MuiSwitch-track": { opacity: 1 }
-        },
-        "&.Mui-disabled": { "& + .MuiSwitch-track": { opacity: 0.3 } }
-      },
-      thumb: { width: 24, height: 24 },
-      track: { borderRadius: 13, opacity: 1 }
-    }
-  },
-  MuiListItemIcon: {
-    styleOverrides: { root: { minWidth: 36 } }
-  },
-  MuiFormControlLabel: {
-    styleOverrides: { label: {} }
-  },
-  MuiLinearProgress: {
-    styleOverrides: { root: { borderRadius: 2 } }
-  },
-  MuiBackdrop: {
-    styleOverrides: { root: { backgroundColor: "transparent" } }
-  },
-  MuiTableCell: {
-    styleOverrides: { head: {} }
-  },
-  MuiAccordion: {
-    styleOverrides: {
-      root: { "&:before": { display: "none" }, "&.Mui-expanded": { margin: 0 } }
-    }
-  }
+  MuiBackdrop: { styleOverrides: { root: { backgroundColor: "transparent" } } }
 };
 
-// ---------------------------------------------------------------------------
-// Theme factory
-// ---------------------------------------------------------------------------
+// Theme instance
+const baseTheme = createTheme({
+  palette: { ...vscodePalette },
+  typography: {
+    fontFamily: "'Roboto', sans-serif",
+    overline: { fontWeight: 500, letterSpacing: "0.5px" }
+  },
+  shape: { borderRadius: 4 },
+  components: structuralOverrides
+});
 
-/**
- * Create a VS Code-integrated MUI theme.
- *
- * @param mode   - "light" | "dark"
- * @param overrides - optional ThemeOptions deep-merged on top (for forks)
- */
-export function createVscodeTheme(mode: "light" | "dark", overrides?: ThemeOptions) {
-  const base = createTheme({
-    palette: { ...vscodePalette, mode },
-    typography: {
-      panelHeading: {
-        fontSize: "1rem",
-        fontWeight: 600,
-        lineHeight: 1.75
-      }
-    },
-    shape: { borderRadius: 4 },
-    components: structuralOverrides
-  });
-  const theme = overrides ? createTheme(base, overrides) : base;
-  patchThemeColorManipulators(theme);
-  return theme;
-}
+// Patch MUI color utils — default implementations crash on CSS var() strings.
+// alpha uses color-mix so hover/focus overlays resolve correctly at runtime.
+baseTheme.alpha = (color: string, opacity: number | string) =>
+  `color-mix(in srgb, ${color} ${typeof opacity === "number" ? `${Math.round(opacity * 100)}%` : opacity}, transparent)`;
+baseTheme.lighten = (color: string) => color;
+baseTheme.darken = (color: string) => color;
+baseTheme.palette.getContrastText = () => vscodePalette.text.primary;
+
+export const vscodeTheme = baseTheme;

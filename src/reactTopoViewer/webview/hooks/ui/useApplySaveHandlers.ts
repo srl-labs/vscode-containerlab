@@ -23,4 +23,3 @@ export function useApplySaveHandlers<T>(
 
   return { handleApply, handleSave };
 }
-

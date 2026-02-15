@@ -1,7 +1,4 @@
-/**
- * IconSelectorModal - Modal for selecting and customizing node icons
- * Uses MUI Dialog. Supports both built-in and custom icons.
- */
+// Icon selector modal.
 import React, { useCallback, useState, useEffect, useMemo, useRef } from "react";
 import { Close as CloseIcon } from "@mui/icons-material";
 import {
@@ -15,7 +12,6 @@ import {
   FormControlLabel,
   IconButton as MuiIconButton,
   Slider,
-  TextField,
   Typography
 } from "@mui/material";
 
@@ -25,7 +21,7 @@ import { useEscapeKey } from "../../hooks/ui/useDomInteractions";
 import { useCustomIcons } from "../../stores/topoViewerStore";
 import { postCommand } from "../../messaging/extensionMessaging";
 import { isBuiltInIcon } from "../../../shared/types/icons";
-
+import { ColorField, IconPreview } from "./form";
 
 const AVAILABLE_ICONS: NodeType[] = [
   "pe",
@@ -210,7 +206,7 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
           borderRadius: 0.5,
           p: 0.75,
           overflow: "hidden",
-          transition: "background-color 0.15s",
+          transition: (theme) => theme.transitions.create("backgroundColor", { duration: 150 }),
           border: "none",
           cursor: "pointer",
           color: "inherit",
@@ -223,11 +219,7 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
           }
         }}
       >
-        <img
-          src={iconSrc}
-          alt={icon}
-          style={{ width: 36, height: 36, borderRadius: `${(cornerRadius / 48) * 36}px` }}
-        />
+        <IconPreview src={iconSrc} alt={icon} size={36} cornerRadius={cornerRadius} />
         <Box
           component="span"
           sx={{
@@ -269,65 +261,6 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
     </Box>
   );
 });
-
-const ColorPicker: React.FC<{
-  color: string;
-  enabled: boolean;
-  onColorChange: (c: string) => void;
-  onToggle: (e: boolean) => void;
-}> = ({ color, enabled, onColorChange, onToggle }) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-    <Typography variant="caption" color="text.secondary">
-      Icon Color
-    </Typography>
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-      <FormControlLabel
-        control={
-          <Checkbox
-            size="small"
-            checked={enabled}
-            onChange={(e) => onToggle(e.target.checked)}
-          />
-        }
-        label=""
-        sx={{ m: 0, mr: -0.5 }}
-      />
-      <Box
-        component="input"
-        type="color"
-        value={color}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-          onColorChange(e.target.value);
-          onToggle(true);
-        }}
-        disabled={!enabled}
-        sx={{
-          height: 28,
-          width: 48,
-          cursor: "pointer",
-          borderRadius: 0.5,
-          border: 1,
-          borderColor: "divider",
-          p: 0.25
-        }}
-      />
-      <TextField
-        size="small"
-        value={enabled ? color : ""}
-        onChange={(e) => {
-          if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) {
-            onColorChange(e.target.value);
-            onToggle(true);
-          }
-        }}
-        placeholder={DEFAULT_COLOR}
-        slotProps={{ htmlInput: { maxLength: 7 } }}
-        disabled={!enabled}
-        sx={{ flex: 1, "& .MuiInputBase-input": { fontSize: "0.75rem" } }}
-      />
-    </Box>
-  </Box>
-);
 
 const RadiusSlider: React.FC<{ value: number; onChange: (v: number) => void }> = ({
   value,
@@ -424,7 +357,9 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
 
   return (
     <Dialog open={isOpen} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
+      <DialogTitle
+        sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
+      >
         Select Icon
         <MuiIconButton size="small" onClick={onClose}>
           <CloseIcon fontSize="small" />
@@ -452,7 +387,9 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
 
         {/* Custom Icons Section */}
         <Box sx={{ mb: 1.5 }}>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
+          <Box
+            sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}
+          >
             <Typography variant="caption" color="text.secondary">
               Custom Icons
             </Typography>
@@ -506,12 +443,32 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             {/* Only show color picker for built-in icons */}
             {isBuiltInIcon(icon) ? (
-              <ColorPicker
-                color={color}
-                enabled={useColor}
-                onColorChange={setColor}
-                onToggle={setUseColor}
-              />
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Icon Color
+                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={useColor}
+                        onChange={(e) => setUseColor(e.target.checked)}
+                      />
+                    }
+                    label=""
+                    sx={{ m: 0, mr: -0.5 }}
+                  />
+                  <ColorField
+                    value={color}
+                    onChange={(v) => {
+                      setColor(v);
+                      setUseColor(true);
+                    }}
+                    disabled={!useColor}
+                  />
+                </Box>
+              </Box>
             ) : (
               <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
                 Custom icons use their original colors
@@ -542,12 +499,17 @@ const PreviewCustom: React.FC<{ iconSrc: string; radius: number }> = ({ iconSrc,
     <Typography variant="caption" color="text.secondary">
       Preview
     </Typography>
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 0.5, border: 1, p: 1.5 }}>
-      <img
-        src={iconSrc}
-        alt="Preview"
-        style={{ width: 56, height: 56, borderRadius: `${(radius / 48) * 56}px` }}
-      />
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: 0.5,
+        border: 1,
+        p: 1.5
+      }}
+    >
+      <IconPreview src={iconSrc} alt="Preview" size={56} cornerRadius={radius} />
     </Box>
   </Box>
 );

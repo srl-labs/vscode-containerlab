@@ -22,10 +22,7 @@ interface UseGroupAnnotationsParams {
   onLockedAction: () => void;
   rfInstance: ReactFlowInstance | null;
   derived: UseDerivedAnnotationsReturn;
-  uiActions: Pick<
-    AnnotationUIActions,
-    "setEditingGroup" | "closeGroupEditor" | "removeFromGroupSelection"
-  >;
+  uiActions: Pick<AnnotationUIActions, "setEditingGroup" | "removeFromGroupSelection">;
 }
 
 export interface GroupAnnotationActions {
@@ -188,10 +185,9 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
         labelColor: data.style.labelColor,
         labelPosition: data.style.labelPosition
       });
-      uiActions.closeGroupEditor();
       persist();
     },
-    [derived, uiActions, persist]
+    [derived, persist]
   );
 
   const deleteGroup = useCallback(

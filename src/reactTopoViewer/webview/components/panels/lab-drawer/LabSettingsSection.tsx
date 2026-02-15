@@ -1,33 +1,31 @@
-/**
- * LabSettingsSection - Lab settings for the Settings Drawer
- * Migrated from LabSettingsPanel
- */
+// Lab settings with Basic and Management tabs.
 import React, { useState } from "react";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
-import Button from "@mui/material/Button";
 
 import { useLabSettingsState } from "../../../hooks/editor";
 import { BasicTab } from "../lab-settings/BasicTab";
 import { MgmtTab } from "../lab-settings/MgmtTab";
 import type { LabSettings } from "../lab-settings/types";
 
-interface LabSettingsSectionProps {
+export interface LabSettingsSectionProps {
   mode: "view" | "edit";
   isLocked: boolean;
   labSettings?: LabSettings;
   onClose: () => void;
+  saveRef?: React.MutableRefObject<(() => Promise<void>) | null>;
 }
 
 export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
   mode,
   isLocked,
   labSettings,
-  onClose
+  onClose,
+  saveRef
 }) => {
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState("basic");
   const isReadOnly = mode === "view" || isLocked;
 
   const state = useLabSettingsState(labSettings);
@@ -37,37 +35,39 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
     onClose();
   };
 
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+  if (saveRef) saveRef.current = handleSave;
+
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
     setActiveTab(newValue);
   };
 
   return (
-    <Box sx={{ p: 2 }}>
-      {/* Tab Navigation */}
+    <Box>
       <Tabs
         value={activeTab}
         onChange={handleTabChange}
+        sx={{ position: "sticky", top: 0, zIndex: 1, bgcolor: "background.paper" }}
       >
-        <Tab label="Basic" data-testid="lab-settings-tab-basic" />
-        <Tab label="Management" data-testid="lab-settings-tab-mgmt" />
+        <Tab label="Basic" value="basic" data-testid="lab-settings-tab-basic" />
+        <Tab label="Management Network" value="mgmt" data-testid="lab-settings-tab-mgmt" />
       </Tabs>
-      <Divider sx={{ mb: 2 }} />
+      <Divider />
 
-      {/* Basic Tab */}
-      {activeTab === 0 && (
-        <BasicTab
-          labName={state.basic.labName}
-          prefixType={state.basic.prefixType}
-          customPrefix={state.basic.customPrefix}
-          isViewMode={isReadOnly}
-          onLabNameChange={state.setBasic.setLabName}
-          onPrefixTypeChange={state.setBasic.setPrefixType}
-          onCustomPrefixChange={state.setBasic.setCustomPrefix}
-        />
+      {activeTab === "basic" && (
+        <Box sx={{ p: 2 }}>
+          <BasicTab
+            labName={state.basic.labName}
+            prefixType={state.basic.prefixType}
+            customPrefix={state.basic.customPrefix}
+            isViewMode={isReadOnly}
+            onLabNameChange={state.setBasic.setLabName}
+            onPrefixTypeChange={state.setBasic.setPrefixType}
+            onCustomPrefixChange={state.setBasic.setCustomPrefix}
+          />
+        </Box>
       )}
 
-      {/* Management Tab */}
-      {activeTab === 1 && (
+      {activeTab === "mgmt" && (
         <MgmtTab
           networkName={state.mgmt.networkName}
           ipv4Type={state.mgmt.ipv4Type}
@@ -94,18 +94,8 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
           onBridgeChange={state.setMgmt.setBridge}
           onExternalAccessChange={state.setMgmt.setExternalAccess}
           onAddDriverOption={state.driverOpts.add}
-          onRemoveDriverOption={state.driverOpts.remove}
-          onUpdateDriverOption={state.driverOpts.update}
+          onSetDriverOptions={state.driverOpts.setAll}
         />
-      )}
-
-      {/* Save Button - only show in edit mode when not locked */}
-      {!isReadOnly && (
-        <Box sx={{ mt: 3, display: "flex", gap: 1, justifyContent: "flex-end" }}>
-          <Button variant="contained" size="small" onClick={() => void handleSave()} data-testid="lab-settings-save-btn">
-            Save
-          </Button>
-        </Box>
       )}
     </Box>
   );

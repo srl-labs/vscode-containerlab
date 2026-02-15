@@ -1,7 +1,4 @@
-/**
- * Navbar Component for React TopoViewer
- * Complete implementation matching legacy features
- */
+// Navbar for React TopoViewer.
 import React from "react";
 import {
   AppBar,
@@ -26,6 +23,7 @@ import {
   Info as InfoIcon,
   Keyboard as KeyboardIcon,
   Label as LabelIcon,
+  Link as LinkIcon,
   Lock as LockIcon,
   LockOpen as LockOpenIcon,
   PlayArrow as PlayArrowIcon,
@@ -66,6 +64,7 @@ export interface NavbarProps {
   onCaptureViewport?: () => void;
   onShowShortcuts?: () => void;
   onShowAbout?: () => void;
+  onShowBulkLink?: () => void;
   /** Toggle shortcut display props */
   shortcutDisplayEnabled?: boolean;
   onToggleShortcutDisplay?: () => void;
@@ -97,6 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onCaptureViewport,
   onShowShortcuts,
   onShowAbout,
+  onShowBulkLink,
   shortcutDisplayEnabled = false,
   onToggleShortcutDisplay,
   canUndo = false,
@@ -121,7 +121,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isViewerMode = mode === "view";
 
   const appBarRef = React.useRef<HTMLDivElement>(null);
-  const [linkLabelMenuPosition, setLinkLabelMenuPosition] = React.useState<{ top: number; left: number } | null>(null);
+  const [linkLabelMenuPosition, setLinkLabelMenuPosition] = React.useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const linkLabelMenuOpen = Boolean(linkLabelMenuPosition);
 
   const handleLinkLabelClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
@@ -141,13 +144,19 @@ export const Navbar: React.FC<NavbarProps> = ({
     setLinkLabelMenuPosition(null);
   }, []);
 
-  const handleLinkLabelSelect = React.useCallback((newMode: LinkLabelMode) => {
-    onLinkLabelModeChange(newMode);
-    setLinkLabelMenuPosition(null);
-  }, [onLinkLabelModeChange]);
+  const handleLinkLabelSelect = React.useCallback(
+    (newMode: LinkLabelMode) => {
+      onLinkLabelModeChange(newMode);
+      setLinkLabelMenuPosition(null);
+    },
+    [onLinkLabelModeChange]
+  );
 
   // Split button menu state for deploy/destroy
-  const [deployMenuPosition, setDeployMenuPosition] = React.useState<{ top: number; left: number } | null>(null);
+  const [deployMenuPosition, setDeployMenuPosition] = React.useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const deployMenuOpen = Boolean(deployMenuPosition);
 
   const handleDeployMenuOpen = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
@@ -210,7 +219,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   }, [isViewerMode, handleDestroy, handleDeploy]);
 
-  const [layoutMenuPosition, setLayoutMenuPosition] = React.useState<{ top: number; left: number } | null>(null);
+  const [layoutMenuPosition, setLayoutMenuPosition] = React.useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const layoutMenuOpen = Boolean(layoutMenuPosition);
 
   const handleLayoutClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
@@ -230,19 +242,37 @@ export const Navbar: React.FC<NavbarProps> = ({
     setLayoutMenuPosition(null);
   }, []);
 
-  const handleLayoutSelect = React.useCallback((newLayout: LayoutOption) => {
-    onLayoutChange(newLayout);
-    setLayoutMenuPosition(null);
-  }, [onLayoutChange]);
+  const handleLayoutSelect = React.useCallback(
+    (newLayout: LayoutOption) => {
+      onLayoutChange(newLayout);
+      setLayoutMenuPosition(null);
+    },
+    [onLayoutChange]
+  );
 
   return (
-    <AppBar ref={appBarRef} position="static" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
-      <Toolbar variant="dense" disableGutters sx={{ minHeight: 40, px: 1, display: "flex", alignItems: "center", gap: 0.5 }}>
+    <AppBar
+      ref={appBarRef}
+      position="static"
+      elevation={0}
+      sx={{ borderBottom: 1, borderColor: "divider" }}
+    >
+      <Toolbar
+        variant="dense"
+        disableGutters
+        sx={{ minHeight: 40, px: 1, display: "flex", alignItems: "center", gap: 0.5 }}
+      >
         {/* Left: Logo + Title */}
         <IconButton size="small" onClick={onLogoClick}>
           <ContainerlabLogo clickProgress={logoClickProgress} isExploded={isPartyMode} />
         </IconButton>
-        <Typography variant="h5" fontWeight={500} ml={0.5} sx={{ lineHeight: 1, flexGrow: 1 }} data-testid="navbar-lab-name">
+        <Typography
+          variant="h5"
+          fontWeight={500}
+          ml={0.5}
+          sx={{ lineHeight: 1, flexGrow: 1 }}
+          data-testid="navbar-lab-name"
+        >
           {labName || "TopoViewer"}
         </Typography>
 
@@ -278,41 +308,88 @@ export const Navbar: React.FC<NavbarProps> = ({
           anchorPosition={deployMenuPosition ?? undefined}
           transformOrigin={{ vertical: "top", horizontal: "center" }}
         >
-	          {isViewerMode ? [
-	            <MenuItem key="destroy" onClick={handleDestroy} data-testid="navbar-deploy-item-destroy">
-	              <ListItemIcon><StopIcon fontSize="small" sx={{ color: ERROR_MAIN }} /></ListItemIcon>
-	              <ListItemText>Destroy</ListItemText>
-	            </MenuItem>,
-	            <MenuItem key="destroy-cleanup" onClick={handleDestroyCleanup} data-testid="navbar-deploy-item-destroy-cleanup">
-	              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: ERROR_MAIN }} /></ListItemIcon>
-	              <ListItemText>Destroy (cleanup)</ListItemText>
-	            </MenuItem>,
-	            <Divider key="divider" sx={{ my: 0.5 }} />,
-	            <MenuItem key="redeploy" onClick={handleRedeploy} data-testid="navbar-deploy-item-redeploy">
-	              <ListItemIcon><ReplayIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} /></ListItemIcon>
-	              <ListItemText>Redeploy</ListItemText>
-	            </MenuItem>,
-	            <MenuItem key="redeploy-cleanup" onClick={handleRedeployCleanup} data-testid="navbar-deploy-item-redeploy-cleanup">
-	              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} /></ListItemIcon>
-	              <ListItemText>Redeploy (cleanup)</ListItemText>
-	            </MenuItem>
-	          ] : [
-	            <MenuItem key="deploy" onClick={() => { handleDeployMenuClose(); handleDeploy(); }} data-testid="navbar-deploy-item-deploy">
-	              <ListItemIcon><PlayArrowIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} /></ListItemIcon>
-	              <ListItemText>Deploy</ListItemText>
-	            </MenuItem>,
-	            <MenuItem key="deploy-cleanup" onClick={handleDeployCleanup} data-testid="navbar-deploy-item-deploy-cleanup">
-	              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} /></ListItemIcon>
-	              <ListItemText>Deploy (cleanup)</ListItemText>
-	            </MenuItem>
-	          ]}
-	        </Menu>
+          {isViewerMode
+            ? [
+                <MenuItem
+                  key="destroy"
+                  onClick={handleDestroy}
+                  data-testid="navbar-deploy-item-destroy"
+                >
+                  <ListItemIcon>
+                    <StopIcon fontSize="small" sx={{ color: ERROR_MAIN }} />
+                  </ListItemIcon>
+                  <ListItemText>Destroy</ListItemText>
+                </MenuItem>,
+                <MenuItem
+                  key="destroy-cleanup"
+                  onClick={handleDestroyCleanup}
+                  data-testid="navbar-deploy-item-destroy-cleanup"
+                >
+                  <ListItemIcon>
+                    <CleaningServicesIcon fontSize="small" sx={{ color: ERROR_MAIN }} />
+                  </ListItemIcon>
+                  <ListItemText>Destroy (cleanup)</ListItemText>
+                </MenuItem>,
+                <Divider key="divider" sx={{ my: 0.5 }} />,
+                <MenuItem
+                  key="redeploy"
+                  onClick={handleRedeploy}
+                  data-testid="navbar-deploy-item-redeploy"
+                >
+                  <ListItemIcon>
+                    <ReplayIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
+                  </ListItemIcon>
+                  <ListItemText>Redeploy</ListItemText>
+                </MenuItem>,
+                <MenuItem
+                  key="redeploy-cleanup"
+                  onClick={handleRedeployCleanup}
+                  data-testid="navbar-deploy-item-redeploy-cleanup"
+                >
+                  <ListItemIcon>
+                    <CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
+                  </ListItemIcon>
+                  <ListItemText>Redeploy (cleanup)</ListItemText>
+                </MenuItem>
+              ]
+            : [
+                <MenuItem
+                  key="deploy"
+                  onClick={() => {
+                    handleDeployMenuClose();
+                    handleDeploy();
+                  }}
+                  data-testid="navbar-deploy-item-deploy"
+                >
+                  <ListItemIcon>
+                    <PlayArrowIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
+                  </ListItemIcon>
+                  <ListItemText>Deploy</ListItemText>
+                </MenuItem>,
+                <MenuItem
+                  key="deploy-cleanup"
+                  onClick={handleDeployCleanup}
+                  data-testid="navbar-deploy-item-deploy-cleanup"
+                >
+                  <ListItemIcon>
+                    <CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
+                  </ListItemIcon>
+                  <ListItemText>Deploy (cleanup)</ListItemText>
+                </MenuItem>
+              ]}
+        </Menu>
 
         <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
         {/* Lock / Unlock */}
         <Tooltip title={isLocked ? "Unlock lab to edit" : "Lock Lab"}>
-          <IconButton size="small" onClick={toggleLock} disabled={isProcessing} sx={{ color: isLocked ? ERROR_MAIN : "inherit" }} data-testid="navbar-lock">
+          <IconButton
+            size="small"
+            onClick={toggleLock}
+            disabled={isProcessing}
+            sx={{ color: isLocked ? ERROR_MAIN : "inherit" }}
+            data-testid="navbar-lock"
+          >
             {isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
           </IconButton>
         </Tooltip>
@@ -328,7 +405,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         {isEditMode && (
           <Tooltip title="Undo (Ctrl+Z)">
             <span>
-              <IconButton size="small" onClick={onUndo} disabled={!canUndo} data-testid="navbar-undo">
+              <IconButton
+                size="small"
+                onClick={onUndo}
+                disabled={!canUndo}
+                data-testid="navbar-undo"
+              >
                 <UndoIcon fontSize="small" />
               </IconButton>
             </span>
@@ -339,7 +421,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         {isEditMode && (
           <Tooltip title="Redo (Ctrl+Y)">
             <span>
-              <IconButton size="small" onClick={onRedo} disabled={!canRedo} data-testid="navbar-redo">
+              <IconButton
+                size="small"
+                onClick={onRedo}
+                disabled={!canRedo}
+                data-testid="navbar-redo"
+              >
                 <RedoIcon fontSize="small" />
               </IconButton>
             </span>
@@ -347,6 +434,22 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
 
         <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+
+        {/* Bulk Link - only show in edit mode */}
+        {isEditMode && (
+          <Tooltip title="Bulk Link Devices">
+            <span>
+              <IconButton
+                size="small"
+                onClick={onShowBulkLink}
+                disabled={isLocked}
+                data-testid="navbar-bulk-link"
+              >
+                <LinkIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
 
         {/* Fit to Viewport */}
         <Tooltip title="Fit to Viewport">
@@ -376,35 +479,53 @@ export const Navbar: React.FC<NavbarProps> = ({
           transformOrigin={{ vertical: "top", horizontal: "center" }}
         >
           <MenuItem onClick={() => handleLayoutSelect("preset")} data-testid="navbar-layout-preset">
-            <ListItemIcon>
-              {layout === "preset" && <CheckIcon fontSize="small" />}
-            </ListItemIcon>
+            <ListItemIcon>{layout === "preset" && <CheckIcon fontSize="small" />}</ListItemIcon>
             <ListItemText>Preset</ListItemText>
           </MenuItem>
           <MenuItem onClick={() => handleLayoutSelect("force")} data-testid="navbar-layout-force">
-            <ListItemIcon>
-              {layout === "force" && <CheckIcon fontSize="small" />}
-            </ListItemIcon>
+            <ListItemIcon>{layout === "force" && <CheckIcon fontSize="small" />}</ListItemIcon>
             <ListItemText>Force</ListItemText>
           </MenuItem>
           <MenuItem onClick={() => handleLayoutSelect("geo")} data-testid="navbar-layout-geo">
-            <ListItemIcon>
-              {layout === "geo" && <CheckIcon fontSize="small" />}
-            </ListItemIcon>
+            <ListItemIcon>{layout === "geo" && <CheckIcon fontSize="small" />}</ListItemIcon>
             <ListItemText>Geo</ListItemText>
           </MenuItem>
         </Menu>
 
         {/* Grid line width */}
         <Tooltip title="Grid Settings">
-          <IconButton size="small" onClick={(e) => { const appBar = appBarRef.current; const btn = e.currentTarget; if (appBar) { const ar = appBar.getBoundingClientRect(); const br = btn.getBoundingClientRect(); onShowGridSettings?.({ top: ar.bottom, left: br.left + br.width / 2 }); } }} data-testid="navbar-grid">
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              const appBar = appBarRef.current;
+              const btn = e.currentTarget;
+              if (appBar) {
+                const ar = appBar.getBoundingClientRect();
+                const br = btn.getBoundingClientRect();
+                onShowGridSettings?.({ top: ar.bottom, left: br.left + br.width / 2 });
+              }
+            }}
+            data-testid="navbar-grid"
+          >
             <GridOnIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
         {/* Find Node */}
         <Tooltip title="Find Node">
-          <IconButton size="small" onClick={(e) => { const appBar = appBarRef.current; const btn = e.currentTarget; if (appBar) { const ar = appBar.getBoundingClientRect(); const br = btn.getBoundingClientRect(); onFindNode?.({ top: ar.bottom, left: br.left + br.width / 2 }); } }} data-testid="navbar-find-node">
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              const appBar = appBarRef.current;
+              const btn = e.currentTarget;
+              if (appBar) {
+                const ar = appBar.getBoundingClientRect();
+                const br = btn.getBoundingClientRect();
+                onFindNode?.({ top: ar.bottom, left: br.left + br.width / 2 });
+              }
+            }}
+            data-testid="navbar-find-node"
+          >
             <SearchIcon fontSize="small" />
           </IconButton>
         </Tooltip>
@@ -422,19 +543,28 @@ export const Navbar: React.FC<NavbarProps> = ({
           anchorPosition={linkLabelMenuPosition ?? undefined}
           transformOrigin={{ vertical: "top", horizontal: "center" }}
         >
-          <MenuItem onClick={() => handleLinkLabelSelect("show-all")} data-testid="navbar-link-label-show-all">
+          <MenuItem
+            onClick={() => handleLinkLabelSelect("show-all")}
+            data-testid="navbar-link-label-show-all"
+          >
             <ListItemIcon>
               {linkLabelMode === "show-all" && <CheckIcon fontSize="small" />}
             </ListItemIcon>
             <ListItemText>Show All</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => handleLinkLabelSelect("on-select")} data-testid="navbar-link-label-on-select">
+          <MenuItem
+            onClick={() => handleLinkLabelSelect("on-select")}
+            data-testid="navbar-link-label-on-select"
+          >
             <ListItemIcon>
               {linkLabelMode === "on-select" && <CheckIcon fontSize="small" />}
             </ListItemIcon>
             <ListItemText>On Select</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => handleLinkLabelSelect("hide")} data-testid="navbar-link-label-hide">
+          <MenuItem
+            onClick={() => handleLinkLabelSelect("hide")}
+            data-testid="navbar-link-label-hide"
+          >
             <ListItemIcon>
               {linkLabelMode === "hide" && <CheckIcon fontSize="small" />}
             </ListItemIcon>
@@ -460,8 +590,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Toggle Shortcut Display */}
         <Tooltip title="Toggle Shortcut Display">
-          <IconButton size="small" onClick={onToggleShortcutDisplay} data-testid="navbar-shortcut-display">
-            {shortcutDisplayEnabled ? <VisibilityIcon fontSize="small" /> : <VisibilityOffIcon fontSize="small" />}
+          <IconButton
+            size="small"
+            onClick={onToggleShortcutDisplay}
+            data-testid="navbar-shortcut-display"
+          >
+            {shortcutDisplayEnabled ? (
+              <VisibilityIcon fontSize="small" />
+            ) : (
+              <VisibilityOffIcon fontSize="small" />
+            )}
           </IconButton>
         </Tooltip>
 

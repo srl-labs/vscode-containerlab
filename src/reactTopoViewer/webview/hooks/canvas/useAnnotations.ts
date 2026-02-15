@@ -1,10 +1,7 @@
 import { useCallback, useMemo } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import {
-  saveAllNodeGroupMemberships,
-  saveAnnotationNodesFromGraph
-} from "../../services";
+import { saveAllNodeGroupMemberships, saveAnnotationNodesFromGraph } from "../../services";
 import { useAnnotationUIActions, useAnnotationUIState } from "../../stores/annotationUIStore";
 import { useGraphStore } from "../../stores/graphStore";
 import { useIsLocked } from "../../stores/topoViewerStore";
@@ -157,11 +154,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       // Membership persistence is handled by persistPositionChanges in onNodeDragStop
       // to keep position + membership as a single undo entry.
     },
-    [
-      derived,
-      getGroupDescendants,
-      getGroupParentId
-    ]
+    [derived, getGroupDescendants, getGroupParentId]
   );
 
   const deleteSelections = useCallback(
@@ -255,12 +248,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
 
       return deleteSelections(groupIds, textIds, shapeIds, { persist: false });
     },
-    [
-      uiState.selectedGroupIds,
-      uiState.selectedTextIds,
-      uiState.selectedShapeIds,
-      deleteSelections
-    ]
+    [uiState.selectedGroupIds, uiState.selectedTextIds, uiState.selectedShapeIds, deleteSelections]
   );
 
   const persistAnnotationNodes = useCallback(() => {

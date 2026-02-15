@@ -1,13 +1,8 @@
-/**
- * ShortcutsSection - Displays keyboard shortcuts and interactions
- * Migrated from ShortcutsPanel for use in the Settings Drawer
- */
+// Keyboard shortcuts section for the settings drawer.
 import React from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
-
-
 
 /** Platform detection for keyboard symbols */
 const isMac =
@@ -35,7 +30,7 @@ const ShortcutRow: React.FC<ShortcutRowProps> = ({ label, shortcut }) => (
       sx={{
         fontFamily: "monospace",
         fontSize: "0.75rem",
-        height: 22,
+        height: 22
       }}
     />
   </Box>

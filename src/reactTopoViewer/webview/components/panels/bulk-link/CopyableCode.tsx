@@ -1,9 +1,6 @@
-/**
- * CopyableCode - Inline code with click-to-copy functionality
- */
+// Inline code with click-to-copy.
 import React from "react";
 import Box from "@mui/material/Box";
-
 
 import { copyToClipboard } from "../../../utils/clipboard";
 
@@ -34,8 +31,7 @@ export const CopyableCode: React.FC<CopyableCodeProps> = ({ children }) => {
         px: 0.5,
         py: 0.25,
         fontFamily: "monospace",
-        fontSize: "0.75rem",
-        transition: "background-color 0.2s",
+        transition: (theme) => theme.transitions.create("backgroundColor"),
         ...(copied ? { outline: "1px solid" } : {})
       }}
     >

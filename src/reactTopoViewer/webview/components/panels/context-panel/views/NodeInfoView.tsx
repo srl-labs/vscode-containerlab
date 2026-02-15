@@ -1,15 +1,11 @@
-/**
- * NodeInfoView - Node info content for the ContextPanel
- * Extracts the display content from NodeInfoPanel without the FloatingPanel wrapper.
- */
-import React, { useCallback } from "react";
+// Node info view with read-only fields.
+import React from "react";
 import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
-import Tooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
 
 import type { NodeData } from "../../../../hooks/ui";
+import { ReadOnlyCopyField } from "../../../ui/form";
 
 export interface NodeInfoViewProps {
   nodeData: NodeData | null;
@@ -37,122 +33,46 @@ function extractNodeDisplayProps(nodeData: NodeData) {
   };
 }
 
-const CopyableValue: React.FC<{ value: string; variant?: "body1" | "body2" | "h6"; mono?: boolean }> = ({
-  value,
-  variant = "body2",
-  mono = false
-}) => {
-  const handleCopy = useCallback(() => {
-    if (value) {
-      window.navigator.clipboard.writeText(value).catch(() => {});
-    }
-  }, [value]);
-
-  if (!value) {
-    return (
-      <Typography variant={variant} color="text.disabled">
-        —
-      </Typography>
-    );
-  }
-
-  return (
-    <Tooltip title="Click to copy" arrow placement="top">
-      <Typography
-        variant={variant}
-        onClick={handleCopy}
-        sx={{
-          cursor: "pointer",
-          fontFamily: mono ? "monospace" : undefined,
-          borderRadius: 0.5,
-          px: 0.5,
-          mx: -0.5,
-          "&:hover": { bgcolor: "action.hover" },
-          "&:active": { bgcolor: "action.selected" },
-          wordBreak: "break-all"
-        }}
-      >
-        {value}
-      </Typography>
-    </Tooltip>
-  );
-};
-
-const InfoRow: React.FC<{
-  label: string;
-  value: string;
-  mono?: boolean;
-  fullWidth?: boolean;
-}> = ({ label, value, mono = false, fullWidth = false }) => (
-  <Box sx={{ gridColumn: fullWidth ? "1 / -1" : undefined }}>
-    <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
-      {label}
-    </Typography>
-    <CopyableValue value={value} mono={mono} />
-  </Box>
+const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
+  <>
+    <Divider />
+    <Box sx={{ px: 2, py: 1 }}>
+      <Typography variant="subtitle2">{title}</Typography>
+    </Box>
+    <Divider />
+  </>
 );
-
-function getStateColor(state: string): "success" | "error" | "default" {
-  const lowerState = state.toLowerCase();
-  if (lowerState === "running" || lowerState === "healthy") return "success";
-  if (lowerState === "stopped" || lowerState === "exited") return "error";
-  return "default";
-}
-
-const StateBadge: React.FC<{ state: string }> = ({ state }) => {
-  if (!state) {
-    return (
-      <Typography variant="body2" color="text.disabled">
-        —
-      </Typography>
-    );
-  }
-  return <Chip label={state} size="small" color={getStateColor(state)} variant="outlined" sx={{ fontWeight: 500 }} />;
-};
 
 export const NodeInfoView: React.FC<NodeInfoViewProps> = ({ nodeData }) => {
   if (!nodeData) return null;
 
-  const { nodeName, kind, state, image, mgmtIpv4, mgmtIpv6, fqdn } = extractNodeDisplayProps(nodeData);
+  const { nodeName, kind, state, image, mgmtIpv4, mgmtIpv6, fqdn } =
+    extractNodeDisplayProps(nodeData);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
-      <Box sx={{ pb: 2 }}>
-        <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
-          Name
-        </Typography>
-        <CopyableValue value={nodeName} variant="h6" />
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      <SectionHeader title="Node" />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+        <ReadOnlyCopyField label="Name" value={nodeName} />
       </Box>
 
-      <Divider />
-
-      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-        <Box>
-          <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
-            Kind
-          </Typography>
-          <CopyableValue value={kind} />
+      <SectionHeader title="Properties" />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+          <ReadOnlyCopyField label="Kind" value={kind} />
+          <ReadOnlyCopyField label="State" value={state} />
         </Box>
-        <Box>
-          <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
-            State
-          </Typography>
-          <Box sx={{ mt: 0.5 }}>
-            <StateBadge state={state} />
-          </Box>
+        <ReadOnlyCopyField label="Image" value={image} />
+      </Box>
+
+      <SectionHeader title="Management" />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+          <ReadOnlyCopyField label="IPv4" value={mgmtIpv4} mono />
+          <ReadOnlyCopyField label="IPv6" value={mgmtIpv6} mono />
         </Box>
+        <ReadOnlyCopyField label="FQDN" value={fqdn} mono />
       </Box>
-
-      <InfoRow label="Image" value={image} fullWidth />
-
-      <Divider />
-
-      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-        <InfoRow label="Mgmt IPv4" value={mgmtIpv4} mono />
-        <InfoRow label="Mgmt IPv6" value={mgmtIpv6} mono />
-      </Box>
-
-      <InfoRow label="FQDN" value={fqdn} fullWidth mono />
     </Box>
   );
 };

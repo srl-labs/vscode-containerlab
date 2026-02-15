@@ -130,7 +130,14 @@ const AquaticCanvas: React.FC<{
     <Box
       component="canvas"
       ref={canvasRef}
-      sx={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 99998, width: "100%", height: "100%" }}
+      sx={{
+        position: "fixed",
+        inset: 0,
+        pointerEvents: "none",
+        zIndex: 99998,
+        width: "100%",
+        height: "100%"
+      }}
     />
   );
 };
@@ -390,7 +397,19 @@ export const AquaticAmbienceMode: React.FC<BaseModeProps> = ({
         getCurrentSection={audio.getCurrentSection}
       />
 
-      <Box sx={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 99999, display: "flex", alignItems: "flex-end", justifyContent: "center", pb: 4, gap: 2 }}>
+      <Box
+        sx={{
+          position: "fixed",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 99999,
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          pb: 4,
+          gap: 2
+        }}
+      >
         <Box
           component="button"
           onClick={handleSwitch}

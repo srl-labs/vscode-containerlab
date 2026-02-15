@@ -91,16 +91,15 @@ export function useAppGraphHandlers({
     handleBatchPaste,
     handleDeleteNode,
     handleDeleteLink
-  } =
-    useGraphHandlersWithContext({
-      getNodes,
-      getEdges,
-      addNode: addNodeDirect,
-      addEdge: addEdgeDirect,
-      removeNodeAndEdges,
-      removeEdge,
-      menuHandlers
-    });
+  } = useGraphHandlersWithContext({
+    getNodes,
+    getEdges,
+    addNode: addNodeDirect,
+    addEdge: addEdgeDirect,
+    removeNodeAndEdges,
+    removeEdge,
+    menuHandlers
+  });
 
   const handleUpdateNodeData = React.useCallback(
     (nodeId: string, extraData: Record<string, unknown>) => {

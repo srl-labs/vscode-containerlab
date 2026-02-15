@@ -17,7 +17,6 @@ interface UseShapeAnnotationsParams {
     | "setAddShapeMode"
     | "disableAddShapeMode"
     | "setEditingShapeAnnotation"
-    | "closeShapeEditor"
     | "removeFromShapeSelection"
   >;
 }
@@ -142,10 +141,9 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
         rotation: annotation.rotation
       };
 
-      uiActions.closeShapeEditor();
       persist();
     },
-    [derived, uiActions, persist]
+    [derived, persist]
   );
 
   const deleteShapeAnnotation = useCallback(

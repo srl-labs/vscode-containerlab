@@ -1,6 +1,4 @@
-/**
- * FreeTextEditorView - Text annotation editor content for the ContextPanel
- */
+// Text annotation editor for the ContextPanel.
 import React, { useCallback } from "react";
 
 import type { FreeTextAnnotation } from "../../../../../shared/types/topology";
@@ -21,6 +19,7 @@ export interface FreeTextEditorViewProps {
 export interface FreeTextEditorFooterRef {
   handleApply: () => void;
   handleSave: () => void;
+  handleDiscard: () => void;
   hasChanges: boolean;
 }
 
@@ -36,10 +35,8 @@ export const FreeTextEditorView: React.FC<FreeTextEditorViewProps> = ({
   readOnly = false,
   onFooterRef
 }) => {
-  const { formData, updateField, hasChanges, resetInitialData, isNew } = useGenericFormState(
-    annotation,
-    { getIsNew: (a) => a?.text === "" }
-  );
+  const { formData, updateField, hasChanges, resetInitialData, discardChanges, isNew } =
+    useGenericFormState(annotation, { getIsNew: (a) => a?.text === "" });
 
   const validateSave = useCallback((data: FreeTextAnnotation) => canSave(data), []);
 
@@ -50,6 +47,7 @@ export const FreeTextEditorView: React.FC<FreeTextEditorViewProps> = ({
     onClose,
     onDelete,
     resetInitialData,
+    discardChanges,
     onFooterRef,
     canSave: validateSave,
     hasChangesForFooter: hasChanges && canSaveNow
@@ -57,7 +55,7 @@ export const FreeTextEditorView: React.FC<FreeTextEditorViewProps> = ({
 
   if (!formData) return null;
 
-  const effectiveUpdateField: typeof updateField = readOnly ? (() => {}) : updateField;
+  const effectiveUpdateField: typeof updateField = readOnly ? () => {} : updateField;
 
   return (
     <EditorFieldset readOnly={readOnly}>

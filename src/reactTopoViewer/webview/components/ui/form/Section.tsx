@@ -1,6 +1,4 @@
-/**
- * Section - Bordered section with title and optional inheritance badge
- */
+// Bordered section with title and optional inheritance badge.
 import React from "react";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
@@ -26,12 +24,7 @@ export const Section: React.FC<SectionProps> = ({
   <>
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-        <Typography
-          variant="caption"
-          sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5 }}
-        >
-          {title}
-        </Typography>
+        <Typography variant="overline">{title}</Typography>
         {inherited && <InheritanceBadge />}
       </Box>
       {children}

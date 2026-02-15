@@ -65,9 +65,19 @@ async function handleHostResponse(
 
   switch (response.type) {
     case HOST_ACK:
-      return handleAckResponse(response, applySnapshot, applySnapshotAndNotify, setRevisionAndNotify);
+      return handleAckResponse(
+        response,
+        applySnapshot,
+        applySnapshotAndNotify,
+        setRevisionAndNotify
+      );
     case HOST_REJECT:
-      return handleRejectResponse(response, applySnapshot, applySnapshotAndNotify, setRevisionAndNotify);
+      return handleRejectResponse(
+        response,
+        applySnapshot,
+        applySnapshotAndNotify,
+        setRevisionAndNotify
+      );
     case "topology-host:error":
       throw new Error(response.error);
     default:

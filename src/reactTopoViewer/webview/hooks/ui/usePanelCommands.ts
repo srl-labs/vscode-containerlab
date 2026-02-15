@@ -82,14 +82,16 @@ const PANEL_SIDE_KEY = "contextPanelSide";
 
 function useContextPanel() {
   const [isContextPanelOpen, setIsContextPanelOpen] = useState(true);
-  const [contextPanelOpenReason, setContextPanelOpenReason] = useState<
-    "manual" | "auto" | null
-  >("manual");
+  const [contextPanelOpenReason, setContextPanelOpenReason] = useState<"manual" | "auto" | null>(
+    "manual"
+  );
   const [panelSide, setPanelSide] = useState<"left" | "right">(() => {
     try {
       const stored = window.localStorage.getItem(PANEL_SIDE_KEY);
       if (stored === "left" || stored === "right") return stored;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return "right";
   });
 
@@ -117,7 +119,11 @@ function useContextPanel() {
     handleTogglePanelSide: useCallback(() => {
       setPanelSide((prev) => {
         const next = prev === "left" ? "right" : "left";
-        try { window.localStorage.setItem(PANEL_SIDE_KEY, next); } catch { /* ignore */ }
+        try {
+          window.localStorage.setItem(PANEL_SIDE_KEY, next);
+        } catch {
+          /* ignore */
+        }
         return next;
       });
     }, [])
@@ -151,15 +157,27 @@ function useModals() {
 }
 
 function usePopovers() {
-  const [gridPopoverPosition, setGridPopoverPosition] = useState<{ top: number; left: number } | null>(null);
-  const [findPopoverPosition, setFindPopoverPosition] = useState<{ top: number; left: number } | null>(null);
+  const [gridPopoverPosition, setGridPopoverPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const [findPopoverPosition, setFindPopoverPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
   return {
     gridPopoverPosition,
     findPopoverPosition,
-    handleOpenGridPopover: useCallback((position: { top: number; left: number }) => setGridPopoverPosition(position), []),
+    handleOpenGridPopover: useCallback(
+      (position: { top: number; left: number }) => setGridPopoverPosition(position),
+      []
+    ),
     handleCloseGridPopover: useCallback(() => setGridPopoverPosition(null), []),
-    handleOpenFindPopover: useCallback((position: { top: number; left: number }) => setFindPopoverPosition(position), []),
+    handleOpenFindPopover: useCallback(
+      (position: { top: number; left: number }) => setFindPopoverPosition(position),
+      []
+    ),
     handleCloseFindPopover: useCallback(() => setFindPopoverPosition(null), [])
   };
 }

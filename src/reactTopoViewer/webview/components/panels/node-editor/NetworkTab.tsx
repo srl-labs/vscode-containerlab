@@ -1,6 +1,4 @@
-/**
- * Network Tab for Node Editor
- */
+// Network tab for node editor.
 import React from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -36,11 +34,11 @@ export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
       {/* Management Network */}
-      <Box sx={{ p: 2 }}>
-        <Typography variant="panelHeading">Management Network</Typography>
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Management Network</Typography>
       </Box>
       <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         <InputField
           id="node-mgmt-ipv4"
           label="Management IPv4"
@@ -66,9 +64,19 @@ export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Port Mappings */}
       <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-        <Typography variant="panelHeading">Port Mappings</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddPort} sx={{ py: 0 }}>ADD</Button>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">Port Mappings</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddPort} sx={{ py: 0 }}>
+          ADD
+        </Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
@@ -82,9 +90,19 @@ export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* DNS Servers */}
       <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-        <Typography variant="panelHeading">DNS Servers</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddDns} sx={{ py: 0 }}>ADD</Button>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">DNS Servers</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddDns} sx={{ py: 0 }}>
+          ADD
+        </Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
@@ -98,9 +116,19 @@ export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Network Aliases */}
       <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-        <Typography variant="panelHeading">Network Aliases</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddAlias} sx={{ py: 0 }}>ADD</Button>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">Network Aliases</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddAlias} sx={{ py: 0 }}>
+          ADD
+        </Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>

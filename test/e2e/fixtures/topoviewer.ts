@@ -125,14 +125,7 @@ function browserHasMatchingEdge({
   const rf = dev?.rfInstance;
   if (!rf) return false;
   const edges = rf.getEdges?.() ?? [];
-  const specialPrefixes = [
-    "host:",
-    "mgmt-net:",
-    "macvlan:",
-    "vxlan:",
-    "vxlan-stitch:",
-    "dummy"
-  ];
+  const specialPrefixes = ["host:", "mgmt-net:", "macvlan:", "vxlan:", "vxlan-stitch:", "dummy"];
   const isSpecial = (id: string) => specialPrefixes.some((prefix) => id.startsWith(prefix));
   const matchNode = (edgeNode: string, expected: string) => {
     if (edgeNode === expected) return true;
@@ -773,7 +766,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             if (!rf) return 0;
             const nodes = rf.getNodes?.() ?? [];
             // Filter out non-topology nodes (annotations, etc.)
-            return nodes.filter((n: any) => n.type === types.topo || n.type === types.network).length;
+            return nodes.filter((n: any) => n.type === types.topo || n.type === types.network)
+              .length;
           },
           { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE }
         );

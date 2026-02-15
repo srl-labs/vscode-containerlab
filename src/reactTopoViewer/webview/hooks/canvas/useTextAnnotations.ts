@@ -14,11 +14,7 @@ interface UseTextAnnotationsParams {
   uiState: Pick<AnnotationUIState, "isAddTextMode" | "selectedTextIds">;
   uiActions: Pick<
     AnnotationUIActions,
-    | "setAddTextMode"
-    | "disableAddTextMode"
-    | "setEditingTextAnnotation"
-    | "closeTextEditor"
-    | "removeFromTextSelection"
+    "setAddTextMode" | "disableAddTextMode" | "setEditingTextAnnotation" | "removeFromTextSelection"
   >;
 }
 
@@ -139,10 +135,9 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
         fontFamily: annotation.fontFamily
       };
 
-      uiActions.closeTextEditor();
       persist();
     },
-    [derived, uiActions, persist]
+    [derived, persist]
   );
 
   const deleteTextAnnotation = useCallback(

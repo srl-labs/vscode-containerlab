@@ -1,7 +1,4 @@
-/**
- * FindNodeSection - Search/find nodes in the topology
- * Migrated from FindNodePanel for use in the Settings Drawer
- */
+// Find node section for the settings drawer.
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 import Box from "@mui/material/Box";
@@ -19,7 +16,6 @@ export const FindNodeSection: React.FC<FindNodeSectionProps> = ({ rfInstance, is
       <FindNodeSearchWidget
         rfInstance={rfInstance}
         isActive={isVisible}
-        titleVariant="h6"
         description="Search for nodes in the topology by name."
         showTipsHeader
       />

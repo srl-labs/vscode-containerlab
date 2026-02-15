@@ -1,9 +1,4 @@
-/**
- * Custom Node Template Fields
- *
- * Fields shown when creating/editing custom node templates:
- * - Template Name, Base Name, Interface Pattern, Set as default
- */
+// Custom node template fields.
 import React, { useState, useCallback } from "react";
 import {
   Check as CheckIcon,
@@ -12,7 +7,18 @@ import {
   ExpandMore as ExpandMoreIcon,
   InfoOutlined as InfoOutlinedIcon
 } from "@mui/icons-material";
-import { Box, Collapse, Divider, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import {
+  Box,
+  Collapse,
+  Divider,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Typography
+} from "@mui/material";
 
 import { InputField, CheckboxField, Section } from "../../ui/form";
 
@@ -63,7 +69,6 @@ const CopyableCode: React.FC<{ text: string }> = ({ text }) => {
         alignItems: "center",
         gap: 0.5,
         fontFamily: "monospace",
-        fontSize: "0.75rem",
         px: 1,
         py: 0.25,
         borderRadius: 0.5,
@@ -112,14 +117,14 @@ const InterfacePatternInfo: React.FC<{ isExpanded: boolean; onToggle: () => void
           "&:hover": { bgcolor: "action.selected" }
         }}
       >
-        {isExpanded ? (
-          <ExpandLessIcon fontSize="small" />
-        ) : (
-          <ExpandMoreIcon fontSize="small" />
-        )}
+        {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
         <InfoOutlinedIcon fontSize="small" color="primary" />
         <Typography variant="caption" color="text.secondary">
-          Pattern syntax: Use <code style={{ padding: "0 4px", borderRadius: 2 }}>{"{n}"}</code> for sequential numbering
+          Pattern syntax: Use{" "}
+          <Box component="code" sx={{ px: 0.5 }}>
+            {"{n}"}
+          </Box>{" "}
+          for sequential numbering
         </Typography>
       </Box>
 
@@ -130,9 +135,15 @@ const InterfacePatternInfo: React.FC<{ isExpanded: boolean; onToggle: () => void
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 500, fontSize: "0.75rem" }}>Pattern</TableCell>
-                <TableCell sx={{ fontWeight: 500, fontSize: "0.75rem" }}>Description</TableCell>
-                <TableCell sx={{ fontWeight: 500, fontSize: "0.75rem" }}>Result</TableCell>
+                <TableCell sx={{ fontWeight: (theme) => theme.typography.fontWeightMedium }}>
+                  Pattern
+                </TableCell>
+                <TableCell sx={{ fontWeight: (theme) => theme.typography.fontWeightMedium }}>
+                  Description
+                </TableCell>
+                <TableCell sx={{ fontWeight: (theme) => theme.typography.fontWeightMedium }}>
+                  Result
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -141,10 +152,10 @@ const InterfacePatternInfo: React.FC<{ isExpanded: boolean; onToggle: () => void
                   <TableCell sx={{ py: 0.75 }}>
                     <CopyableCode text={example.pattern} />
                   </TableCell>
-                  <TableCell sx={{ py: 0.75, color: "text.secondary", fontSize: "0.75rem" }}>
+                  <TableCell sx={{ py: 0.75, color: "text.secondary" }}>
                     {example.description}
                   </TableCell>
-                  <TableCell sx={{ py: 0.75, color: "text.secondary", fontFamily: "monospace", fontSize: "0.75rem" }}>
+                  <TableCell sx={{ py: 0.75, color: "text.secondary", fontFamily: "monospace" }}>
                     {example.result}
                   </TableCell>
                 </TableRow>
@@ -165,7 +176,7 @@ export const CustomNodeTemplateFields: React.FC<TabProps> = ({ data, onChange })
 
   return (
     <Section title="Custom Node Template">
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
         <InputField
           id="node-custom-name"
           label="Template Name"

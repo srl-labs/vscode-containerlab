@@ -1,6 +1,4 @@
-/**
- * ConfirmBulkLinksModal - Confirmation dialog for bulk link creation
- */
+// Confirmation dialog for bulk link creation.
 import React from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -11,7 +9,6 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
-
 
 interface ConfirmBulkLinksModalProps {
   isOpen: boolean;
@@ -31,7 +28,9 @@ export const ConfirmBulkLinksModal: React.FC<ConfirmBulkLinksModalProps> = ({
   onConfirm
 }) => (
   <Dialog open={isOpen} onClose={onCancel} maxWidth="xs" fullWidth>
-    <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
+    <DialogTitle
+      sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
+    >
       Bulk Link Creation
       <IconButton size="small" onClick={onCancel}>
         <CloseIcon fontSize="small" />

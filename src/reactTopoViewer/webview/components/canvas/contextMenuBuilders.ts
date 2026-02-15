@@ -1,6 +1,4 @@
-/**
- * Context menu item builders for ReactFlowCanvas
- */
+// Context menu item builders for ReactFlowCanvas.
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 import {
@@ -13,7 +11,6 @@ import {
   Dashboard as DashboardIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
-  FitScreen as FitScreenIcon,
   Info as InfoIcon,
   Lan as LanIcon,
   Layers as LayersIcon,
@@ -86,7 +83,6 @@ type PaneMenuActions = Pick<
   | "onAddTextAtPosition"
   | "onAddShapes"
   | "onAddShapeAtPosition"
-  | "onShowBulkLink"
 >;
 
 interface PaneMenuBuilderContext extends PaneMenuActions {
@@ -252,7 +248,6 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     editNode,
     editNetwork,
     handleDeleteNode,
-    showNodeInfo,
     linkSourceNode,
     startLinkCreation,
     cancelLinkCreation
@@ -290,6 +285,21 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     items.push({ id: "divider-link", label: "", divider: true });
   }
 
+  // Show "Create Link" if not already in link creation mode
+  if (!linkSourceNode) {
+    items.push({
+      id: "create-link",
+      label: "Create Link",
+      icon: React.createElement(LinkIcon, { fontSize: "small" }),
+      disabled: !isEditMode || isLocked,
+      onClick: () => {
+        startLinkCreation?.(targetId);
+        closeContextMenu();
+      }
+    });
+  }
+
+  items.push({ id: "divider-edit", label: "", divider: true });
   items.push({
     id: "edit-node",
     label: isNetworkNode ? "Edit Network" : "Edit Node",
@@ -307,32 +317,6 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
       closeContextMenu();
     }
   });
-
-  // Show "Create Link" if not already in link creation mode
-  if (!linkSourceNode) {
-    items.push({
-      id: "create-link",
-      label: "Create Link",
-      icon: React.createElement(LinkIcon, { fontSize: "small" }),
-      disabled: !isEditMode || isLocked,
-      onClick: () => {
-        startLinkCreation?.(targetId);
-        closeContextMenu();
-      }
-    });
-  }
-
-  if (showNodeInfo) {
-    items.push({
-      id: "info-node",
-      label: "Info",
-      icon: React.createElement(InfoIcon, { fontSize: "small" }),
-      onClick: () => {
-        showNodeInfo(targetId);
-        closeContextMenu();
-      }
-    });
-  }
 
   items.push({ id: DIVIDER_ID, label: "", divider: true });
   items.push({
@@ -396,8 +380,6 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
         closeContextMenu();
       }
     },
-    impairmentItem,
-    linkInfoItem,
     { id: DIVIDER_ID, label: "", divider: true },
     {
       id: "delete-edge",
@@ -409,9 +391,6 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
     }
   ];
 }
-
-// Fit view options constant
-const FIT_VIEW_OPTIONS = { padding: 0.2 };
 
 /**
  * Build pane context menu items
@@ -429,7 +408,6 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     onAddTextAtPosition,
     onAddShapes,
     onAddShapeAtPosition,
-    onShowBulkLink,
     menuPosition
   } = ctx;
   const items: ContextMenuItem[] = [];
@@ -450,16 +428,6 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
       }
     });
   }
-
-  items.push({
-    id: "open-node-palette",
-    label: "Open Palette",
-    icon: React.createElement(DashboardIcon, { fontSize: "small" }),
-    onClick: () => {
-      onOpenNodePalette?.();
-      closeContextMenu();
-    }
-  });
 
   const editorItems: ContextMenuItem[] = [];
 
@@ -557,34 +525,18 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
       ]
     });
   }
-  // Bulk Link Devices is only available in edit mode (not when deployed)
-  if (isEditMode && onShowBulkLink) {
-    editorItems.push({
-      id: "bulk-link",
-      label: "Bulk Link Devices",
-      icon: React.createElement(LinkIcon, { fontSize: "small" }),
-      disabled: isLocked,
-      onClick: () => {
-        onShowBulkLink();
-        closeContextMenu();
-      }
-    });
-  }
-
   if (editorItems.length > 0) {
     items.push({ id: "divider-additions", label: "", divider: true }, ...editorItems);
   }
 
   items.push(
-    { id: DIVIDER_ID, label: "", divider: true },
+    { id: "divider-palette", label: "", divider: true },
     {
-      id: "fit-view",
-      label: "Fit View",
-      icon: React.createElement(FitScreenIcon, { fontSize: "small" }),
+      id: "open-node-palette",
+      label: "Open Palette",
+      icon: React.createElement(DashboardIcon, { fontSize: "small" }),
       onClick: () => {
-        reactFlowInstance.current?.fitView(FIT_VIEW_OPTIONS).catch(() => {
-          /* ignore */
-        });
+        onOpenNodePalette?.();
         closeContextMenu();
       }
     }

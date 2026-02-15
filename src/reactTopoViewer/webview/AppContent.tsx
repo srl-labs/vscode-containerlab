@@ -1,10 +1,9 @@
-/**
- * App content - UI composition for the React TopoViewer.
- */
+// App content — UI composition for the React TopoViewer.
 /* eslint-disable import-x/max-dependencies */
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 import Box from "@mui/material/Box";
+import LinearProgress from "@mui/material/LinearProgress";
 
 import type { NetemState } from "../shared/parsing";
 import type { TopoEdge, TopoNode, TopologyEdgeData, TopologyHostCommand } from "../shared/types";
@@ -22,10 +21,7 @@ import {
 import type { ReactFlowCanvasRef } from "./components/canvas";
 import { ReactFlowCanvas } from "./components/canvas";
 import { Navbar } from "./components/navbar/Navbar";
-import {
-  AboutModal,
-  type LinkImpairmentData
-} from "./components/panels";
+import { AboutModal, type LinkImpairmentData } from "./components/panels";
 import { ContextPanel } from "./components/panels/context-panel";
 import { LabSettingsModal } from "./components/panels/lab-settings/LabSettingsModal";
 import { ShortcutsModal } from "./components/panels/ShortcutsModal";
@@ -167,7 +163,8 @@ function buildDeleteCommands(
 }
 
 function buildAnnotationSaveCommand(graphNodesForSave: TopoNode[]): TopologyHostCommand {
-  const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodesForSave);
+  const { freeTextAnnotations, freeShapeAnnotations, groups } =
+    nodesToAnnotations(graphNodesForSave);
   const memberships = collectNodeGroupMemberships(graphNodesForSave);
 
   return {
@@ -217,6 +214,27 @@ export const AppContent: React.FC<AppContentProps> = ({
   const isInteractionLocked = getInteractionLockState(state.isLocked, isProcessing);
   const interactionMode = getInteractionMode(state.mode, isProcessing);
 
+  // Dump all --vscode-* CSS variables to a file via the extension (dev debug aid)
+  const DUMP_CSS_VARS = false;
+  React.useEffect(() => {
+    if (!DUMP_CSS_VARS) return;
+    const htmlStyle = document.querySelector("html")?.getAttribute("style");
+    if (!htmlStyle) return;
+    const vars: Record<string, string> = {};
+    for (const part of htmlStyle.split(";")) {
+      const trimmed = part.trim();
+      if (!trimmed.startsWith("--vscode-")) continue;
+      const colonIdx = trimmed.indexOf(":");
+      if (colonIdx === -1) continue;
+      vars[trimmed.slice(0, colonIdx).trim()] = trimmed.slice(colonIdx + 1).trim();
+    }
+    if (Object.keys(vars).length === 0) return;
+    const sorted = Object.fromEntries(
+      Object.entries(vars).sort(([a], [b]) => a.localeCompare(b))
+    );
+    window.vscode?.postMessage({ command: "dump-css-vars", vars: sorted });
+  }, []);
+
   const graphNodes = nodes as TopoNode[];
   const graphEdges = edges as TopoEdge[];
 
@@ -262,7 +280,7 @@ export const AppContent: React.FC<AppContentProps> = ({
         annotation?.endpointLabelOffsetEnabled ??
         (annotation?.endpointLabelOffset !== undefined ? true : undefined);
       const enabled = annotationEnabled ?? state.endpointLabelOffsetEnabled;
-      const resolvedOffset = enabled ? annotationOffset ?? state.endpointLabelOffset : 0;
+      const resolvedOffset = enabled ? (annotationOffset ?? state.endpointLabelOffset) : 0;
 
       if (
         data.endpointLabelOffsetEnabled === enabled &&
@@ -287,7 +305,9 @@ export const AppContent: React.FC<AppContentProps> = ({
     state.endpointLabelOffsetEnabled
   ]);
 
-  const [paletteTabRequest, setPaletteTabRequest] = React.useState<{ tab: number } | undefined>(undefined);
+  const [paletteTabRequest, setPaletteTabRequest] = React.useState<{ tabId: string } | undefined>(
+    undefined
+  );
   const customNodeCommands = useCustomNodeCommands(
     state.customNodes,
     topoActions.editCustomTemplate
@@ -432,7 +452,10 @@ export const AppContent: React.FC<AppContentProps> = ({
         handleLockedAction();
         return;
       }
-      graphCreation.createNetworkAtPosition(position, networkType as Parameters<typeof graphCreation.createNetworkAtPosition>[1]);
+      graphCreation.createNetworkAtPosition(
+        position,
+        networkType as Parameters<typeof graphCreation.createNetworkAtPosition>[1]
+      );
     },
     [isInteractionLocked, graphCreation, handleLockedAction]
   );
@@ -512,11 +535,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     if (shouldClosePanel) {
       panelVisibility.handleCloseContextPanel();
     }
-  }, [
-    clearAllEditingState,
-    hasContextContent,
-    panelVisibility,
-  ]);
+  }, [clearAllEditingState, hasContextContent, panelVisibility]);
 
   const processingRef = React.useRef(false);
   React.useEffect(() => {
@@ -532,12 +551,7 @@ export const AppContent: React.FC<AppContentProps> = ({
       return;
     }
     processingRef.current = false;
-  }, [
-    annotationUiActions,
-    clearAllEditingState,
-    isProcessing,
-    panelVisibility
-  ]);
+  }, [annotationUiActions, clearAllEditingState, isProcessing, panelVisibility]);
 
   const clipboardHandlers = useClipboardHandlers({
     annotations,
@@ -560,10 +574,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     const nodesById = new Map(currentNodes.map((node) => [node.id, node]));
     const edgesById = new Map(currentEdges.map((edge) => [edge.id, edge as TopoEdge]));
 
-    const { graphNodeIds, groupIds, textIds, shapeIds } = splitNodeIdsByType(
-      nodeIds,
-      nodesById
-    );
+    const { graphNodeIds, groupIds, textIds, shapeIds } = splitNodeIdsByType(nodeIds, nodesById);
 
     applyGraphDeletions(graphActions, menuHandlers, graphNodeIds, edgeIds);
 
@@ -582,10 +593,12 @@ export const AppContent: React.FC<AppContentProps> = ({
 
     if (commands.length === 0) return;
 
-    executeTopologyCommand({ command: "batch", payload: { commands } }, { applySnapshot: false })
-      .catch((err) => {
-        console.error("[TopoViewer] Failed to batch delete", err);
-      });
+    executeTopologyCommand(
+      { command: "batch", payload: { commands } },
+      { applySnapshot: false }
+    ).catch((err) => {
+      console.error("[TopoViewer] Failed to batch delete", err);
+    });
   }, [annotations, graphActions, menuHandlers, state.selectedNode, state.selectedEdge]);
 
   useAppKeyboardShortcuts({
@@ -622,11 +635,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     if (hasContextContent && !isProcessing && !panelVisibility.isContextPanelOpen) {
       panelVisibility.handleOpenContextPanel("auto");
     }
-  }, [
-    hasContextContent,
-    isProcessing,
-    panelVisibility,
-  ]);
+  }, [hasContextContent, isProcessing, panelVisibility]);
 
   // close if palette wasn't open, else go back to palette
   const handleContextPanelBack = React.useCallback(() => {
@@ -636,14 +645,6 @@ export const AppContent: React.FC<AppContentProps> = ({
       panelVisibility.handleCloseContextPanel();
     }
   }, [clearAllEditingState, panelVisibility]);
-
-  const handleContextPanelDelete = React.useCallback(() => {
-    if (state.editingNode) {
-      graphHandlers.handleDeleteNode(state.editingNode);
-    } else if (state.editingEdge) {
-      graphHandlers.handleDeleteLink(state.editingEdge);
-    }
-  }, [state.editingNode, state.editingEdge, graphHandlers]);
 
   const handleZoomToFit = React.useCallback(() => {
     if (reactFlowRef.current) {
@@ -690,12 +691,13 @@ export const AppContent: React.FC<AppContentProps> = ({
           onLabSettings={panelVisibility.handleShowLabSettings}
           onToggleSplit={() => {
             panelVisibility.handleOpenContextPanel("manual");
-            setPaletteTabRequest({ tab: 2 });
+            setPaletteTabRequest({ tabId: "yaml" });
           }}
           onFindNode={panelVisibility.handleOpenFindPopover}
           onCaptureViewport={panelVisibility.handleShowSvgExport}
           onShowShortcuts={panelVisibility.handleShowShortcuts}
           onShowAbout={panelVisibility.handleShowAbout}
+          onShowBulkLink={panelVisibility.handleShowBulkLink}
           onShowGridSettings={panelVisibility.handleOpenGridPopover}
           linkLabelMode={state.linkLabelMode}
           onLinkLabelModeChange={topoActions.setLinkLabelMode}
@@ -709,6 +711,7 @@ export const AppContent: React.FC<AppContentProps> = ({
           logoClickProgress={easterEgg.state.progress}
           isPartyMode={easterEgg.state.isPartyMode}
         />
+        {isProcessing && <LinearProgress />}
         <Box sx={{ display: "flex", flexGrow: 1, overflow: "hidden", position: "relative" }}>
           <ContextPanel
             isOpen={panelVisibility.isContextPanelOpen}
@@ -717,7 +720,6 @@ export const AppContent: React.FC<AppContentProps> = ({
             onClose={panelVisibility.handleCloseContextPanel}
             onBack={handleContextPanelBack}
             onToggleSide={panelVisibility.handleTogglePanelSide}
-            onDelete={handleContextPanelDelete}
             rfInstance={rfInstance}
             palette={{
               mode: state.mode,
@@ -737,14 +739,21 @@ export const AppContent: React.FC<AppContentProps> = ({
               nodeEditorHandlers: {
                 handleClose: nodeEditorHandlers.handleClose,
                 handleSave: nodeEditorHandlers.handleSave,
-                handleApply: nodeEditorHandlers.handleApply
+                handleApply: nodeEditorHandlers.handleApply,
+                handleDelete: selectionData.editingNodeData
+                  ? () => graphHandlers.handleDeleteNode(selectionData.editingNodeData!.id)
+                  : undefined
               },
               editingLinkData: selectionData.editingLinkData,
               linkEditorHandlers: {
                 handleClose: linkEditorHandlers.handleClose,
                 handleSave: linkEditorHandlers.handleSave,
                 handleApply: linkEditorHandlers.handleApply,
-                handleAutoApplyOffset: linkEditorHandlers.handleAutoApplyOffset
+                previewOffset: linkEditorHandlers.previewOffset,
+                revertOffset: linkEditorHandlers.revertOffset,
+                handleDelete: selectionData.editingLinkData
+                  ? () => graphHandlers.handleDeleteLink(selectionData.editingLinkData!.id)
+                  : undefined
               },
               editingNetworkData: selectionData.editingNetworkData,
               networkEditorHandlers: {
@@ -782,7 +791,7 @@ export const AppContent: React.FC<AppContentProps> = ({
                 onSave: annotations.saveGroup,
                 onClose: annotations.closeGroupEditor,
                 onDelete: annotations.deleteGroup,
-                onStyleChange: annotations.updateGroup
+                onStylePreview: annotations.updateGroup
               }
             }}
           />
@@ -822,7 +831,6 @@ export const AppContent: React.FC<AppContentProps> = ({
               onAddTextAtPosition={annotations.createTextAtPosition}
               onAddGroupAtPosition={annotations.createGroupAtPosition}
               onAddShapeAtPosition={annotations.createShapeAtPosition}
-              onShowBulkLink={panelVisibility.handleShowBulkLink}
               onDropCreateNode={handleDropCreateNode}
               onDropCreateNetwork={handleDropCreateNetwork}
               onLockedAction={handleLockedAction}

@@ -1,6 +1,4 @@
-/**
- * BasicTab - Basic link configuration (endpoints)
- */
+// Basic link configuration tab.
 import React from "react";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
@@ -17,7 +15,7 @@ import {
 
 import type { LinkTabProps } from "./types";
 
-export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOffset }) => {
+export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onPreviewOffset }) => {
   const rawEndpointOffset =
     typeof data.endpointLabelOffset === "number" ? data.endpointLabelOffset : Number.NaN;
   const endpointOffsetValue = Number.isFinite(rawEndpointOffset)
@@ -35,7 +33,7 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
       endpointLabelOffset: nextOffset,
       endpointLabelOffsetEnabled: true
     });
-    onAutoApplyOffset?.(nextData);
+    onPreviewOffset?.(nextData);
   };
 
   const handleOffsetReset = () => {
@@ -48,21 +46,25 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
       endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
       endpointLabelOffsetEnabled: true
     });
-    onAutoApplyOffset?.(nextData);
+    onPreviewOffset?.(nextData);
   };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
       {/* Endpoints section */}
-      <Box sx={{ p: 2 }}>
-        <Typography variant="panelHeading">Endpoints</Typography>
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Endpoints</Typography>
       </Box>
       <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
           {data.sourceIsNetwork ? (
             <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mb: 0.5 }}
+              >
                 {data.source || "Source"} Interface
               </Typography>
               <ReadOnlyBadge>{data.source || "Unknown"}</ReadOnlyBadge>
@@ -79,7 +81,11 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
           )}
           {data.targetIsNetwork ? (
             <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mb: 0.5 }}
+              >
                 {data.target || "Target"} Interface
               </Typography>
               <ReadOnlyBadge>{data.target || "Unknown"}</ReadOnlyBadge>
@@ -125,8 +131,8 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
 
       {/* Label Offset section */}
       <Divider />
-      <Box sx={{ p: 2 }}>
-        <Typography variant="panelHeading">Label Offset</Typography>
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Label Offset</Typography>
       </Box>
       <Divider />
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, px: 2, py: 1 }}>

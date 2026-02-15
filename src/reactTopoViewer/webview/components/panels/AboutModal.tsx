@@ -1,6 +1,4 @@
-/**
- * AboutModal - Modal dialog for displaying TopoViewer about information
- */
+// About dialog.
 import React from "react";
 import {
   Avatar,
@@ -20,6 +18,7 @@ import {
   Extension as ExtensionIcon,
   Favorite as FavoriteIcon,
   GitHub as GitHubIcon,
+  Groups as GroupsIcon,
   MenuBook as MenuBookIcon,
   OpenInNew as OpenInNewIcon
 } from "@mui/icons-material";
@@ -102,7 +101,7 @@ const AnimatedContainerlabLogo: React.FC = () => (
     <svg
       viewBox="65.95 14.96 118.48 127.34"
       xmlns="http://www.w3.org/2000/svg"
-      style={{ width: 80, height: 80 }}
+      style={{ width: 48, height: 48 }}
     >
       <g transform="matrix(1.27707402803300 0 0 1.27707402803300 -135.85348004729036 -121.99491568571256)">
         <g transform="matrix(1 0 0 1 0.07761382500030 0.06641805000012)">
@@ -276,24 +275,28 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
-      <DialogContent dividers>
+      <DialogContent dividers sx={{ p: 0 }}>
         {/* Description */}
-        <Typography variant="body2" color={TEXT_SECONDARY} sx={{ mb: 3 }}>
-          Interactive topology visualization and editing for{" "}
-          <Link href="https://containerlab.dev/" target="_blank" rel="noopener noreferrer">
-            Containerlab
-          </Link>{" "}
-          network labs directly in VS Code.
-        </Typography>
-
-        <Divider sx={{ mb: 2 }} />
+        <Box sx={{ p: 2 }}>
+          <Typography variant="body2" color={TEXT_SECONDARY}>
+            Interactive topology visualization and editing for{" "}
+            <Link href="https://containerlab.dev/" target="_blank" rel="noopener noreferrer">
+              Containerlab
+            </Link>{" "}
+            network labs directly in VS Code.
+          </Typography>
+        </Box>
 
         {/* Documentation Section */}
-        <Typography variant="subtitle2" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <MenuBookIcon fontSize="small" />
-          Documentation
-        </Typography>
-        <Box sx={{ mb: 2 }}>
+        <Divider />
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography variant="subtitle2" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <MenuBookIcon fontSize="small" />
+            Documentation
+          </Typography>
+        </Box>
+        <Divider />
+        <Box sx={{ p: 2 }}>
           <RepoCard
             name="Containerlab Docs"
             description="Full documentation"
@@ -309,10 +312,15 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         </Box>
 
         {/* Team Section */}
-        <Typography variant="subtitle2" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          Team
-        </Typography>
-        <Box sx={{ mb: 2 }}>
+        <Divider />
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography variant="subtitle2" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <GroupsIcon fontSize="small" />
+            Team
+          </Typography>
+        </Box>
+        <Divider />
+        <Box sx={{ p: 2 }}>
           <AuthorCard
             name="Asad Arafat"
             role="Maintainer (Original Creator)"
@@ -337,11 +345,15 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         </Box>
 
         {/* Source Code Section */}
-        <Typography variant="subtitle2" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <GitHubIcon fontSize="small" />
-          Source Code
-        </Typography>
-        <Box sx={{ mb: 2 }}>
+        <Divider />
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography variant="subtitle2" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <GitHubIcon fontSize="small" />
+            Source Code
+          </Typography>
+        </Box>
+        <Divider />
+        <Box sx={{ p: 2 }}>
           <RepoCard
             name="vscode-containerlab"
             description="VS Code Extension"
@@ -363,7 +375,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             alignItems: "center",
             justifyContent: "center",
             gap: 0.5,
-            mt: 3,
+            py: 2,
             color: TEXT_SECONDARY
           }}
         >

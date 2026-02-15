@@ -1,22 +1,19 @@
-/**
- * MgmtTab - Management network settings tab for Lab Settings panel
- */
+// Management network settings tab.
 import React from "react";
-import { Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
-import {
-  Box,
-  Button,
-  Checkbox,
-  FormControl,
-  FormControlLabel,
-  FormHelperText,
-  IconButton,
-  InputLabel,
-  MenuItem,
-  Select,
-  TextField,
-  Typography
-} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Checkbox from "@mui/material/Checkbox";
+import Divider from "@mui/material/Divider";
+import FormControl from "@mui/material/FormControl";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+
+import { KeyValueList } from "../../ui/form";
 
 import type { IpType, DriverOption } from "./types";
 
@@ -46,8 +43,7 @@ interface MgmtTabProps {
   onBridgeChange: (value: string) => void;
   onExternalAccessChange: (value: boolean) => void;
   onAddDriverOption: () => void;
-  onRemoveDriverOption: (index: number) => void;
-  onUpdateDriverOption: (index: number, field: "key" | "value", value: string) => void;
+  onSetDriverOptions: (options: DriverOption[]) => void;
 }
 
 /** IPv4 settings section */
@@ -65,7 +61,7 @@ const Ipv4Section: React.FC<
     | "onIpv4RangeChange"
   >
 > = (props) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
     <FormControl size="small" fullWidth disabled={props.isViewMode}>
       <InputLabel>IPv4 Subnet</InputLabel>
       <Select
@@ -126,7 +122,7 @@ const Ipv6Section: React.FC<
     | "onIpv6GatewayChange"
   >
 > = (props) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
     <FormControl size="small" fullWidth disabled={props.isViewMode}>
       <InputLabel>IPv6 Subnet</InputLabel>
       <Select
@@ -165,111 +161,69 @@ const Ipv6Section: React.FC<
   </Box>
 );
 
-/** Driver options section */
-const DriverOptionsSection: React.FC<
-  Pick<
-    MgmtTabProps,
-    | "driverOptions"
-    | "isViewMode"
-    | "onAddDriverOption"
-    | "onRemoveDriverOption"
-    | "onUpdateDriverOption"
-  >
-> = (props) => (
-  <Box>
-    <Typography variant="body2" sx={{ mb: 1 }}>
-      Bridge Driver Options
-    </Typography>
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-      {props.driverOptions.map((opt, idx) => (
-        <Box key={idx} sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-          <TextField
-            placeholder="Option key"
-            value={opt.key}
-            onChange={(e) => props.onUpdateDriverOption(idx, "key", e.target.value)}
-            disabled={props.isViewMode}
-            size="small"
-            sx={{ flex: 1 }}
-          />
-          <TextField
-            placeholder="Option value"
-            value={opt.value}
-            onChange={(e) => props.onUpdateDriverOption(idx, "value", e.target.value)}
-            disabled={props.isViewMode}
-            size="small"
-            sx={{ flex: 1 }}
-          />
-          {!props.isViewMode && (
-            <IconButton
-              size="small"
-              onClick={() => props.onRemoveDriverOption(idx)}
-              title="Remove option"
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          )}
-        </Box>
-      ))}
-    </Box>
-    {!props.isViewMode && (
-      <Button
-        size="small"
-        startIcon={<AddIcon />}
-        onClick={props.onAddDriverOption}
-        sx={{ mt: 1 }}
-      >
-        Add Option
-      </Button>
-    )}
-  </Box>
-);
+/** Convert DriverOption[] to Record for KeyValueList */
+function driverOptionsToRecord(options: DriverOption[]): Record<string, string> {
+  const record: Record<string, string> = {};
+  for (const opt of options) {
+    record[opt.key] = opt.value;
+  }
+  return record;
+}
+
+/** Convert Record back to DriverOption[] */
+function recordToDriverOptions(record: Record<string, string>): DriverOption[] {
+  return Object.entries(record).map(([key, value]) => ({ key, value }));
+}
 
 export const MgmtTab: React.FC<MgmtTabProps> = (props) => {
+  const driverRecord = driverOptionsToRecord(props.driverOptions);
+
+  const handleDriverChange = (record: Record<string, string>) => {
+    props.onSetDriverOptions(recordToDriverOptions(record));
+  };
+
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-      {/* Network Name */}
-      <TextField
-        label="Network Name"
-        placeholder="clab"
-        value={props.networkName}
-        onChange={(e) => props.onNetworkNameChange(e.target.value)}
-        disabled={props.isViewMode}
-        size="small"
-        fullWidth
-        helperText="Docker network name (default: clab)"
-      />
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+        {/* Network Name */}
+        <TextField
+          label="Network Name"
+          placeholder="Docker network name (default: clab)"
+          value={props.networkName}
+          onChange={(e) => props.onNetworkNameChange(e.target.value)}
+          disabled={props.isViewMode}
+          size="small"
+          fullWidth
+        />
 
-      <Ipv4Section {...props} />
-      <Ipv6Section {...props} />
+        <Ipv4Section {...props} />
+        <Ipv6Section {...props} />
 
-      {/* MTU */}
-      <TextField
-        label="MTU"
-        type="number"
-        placeholder="Default: auto"
-        value={props.mtu}
-        onChange={(e) => props.onMtuChange(e.target.value)}
-        disabled={props.isViewMode}
-        size="small"
-        fullWidth
-        helperText="MTU size (defaults to docker0 interface MTU)"
-        slotProps={{ htmlInput: { min: 0, step: 1 } }}
-      />
+        {/* MTU */}
+        <TextField
+          label="MTU"
+          type="number"
+          placeholder="Defaults to docker0 interface MTU"
+          value={props.mtu}
+          onChange={(e) => props.onMtuChange(e.target.value)}
+          disabled={props.isViewMode}
+          size="small"
+          fullWidth
+          slotProps={{ htmlInput: { min: 0, step: 1 } }}
+        />
 
-      {/* Bridge Name */}
-      <TextField
-        label="Bridge Name"
-        placeholder="Default: auto"
-        value={props.bridge}
-        onChange={(e) => props.onBridgeChange(e.target.value)}
-        disabled={props.isViewMode}
-        size="small"
-        fullWidth
-        helperText="Custom Linux bridge name (default: br-<network-id>)"
-      />
+        {/* Bridge Name */}
+        <TextField
+          label="Bridge Name"
+          placeholder="Linux bridge name (default: br-<network-id>)"
+          value={props.bridge}
+          onChange={(e) => props.onBridgeChange(e.target.value)}
+          disabled={props.isViewMode}
+          size="small"
+          fullWidth
+        />
 
-      {/* External Access */}
-      <Box>
+        {/* External Access */}
         <FormControlLabel
           control={
             <Checkbox
@@ -281,12 +235,42 @@ export const MgmtTab: React.FC<MgmtTabProps> = (props) => {
           }
           label="Enable External Access"
         />
-        <FormHelperText sx={{ mt: -0.5, ml: 4 }}>
-          Allow external systems to reach lab nodes
-        </FormHelperText>
       </Box>
 
-      <DriverOptionsSection {...props} />
+      {/* Bridge Driver Options */}
+      <Divider />
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">Bridge Driver Options</Typography>
+        {!props.isViewMode && (
+          <Button
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={props.onAddDriverOption}
+            sx={{ py: 0 }}
+          >
+            ADD
+          </Button>
+        )}
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <KeyValueList
+          items={driverRecord}
+          onChange={handleDriverChange}
+          keyPlaceholder="Option key"
+          valuePlaceholder="Option value"
+          disabled={props.isViewMode}
+          hideAddButton
+        />
+      </Box>
     </Box>
   );
 };

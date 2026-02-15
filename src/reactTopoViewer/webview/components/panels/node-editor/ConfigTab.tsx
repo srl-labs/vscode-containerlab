@@ -1,6 +1,4 @@
-/**
- * Configuration Tab for Node Editor
- */
+// Configuration tab for node editor.
 import React from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -20,7 +18,10 @@ const STARTUP_CONFIG_MODE_OPTIONS = [
   { value: "suppress", label: "Suppress startup config" }
 ];
 
-function getStartupConfigMode(data: { enforceStartupConfig?: boolean; suppressStartupConfig?: boolean }): StartupConfigMode {
+function getStartupConfigMode(data: {
+  enforceStartupConfig?: boolean;
+  suppressStartupConfig?: boolean;
+}): StartupConfigMode {
   if (data.enforceStartupConfig) return "enforce";
   if (data.suppressStartupConfig) return "suppress";
   return "default";
@@ -55,11 +56,11 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
       {/* Startup Configuration */}
-      <Box sx={{ p: 2 }}>
-        <Typography variant="panelHeading">Startup Configuration</Typography>
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Startup Configuration</Typography>
       </Box>
       <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         <InputField
           id="node-startup-config"
           label="Startup configuration Path"
@@ -78,11 +79,11 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* License */}
       <Divider />
-      <Box sx={{ p: 2 }}>
-        <Typography variant="panelHeading">License</Typography>
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">License</Typography>
       </Box>
       <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         <InputField
           id="node-license"
           label="License File"
@@ -94,9 +95,19 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Bind Mounts */}
       <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-        <Typography variant="panelHeading">Bind Mounts</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddBind} sx={{ py: 0 }}>ADD</Button>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">Bind Mounts</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddBind} sx={{ py: 0 }}>
+          ADD
+        </Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
@@ -110,9 +121,19 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Environment Variables */}
       <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-        <Typography variant="panelHeading">Environment Variables</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddEnvVar} sx={{ py: 0 }}>ADD</Button>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">Environment Variables</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddEnvVar} sx={{ py: 0 }}>
+          ADD
+        </Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
@@ -127,9 +148,19 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Environment Files */}
       <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-        <Typography variant="panelHeading">Environment Files</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddEnvFile} sx={{ py: 0 }}>ADD</Button>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">Environment Files</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddEnvFile} sx={{ py: 0 }}>
+          ADD
+        </Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
@@ -143,9 +174,19 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Labels */}
       <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-        <Typography variant="panelHeading">Labels</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddLabel} sx={{ py: 0 }}>ADD</Button>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">Labels</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddLabel} sx={{ py: 0 }}>
+          ADD
+        </Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>

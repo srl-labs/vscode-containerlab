@@ -1,10 +1,7 @@
-/**
- * TabNavigation - Scrollable tab strip with arrow buttons
- */
+// Tab strip with divider.
 import React from "react";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
-import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 
 export interface TabDefinition {
@@ -17,14 +14,9 @@ interface TabNavigationProps {
   tabs: TabDefinition[];
   activeTab: string;
   onTabChange: (tabId: string) => void;
-  showArrows?: boolean;
 }
 
-export const TabNavigation: React.FC<TabNavigationProps> = ({
-  tabs,
-  activeTab,
-  onTabChange
-}) => {
+export const TabNavigation: React.FC<TabNavigationProps> = ({ tabs, activeTab, onTabChange }) => {
   const visibleTabs = tabs.filter((t) => !t.hidden);
 
   const handleChange = (_event: React.SyntheticEvent, newValue: string) => {
@@ -32,20 +24,8 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
   };
 
   return (
-    <Box>
-      <Tabs
-        value={activeTab}
-        onChange={handleChange}
-        variant="scrollable"
-        scrollButtons="auto"
-        sx={{
-          "& .MuiTab-root": {
-            py: 0.5,
-            px: 2,
-            fontSize: "0.8125rem"
-          }
-        }}
-      >
+    <>
+      <Tabs value={activeTab} onChange={handleChange} variant="scrollable" scrollButtons="auto">
         {visibleTabs.map((tab) => (
           <Tab
             key={tab.id}
@@ -57,6 +37,6 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
         ))}
       </Tabs>
       <Divider />
-    </Box>
+    </>
   );
 };

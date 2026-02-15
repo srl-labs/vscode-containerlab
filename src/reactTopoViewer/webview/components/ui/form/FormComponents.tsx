@@ -1,7 +1,4 @@
-/**
- * Shared form components for annotation editors
- * Used by FreeShape, FreeText, and Group editors
- */
+// Shared form components for annotation editors.
 import React from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -14,9 +11,6 @@ import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import Slider from "@mui/material/Slider";
 import DeleteIcon from "@mui/icons-material/Delete";
-
-import { normalizeHexColor } from "../../../utils/color";
-
 
 /**
  * Toggle pill button
@@ -31,61 +25,17 @@ export const Toggle: React.FC<{
     variant={active ? "contained" : "outlined"}
     size="small"
     onClick={onClick}
-    sx={{ fontSize: "0.6875rem", fontWeight: 500, minWidth: 0, px: 1.5, py: 0.5, ...sx as object }}
+    sx={{
+      fontWeight: (theme) => theme.typography.fontWeightMedium,
+      minWidth: 0,
+      px: 1.5,
+      py: 0.5,
+      ...(sx as object)
+    }}
   >
     {children}
   </Button>
 );
-
-/**
- * Color swatch input with label
- */
-export const ColorSwatch: React.FC<{
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  disabled?: boolean;
-}> = ({ label, value, onChange, disabled }) => {
-  const inputValue = normalizeHexColor(value);
-  return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
-      <Typography variant="caption" color="text.secondary">
-        {label}
-      </Typography>
-      <Box
-        sx={{
-          position: "relative",
-          width: 30,
-          height: 30,
-          borderRadius: 0.5,
-          overflow: "hidden",
-          border: 1,
-          borderColor: "divider",
-          opacity: disabled ? 0.4 : 1,
-          "&:hover": { borderColor: "primary.main" },
-          transition: "border-color 0.2s"
-        }}
-      >
-        <input
-          type="color"
-          value={inputValue}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "150%",
-            height: "150%",
-            top: "-25%",
-            left: "-25%",
-            cursor: "pointer",
-            border: 0
-          }}
-        />
-      </Box>
-    </Box>
-  );
-};
 
 /**
  * Number input with label and optional unit
@@ -122,7 +72,7 @@ export const NumberInput: React.FC<{
             }
           : undefined
       }}
-      sx={{ "& .MuiInputBase-input": { fontSize: "0.75rem", py: 0.75, px: 1 } }}
+      sx={{ "& .MuiInputBase-input": { py: 0.75, px: 1 } }}
     />
   </Box>
 );
@@ -145,7 +95,7 @@ export const TextInput: React.FC<{
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      sx={{ "& .MuiInputBase-input": { fontSize: "0.75rem", py: 0.75, px: 1 } }}
+      sx={{ "& .MuiInputBase-input": { py: 0.75, px: 1 } }}
     />
   </Box>
 );
@@ -167,10 +117,10 @@ export const SelectInput: React.FC<{
       <Select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        sx={{ fontSize: "0.75rem", "& .MuiSelect-select": { py: 0.75, px: 1 } }}
+        sx={{ "& .MuiSelect-select": { py: 0.75, px: 1 } }}
       >
         {options.map((opt) => (
-          <MenuItem key={opt.value} value={opt.value} sx={{ fontSize: "0.75rem" }}>
+          <MenuItem key={opt.value} value={opt.value}>
             {opt.label}
           </MenuItem>
         ))}

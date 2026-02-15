@@ -1,6 +1,4 @@
-/**
- * ExtendedTab - Extended link configuration (vars, labels)
- */
+// Extended link configuration tab.
 import React from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -29,9 +27,19 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-        <Typography variant="panelHeading">Variables</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddVar} sx={{ py: 0 }}>ADD</Button>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">Variables</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddVar} sx={{ py: 0 }}>
+          ADD
+        </Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
@@ -45,9 +53,19 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
       </Box>
 
       <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-        <Typography variant="panelHeading">Labels</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddLabel} sx={{ py: 0 }}>ADD</Button>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">Labels</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddLabel} sx={{ py: 0 }}>
+          ADD
+        </Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
@@ -67,13 +85,10 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
  * Info message for non-veth links
  */
 const NonVethInfo: React.FC = () => (
-  <Paper
-    variant="outlined"
-    sx={{ p: 1.5, bgcolor: "action.hover" }}
-  >
+  <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "action.hover" }}>
     <Typography variant="body2">
-      <strong>Note:</strong> This link connects to a network node. Configure
-      extended properties on the network node itself.
+      <strong>Note:</strong> This link connects to a network node. Configure extended properties on
+      the network node itself.
     </Typography>
   </Paper>
 );
@@ -83,7 +98,13 @@ export const ExtendedTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      {isVethLink ? <VethLinkFields data={data} onChange={onChange} /> : <Box sx={{ p: 2 }}><NonVethInfo /></Box>}
+      {isVethLink ? (
+        <VethLinkFields data={data} onChange={onChange} />
+      ) : (
+        <Box sx={{ p: 2 }}>
+          <NonVethInfo />
+        </Box>
+      )}
     </Box>
   );
 };

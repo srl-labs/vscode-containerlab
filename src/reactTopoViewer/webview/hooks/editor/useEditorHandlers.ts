@@ -428,8 +428,6 @@ export function useNodeEditorHandlers(
 // useLinkEditorHandlers
 // ============================================================================
 
-const EDGE_OFFSET_SAVE_DEBOUNCE_MS = 300;
-
 /** Dependencies for persisting link editor changes */
 interface LinkPersistDeps {
   edgeAnnotationHandlers?: EdgeAnnotationHandlers;
@@ -488,7 +486,6 @@ export function useLinkEditorHandlers(
   updateEdgeData?: (edgeId: string, data: LinkEditorData) => void
 ) {
   const initialDataRef = React.useRef<LinkEditorData | null>(null);
-  const offsetEditSaveRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
     if (editingLinkData) {
@@ -497,19 +494,6 @@ export function useLinkEditorHandlers(
       initialDataRef.current = null;
     }
   }, [editingLinkData?.id]);
-
-  const clearOffsetEditSave = React.useCallback(() => {
-    if (!offsetEditSaveRef.current) return;
-    clearTimeout(offsetEditSaveRef.current);
-    offsetEditSaveRef.current = null;
-  }, []);
-
-  React.useEffect(
-    () => () => {
-      clearOffsetEditSave();
-    },
-    [clearOffsetEditSave]
-  );
 
   const persistOffset = React.useCallback(
     (data: LinkEditorData) => {
@@ -596,34 +580,33 @@ export function useLinkEditorHandlers(
     [persistDeps, persistOffset]
   );
 
-  const handleAutoApplyOffset = React.useCallback(
+  // Visual-only offset preview (no persist)
+  const previewOffset = React.useCallback(
     (data: LinkEditorData) => {
       if (!edgeAnnotationHandlers) return;
       const normalized = enableLinkEndpointOffset(data);
-      const hasOffsetChange =
-        !initialDataRef.current ||
-        normalized.endpointLabelOffset !== initialDataRef.current.endpointLabelOffset ||
-        normalized.endpointLabelOffsetEnabled !== initialDataRef.current.endpointLabelOffsetEnabled;
-      if (!hasOffsetChange) return;
-
       const next = upsertEdgeLabelOffsetAnnotation(
         edgeAnnotationHandlers.edgeAnnotations,
         normalized
       );
       if (!next) return;
       edgeAnnotationHandlers.setEdgeAnnotations(next);
-
-      clearOffsetEditSave();
-      offsetEditSaveRef.current = setTimeout(() => {
-        void saveEdgeAnnotations(next);
-      }, EDGE_OFFSET_SAVE_DEBOUNCE_MS);
-
-      initialDataRef.current = mergeOffsetBaseline(initialDataRef.current, normalized);
     },
-    [edgeAnnotationHandlers, clearOffsetEditSave]
+    [edgeAnnotationHandlers]
   );
 
-  return { handleClose, handleSave, handleApply, handleAutoApplyOffset };
+  // Revert offset to initial state (for discard / unmount)
+  const revertOffset = React.useCallback(() => {
+    if (!edgeAnnotationHandlers || !initialDataRef.current) return;
+    const next = upsertEdgeLabelOffsetAnnotation(
+      edgeAnnotationHandlers.edgeAnnotations,
+      initialDataRef.current
+    );
+    if (!next) return;
+    edgeAnnotationHandlers.setEdgeAnnotations(next);
+  }, [edgeAnnotationHandlers]);
+
+  return { handleClose, handleSave, handleApply, previewOffset, revertOffset };
 }
 
 // ============================================================================
@@ -868,13 +851,7 @@ export function useNetworkEditorHandlers(
 
       const graphState = useGraphStore.getState();
       const aliasLabel = data.label?.trim() || aliasId;
-      const aliasNode = updateAliasNodeInGraph(
-        graphState,
-        aliasId,
-        aliasLabel,
-        data,
-        newNodeId
-      );
+      const aliasNode = updateAliasNodeInGraph(graphState, aliasId, aliasLabel, data, newNodeId);
       const updatedAnnotations = buildUpdatedAliasAnnotations(
         nodeAnnotations,
         existingAnn,

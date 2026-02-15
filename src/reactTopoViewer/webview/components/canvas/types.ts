@@ -1,6 +1,4 @@
-/**
- * TypeScript types for React Flow canvas components
- */
+// Types for React Flow canvas components.
 import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
 import type {
@@ -19,9 +17,10 @@ import type {
   FreeTextRFNode,
   FreeShapeRFNode,
   GroupRFNode
-	} from "../../../shared/types/graph";
-	import { DEFAULT_ICON_COLOR, ROLE_SVG_MAP, SELECTION_COLOR } from "../../../shared/types/graph";
-	import type { GridStyle } from "../../hooks/ui/useAppState";
+} from "../../../shared/types/graph";
+import { DEFAULT_ICON_COLOR, ROLE_SVG_MAP } from "../../../shared/types/graph";
+import { vscodePalette } from "../../theme/vscodeTheme";
+import type { GridStyle } from "../../hooks/ui/useAppState";
 
 /** Edge label rendering mode */
 export type EdgeLabelMode = "show-all" | "on-select" | "hide";
@@ -209,8 +208,7 @@ export interface ReactFlowCanvasProps {
   onAddGroupAtPosition?: (position: { x: number; y: number }) => void;
   /** Callback to add a shape directly at a position */
   onAddShapeAtPosition?: (position: { x: number; y: number }, shapeType?: string) => void;
-  /** Callback to open bulk link panel */
-  onShowBulkLink?: () => void;
+
   /** Callback for drag-drop node creation from palette */
   onDropCreateNode?: (position: { x: number; y: number }, templateName: string) => void;
   /** Callback for drag-drop network creation from palette */
@@ -219,4 +217,7 @@ export interface ReactFlowCanvasProps {
   onLockedAction?: () => void;
 }
 
-export { SELECTION_COLOR, DEFAULT_ICON_COLOR, ROLE_SVG_MAP };
+// Selection highlight color.
+export const SELECTION_COLOR = vscodePalette.action.focus;
+
+export { DEFAULT_ICON_COLOR, ROLE_SVG_MAP };

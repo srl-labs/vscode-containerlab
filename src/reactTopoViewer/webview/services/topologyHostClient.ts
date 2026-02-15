@@ -127,7 +127,9 @@ function sendVsCodeRequest<T>(
     setTimeout(() => {
       if (pending.has(requestId)) {
         pending.delete(requestId);
-        reject(new Error(`${expectedType === "snapshot" ? "Snapshot" : "Command"} request timed out`));
+        reject(
+          new Error(`${expectedType === "snapshot" ? "Snapshot" : "Command"} request timed out`)
+        );
       }
     }, timeoutMs);
   });
@@ -149,7 +151,9 @@ export function setHostRevision(nextRevision: number): void {
   revision = nextRevision;
 }
 
-export async function requestSnapshot(options: { externalChange?: boolean } = {}): Promise<TopologySnapshot> {
+export async function requestSnapshot(
+  options: { externalChange?: boolean } = {}
+): Promise<TopologySnapshot> {
   if (isVsCode()) {
     return sendVsCodeRequest<TopologySnapshot>(
       { type: "topology-host:get-snapshot", protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION },

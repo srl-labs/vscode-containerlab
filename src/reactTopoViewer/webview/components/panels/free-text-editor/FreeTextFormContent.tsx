@@ -1,7 +1,4 @@
-/**
- * FreeTextFormContent - Sleek, modern form for text annotation editing
- * Supports markdown rendering in preview
- */
+// Text annotation editor form.
 import React, { useMemo } from "react";
 import {
   FormatAlignCenter as FormatAlignCenterIcon,
@@ -11,11 +8,20 @@ import {
   FormatItalic as FormatItalicIcon,
   FormatUnderlined as FormatUnderlinedIcon
 } from "@mui/icons-material";
-import { Box, Divider, IconButton as MuiIconButton, InputAdornment, MenuItem, Select, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  Divider,
+  IconButton as MuiIconButton,
+  InputAdornment,
+  MenuItem,
+  Select,
+  TextField,
+  Typography
+} from "@mui/material";
 
 import type { FreeTextAnnotation } from "../../../../shared/types/topology";
 import { renderMarkdown } from "../../../utils/markdownRenderer";
-import { Toggle, ColorSwatch, PreviewSurface, DeleteActionButton } from "../../ui/form";
+import { Toggle, ColorField, PreviewSurface, DeleteActionButton } from "../../ui/form";
 
 // Helper functions to avoid duplicate calculations
 const isBackgroundTransparent = (bg: string | undefined): boolean => bg === "transparent";
@@ -139,10 +145,10 @@ const FontControls: React.FC<{
       size="small"
       value={formData.fontFamily || "monospace"}
       onChange={(e) => updateField("fontFamily", e.target.value)}
-      sx={{ flex: 1, fontSize: "0.75rem" }}
+      sx={{ flex: 1 }}
     >
       {FONTS.map((f) => (
-        <MenuItem key={f} value={f} sx={{ fontSize: "0.75rem" }}>
+        <MenuItem key={f} value={f}>
           {f}
         </MenuItem>
       ))}
@@ -164,7 +170,7 @@ const FontControls: React.FC<{
           )
         }
       }}
-      sx={{ width: 80, "& .MuiInputBase-input": { fontSize: "0.75rem" } }}
+      sx={{ width: 80 }}
     />
   </Box>
 );
@@ -179,12 +185,12 @@ const StyleOptions: React.FC<{
 
   return (
     <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
-      <ColorSwatch
+      <ColorField
         label="Text"
         value={formData.fontColor || "#FFFFFF"}
         onChange={(v) => updateField("fontColor", v)}
       />
-      <ColorSwatch
+      <ColorField
         label="Fill"
         value={isTransparent ? "#000000" : formData.backgroundColor || "#000000"}
         onChange={(v) => updateField("backgroundColor", v)}
@@ -194,15 +200,10 @@ const StyleOptions: React.FC<{
         <Toggle
           active={isTransparent}
           onClick={() => updateField("backgroundColor", isTransparent ? "#000000" : "transparent")}
-          sx={{ fontSize: "0.75rem" }}
         >
           No Fill
         </Toggle>
-        <Toggle
-          active={isRounded}
-          onClick={() => updateField("roundedBackground", !isRounded)}
-          sx={{ fontSize: "0.75rem" }}
-        >
+        <Toggle active={isRounded} onClick={() => updateField("roundedBackground", !isRounded)}>
           Rounded
         </Toggle>
       </Box>
@@ -216,7 +217,7 @@ const StyleOptions: React.FC<{
           value={formData.rotation || 0}
           onChange={(e) => updateField("rotation", parseInt(e.target.value) || 0)}
           slotProps={{ htmlInput: { min: -360, max: 360, style: { textAlign: "center" } } }}
-          sx={{ width: 64, "& .MuiInputBase-input": { fontSize: "0.75rem", py: 0.75, px: 1 } }}
+          sx={{ width: 64, "& .MuiInputBase-input": { py: 0.75, px: 1 } }}
         />
       </Box>
     </Box>
@@ -246,10 +247,7 @@ function computePreviewStyle(formData: FreeTextAnnotation): React.CSSProperties 
 
 // Preview header component
 const PreviewHeader: React.FC = () => (
-  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-    <Typography variant="caption" color="text.secondary">
-      Preview
-    </Typography>
+  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
     <Typography variant="caption" color="text.secondary">
       Markdown supported
     </Typography>
@@ -263,12 +261,22 @@ const Preview: React.FC<{ formData: FreeTextAnnotation }> = ({ formData }) => {
   const style = computePreviewStyle(formData);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
       <PreviewHeader />
       <PreviewSurface>
-        <Box className="free-text-markdown" sx={{ position: "relative", zIndex: 10, transition: "all 200ms", ...style }}>
+        <Box
+          className="free-text-markdown"
+          sx={{
+            position: "relative",
+            zIndex: 10,
+            transition: (theme) => theme.transitions.create("all"),
+            ...style
+          }}
+        >
           {isEmpty ? (
-            <Box component="span" sx={{ opacity: 0.5, fontStyle: "italic" }}>Start typing to see preview...</Box>
+            <Box component="span" sx={{ opacity: 0.5, fontStyle: "italic" }}>
+              Start typing to see preview...
+            </Box>
           ) : (
             <Box dangerouslySetInnerHTML={{ __html: renderedHtml }} />
           )}
@@ -285,23 +293,70 @@ export const FreeTextFormContent: React.FC<Props> = ({
   isNew,
   onDelete
 }) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-    <TextField
-      multiline
-      minRows={5}
-      fullWidth
-      value={formData.text}
-      onChange={(e) => updateField("text", e.target.value)}
-      placeholder="Enter your text... (Markdown and fenced code blocks supported)"
-      autoFocus
-      sx={{ "& textarea": { resize: "vertical" } }}
-    />
-    <Toolbar formData={formData} updateField={updateField} />
-    <FontControls formData={formData} updateField={updateField} />
-    <StyleOptions formData={formData} updateField={updateField} />
-    <Preview formData={formData} />
+  <Box sx={{ display: "flex", flexDirection: "column" }}>
+    {/* Text */}
+    <Box sx={{ px: 2, py: 1 }}>
+      <Typography variant="subtitle2">Text</Typography>
+    </Box>
+    <Divider />
+    <Box sx={{ p: 2 }}>
+      <TextField
+        multiline
+        minRows={5}
+        fullWidth
+        value={formData.text}
+        onChange={(e) => updateField("text", e.target.value)}
+        placeholder="Enter your text... (Markdown and fenced code blocks supported)"
+        autoFocus
+        sx={{ "& textarea": { resize: "vertical" } }}
+      />
+    </Box>
+
+    {/* Format */}
+    <Divider />
+    <Box sx={{ px: 2, py: 1 }}>
+      <Typography variant="subtitle2">Format</Typography>
+    </Box>
+    <Divider />
+    <Box sx={{ p: 2 }}>
+      <Toolbar formData={formData} updateField={updateField} />
+    </Box>
+
+    {/* Font */}
+    <Divider />
+    <Box sx={{ px: 2, py: 1 }}>
+      <Typography variant="subtitle2">Font</Typography>
+    </Box>
+    <Divider />
+    <Box sx={{ p: 2 }}>
+      <FontControls formData={formData} updateField={updateField} />
+    </Box>
+
+    {/* Style */}
+    <Divider />
+    <Box sx={{ px: 2, py: 1 }}>
+      <Typography variant="subtitle2">Style</Typography>
+    </Box>
+    <Divider />
+    <Box sx={{ p: 2 }}>
+      <StyleOptions formData={formData} updateField={updateField} />
+    </Box>
+
+    {/* Preview */}
+    <Divider />
+    <Box sx={{ px: 2, py: 1 }}>
+      <Typography variant="subtitle2">Preview</Typography>
+    </Box>
+    <Divider />
+    <Box sx={{ p: 2 }}>
+      <Preview formData={formData} />
+    </Box>
+
+    {/* Delete button */}
     {!isNew && onDelete && (
-      <DeleteActionButton onClick={onDelete} />
+      <Box sx={{ p: 2 }}>
+        <DeleteActionButton onClick={onDelete} />
+      </Box>
     )}
   </Box>
 );

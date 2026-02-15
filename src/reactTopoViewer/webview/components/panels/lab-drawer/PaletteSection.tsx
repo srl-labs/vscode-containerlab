@@ -1,7 +1,4 @@
-/**
- * PaletteSection - Node and annotation palette for the Lab Drawer
- * Uses MUI components with drag-and-drop functionality
- */
+// Node and annotation palette for the context panel.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AccountTree as AccountTreeIcon,
@@ -9,9 +6,9 @@ import {
   Cable as CableIcon,
   CircleOutlined as CircleOutlinedIcon,
   Clear as ClearIcon,
-  Cloud as CloudIcon,
   CropSquare as CropSquareIcon,
   Delete as DeleteIcon,
+  Save as SaveIcon,
   DeviceHub as DeviceHubIcon,
   Dns as DnsIcon,
   Edit as EditIcon,
@@ -23,10 +20,19 @@ import {
   SelectAll as SelectAllIcon,
   Star as StarIcon,
   StarOutline as StarOutlineIcon,
-  TextFields as TextFieldsIcon,
-  ViewInAr as ViewInArIcon
+  TextFields as TextFieldsIcon
 } from "@mui/icons-material";
-import { Box, Button, Card, IconButton, InputAdornment, TextField, Tooltip, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Card,
+  Divider,
+  IconButton,
+  InputAdornment,
+  TextField,
+  Tooltip,
+  Typography
+} from "@mui/material";
 
 import type { CustomNodeTemplate } from "../../../../shared/types/editors";
 import { ROLE_SVG_MAP, DEFAULT_ICON_COLOR } from "../../../../shared/types/graph";
@@ -34,19 +40,28 @@ import { generateEncodedSVG, type NodeType } from "../../../icons/SvgGenerator";
 import { useCustomNodes, useTopoViewerStore } from "../../../stores/topoViewerStore";
 import type { TabDefinition } from "../../ui/editor";
 import { TabNavigation } from "../../ui/editor/TabNavigation";
+import { IconPreview } from "../../ui/form";
 import { MonacoCodeEditor } from "../../monaco/MonacoCodeEditor";
+import { executeTopologyCommand } from "../../../services/topologyHostCommands";
 import clabSchema from "../../../../../../schema/clab.schema.json";
 
 interface PaletteSectionProps {
   mode?: "edit" | "view";
   isLocked?: boolean;
-  requestedTab?: { tab: number };
+  requestedTab?: { tabId: string };
   onEditCustomNode?: (nodeName: string) => void;
   onDeleteCustomNode?: (nodeName: string) => void;
   onSetDefaultCustomNode?: (nodeName: string) => void;
+  editTabContent?: React.ReactNode;
+  showEditTab?: boolean;
+  editTabTitle?: string;
+  onEditDelete?: () => void;
+  onEditTabLeave?: () => void;
+  infoTabContent?: React.ReactNode;
+  showInfoTab?: boolean;
+  infoTabTitle?: string;
 }
 
-/** Network type definitions for the palette */
 interface NetworkTypeDefinition {
   readonly type: string;
   readonly label: string;
@@ -64,14 +79,12 @@ const NETWORK_TYPE_DEFINITIONS: readonly NetworkTypeDefinition[] = [
   { type: "ovs-bridge", label: "OVS Bridge", icon: <HubIcon fontSize="small" /> }
 ];
 
-/** Map role to SVG node type */
 function getRoleSvgType(role: string): NodeType {
   const mapped = ROLE_SVG_MAP[role];
   if (mapped) return mapped as NodeType;
   return "pe";
 }
 
-/** Get the SVG icon URL for a template */
 function getTemplateIconUrl(template: CustomNodeTemplate): string {
   const role = template.icon || "pe";
   const color = template.iconColor || DEFAULT_ICON_COLOR;
@@ -79,12 +92,10 @@ function getTemplateIconUrl(template: CustomNodeTemplate): string {
   return generateEncodedSVG(svgType, color);
 }
 
-const PALETTE_ICON_SIZE = 28;
 const REACTFLOW_NODE_MIME_TYPE = "application/reactflow-node";
 const ACTION_HOVER_BG = "action.hover";
 const TEXT_SECONDARY = "text.secondary";
 
-/** Full-size Monaco source editor tab. */
 const SourceEditorTab: React.FC<{
   readOnly: boolean;
   error: string | null;
@@ -115,7 +126,12 @@ const PaletteDraggableCard: React.FC<{
   onDragStart: (event: React.DragEvent) => void;
   children: React.ReactNode;
 }> = ({ onDragStart, children }) => (
-  <Tooltip title="Drag to canvas" placement="top" enterDelay={500} slotProps={{ popper: { modifiers: [{ name: "offset", options: { offset: [-20, -20] } }] } }}>
+  <Tooltip
+    title="Drag to canvas"
+    placement="top"
+    enterDelay={500}
+    slotProps={{ popper: { modifiers: [{ name: "offset", options: { offset: [-20, -20] } }] } }}
+  >
     <Card
       variant="outlined"
       draggable
@@ -135,38 +151,21 @@ const PaletteDraggableCard: React.FC<{
   </Tooltip>
 );
 
-const PaletteSectionTitle: React.FC<{ icon: React.ReactNode; title: string; mt?: number }> = ({
-  icon,
-  title,
-  mt
-}) => (
-  <Typography
-    variant="subtitle2"
-    sx={{
-      mb: 1,
-      ...(typeof mt === "number" ? { mt } : null),
-      display: "flex",
-      alignItems: "center",
-      gap: 1
-    }}
-  >
-    {icon}
-    {title}
-  </Typography>
+const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
+  <>
+    <Divider />
+    <Box sx={{ px: 2, py: 1 }}>
+      <Typography variant="subtitle2">{title}</Typography>
+    </Box>
+    <Divider />
+  </>
 );
-
-const PaletteList: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>{children}</Box>
-);
-
-
 
 type AnnotationPayload = {
   annotationType: "text" | "shape" | "group";
   shapeType?: string;
 };
 
-/** Draggable node item component */
 interface DraggableNodeProps {
   template: CustomNodeTemplate;
   isDefault?: boolean;
@@ -200,20 +199,15 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
 
   return (
     <PaletteDraggableCard onDragStart={onDragStart}>
-      <Box
-        sx={{
-          width: PALETTE_ICON_SIZE,
-          height: PALETTE_ICON_SIZE,
-          backgroundImage: `url(${iconUrl})`,
-          backgroundSize: "contain",
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "center",
-          borderRadius: template.iconCornerRadius ? `${template.iconCornerRadius}px` : 0,
-          flexShrink: 0
-        }}
-      />
+      <Box sx={{ flexShrink: 0 }}>
+        <IconPreview src={iconUrl} size={28} cornerRadius={template.iconCornerRadius} />
+      </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography variant="body2" noWrap fontWeight={500}>
+        <Typography
+          variant="body2"
+          noWrap
+          sx={{ fontWeight: (theme) => theme.typography.fontWeightMedium }}
+        >
           {template.name}
         </Typography>
         <Typography variant="caption" color={TEXT_SECONDARY} noWrap>
@@ -261,7 +255,6 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
   );
 };
 
-/** Draggable network item component */
 const DraggableNetwork: React.FC<{ network: NetworkTypeDefinition }> = ({ network }) => {
   const onDragStart = useCallback(
     (event: React.DragEvent) => {
@@ -281,7 +274,11 @@ const DraggableNetwork: React.FC<{ network: NetworkTypeDefinition }> = ({ networ
     <PaletteDraggableCard onDragStart={onDragStart}>
       <Box sx={{ color: TEXT_SECONDARY }}>{network.icon}</Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography variant="body2" noWrap fontWeight={500}>
+        <Typography
+          variant="body2"
+          noWrap
+          sx={{ fontWeight: (theme) => theme.typography.fontWeightMedium }}
+        >
           {network.label}
         </Typography>
         <Typography variant="caption" color={TEXT_SECONDARY} noWrap>
@@ -292,7 +289,6 @@ const DraggableNetwork: React.FC<{ network: NetworkTypeDefinition }> = ({ networ
   );
 };
 
-/** Draggable annotation item */
 interface DraggableAnnotationProps {
   label: string;
   kind: string;
@@ -321,7 +317,11 @@ const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({
     <PaletteDraggableCard onDragStart={onDragStart}>
       <Box sx={{ color: TEXT_SECONDARY }}>{icon}</Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography variant="body2" noWrap fontWeight={500}>
+        <Typography
+          variant="body2"
+          noWrap
+          sx={{ fontWeight: (theme) => theme.typography.fontWeightMedium }}
+        >
           {label}
         </Typography>
         <Typography variant="caption" color={TEXT_SECONDARY} noWrap>
@@ -332,15 +332,15 @@ const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({
   );
 };
 
-const PALETTE_TABS: TabDefinition[] = [
+export const PALETTE_TABS: TabDefinition[] = [
+  { id: "info", label: "Info" },
+  { id: "edit", label: "Edit" },
   { id: "nodes", label: "Nodes" },
   { id: "annotations", label: "Annotations" },
-  { id: "yml", label: "YML" },
+  { id: "yaml", label: "YAML" },
   { id: "json", label: "JSON" }
 ];
 
-// This is a UI composition component with lots of conditional rendering and filtering.
-// Breaking it up further doesn't materially improve readability, but it does increase file churn.
 /* eslint-disable complexity */
 export const PaletteSection: React.FC<PaletteSectionProps> = ({
   mode = "edit",
@@ -348,7 +348,15 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   requestedTab,
   onEditCustomNode,
   onDeleteCustomNode,
-  onSetDefaultCustomNode
+  onSetDefaultCustomNode,
+  editTabContent,
+  showEditTab = false,
+  editTabTitle,
+  onEditDelete,
+  onEditTabLeave,
+  infoTabContent,
+  showInfoTab = false,
+  infoTabTitle
 }) => {
   const customNodes = useCustomNodes();
   const defaultNode = useTopoViewerStore((state) => state.defaultNode);
@@ -358,19 +366,27 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   const annotationsContent = useTopoViewerStore((state) => state.annotationsContent);
   const [filter, setFilter] = useState("");
   const isViewMode = mode === "view";
-  const [activeTab, setActiveTab] = useState(() => {
-    try {
-      const stored = window.sessionStorage.getItem("paletteActiveTab");
-      if (stored && PALETTE_TABS.some((t) => t.id === stored)) return stored;
-    } catch { /* ignore */ }
-    return "nodes";
-  });
 
-  // Allow parent to steer the active tab (e.g. split-view button → YML tab).
-  // Uses an object reference so each request triggers the effect even for the same tab.
+  const visibleTabs = useMemo(
+    () =>
+      PALETTE_TABS.filter((t) => {
+        if (t.id === "info" && !showInfoTab) return false;
+        if (t.id === "edit" && !showEditTab) return false;
+        return true;
+      }),
+    [showInfoTab, showEditTab]
+  );
+
+  const [userTab, setUserTab] = useState("nodes");
+
   useEffect(() => {
-    if (requestedTab) setActiveTab(PALETTE_TABS[requestedTab.tab]?.id ?? "nodes");
-  }, [requestedTab]);
+    if (requestedTab?.tabId && visibleTabs.some((t) => t.id === requestedTab.tabId)) {
+      setUserTab(requestedTab.tabId);
+    }
+  }, [requestedTab, visibleTabs]);
+
+  // Force edit/info tab when active, fall back to user's manual selection otherwise
+  const activeTab = showEditTab ? "edit" : showInfoTab ? "info" : userTab;
 
   const [yamlError, setYamlError] = useState<string | null>(null);
   const [annotationsError, setAnnotationsError] = useState<string | null>(null);
@@ -380,7 +396,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   const [annotationsDirty, setAnnotationsDirty] = useState(false);
   const isSourceReadOnly = isLocked || isViewMode;
 
-  // Keep drafts in sync with host updates as long as the user hasn't modified the draft.
+  // Sync drafts with host unless user has local edits
   useEffect(() => {
     if (!yamlDirty) {
       setYamlDraft(yamlContent);
@@ -393,7 +409,6 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
     }
   }, [annotationsContent, annotationsDirty]);
 
-  // Reset dirty state when files change (loading a new topology in dev, or switching documents).
   useEffect(() => {
     setYamlDirty(false);
     setYamlError(null);
@@ -427,167 +442,247 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
     onEditCustomNode?.("__new__");
   }, [onEditCustomNode]);
 
+  const drawerTitle = useMemo(() => {
+    if (activeTab === "info") return infoTabTitle || "Properties";
+    if (activeTab === "edit") return editTabTitle || "Editor";
+    if (activeTab === "nodes" || activeTab === "annotations") return "Palette";
+    if (activeTab === "yaml") return yamlFileName || "Topology";
+    if (activeTab === "json") return annotationsFileName || "Annotations";
+    return "";
+  }, [activeTab, yamlFileName, annotationsFileName, editTabTitle, infoTabTitle]);
+
+  const handleSaveYaml = useCallback(async () => {
+    try {
+      await executeTopologyCommand({ command: "setYamlContent", payload: { content: yamlDraft } });
+      setYamlDirty(false);
+      setYamlError(null);
+    } catch (err) {
+      setYamlError(err instanceof Error ? err.message : String(err));
+    }
+  }, [yamlDraft]);
+
+  const handleSaveAnnotations = useCallback(async () => {
+    try {
+      await executeTopologyCommand({
+        command: "setAnnotationsContent",
+        payload: { content: annotationsDraft }
+      });
+      setAnnotationsDirty(false);
+      setAnnotationsError(null);
+    } catch (err) {
+      setAnnotationsError(err instanceof Error ? err.message : String(err));
+    }
+  }, [annotationsDraft]);
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          height: 40,
+          flexShrink: 0
+        }}
+      >
+        <Typography
+          variant="subtitle1"
+          sx={{ fontWeight: (theme) => theme.typography.fontWeightBold }}
+        >
+          {drawerTitle}
+        </Typography>
+        {activeTab === "edit" && onEditDelete && (
+          <IconButton size="small" onClick={onEditDelete} color="error" title="Delete">
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        )}
+        {activeTab === "yaml" && !isSourceReadOnly && (
+          <IconButton size="small" onClick={handleSaveYaml} disabled={!yamlDirty} title="Save">
+            <SaveIcon fontSize="small" />
+          </IconButton>
+        )}
+        {activeTab === "json" && !isSourceReadOnly && (
+          <IconButton
+            size="small"
+            onClick={handleSaveAnnotations}
+            disabled={!annotationsDirty}
+            title="Save"
+          >
+            <SaveIcon fontSize="small" />
+          </IconButton>
+        )}
+      </Box>
+      <Divider />
       <TabNavigation
-        tabs={PALETTE_TABS}
+        tabs={visibleTabs}
         activeTab={activeTab}
         onTabChange={(id) => {
-          setActiveTab(id);
-          try { window.sessionStorage.setItem("paletteActiveTab", id); } catch { /* ignore */ }
+          if (activeTab === "edit" && id !== "edit") {
+            onEditTabLeave?.();
+          }
+          setUserTab(id);
         }}
       />
       {(activeTab === "nodes" || activeTab === "annotations") && (
-      <Box sx={{ p: 2, flex: 1, overflow: "auto", minHeight: 0 }}>
-        {/* Nodes Tab */}
-        {activeTab === "nodes" && (
-          <Box sx={{ ...((isLocked || isViewMode) ? { pointerEvents: "none", opacity: 0.6 } : undefined) }}>
-            {/* Search */}
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="Search nodes..."
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon fontSize="small" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: filter ? (
-                    <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => setFilter("")}>
-                        <ClearIcon fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  ) : undefined
-                }
+        <Box sx={{ flex: 1, overflow: "auto", minHeight: 0 }}>
+          {activeTab === "nodes" && (
+            <Box
+              sx={{
+                ...(isLocked || isViewMode ? { pointerEvents: "none", opacity: 0.6 } : undefined)
               }}
-              sx={{ mb: 2 }}
-            />
-
-            {/* Node Templates */}
-            <PaletteSectionTitle icon={<ViewInArIcon fontSize="small" />} title="Node Templates" />
-            <PaletteList>
-              {filteredNodes.length === 0 && (
-                <Typography variant="body2" color={TEXT_SECONDARY} sx={{ py: 2 }}>
-                  {filter ? "No matching templates" : "No node templates defined"}
-                </Typography>
-              )}
-              {filteredNodes.map((template) => (
-                <DraggableNode
-                  key={template.name}
-                  template={template}
-                  isDefault={template.name === defaultNode || template.setDefault}
-                  onEdit={onEditCustomNode}
-                  onDelete={onDeleteCustomNode}
-                  onSetDefault={onSetDefaultCustomNode}
+            >
+              <Box sx={{ p: 2 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Search nodes..."
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                      endAdornment: filter ? (
+                        <InputAdornment position="end">
+                          <IconButton size="small" onClick={() => setFilter("")}>
+                            <ClearIcon fontSize="small" />
+                          </IconButton>
+                        </InputAdornment>
+                      ) : undefined
+                    }
+                  }}
                 />
-              ))}
-            </PaletteList>
-            {!filter && (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={handleAddNewNode}
-                sx={{ mt: 1, mb: 2 }}
-              >
-                New custom node
-              </Button>
-            )}
+              </Box>
 
-            {/* Networks */}
-            <PaletteSectionTitle icon={<CloudIcon fontSize="small" />} title="Networks" mt={2} />
-            <PaletteList>
-              {filteredNetworks.length === 0 ? (
-                <Typography variant="body2" color={TEXT_SECONDARY} sx={{ py: 2 }}>
-                  No matching networks
-                </Typography>
-              ) : (
-                filteredNetworks.map((network) => (
-                  <DraggableNetwork key={network.type} network={network} />
-                ))
-              )}
-            </PaletteList>
+              <SectionHeader title="Node Templates" />
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, p: 2 }}>
+                {filteredNodes.length === 0 && (
+                  <Typography variant="body2" color={TEXT_SECONDARY}>
+                    {filter ? "No matching templates" : "No node templates defined"}
+                  </Typography>
+                )}
+                {filteredNodes.map((template) => (
+                  <DraggableNode
+                    key={template.name}
+                    template={template}
+                    isDefault={template.name === defaultNode || template.setDefault}
+                    onEdit={onEditCustomNode}
+                    onDelete={onDeleteCustomNode}
+                    onSetDefault={onSetDefaultCustomNode}
+                  />
+                ))}
+                {!filter && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<AddIcon />}
+                    onClick={handleAddNewNode}
+                  >
+                    New custom node
+                  </Button>
+                )}
+              </Box>
 
-          </Box>
-        )}
+              <SectionHeader title="Networks" />
+              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, p: 2 }}>
+                {filteredNetworks.length === 0 ? (
+                  <Typography variant="body2" color={TEXT_SECONDARY}>
+                    No matching networks
+                  </Typography>
+                ) : (
+                  filteredNetworks.map((network) => (
+                    <DraggableNetwork key={network.type} network={network} />
+                  ))
+                )}
+              </Box>
+            </Box>
+          )}
 
-        {/* Add annotations (palette) Tab */}
-        {activeTab === "annotations" && (
-          <Box sx={{ ...(isLocked ? { pointerEvents: "none" } : undefined) }}>
-            <PaletteSectionTitle icon={<TextFieldsIcon fontSize="small" />} title="Text" />
-            <PaletteList>
-              <DraggableAnnotation
-                label="Text"
-                kind="annotation"
-                icon={<TextFieldsIcon fontSize="small" />}
-                payload={{ annotationType: "text" }}
-              />
-            </PaletteList>
+          {activeTab === "annotations" && (
+            <Box sx={{ ...(isLocked ? { pointerEvents: "none" } : undefined) }}>
+              <SectionHeader title="Text" />
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, p: 2 }}>
+                <DraggableAnnotation
+                  label="Text"
+                  kind="annotation"
+                  icon={<TextFieldsIcon fontSize="small" />}
+                  payload={{ annotationType: "text" }}
+                />
+              </Box>
 
-            <PaletteSectionTitle icon={<CropSquareIcon fontSize="small" />} title="Shapes" mt={2} />
-            <PaletteList>
-              <DraggableAnnotation
-                label="Rectangle"
-                kind="shape"
-                icon={<CropSquareIcon fontSize="small" />}
-                payload={{ annotationType: "shape", shapeType: "rectangle" }}
-              />
-              <DraggableAnnotation
-                label="Circle"
-                kind="shape"
-                icon={<CircleOutlinedIcon fontSize="small" />}
-                payload={{ annotationType: "shape", shapeType: "circle" }}
-              />
-              <DraggableAnnotation
-                label="Line"
-                kind="shape"
-                icon={<RemoveIcon fontSize="small" />}
-                payload={{ annotationType: "shape", shapeType: "line" }}
-              />
-            </PaletteList>
+              <SectionHeader title="Shapes" />
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, p: 2 }}>
+                <DraggableAnnotation
+                  label="Rectangle"
+                  kind="shape"
+                  icon={<CropSquareIcon fontSize="small" />}
+                  payload={{ annotationType: "shape", shapeType: "rectangle" }}
+                />
+                <DraggableAnnotation
+                  label="Circle"
+                  kind="shape"
+                  icon={<CircleOutlinedIcon fontSize="small" />}
+                  payload={{ annotationType: "shape", shapeType: "circle" }}
+                />
+                <DraggableAnnotation
+                  label="Line"
+                  kind="shape"
+                  icon={<RemoveIcon fontSize="small" />}
+                  payload={{ annotationType: "shape", shapeType: "line" }}
+                />
+              </Box>
 
-            <PaletteSectionTitle icon={<SelectAllIcon fontSize="small" />} title="Groups" mt={2} />
-            <PaletteList>
-              <DraggableAnnotation
-                label="Group"
-                kind="annotation"
-                icon={<SelectAllIcon fontSize="small" />}
-                payload={{ annotationType: "group" }}
-              />
-            </PaletteList>
-
-          </Box>
-        )}
-
-      </Box>
+              <SectionHeader title="Groups" />
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, p: 2 }}>
+                <DraggableAnnotation
+                  label="Group"
+                  kind="annotation"
+                  icon={<SelectAllIcon fontSize="small" />}
+                  payload={{ annotationType: "group" }}
+                />
+              </Box>
+            </Box>
+          )}
+        </Box>
       )}
 
-      {/* YML Tab — full-size Monaco, no padding */}
-      {activeTab === "yml" && (
+      {activeTab === "yaml" && (
         <SourceEditorTab
           readOnly={isSourceReadOnly}
           error={yamlError}
           language="yaml"
           value={yamlDraft}
           jsonSchema={clabSchema}
-          onChange={(next) => { setYamlDraft(next); setYamlDirty(true); }}
+          onChange={(next) => {
+            setYamlDraft(next);
+            setYamlDirty(true);
+          }}
         />
       )}
 
-      {/* JSON Tab — full-size Monaco, no padding */}
       {activeTab === "json" && (
         <SourceEditorTab
           readOnly={isSourceReadOnly}
           error={annotationsError}
           language="json"
           value={annotationsDraft}
-          onChange={(next) => { setAnnotationsDraft(next); setAnnotationsDirty(true); }}
+          onChange={(next) => {
+            setAnnotationsDraft(next);
+            setAnnotationsDirty(true);
+          }}
         />
+      )}
+
+      {activeTab === "info" && (
+        <Box sx={{ flex: 1, overflow: "auto", minHeight: 0 }}>{infoTabContent}</Box>
+      )}
+
+      {activeTab === "edit" && (
+        <Box sx={{ flex: 1, overflow: "auto", minHeight: 0 }}>{editTabContent}</Box>
       )}
     </Box>
   );

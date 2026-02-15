@@ -228,7 +228,6 @@ export default [
     }
   },
 
-
   /* ---------- reactTopoViewer: max-lines limit ---------- */
   {
     files: ["src/reactTopoViewer/**/*.ts", "src/reactTopoViewer/**/*.tsx"],

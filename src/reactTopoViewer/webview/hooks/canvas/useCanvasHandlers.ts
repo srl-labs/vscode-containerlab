@@ -148,21 +148,17 @@ function getLineEndpoints(node: Node): { start: XYPosition; end: XYPosition } | 
   if (!isLineShapeNode(node)) return null;
   const data = node.data as FreeShapeNodeData;
   const start = data.startPosition ?? node.position;
-  const end =
-    data.endPosition ?? {
-      x: start.x + DEFAULT_LINE_LENGTH,
-      y: start.y
-    };
+  const end = data.endPosition ?? {
+    x: start.x + DEFAULT_LINE_LENGTH,
+    y: start.y
+  };
   return {
     start: { x: start.x, y: start.y },
     end: { x: end.x, y: end.y }
   };
 }
 
-function recordLineDragSnapshot(
-  snapshots: Map<string, LineDragSnapshot>,
-  node: Node
-): void {
+function recordLineDragSnapshot(snapshots: Map<string, LineDragSnapshot>, node: Node): void {
   const endpoints = getLineEndpoints(node);
   if (!endpoints) return;
   snapshots.set(node.id, {
@@ -511,10 +507,8 @@ function useNodeDragHandlers(
 
       // Normal (non-geo) mode: update preset position
       const isGroupNode = node.type === GROUP_NODE_TYPE;
-      const shouldSnap =
-        node.type !== FREE_SHAPE_NODE_TYPE && node.type !== FREE_TEXT_NODE_TYPE;
-      const finalPosition =
-        isGroupNode || !shouldSnap ? node.position : snapToGrid(node.position);
+      const shouldSnap = node.type !== FREE_SHAPE_NODE_TYPE && node.type !== FREE_TEXT_NODE_TYPE;
+      const finalPosition = isGroupNode || !shouldSnap ? node.position : snapToGrid(node.position);
       const changes: NodeChange[] = [
         { type: "position", id: node.id, position: finalPosition, dragging: false }
       ];
@@ -659,13 +653,10 @@ function useNodeClickHandlers(
     [selectNode, selectEdge, editNode, editNetwork, closeContextMenu, modeRef]
   );
 
-  const onNodeDoubleClick: NodeMouseHandler = useCallback(
-    (_event, _node) => {
-      // Node editing in edit mode is handled by single click.
-      // Annotation double-click (text/shape/group) is handled by the annotation wrapper.
-    },
-    []
-  );
+  const onNodeDoubleClick: NodeMouseHandler = useCallback((_event, _node) => {
+    // Node editing in edit mode is handled by single click.
+    // Annotation double-click (text/shape/group) is handled by the annotation wrapper.
+  }, []);
 
   return { onNodeClick, onNodeDoubleClick };
 }
@@ -693,12 +684,9 @@ function useEdgeClickHandlers(
     [selectNode, selectEdge, editEdge, closeContextMenu, modeRef]
   );
 
-  const onEdgeDoubleClick: EdgeMouseHandler = useCallback(
-    (_event, _edge) => {
-      // Edge editing in edit mode is handled by single click.
-    },
-    []
-  );
+  const onEdgeDoubleClick: EdgeMouseHandler = useCallback((_event, _edge) => {
+    // Edge editing in edit mode is handled by single click.
+  }, []);
 
   return { onEdgeClick, onEdgeDoubleClick };
 }

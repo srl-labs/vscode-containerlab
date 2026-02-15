@@ -1,6 +1,4 @@
-/**
- * Advanced Tab for Node Editor
- */
+// Advanced tab for node editor.
 import React from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -58,12 +56,12 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
       {/* Resource Limits */}
-      <Box sx={{ p: 2 }}>
-        <Typography variant="panelHeading">Resource Limits</Typography>
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Resource Limits</Typography>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
           <InputField
             id="node-cpu"
             label="CPU Limit"
@@ -100,9 +98,19 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Capabilities */}
       <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-        <Typography variant="panelHeading">Capabilities</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddCapability} sx={{ py: 0 }}>ADD</Button>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">Capabilities</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddCapability} sx={{ py: 0 }}>
+          ADD
+        </Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
@@ -116,9 +124,19 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Sysctls */}
       <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-        <Typography variant="panelHeading">Sysctls</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddSysctl} sx={{ py: 0 }}>ADD</Button>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">Sysctls</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddSysctl} sx={{ py: 0 }}>
+          ADD
+        </Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
@@ -133,9 +151,19 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Devices */}
       <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-        <Typography variant="panelHeading">Devices</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddDevice} sx={{ py: 0 }}>ADD</Button>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">Devices</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddDevice} sx={{ py: 0 }}>
+          ADD
+        </Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
@@ -149,11 +177,11 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* TLS Certificate */}
       <Divider />
-      <Box sx={{ p: 2 }}>
-        <Typography variant="panelHeading">TLS Certificate</Typography>
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">TLS Certificate</Typography>
       </Box>
       <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         <CheckboxField
           id="node-cert-issue"
           label="Auto-generate TLS certificate"
@@ -184,9 +212,19 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
       {data.certIssue && (
         <>
           <Divider />
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-            <Typography variant="panelHeading">SANs (Subject Alternative Names)</Typography>
-            <Button size="small" startIcon={<AddIcon />} onClick={handleAddSan} sx={{ py: 0 }}>ADD</Button>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              px: 2,
+              py: 1
+            }}
+          >
+            <Typography variant="subtitle2">SANs (Subject Alternative Names)</Typography>
+            <Button size="small" startIcon={<AddIcon />} onClick={handleAddSan} sx={{ py: 0 }}>
+              ADD
+            </Button>
           </Box>
           <Divider />
           <Box sx={{ p: 2 }}>
@@ -202,12 +240,12 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Health Check */}
       <Divider />
-      <Box sx={{ p: 2 }}>
-        <Typography variant="panelHeading">Health Check</Typography>
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Health Check</Typography>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
           <InputField
             id="node-healthcheck-test"
             label="Test Command"
@@ -215,7 +253,7 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
             onChange={(v) => updateHc({ test: v })}
             placeholder="e.g., CMD-SHELL cat /etc/os-release"
           />
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
             <InputField
               id="node-healthcheck-start-period"
               label="Start Period (s)"
@@ -258,11 +296,11 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Container Runtime */}
       <Divider />
-      <Box sx={{ p: 2 }}>
-        <Typography variant="panelHeading">Container Runtime</Typography>
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Container Runtime</Typography>
       </Box>
       <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         <SelectField
           id="node-image-pull-policy"
           label="Image Pull Policy"

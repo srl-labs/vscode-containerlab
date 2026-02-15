@@ -1,14 +1,10 @@
-/**
- * NodeEditorView - Node editor content for the ContextPanel
- * Reuses useNodeEditorForm logic, renders tab content directly.
- */
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import Box from "@mui/material/Box";
+// Node editor content for the ContextPanel.
+import React, { useMemo } from "react";
 
-import type { TabDefinition } from "../../../ui/editor";
-import { TabNavigation } from "../../../ui/editor/TabNavigation";
+import { EditorPanel } from "../../../ui/editor/EditorPanel";
+import type { TabConfig } from "../../../ui/editor/EditorPanel";
 import { useApplySaveHandlers, useFooterControlsRef } from "../../../../hooks/ui";
-import { FIELDSET_RESET_STYLE } from "../ContextPanelScrollArea";
+import { useNodeEditorForm, hasFieldChanged } from "../../../../hooks/editor/useNodeEditorForm";
 import type { NodeEditorData, NodeEditorTabId } from "../../node-editor/types";
 import { BasicTab } from "../../node-editor/BasicTab";
 import { ComponentsTab } from "../../node-editor/ComponentsTab";
@@ -31,112 +27,30 @@ export interface NodeEditorViewProps {
 export interface NodeEditorFooterRef {
   handleApply: () => void;
   handleSave: () => void;
+  handleDiscard: () => void;
   hasChanges: boolean;
 }
 
-const BASE_TABS: TabDefinition[] = [
-  { id: "basic", label: "Basic" },
-  { id: "config", label: "Configuration" },
-  { id: "runtime", label: "Runtime" },
-  { id: "network", label: "Network" },
-  { id: "advanced", label: "Advanced" }
+const BASE_TABS: TabConfig[] = [
+  { id: "basic", label: "Basic", component: BasicTab },
+  { id: "config", label: "Configuration", component: ConfigTab },
+  { id: "runtime", label: "Runtime", component: RuntimeTab },
+  { id: "network", label: "Network", component: NetworkTab },
+  { id: "advanced", label: "Advanced", component: AdvancedTab }
 ];
 
-const COMPONENTS_TAB: TabDefinition = { id: "components", label: "Components" };
+const COMPONENTS_TAB: TabConfig = {
+  id: "components",
+  label: "Components",
+  component: ComponentsTab
+};
 
-function getTabsForNode(kind: string | undefined): TabDefinition[] {
+function getTabsForNode(kind: string | undefined): TabConfig[] {
   if (kind === "nokia_srsim") {
     return [BASE_TABS[0], COMPONENTS_TAB, ...BASE_TABS.slice(1)];
   }
   return BASE_TABS;
 }
-
-const YAML_TO_EDITOR_MAP: Record<string, keyof NodeEditorData> = {
-  "startup-config": "startupConfig",
-  "enforce-startup-config": "enforceStartupConfig",
-  "suppress-startup-config": "suppressStartupConfig",
-  "env-files": "envFiles",
-  "restart-policy": "restartPolicy",
-  "auto-remove": "autoRemove",
-  "startup-delay": "startupDelay",
-  "mgmt-ipv4": "mgmtIpv4",
-  "mgmt-ipv6": "mgmtIpv6",
-  "network-mode": "networkMode",
-  "cpu-set": "cpuSet",
-  "shm-size": "shmSize",
-  "cap-add": "capAdd",
-  "image-pull-policy": "imagePullPolicy"
-};
-
-function hasFieldChanged(yamlKey: string, formData: NodeEditorData, initialData: NodeEditorData): boolean {
-  const editorKey = YAML_TO_EDITOR_MAP[yamlKey] || yamlKey;
-  const currentVal = formData[editorKey as keyof NodeEditorData];
-  const initialVal = initialData[editorKey as keyof NodeEditorData];
-  return JSON.stringify(currentVal) !== JSON.stringify(initialVal);
-}
-
-function useNodeEditorForm(nodeData: NodeEditorData | null) {
-  const [activeTab, setActiveTab] = useState<NodeEditorTabId>("basic");
-  const [formData, setFormData] = useState<NodeEditorData | null>(null);
-  const [lastAppliedData, setLastAppliedData] = useState<NodeEditorData | null>(null);
-  const [originalData, setOriginalData] = useState<NodeEditorData | null>(null);
-  const [loadedNodeId, setLoadedNodeId] = useState<string | null>(null);
-  const skipNextSyncRef = useRef(false);
-
-  useEffect(() => {
-    if (nodeData && nodeData.id !== loadedNodeId) {
-      setFormData({ ...nodeData });
-      setLastAppliedData({ ...nodeData });
-      setOriginalData({ ...nodeData });
-      setLoadedNodeId(nodeData.id);
-      setActiveTab("basic");
-      skipNextSyncRef.current = false;
-    } else if (nodeData && nodeData.id === loadedNodeId) {
-      if (skipNextSyncRef.current) {
-        skipNextSyncRef.current = false;
-        return;
-      }
-      setFormData({ ...nodeData });
-      setLastAppliedData({ ...nodeData });
-    } else if (!nodeData && loadedNodeId) {
-      setLoadedNodeId(null);
-      skipNextSyncRef.current = false;
-    }
-  }, [nodeData, loadedNodeId]);
-
-  const handleChange = useCallback((updates: Partial<NodeEditorData>) => {
-    setFormData((prev) => (prev ? { ...prev, ...updates } : null));
-  }, []);
-
-  const resetAfterApply = useCallback(() => {
-    if (formData) {
-      setLastAppliedData({ ...formData });
-      skipNextSyncRef.current = true;
-    }
-  }, [formData]);
-
-  const hasChanges = formData && lastAppliedData
-    ? JSON.stringify(formData) !== JSON.stringify(lastAppliedData)
-    : false;
-
-  return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, originalData };
-}
-
-const TAB_COMPONENTS: Record<
-  NodeEditorTabId,
-  React.FC<{
-    data: NodeEditorData;
-    onChange: (updates: Partial<NodeEditorData>) => void;
-    inheritedProps: string[];
-  }>
-> = {
-  basic: BasicTab,
-  components: ComponentsTab,
-  config: ConfigTab,
-  runtime: RuntimeTab,
-  network: NetworkTab,
-  advanced: AdvancedTab
-};
 
 export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
   nodeData,
@@ -146,8 +60,16 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
   readOnly = false,
   onFooterRef
 }) => {
-  const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, originalData } =
-    useNodeEditorForm(nodeData);
+  const {
+    activeTab,
+    setActiveTab,
+    formData,
+    handleChange,
+    hasChanges,
+    resetAfterApply,
+    discardChanges,
+    originalData
+  } = useNodeEditorForm(nodeData, readOnly);
 
   const tabs = useMemo(() => getTabsForNode(formData?.kind), [formData?.kind]);
 
@@ -156,33 +78,37 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
     return inheritedProps.filter((prop) => !hasFieldChanged(prop, formData, originalData));
   }, [inheritedProps, formData, originalData]);
 
-  const { handleApply, handleSave } = useApplySaveHandlers(formData, onApply, onSave, resetAfterApply);
+  const { handleApply, handleSave } = useApplySaveHandlers(
+    formData,
+    onApply,
+    onSave,
+    resetAfterApply
+  );
 
-  useFooterControlsRef(onFooterRef, Boolean(formData), handleApply, handleSave, hasChanges);
+  useFooterControlsRef(
+    onFooterRef,
+    Boolean(formData),
+    handleApply,
+    handleSave,
+    hasChanges,
+    discardChanges
+  );
 
   if (!formData) return null;
 
-  const Component = TAB_COMPONENTS[activeTab];
-  const effectiveOnChange = readOnly ? () => {} : handleChange;
+  const tabProps = {
+    data: formData,
+    onChange: handleChange,
+    inheritedProps: effectiveInheritedProps
+  };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <TabNavigation
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={(id) => setActiveTab(id as NodeEditorTabId)}
-      />
-      <Box sx={{ flex: 1, overflow: "auto" }}>
-        <fieldset disabled={readOnly} style={FIELDSET_RESET_STYLE}>
-          {Component ? (
-            <Component
-              data={formData}
-              onChange={effectiveOnChange}
-              inheritedProps={effectiveInheritedProps}
-            />
-          ) : null}
-        </fieldset>
-      </Box>
-    </Box>
+    <EditorPanel
+      tabs={tabs}
+      activeTab={activeTab}
+      onTabChange={(id) => setActiveTab(id as NodeEditorTabId)}
+      tabProps={tabProps}
+      readOnly={readOnly}
+    />
   );
 };

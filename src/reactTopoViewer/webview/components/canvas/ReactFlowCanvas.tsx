@@ -1,9 +1,4 @@
-/**
- * ReactFlowCanvas - Main React Flow canvas component for topology visualization
- *
- * This is now a fully controlled component - nodes/edges come from the graph store.
- * No internal state duplication.
- */
+// Main React Flow canvas component.
 import React, {
   useRef,
   useImperativeHandle,
@@ -723,7 +718,6 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onAddTextAtPosition,
       onAddGroupAtPosition,
       onAddShapeAtPosition,
-      onShowBulkLink,
       onDropCreateNode,
       onDropCreateNetwork,
       onLockedAction
@@ -984,8 +978,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onAddText,
       onAddTextAtPosition,
       onAddShapes,
-      onAddShapeAtPosition,
-      onShowBulkLink
+      onAddShapeAtPosition
     });
 
     const {

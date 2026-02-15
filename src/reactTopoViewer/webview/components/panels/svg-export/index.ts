@@ -1,6 +1,4 @@
-/**
- * SVG Export module - barrel exports
- */
+// SVG export barrel.
 
 // Constants
 export {
@@ -30,15 +28,8 @@ export {
 export type { CustomIconMap } from "./nodesToSvg";
 
 // Edge rendering
-export {
-  buildEdgeInfoForExport,
-  edgeToSvg,
-  renderEdgesToSvg
-} from "./edgesToSvg";
+export { buildEdgeInfoForExport, edgeToSvg, renderEdgesToSvg } from "./edgesToSvg";
 
 // Annotation rendering (existing)
-export {
-  compositeAnnotationsIntoSvg,
-  addBackgroundRect
-} from "./annotationsToSvg";
+export { compositeAnnotationsIntoSvg, addBackgroundRect } from "./annotationsToSvg";
 export type { AnnotationData } from "./annotationsToSvg";

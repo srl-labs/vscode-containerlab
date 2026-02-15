@@ -1,7 +1,8 @@
-/**
- * Dev Mode Entry Point for React TopoViewer (Host-authoritative)
- */
+// Dev mode entry point.
+import React from "react";
 import { createRoot, type Root as ReactRoot } from "react-dom/client";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
 import { App } from "@webview/App";
 import type { CustomNodeTemplate } from "@shared/types/editors";
 import type { CustomIconInfo } from "@shared/types/icons";
@@ -11,8 +12,11 @@ import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 
 import { setHostContext } from "@webview/services/topologyHostClient";
 import { refreshTopologySnapshot } from "@webview/services/topologyHostCommands";
+import { applyDevVars } from "@webview/theme/devTheme";
+import { vscodeTheme } from "@webview/theme/vscodeTheme";
 
 import { DevStateManager } from "./mock/DevState";
+import { DevSettingsOverlay } from "./components/DevSettingsOverlay";
 import { sampleCustomNodes, sampleCustomIcons } from "./mockData";
 
 import clabSchema from "../schema/clab.schema.json";
@@ -36,9 +40,7 @@ if (!monacoGlobal.MonacoEnvironment) {
   };
 }
 
-// ============================================================================
 // Session Management
-// ============================================================================
 
 function getSessionId(): string | null {
   const urlParams = new URLSearchParams(window.location.search);
@@ -50,9 +52,7 @@ if (sessionId) {
   console.log(`%c[Dev] Session ID: ${sessionId}`, "color: #9C27B0;");
 }
 
-// ============================================================================
 // Dev State
-// ============================================================================
 
 const stateManager = new DevStateManager({
   mode: "edit",
@@ -60,9 +60,7 @@ const stateManager = new DevStateManager({
   customNodes: sampleCustomNodes as CustomNodeTemplate[]
 });
 
-// ============================================================================
-// Initial Bootstrap Data (non-topology)
-// ============================================================================
+// Initial Bootstrap Data
 
 const schemaData = parseSchemaData(clabSchema as Record<string, unknown>);
 
@@ -89,9 +87,7 @@ const initialData: InitialData = {
   customIcons: sampleCustomIcons as CustomIconInfo[]
 };
 
-// ============================================================================
 // Render App
-// ============================================================================
 
 let reactRoot: ReactRoot | null = null;
 let renderKey = 0;
@@ -114,9 +110,7 @@ function renderApp(): void {
   reactRoot.render(<App key={renderKey} initialData={initialData} />);
 }
 
-// ============================================================================
 // Topology Loading
-// ============================================================================
 
 const TOPOLOGIES_DIR = "./dev/topologies";
 const DEFAULT_TOPOLOGY = `${TOPOLOGIES_DIR}/simple.clab.yml`;
@@ -169,14 +163,7 @@ async function resetFiles(): Promise<void> {
   }
 }
 
-// ============================================================================
-// Split View (Removed)
-// ============================================================================
-// Source editing is now done in the TopoViewer Palette tabs (Monaco).
-
-// ============================================================================
 // External File Changes (SSE)
-// ============================================================================
 
 function subscribeToFileChanges(): void {
   const url = sessionId ? `/api/events?sessionId=${sessionId}` : "/api/events";
@@ -204,9 +191,7 @@ function subscribeToFileChanges(): void {
   });
 }
 
-// ============================================================================
 // Window Globals for Dev Console
-// ============================================================================
 
 interface DevServerInterface {
   loadTopologyFile: (filePath: string) => Promise<void>;
@@ -264,17 +249,7 @@ console.log("%cMode and state:", "color: #2196F3; font-weight: bold;");
 console.log('  __DEV__.setMode("edit" | "view")');
 console.log('  __DEV__.setDeploymentState("deployed" | "undeployed")');
 
-// ============================================================================
-// Dev Mode Command Interceptor
-// ============================================================================
-
-/**
- * In VS Code, the webview sends commands via window.vscode.postMessage().
- * In dev mode, we don't have VS Code, so we intercept these commands here.
- *
- * We mark the mock with __isDevMock__ so topologyHostClient.ts knows to use
- * HTTP endpoints instead of VS Code messaging for topology operations.
- */
+// Dev mode command interceptor — mocks window.vscode.postMessage for HTTP.
 function setupDevModeCommandInterceptor(): void {
   type DevVscodeMessage = {
     command?: string;
@@ -339,10 +314,48 @@ function setupDevModeCommandInterceptor(): void {
   (window as unknown as { vscode: typeof mockVscodeApi }).vscode = mockVscodeApi;
 }
 
-// ============================================================================
-// Bootstrap
-// ============================================================================
+// Dev Overlay
 
+function mountDevOverlay(): void {
+  const container = document.getElementById("dev-overlay");
+  if (!container) return;
+
+  const detectMode = () =>
+    document.documentElement.classList.contains("light") ? ("light" as const) : ("dark" as const);
+
+  function DevOverlayWrapper() {
+    const handleToggleTheme = React.useCallback(() => {
+      document.documentElement.classList.toggle("light");
+      applyDevVars(detectMode());
+    }, []);
+
+    return (
+      <ThemeProvider theme={vscodeTheme}>
+        <CssBaseline enableColorScheme />
+        <DevSettingsOverlay
+          stateManager={stateManager}
+          loadTopologyFile={loadTopologyFile}
+          listTopologyFiles={listTopologyFiles}
+          resetFiles={resetFiles}
+          getCurrentFile={() => currentFilePath}
+          setMode={(mode) => {
+            (window as unknown as { __DEV__: { setMode: (m: string) => void } }).__DEV__.setMode(
+              mode
+            );
+          }}
+          onToggleTheme={handleToggleTheme}
+        />
+      </ThemeProvider>
+    );
+  }
+
+  createRoot(container).render(<DevOverlayWrapper />);
+}
+
+// Bootstrap
+
+applyDevVars("dark");
 setupDevModeCommandInterceptor();
 subscribeToFileChanges();
+mountDevOverlay();
 void loadTopologyFile(DEFAULT_TOPOLOGY);

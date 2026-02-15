@@ -1,18 +1,13 @@
-/**
- * GroupFormContent - Form for group editor panel
- * Allows editing group name, level, and visual styles
- */
+// Group editor form.
 import React from "react";
 import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import DeleteIcon from "@mui/icons-material/Delete";
 
 import type { GroupStyleAnnotation } from "../../../../shared/types/topology";
 import type { GroupEditorData } from "../../../hooks/canvas";
 import { GROUP_LABEL_POSITIONS } from "../../../hooks/canvas";
-import { ColorSwatch, TextInput, NumberInput, SelectInput, RangeSlider } from "../../ui/form";
-
+import { InputField, SelectField, ColorField } from "../../ui/form";
 
 interface Props {
   formData: GroupEditorData;
@@ -21,210 +16,141 @@ interface Props {
     field: K,
     value: GroupStyleAnnotation[K]
   ) => void;
-  onDelete?: () => void;
 }
 
-const FLEX_START = "flex-start";
-
-const StyleRow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Box sx={{ display: "flex", alignItems: FLEX_START, gap: 2, flexWrap: "wrap" }}>{children}</Box>
-);
-
-// Basic info section
-const BasicInfoSection: React.FC<{
-  formData: GroupEditorData;
-  updateField: Props["updateField"];
-}> = ({ formData, updateField }) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-    <Typography variant="subtitle2" fontWeight={600}>
-      Basic Information
-    </Typography>
-    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-      <TextInput
-        label="Group Name"
-        value={formData.name}
-        onChange={(v) => updateField("name", v)}
-        placeholder="e.g., rack1"
-      />
-      <TextInput
-        label="Level"
-        value={formData.level}
-        onChange={(v) => updateField("level", v)}
-        placeholder="e.g., 1"
-      />
-    </Box>
-    <SelectInput
-      label="Label Position"
-      value={formData.style.labelPosition ?? "top-center"}
-      onChange={(v) => updateField("style", { ...formData.style, labelPosition: v })}
-      options={GROUP_LABEL_POSITIONS.map((pos) => ({
-        value: pos,
-        label: pos
-          .split("-")
-          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(" ")
-      }))}
-    />
-  </Box>
-);
-
-// Background section
-const BackgroundSection: React.FC<{
-  formData: GroupEditorData;
-  updateStyle: Props["updateStyle"];
-}> = ({ formData, updateStyle }) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-    <Typography variant="subtitle2" fontWeight={600}>
-      Background
-    </Typography>
-    <StyleRow>
-      <ColorSwatch
-        label="Color"
-        value={formData.style.backgroundColor ?? "#d9d9d9"}
-        onChange={(v) => updateStyle("backgroundColor", v)}
-      />
-      <RangeSlider
-        label="Opacity"
-        value={formData.style.backgroundOpacity ?? 20}
-        onChange={(v) => updateStyle("backgroundOpacity", v)}
-      />
-    </StyleRow>
-  </Box>
-);
-
-// Border section
-const BorderSection: React.FC<{
-  formData: GroupEditorData;
-  updateStyle: Props["updateStyle"];
-}> = ({ formData, updateStyle }) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-    <Typography variant="subtitle2" fontWeight={600}>
-      Border
-    </Typography>
-    <StyleRow>
-      <ColorSwatch
-        label="Color"
-        value={formData.style.borderColor ?? "#dddddd"}
-        onChange={(v) => updateStyle("borderColor", v)}
-      />
-      <NumberInput
-        label="Width"
-        value={formData.style.borderWidth ?? 0.5}
-        onChange={(v) => updateStyle("borderWidth", v)}
-        min={0}
-        max={20}
-        step={0.5}
-        unit="px"
-      />
-      <SelectInput
-        label="Style"
-        value={formData.style.borderStyle ?? "solid"}
-        onChange={(v) => updateStyle("borderStyle", v as GroupStyleAnnotation["borderStyle"])}
-        options={[
-          { value: "solid", label: "Solid" },
-          { value: "dashed", label: "Dashed" },
-          { value: "dotted", label: "Dotted" },
-          { value: "double", label: "Double" }
-        ]}
-      />
-    </StyleRow>
-    <RangeSlider
-      label="Corner Radius"
-      value={formData.style.borderRadius ?? 0}
-      onChange={(v) => updateStyle("borderRadius", v)}
-      max={50}
-      unit="px"
-    />
-  </Box>
-);
-
-// Text color section
-const TextSection: React.FC<{
-  formData: GroupEditorData;
-  updateStyle: Props["updateStyle"];
-}> = ({ formData, updateStyle }) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-    <Typography variant="subtitle2" fontWeight={600}>
-      Label
-    </Typography>
-    <Box sx={{ display: "flex", alignItems: FLEX_START, gap: 2 }}>
-      <ColorSwatch
-        label="Text Color"
-        value={formData.style.labelColor ?? formData.style.color ?? "#ebecf0"}
-        onChange={(v) => updateStyle("labelColor", v)}
-      />
-    </Box>
-  </Box>
-);
-
-// Preview section
-const PreviewSection: React.FC<{ formData: GroupEditorData }> = ({ formData }) => {
+// Main component
+export const GroupFormContent: React.FC<Props> = ({ formData, updateField, updateStyle }) => {
   const style = formData.style;
-  const bgOpacity = (style.backgroundOpacity ?? 20) / 100;
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-      <Typography variant="caption" color="text.secondary">
-        Preview
-      </Typography>
-      <Box sx={{ position: "relative", p: 2, borderRadius: 0.5, border: 1, minHeight: 80, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Box
-          sx={{
-            position: "relative",
-            width: "100%",
-            height: 64,
-            display: "flex",
-            alignItems: FLEX_START,
-            justifyContent: "center",
-            pt: 0.5,
-            backgroundColor: style.backgroundColor ?? "#d9d9d9",
-            opacity: bgOpacity,
-            borderColor: style.borderColor ?? "#dddddd",
-            borderWidth: `${style.borderWidth ?? 0.5}px`,
-            borderStyle: style.borderStyle ?? "solid",
-            borderRadius: `${style.borderRadius ?? 0}px`
-          }}
-        >
-          <Box
-            component="span"
-            sx={{
-              fontSize: "0.75rem",
-              fontWeight: 500,
-              color: style.labelColor ?? style.color ?? "#ebecf0"
-            }}
-          >
-            {formData.name || "Group Name"}
-          </Box>
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      {/* Basic Information */}
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Basic Information</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+        <InputField
+          id="group-name"
+          label="Group Name"
+          value={formData.name}
+          onChange={(v) => updateField("name", v)}
+          placeholder="e.g., rack1"
+        />
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+          <SelectField
+            id="group-label-position"
+            label="Label Position"
+            value={formData.style.labelPosition ?? "top-center"}
+            onChange={(v) => updateField("style", { ...formData.style, labelPosition: v })}
+            options={GROUP_LABEL_POSITIONS.map((pos) => ({
+              value: pos,
+              label: pos
+                .split("-")
+                .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(" ")
+            }))}
+          />
+          <InputField
+            id="group-level"
+            label="Level"
+            type="number"
+            value={formData.level}
+            onChange={(v) => updateField("level", v)}
+            min={0}
+          />
         </Box>
+      </Box>
+
+      {/* Background */}
+      <Divider />
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Background</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, p: 2 }}>
+        <ColorField
+          label="Color"
+          value={style.backgroundColor ?? "#d9d9d9"}
+          onChange={(v) => updateStyle("backgroundColor", v)}
+        />
+        <InputField
+          id="group-bg-opacity"
+          label="Opacity"
+          type="number"
+          value={String(style.backgroundOpacity ?? 20)}
+          onChange={(v) => updateStyle("backgroundOpacity", v ? Number(v) : 0)}
+          min={0}
+          max={100}
+          suffix="%"
+        />
+      </Box>
+
+      {/* Border */}
+      <Divider />
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Border</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+          <ColorField
+            label="Color"
+            value={style.borderColor ?? "#dddddd"}
+            onChange={(v) => updateStyle("borderColor", v)}
+          />
+          <InputField
+            id="group-border-width"
+            label="Width"
+            type="number"
+            value={style.borderWidth != null ? String(style.borderWidth) : ""}
+            onChange={(v) => updateStyle("borderWidth", v ? Number(v) : 0)}
+            min={0}
+            max={20}
+            step={0.5}
+            suffix="px"
+            clearable
+          />
+        </Box>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+          <InputField
+            id="group-corner-radius"
+            label="Corner Radius"
+            type="number"
+            value={String(style.borderRadius ?? 0)}
+            onChange={(v) => updateStyle("borderRadius", Number(v))}
+            min={0}
+            max={50}
+            suffix="px"
+          />
+          <SelectField
+            id="group-border-style"
+            label="Style"
+            value={style.borderStyle ?? "solid"}
+            onChange={(v) => updateStyle("borderStyle", v as GroupStyleAnnotation["borderStyle"])}
+            options={[
+              { value: "solid", label: "Solid" },
+              { value: "dashed", label: "Dashed" },
+              { value: "dotted", label: "Dotted" },
+              { value: "double", label: "Double" }
+            ]}
+          />
+        </Box>
+      </Box>
+
+      {/* Label */}
+      <Divider />
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Label</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <ColorField
+          label="Text Color"
+          value={style.labelColor ?? style.color ?? "#ebecf0"}
+          onChange={(v) => updateStyle("labelColor", v)}
+        />
       </Box>
     </Box>
   );
 };
-
-// Main component
-export const GroupFormContent: React.FC<Props> = ({
-  formData,
-  updateField,
-  updateStyle,
-  onDelete
-}) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-    <BasicInfoSection formData={formData} updateField={updateField} />
-    <BackgroundSection formData={formData} updateStyle={updateStyle} />
-    <BorderSection formData={formData} updateStyle={updateStyle} />
-    <TextSection formData={formData} updateStyle={updateStyle} />
-    <PreviewSection formData={formData} />
-    {onDelete && (
-      <Button
-        variant="text"
-        color="error"
-        size="small"
-        startIcon={<DeleteIcon />}
-        onClick={onDelete}
-        sx={{ alignSelf: FLEX_START, textTransform: "none" }}
-      >
-        Delete Group
-      </Button>
-    )}
-  </Box>
-);

@@ -1,8 +1,7 @@
-/**
- * BulkLinkModal - MUI Dialog wrapper for bulk link creation
- */
+// Bulk link creation dialog.
 import React from "react";
 import {
+  Alert,
   Box,
   Button,
   Dialog,
@@ -23,7 +22,6 @@ import { CopyableCode } from "./bulk-link/CopyableCode";
 import { ConfirmBulkLinksModal } from "./bulk-link/ConfirmBulkLinksModal";
 import type { LinkCandidate } from "./bulk-link/bulkLinkUtils";
 import { computeAndValidateCandidates, confirmAndCreateLinks } from "./bulk-link/bulkLinkHandlers";
-
 
 interface BulkLinkModalProps {
   isOpen: boolean;
@@ -75,28 +73,41 @@ const ExampleRow: React.FC<{ index: number; def: ExampleDefinition }> = ({ index
 );
 
 const ExamplesSection: React.FC = () => (
-  <Box sx={{ borderRadius: 0.5, border: 1, p: 1, display: "flex", flexDirection: "column", gap: 1 }}>
-    <Typography variant="subtitle2" fontWeight={600}>Examples</Typography>
+  <Alert severity="info" variant="outlined" icon={false}>
+    <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+      Examples
+    </Typography>
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, fontSize: "0.875rem" }}>
       {EXAMPLES.map((def, idx) => (
         <ExampleRow key={idx} index={idx + 1} def={def} />
       ))}
     </Box>
-    <Divider />
-    <Box sx={{ pt: 1 }}>
-      <Typography variant="body2" color="text.secondary" component="div">
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 1.5, rowGap: 0.25 }}>
-          <Box><CopyableCode>*</CopyableCode> any chars</Box>
-          <Box><CopyableCode>?</CopyableCode> single char</Box>
-          <Box><CopyableCode>#</CopyableCode> single digit</Box>
-          <Box><CopyableCode>$1</CopyableCode> capture group</Box>
+    <Divider sx={{ my: 1 }} />
+    <Typography variant="body2" color="text.secondary" component="div">
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 1.5, rowGap: 0.25 }}>
+        <Box>
+          <CopyableCode>*</CopyableCode> any chars
         </Box>
-      </Typography>
-    </Box>
-  </Box>
+        <Box>
+          <CopyableCode>?</CopyableCode> single char
+        </Box>
+        <Box>
+          <CopyableCode>#</CopyableCode> single digit
+        </Box>
+        <Box>
+          <CopyableCode>$1</CopyableCode> capture group
+        </Box>
+      </Box>
+    </Typography>
+  </Alert>
 );
 
-export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({ isOpen, mode, isLocked, onClose }) => {
+export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
+  isOpen,
+  mode,
+  isLocked,
+  onClose
+}) => {
   const { nodes, edges } = useGraphState();
   const { addEdge } = useGraphActions();
 
@@ -123,55 +134,98 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({ isOpen, mode, isLo
   }, [onClose]);
 
   const handleCompute = React.useCallback(() => {
-    computeAndValidateCandidates(nodes as TopoNode[], edges as TopoEdge[], sourcePattern, targetPattern, setStatus, setPendingCandidates);
+    computeAndValidateCandidates(
+      nodes as TopoNode[],
+      edges as TopoEdge[],
+      sourcePattern,
+      targetPattern,
+      setStatus,
+      setPendingCandidates
+    );
   }, [nodes, edges, sourcePattern, targetPattern]);
 
   const handleConfirmCreate = React.useCallback(async () => {
-    await confirmAndCreateLinks({ nodes: nodes as TopoNode[], edges: edges as TopoEdge[], pendingCandidates, canApply, addEdge, setStatus, setPendingCandidates, onClose });
+    await confirmAndCreateLinks({
+      nodes: nodes as TopoNode[],
+      edges: edges as TopoEdge[],
+      pendingCandidates,
+      canApply,
+      addEdge,
+      setStatus,
+      setPendingCandidates,
+      onClose
+    });
   }, [nodes, edges, pendingCandidates, canApply, addEdge, onClose]);
 
   return (
     <>
-      <Dialog open={isOpen} onClose={handleCancel} maxWidth="sm" fullWidth data-testid="bulk-link-modal">
-        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
+      <Dialog
+        open={isOpen}
+        onClose={handleCancel}
+        maxWidth="sm"
+        fullWidth
+        data-testid="bulk-link-modal"
+      >
+        <DialogTitle
+          sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
+        >
           Bulk Link Devices
-          <IconButton size="small" onClick={handleCancel}><CloseIcon fontSize="small" /></IconButton>
+          <IconButton size="small" onClick={handleCancel}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
         </DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             <Typography variant="body2" color="text.secondary">
               Create multiple links by matching node names with patterns.
             </Typography>
-            <ExamplesSection />
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              <Box>
-                <Typography variant="caption" component="label" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-                  Source Pattern<Typography component="span" color="error.main" sx={{ ml: 0.5 }}>*</Typography>
-                </Typography>
-                <TextField inputRef={sourceInputRef} size="small" fullWidth value={sourcePattern} onChange={(e) => setSourcePattern(e.target.value)} placeholder="e.g. leaf*, srl(\d+)" disabled={mode !== "edit"} data-testid="bulk-link-source" />
-              </Box>
-              <Box>
-                <Typography variant="caption" component="label" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-                  Target Pattern<Typography component="span" color="error.main" sx={{ ml: 0.5 }}>*</Typography>
-                </Typography>
-                <TextField size="small" fullWidth value={targetPattern} onChange={(e) => setTargetPattern(e.target.value)} placeholder="e.g. spine*, client$1" disabled={mode !== "edit"} data-testid="bulk-link-target" />
-              </Box>
+              <TextField
+                inputRef={sourceInputRef}
+                label="Source Pattern"
+                required
+                size="small"
+                fullWidth
+                value={sourcePattern}
+                onChange={(e) => setSourcePattern(e.target.value)}
+                placeholder="e.g. leaf*, srl(\d+)"
+                disabled={mode !== "edit"}
+                data-testid="bulk-link-source"
+              />
+              <TextField
+                label="Target Pattern"
+                required
+                size="small"
+                fullWidth
+                value={targetPattern}
+                onChange={(e) => setTargetPattern(e.target.value)}
+                placeholder="e.g. spine*, client$1"
+                disabled={mode !== "edit"}
+                data-testid="bulk-link-target"
+              />
             </Box>
+            <ExamplesSection />
             {status && (
-              <Typography variant="body2" color="text.secondary" sx={{ p: 1, borderRadius: 0.5, border: 1, borderColor: "divider" }}>
+              <Alert severity="info" variant="outlined">
                 {status}
-              </Typography>
+              </Alert>
             )}
             {!canApply && (
-              <Typography variant="body2" color="text.secondary" sx={{ p: 1, borderRadius: 0.5, border: 1, borderColor: "divider" }}>
+              <Alert severity="warning" variant="outlined">
                 Bulk linking is disabled while locked or in view mode.
-              </Typography>
+              </Alert>
             )}
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button variant="outlined" size="small" onClick={handleCancel} data-testid="bulk-link-cancel-btn">Cancel</Button>
-          <Button variant="contained" size="small" onClick={handleCompute} data-testid="bulk-link-apply-btn">Apply</Button>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={handleCompute}
+            data-testid="bulk-link-apply-btn"
+          >
+            Apply
+          </Button>
         </DialogActions>
       </Dialog>
 

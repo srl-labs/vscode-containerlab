@@ -1,6 +1,4 @@
-/**
- * Runtime Tab for Node Editor
- */
+// Runtime tab for node editor.
 import React from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -28,11 +26,11 @@ export const RuntimeTab: React.FC<TabProps> = ({ data, onChange }) => {
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
       {/* Container Settings */}
-      <Box sx={{ p: 2 }}>
-        <Typography variant="panelHeading">Container Settings</Typography>
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Container Settings</Typography>
       </Box>
       <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         <InputField
           id="node-user"
           label="User"
@@ -58,9 +56,19 @@ export const RuntimeTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Exec Commands */}
       <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
-        <Typography variant="panelHeading">Exec Commands</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddExec} sx={{ py: 0 }}>ADD</Button>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2,
+          py: 1
+        }}
+      >
+        <Typography variant="subtitle2">Exec Commands</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddExec} sx={{ py: 0 }}>
+          ADD
+        </Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
@@ -74,11 +82,21 @@ export const RuntimeTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Lifecycle */}
       <Divider />
-      <Box sx={{ p: 2 }}>
-        <Typography variant="panelHeading">Lifecycle</Typography>
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Lifecycle</Typography>
       </Box>
       <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+        <InputField
+          id="node-startup-delay"
+          label="Startup Delay"
+          type="number"
+          value={String(data.startupDelay ?? "")}
+          onChange={(value) => onChange({ startupDelay: value ? parseInt(value, 10) : undefined })}
+          placeholder="0"
+          min={0}
+          suffix="seconds"
+        />
         <SelectField
           id="node-restart-policy"
           label="Restart Policy"
@@ -91,15 +109,6 @@ export const RuntimeTab: React.FC<TabProps> = ({ data, onChange }) => {
           label="Auto-remove container on exit"
           checked={data.autoRemove || false}
           onChange={(checked) => onChange({ autoRemove: checked })}
-        />
-        <InputField
-          id="node-startup-delay"
-          label="Startup Delay (seconds)"
-          type="number"
-          value={String(data.startupDelay ?? "")}
-          onChange={(value) => onChange({ startupDelay: value ? parseInt(value, 10) : undefined })}
-          placeholder="0"
-          min={0}
         />
       </Box>
     </Box>

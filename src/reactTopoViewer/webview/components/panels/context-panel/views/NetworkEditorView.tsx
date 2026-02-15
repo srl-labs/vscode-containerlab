@@ -1,14 +1,14 @@
-/**
- * NetworkEditorView - Network editor content for the ContextPanel
- */
-import React, { useState, useEffect, useCallback } from "react";
+// Network editor content for the ContextPanel.
+import React, { useCallback } from "react";
 import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
+import Typography from "@mui/material/Typography";
 
-
-import { FormField, InputField, FilterableDropdown, Section, KeyValueList } from "../../../ui/form";
+import { InputField, FilterableDropdown, Section, KeyValueList } from "../../../ui/form";
+import { EditorPanel } from "../../../ui/editor/EditorPanel";
 import { useApplySaveHandlers, useFooterControlsRef } from "../../../../hooks/ui";
+import { useNetworkEditorForm } from "../../../../hooks/editor/useNetworkEditorForm";
 import type { NetworkEditorData, NetworkType } from "../../network-editor/types";
-import { EditorFieldset } from "../ContextPanelScrollArea";
 import {
   NETWORK_TYPES,
   VXLAN_TYPES,
@@ -32,41 +32,12 @@ export interface NetworkEditorViewProps {
 export interface NetworkEditorFooterRef {
   handleApply: () => void;
   handleSave: () => void;
+  handleDiscard: () => void;
   hasChanges: boolean;
 }
 
 const NETWORK_TYPE_OPTIONS = NETWORK_TYPES.map((type) => ({ value: type, label: type }));
 const MACVLAN_MODE_OPTIONS = MACVLAN_MODES.map((mode) => ({ value: mode, label: mode }));
-
-const SettingsGroupTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Box sx={{ fontSize: "0.75rem", fontWeight: 500, opacity: 0.7, mt: 2, mb: 1 }}>
-    {children}
-  </Box>
-);
-
-function useNetworkEditorForm(nodeData: NetworkEditorData | null) {
-  const [formData, setFormData] = useState<NetworkEditorData | null>(null);
-  const [initialData, setInitialData] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (nodeData) {
-      setFormData({ ...nodeData });
-      setInitialData(JSON.stringify(nodeData));
-    }
-  }, [nodeData]);
-
-  const handleChange = useCallback((updates: Partial<NetworkEditorData>) => {
-    setFormData((prev) => (prev ? { ...prev, ...updates } : null));
-  }, []);
-
-  const resetInitialData = useCallback(() => {
-    if (formData) setInitialData(JSON.stringify(formData));
-  }, [formData]);
-
-  const hasChanges = formData && initialData ? JSON.stringify(formData) !== initialData : false;
-
-  return { formData, handleChange, hasChanges, resetInitialData };
-}
 
 // This form is intentionally dense (conditional sections depend on network type).
 /* eslint-disable complexity */
@@ -90,95 +61,147 @@ const NetworkEditorContent: React.FC<{
   );
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <FormField label="Network Type">
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      {/* Network Configuration */}
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Network Configuration</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         <FilterableDropdown
           id="network-type"
+          label="Network Type"
           options={NETWORK_TYPE_OPTIONS}
           value={formData.networkType}
           onChange={(v) => handleNetworkTypeChange(v as NetworkType)}
           placeholder="Select network type..."
           allowFreeText={false}
         />
-      </FormField>
 
-      {showInterfaceField(formData.networkType) && (
-        <FormField label={getInterfaceLabel(formData.networkType)}>
+        {showInterfaceField(formData.networkType) && (
           <InputField
             id="network-interface"
+            label={getInterfaceLabel(formData.networkType)}
             value={formData.interfaceName}
             onChange={(v) => onChange({ interfaceName: v })}
             placeholder={getInterfacePlaceholder(formData.networkType)}
           />
-        </FormField>
-      )}
+        )}
 
-      {(BRIDGE_TYPES.includes(formData.networkType) || VXLAN_TYPES.includes(formData.networkType)) && (
-        <FormField label="Label / Alias">
+        {(BRIDGE_TYPES.includes(formData.networkType) ||
+          VXLAN_TYPES.includes(formData.networkType)) && (
           <InputField
             id="network-label"
+            label="Label / Alias"
             value={formData.label}
             onChange={(v) => onChange({ label: v })}
             placeholder="Display label for the network node"
           />
-        </FormField>
-      )}
+        )}
 
-      {formData.networkType === "macvlan" && (
-        <FormField label="Mode">
+        {formData.networkType === "macvlan" && (
           <FilterableDropdown
             id="macvlan-mode"
+            label="Mode"
             options={MACVLAN_MODE_OPTIONS}
             value={formData.macvlanMode || "bridge"}
             onChange={(v) => onChange({ macvlanMode: v })}
             placeholder="Select mode..."
             allowFreeText={false}
           />
-        </FormField>
-      )}
+        )}
 
+        <InputField
+          id="network-mac"
+          label="MAC Address"
+          value={formData.mac || ""}
+          onChange={(v) => onChange({ mac: v })}
+          placeholder="e.g., 00:11:22:33:44:55 (optional)"
+        />
+      </Box>
+
+      {/* VXLAN Settings */}
       {VXLAN_TYPES.includes(formData.networkType) && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          <SettingsGroupTitle>VXLAN Settings</SettingsGroupTitle>
-          <FormField label="Remote">
+        <>
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="subtitle2">VXLAN Settings</Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
             <InputField
               id="vxlan-remote"
+              label="Remote"
               value={formData.vxlanRemote || ""}
               onChange={(v) => onChange({ vxlanRemote: v })}
               placeholder="Remote endpoint IP address"
             />
-          </FormField>
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1 }}>
-            <FormField label="VNI">
-              <InputField id="vxlan-vni" value={formData.vxlanVni || ""} onChange={(v) => onChange({ vxlanVni: v })} placeholder="e.g., 100" />
-            </FormField>
-            <FormField label="Dst Port">
-              <InputField id="vxlan-dst-port" value={formData.vxlanDstPort || ""} onChange={(v) => onChange({ vxlanDstPort: v })} placeholder="e.g., 4789" />
-            </FormField>
-            <FormField label="Src Port">
-              <InputField id="vxlan-src-port" value={formData.vxlanSrcPort || ""} onChange={(v) => onChange({ vxlanSrcPort: v })} placeholder="e.g., 0" />
-            </FormField>
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1 }}>
+              <InputField
+                id="vxlan-vni"
+                label="VNI"
+                value={formData.vxlanVni || ""}
+                onChange={(v) => onChange({ vxlanVni: v })}
+                placeholder="e.g., 100"
+              />
+              <InputField
+                id="vxlan-dst-port"
+                label="Dst Port"
+                value={formData.vxlanDstPort || ""}
+                onChange={(v) => onChange({ vxlanDstPort: v })}
+                placeholder="e.g., 4789"
+              />
+              <InputField
+                id="vxlan-src-port"
+                label="Src Port"
+                value={formData.vxlanSrcPort || ""}
+                onChange={(v) => onChange({ vxlanSrcPort: v })}
+                placeholder="e.g., 0"
+              />
+            </Box>
           </Box>
-        </Box>
+        </>
       )}
 
-      <FormField label="MAC Address">
-        <InputField id="network-mac" value={formData.mac || ""} onChange={(v) => onChange({ mac: v })} placeholder="e.g., 00:11:22:33:44:55 (optional)" />
-      </FormField>
-
+      {/* Extended Properties */}
       {supportsExtendedProps(formData.networkType) && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          <SettingsGroupTitle>Extended Properties</SettingsGroupTitle>
-          <FormField label="MTU">
-            <InputField id="network-mtu" type="number" value={formData.mtu || ""} onChange={(v) => onChange({ mtu: v })} placeholder="e.g., 9000" min={1} max={65535} />
-          </FormField>
-          <Section title="Vars">
-            <KeyValueList items={formData.vars || {}} onChange={(items) => onChange({ vars: items })} keyPlaceholder="Variable name" valuePlaceholder="Value" addLabel="Add Variable" />
-          </Section>
-          <Section title="Labels">
-            <KeyValueList items={formData.labels || {}} onChange={(items) => onChange({ labels: items })} keyPlaceholder="Label name" valuePlaceholder="Value" addLabel="Add Label" />
-          </Section>
-        </Box>
+        <>
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="subtitle2">Extended Properties</Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+            <InputField
+              id="network-mtu"
+              label="MTU"
+              type="number"
+              value={formData.mtu || ""}
+              onChange={(v) => onChange({ mtu: v })}
+              placeholder="e.g., 9000"
+              min={1}
+              max={65535}
+            />
+            <Section title="Vars">
+              <KeyValueList
+                items={formData.vars || {}}
+                onChange={(items) => onChange({ vars: items })}
+                keyPlaceholder="Variable name"
+                valuePlaceholder="Value"
+                addLabel="Add Variable"
+              />
+            </Section>
+            <Section title="Labels">
+              <KeyValueList
+                items={formData.labels || {}}
+                onChange={(items) => onChange({ labels: items })}
+                keyPlaceholder="Label name"
+                valuePlaceholder="Value"
+                addLabel="Add Label"
+              />
+            </Section>
+          </Box>
+        </>
       )}
     </Box>
   );
@@ -192,19 +215,30 @@ export const NetworkEditorView: React.FC<NetworkEditorViewProps> = ({
   readOnly = false,
   onFooterRef
 }) => {
-  const { formData, handleChange, hasChanges, resetInitialData } = useNetworkEditorForm(nodeData);
+  const { formData, handleChange, hasChanges, resetInitialData, discardChanges } =
+    useNetworkEditorForm(nodeData, readOnly);
 
-  const { handleApply, handleSave } = useApplySaveHandlers(formData, onApply, onSave, resetInitialData);
+  const { handleApply, handleSave } = useApplySaveHandlers(
+    formData,
+    onApply,
+    onSave,
+    resetInitialData
+  );
 
-  useFooterControlsRef(onFooterRef, Boolean(formData), handleApply, handleSave, hasChanges);
+  useFooterControlsRef(
+    onFooterRef,
+    Boolean(formData),
+    handleApply,
+    handleSave,
+    hasChanges,
+    discardChanges
+  );
 
   if (!formData) return null;
 
-  const effectiveOnChange = readOnly ? () => {} : handleChange;
-
   return (
-    <EditorFieldset readOnly={readOnly}>
-      <NetworkEditorContent formData={formData} onChange={effectiveOnChange} />
-    </EditorFieldset>
+    <EditorPanel readOnly={readOnly}>
+      <NetworkEditorContent formData={formData} onChange={handleChange} />
+    </EditorPanel>
   );
 };

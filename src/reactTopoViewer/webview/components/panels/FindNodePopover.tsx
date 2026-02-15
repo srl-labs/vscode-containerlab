@@ -1,6 +1,4 @@
-/**
- * FindNodePopover - MUI Popover for find/search functionality
- */
+// Find node popover.
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 import Box from "@mui/material/Box";
@@ -31,12 +29,7 @@ export const FindNodePopover: React.FC<FindNodePopoverProps> = ({
       data-testid="find-node-popover"
     >
       <Box sx={{ p: 2, width: 320 }}>
-        <FindNodeSearchWidget
-          rfInstance={rfInstance}
-          isActive={open}
-          titleVariant="subtitle2"
-          dense
-        />
+        <FindNodeSearchWidget rfInstance={rfInstance} isActive={open} dense />
       </Box>
     </Popover>
   );

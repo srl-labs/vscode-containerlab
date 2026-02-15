@@ -265,10 +265,7 @@ function createPastedNode(
   };
 }
 
-function mapYamlNodeId(
-  value: unknown,
-  idMapping: Map<string, string>
-): string | undefined {
+function mapYamlNodeId(value: unknown, idMapping: Map<string, string>): string | undefined {
   if (typeof value !== "string" || !value) return undefined;
   return idMapping.get(value);
 }
@@ -430,10 +427,7 @@ function pasteEdges(clipboardEdges: SerializedEdge[], ctx: PasteContext): number
   return edgeCount;
 }
 
-function shouldThrottlePaste(
-  now: number,
-  lastPasteTimeRef: PasteTimeRef
-): boolean {
+function shouldThrottlePaste(now: number, lastPasteTimeRef: PasteTimeRef): boolean {
   if (now - lastPasteTimeRef.current < 100) return true;
   lastPasteTimeRef.current = now;
   return false;

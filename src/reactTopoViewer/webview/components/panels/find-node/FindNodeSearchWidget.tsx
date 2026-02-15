@@ -5,7 +5,6 @@ import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
 import IconButton from "@mui/material/IconButton";
-import Button from "@mui/material/Button";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 
@@ -18,7 +17,6 @@ import { formatMatchCountText, getCombinedMatches } from "./findNodeSearchUtils"
 export interface FindNodeSearchWidgetProps {
   rfInstance: ReactFlowInstance | null;
   isActive: boolean;
-  titleVariant?: "subtitle2" | "h6";
   description?: React.ReactNode;
   dense?: boolean;
   showTipsHeader?: boolean;
@@ -27,7 +25,6 @@ export interface FindNodeSearchWidgetProps {
 export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
   rfInstance,
   isActive,
-  titleVariant = "subtitle2",
   description,
   dense = false,
   showTipsHeader = false
@@ -95,7 +92,7 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
 
   return (
     <>
-      <Typography variant={titleVariant} gutterBottom>
+      <Typography variant="subtitle1" sx={{ mb: "1rem" }}>
         Find Node
       </Typography>
 
@@ -105,44 +102,60 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
         </Typography>
       ) : null}
 
-      <TextField
-        inputRef={inputRef}
-        fullWidth
-        size="small"
-        placeholder="Search for nodes..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        onKeyDown={handleKeyDown}
-        data-testid="find-node-input"
-        slotProps={{
-          input: {
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon fontSize="small" />
-              </InputAdornment>
-            ),
-            endAdornment: searchTerm ? (
-              <InputAdornment position="end">
-                <IconButton size="small" onClick={handleClear} edge="end" data-testid="find-node-clear-btn">
-                  <ClearIcon fontSize="small" />
-                </IconButton>
-              </InputAdornment>
-            ) : undefined
-          }
-        }}
-        sx={{ mb: mbInput }}
-      />
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: mbInput }}>
+        <TextField
+          inputRef={inputRef}
+          fullWidth
+          size="small"
+          label="Search"
+          placeholder="Search for nodes..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={handleKeyDown}
+          data-testid="find-node-input"
+          slotProps={{
+            input: {
+              endAdornment: searchTerm ? (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={handleClear}
+                    edge="end"
+                    data-testid="find-node-clear-btn"
+                  >
+                    <ClearIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : undefined
+            }
+          }}
+        />
+        <IconButton
+          color="primary"
+          onClick={handleSearch}
+          data-testid="find-node-search-btn"
+          sx={{
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            "&:hover": { bgcolor: "primary.dark" },
+            borderRadius: 1
+          }}
+        >
+          <SearchIcon fontSize="small" />
+        </IconButton>
+      </Box>
 
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: mbActions }}>
-        <Button variant="contained" size="small" onClick={handleSearch} data-testid="find-node-search-btn">
-          Search
-        </Button>
-        {matchCount !== null && (
-          <Typography variant="body2" sx={{ color: matchCount > 0 ? "success.main" : "warning.main" }} data-testid="find-node-match-count">
+      {matchCount !== null && (
+        <Box sx={{ mb: mbActions }}>
+          <Typography
+            variant="body2"
+            sx={{ color: matchCount > 0 ? "success.main" : "warning.main" }}
+            data-testid="find-node-match-count"
+          >
             {formatMatchCountText(matchCount)}
           </Typography>
-        )}
-      </Box>
+        </Box>
+      )}
 
       <Box sx={{ mt: dense ? 0 : 2 }}>
         {showTipsHeader ? (
@@ -159,8 +172,12 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
           <li>
             Use <code>*</code> for wildcard (e.g., <code>srl*</code>)
           </li>
-          <li>Use <code>+</code> prefix for starts-with</li>
-          <li>Press <code>Enter</code> to search</li>
+          <li>
+            Use <code>+</code> prefix for starts-with
+          </li>
+          <li>
+            Press <code>Enter</code> to search
+          </li>
         </Typography>
       </Box>
     </>

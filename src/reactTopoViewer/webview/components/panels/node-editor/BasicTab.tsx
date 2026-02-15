@@ -1,10 +1,4 @@
-/**
- * Basic Tab for Node Editor
- *
- * Shows different fields depending on whether we're editing:
- * - A regular node: Node Name + Kind/Type/Image/Version/Icon fields
- * - A custom node template: Custom Node Name, Base Name, Interface Pattern, Set as default + Kind/Type/Image/Version/Icon fields
- */
+// Basic tab for node editor.
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -12,7 +6,7 @@ import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import PaletteIcon from "@mui/icons-material/Palette";
 
-import { InputField, FilterableDropdown } from "../../ui/form";
+import { InputField, FilterableDropdown, IconPreview } from "../../ui/form";
 import { IconSelectorModal } from "../../ui/IconSelectorModal";
 import type { NodeType } from "../../../icons/SvgGenerator";
 import { generateEncodedSVG } from "../../../icons/SvgGenerator";
@@ -51,13 +45,6 @@ function getIconSrc(icon: string, color: string): string {
   } catch {
     return generateEncodedSVG("pe", color);
   }
-}
-
-/**
- * Calculate border radius based on corner radius setting
- */
-function calcBorderRadius(cornerRadius: number | undefined, size: number): string | undefined {
-  return cornerRadius ? `${(cornerRadius / 48) * size}px` : undefined;
 }
 
 /**
@@ -305,15 +292,11 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   const renderOption = useCallback(
     (option: { value: string; label: string }) => (
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <Box
-          component="img"
+        <IconPreview
           src={getIconSource(option.value, color)}
           alt={option.label}
-          sx={{
-            width: 24,
-            height: 24,
-            borderRadius: calcBorderRadius(data.iconCornerRadius, 24)
-          }}
+          size={24}
+          cornerRadius={data.iconCornerRadius}
         />
         <span>{option.label}</span>
       </Box>
@@ -324,17 +307,14 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   return (
     <>
       <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-        <Box
-          component="img"
-          src={getIconSource(previewIcon, color)}
-          alt="Icon preview"
-          sx={{
-            width: 32,
-            height: 32,
-            flexShrink: 0,
-            borderRadius: calcBorderRadius(data.iconCornerRadius, 32)
-          }}
-        />
+        <Box sx={{ flexShrink: 0 }}>
+          <IconPreview
+            src={getIconSource(previewIcon, color)}
+            alt="Icon preview"
+            size={32}
+            cornerRadius={data.iconCornerRadius}
+          />
+        </Box>
         <Box sx={{ flex: 1 }}>
           <FilterableDropdown
             id="node-icon"
@@ -402,11 +382,11 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
       {/* Configuration section */}
-      <Box sx={{ p: 2 }}>
-        <Typography variant="panelHeading">Configuration</Typography>
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Node Parameters</Typography>
       </Box>
       <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         {/* Show Node Name for regular nodes, Custom Template fields for custom node templates */}
         {data.isCustomTemplate ? (
           <CustomNodeTemplateFields data={data} onChange={onChange} />
@@ -434,7 +414,7 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
         )}
 
         {/* Image and Version in 2-column grid */}
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
           <ImageVersionFields
             data={data}
             onChange={onChange}
@@ -457,8 +437,8 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
 
       {/* Icon section */}
       <Divider />
-      <Box sx={{ p: 2 }}>
-        <Typography variant="panelHeading">Icon</Typography>
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Icon</Typography>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>

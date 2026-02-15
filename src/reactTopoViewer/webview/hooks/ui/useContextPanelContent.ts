@@ -34,12 +34,18 @@ const PALETTE_VIEW: PanelView = { kind: "palette", title: "Palette", hasFooter: 
 function resolveEditingView(state: TopoViewerState): PanelView | null {
   if (state.editingCustomTemplate) {
     const isNew = state.editingCustomTemplate.id !== "edit-custom-node";
-    return { kind: "customTemplateEditor", title: isNew ? "Create Custom Node" : "Edit Custom Node", hasFooter: true };
+    return {
+      kind: "customTemplateEditor",
+      title: isNew ? "Create Custom Node" : "Edit Custom Node",
+      hasFooter: true
+    };
   }
   if (state.editingNode) return { kind: "nodeEditor", title: "Node Editor", hasFooter: true };
   if (state.editingEdge) return { kind: "linkEditor", title: "Link Editor", hasFooter: true };
-  if (state.editingNetwork) return { kind: "networkEditor", title: "Network Editor", hasFooter: true };
-  if (state.editingImpairment) return { kind: "linkImpairment", title: "Link Impairments", hasFooter: true };
+  if (state.editingNetwork)
+    return { kind: "networkEditor", title: "Network Editor", hasFooter: true };
+  if (state.editingImpairment)
+    return { kind: "linkImpairment", title: "Link Impairments", hasFooter: true };
   return null;
 }
 
@@ -53,13 +59,16 @@ function resolveAnnotationView(annotationUI: AnnotationUIState): PanelView | nul
     const prefix = shapeType.charAt(0).toUpperCase() + shapeType.slice(1);
     return { kind: "freeShapeEditor", title: `Edit ${prefix}`, hasFooter: true };
   }
-  if (annotationUI.editingGroup) return { kind: "groupEditor", title: "Edit Group", hasFooter: true };
+  if (annotationUI.editingGroup)
+    return { kind: "groupEditor", title: "Edit Group", hasFooter: true };
   return null;
 }
 
 function resolveSelectionView(state: TopoViewerState): PanelView | null {
-  if (state.selectedNode && state.mode === "view") return { kind: "nodeInfo", title: "Node Properties", hasFooter: false };
-  if (state.selectedEdge && state.mode === "view") return { kind: "linkInfo", title: "Link Properties", hasFooter: false };
+  if (state.selectedNode && state.mode === "view")
+    return { kind: "nodeInfo", title: "Node Properties", hasFooter: false };
+  if (state.selectedEdge && state.mode === "view")
+    return { kind: "linkInfo", title: "Link Properties", hasFooter: false };
   return null;
 }
 
@@ -67,8 +76,10 @@ export function useContextPanelContent(): PanelView {
   const state = useTopoViewerState();
   const annotationUI = useAnnotationUIStore();
 
-  return resolveEditingView(state)
-    ?? resolveAnnotationView(annotationUI)
-    ?? resolveSelectionView(state)
-    ?? PALETTE_VIEW;
+  return (
+    resolveEditingView(state) ??
+    resolveAnnotationView(annotationUI) ??
+    resolveSelectionView(state) ??
+    PALETTE_VIEW
+  );
 }
