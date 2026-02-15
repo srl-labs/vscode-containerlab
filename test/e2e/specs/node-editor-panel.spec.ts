@@ -3,9 +3,7 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures/topoviewer";
 
 // Test selectors for the new MUI ContextPanel-based editor
-const SEL_PANEL_TITLE = '[data-testid="panel-title"]';
 const SEL_PANEL_TAB_BASIC = '[data-testid="panel-tab-basic"]';
-const SEL_PANEL_BACK_BTN = '[data-testid="panel-back-btn"]';
 const SEL_PANEL_TOGGLE_BTN = '[data-testid="panel-toggle-btn"]';
 const SEL_PANEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
 
@@ -50,18 +48,16 @@ test.describe("Node Editor Panel", () => {
 
     await clickNode(page, nodeIds[0]);
 
-    const panelTitle = page.locator(SEL_PANEL_TITLE);
+    const panelTitle = page.getByText(TITLE_NODE_EDITOR, { exact: true });
     await expect(panelTitle).toBeVisible();
-    await expect(panelTitle).toHaveText(TITLE_NODE_EDITOR);
   });
 
   test("node editor panel has correct title", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     await clickNode(page, nodeIds[0]);
 
-    const title = page.locator(SEL_PANEL_TITLE);
+    const title = page.getByText(TITLE_NODE_EDITOR, { exact: true });
     await expect(title).toBeVisible();
-    await expect(title).toHaveText(TITLE_NODE_EDITOR);
   });
 
   test("node editor panel has Basic tab selected by default", async ({ page, topoViewerPage }) => {
@@ -104,33 +100,28 @@ test.describe("Node Editor Panel", () => {
     const nodeIds = await topoViewerPage.getNodeIds();
     await clickNode(page, nodeIds[0]);
 
-    const panelTitle = page.locator(SEL_PANEL_TITLE);
+    const panelTitle = page.getByText(TITLE_NODE_EDITOR, { exact: true });
     await expect(panelTitle).toBeVisible();
 
     const toggleBtn = page.locator(SEL_PANEL_TOGGLE_BTN);
     await toggleBtn.click();
     await page.waitForTimeout(300);
 
-    await expect(panelTitle).not.toBeVisible();
+    await expect(page.locator(SEL_PANEL_TAB_BASIC)).not.toBeVisible();
   });
 
-  test("closes node editor panel with back button", async ({ page, topoViewerPage }) => {
+  test("returns to palette after closing and reopening panel", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 
     await clickNode(page, nodeIds[0]);
 
-    const panelTitle = page.locator(SEL_PANEL_TITLE);
+    const panelTitle = page.getByText(TITLE_NODE_EDITOR, { exact: true });
     await expect(panelTitle).toBeVisible();
-    await expect(panelTitle).toHaveText(TITLE_NODE_EDITOR);
-
-    const backBtn = page.locator(SEL_PANEL_BACK_BTN);
-    await backBtn.click();
-    await page.waitForTimeout(300);
-
-    // Back returns the context panel to palette view.
-    await expect(panelTitle).toBeVisible();
-    await expect(panelTitle).toHaveText("Palette");
+    const toggleBtn = page.locator(SEL_PANEL_TOGGLE_BTN);
+    await toggleBtn.click();
+    await page.waitForTimeout(200);
+    await toggleBtn.click();
     await expect(page.getByPlaceholder("Search nodes...")).toBeVisible();
   });
 
@@ -143,10 +134,8 @@ test.describe("Node Editor Panel", () => {
     await clickNode(page, nodeIds[0]);
 
     // In view mode, selection shows Node Properties rather than an editor.
-    const panelTitle = page.locator(SEL_PANEL_TITLE);
+    const panelTitle = page.getByText("Node Properties", { exact: true });
     await expect(panelTitle).toBeVisible();
-    await expect(panelTitle).not.toHaveText(TITLE_NODE_EDITOR);
-    await expect(panelTitle).toHaveText("Node Properties");
   });
 
   test("node editor opens read-only when canvas is locked", async ({ page, topoViewerPage }) => {
@@ -158,9 +147,8 @@ test.describe("Node Editor Panel", () => {
 
     await clickNode(page, nodeIds[0]);
 
-    const panelTitle = page.locator(SEL_PANEL_TITLE);
+    const panelTitle = page.getByText(TITLE_NODE_EDITOR, { exact: true });
     await expect(panelTitle).toBeVisible();
-    await expect(panelTitle).toHaveText(TITLE_NODE_EDITOR);
 
     // Read-only indicator should be shown and editor footer should be hidden.
     await expect(page.locator('[data-testid="panel-readonly-indicator"]')).toBeVisible();
@@ -189,13 +177,13 @@ test.describe("Node Editor Panel", () => {
     // Open editor for first node
     await clickNode(page, nodeIds[0]);
 
-    const panelTitle = page.locator(SEL_PANEL_TITLE);
-    await expect(panelTitle).toHaveText(TITLE_NODE_EDITOR);
+    const panelTitle = page.getByText(TITLE_NODE_EDITOR, { exact: true });
+    await expect(panelTitle).toBeVisible();
 
     // Click on second node
     await clickNode(page, nodeIds[1]);
 
     // Editor should still show Node Editor
-    await expect(panelTitle).toHaveText(TITLE_NODE_EDITOR);
+    await expect(panelTitle).toBeVisible();
   });
 });

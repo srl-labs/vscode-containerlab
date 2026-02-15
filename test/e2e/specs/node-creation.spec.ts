@@ -1,3 +1,5 @@
+import type { Page } from "@playwright/test";
+
 import { test, expect } from "../fixtures/topoviewer";
 import { shiftClick } from "../helpers/react-flow-helpers";
 
@@ -6,6 +8,49 @@ const SIMPLE_FILE = "simple.clab.yml";
 const EMPTY_FILE = "empty.clab.yml";
 const KIND_NOKIA_SRLINUX = "nokia_srlinux";
 const PERSISTENT_NODE_ID = "persistent-test-node";
+
+async function getEmptyPanePoints(
+  page: Page,
+  topoViewerPage: any,
+  count: number
+): Promise<Array<{ x: number; y: number }>> {
+  const canvas = topoViewerPage.getCanvas();
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("Canvas bounding box unavailable");
+
+  const points = await page.evaluate(
+    ({ canvasBox, maxPoints }) => {
+      const results: Array<{ x: number; y: number }> = [];
+      const minX = canvasBox.x + 80;
+      const maxX = canvasBox.x + Math.max(120, canvasBox.width * 0.65);
+      const minY = canvasBox.y + 80;
+      const maxY = canvasBox.y + canvasBox.height - 80;
+      const cols = 7;
+      const rows = 5;
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const x = minX + ((maxX - minX) * col) / (cols - 1);
+          const y = minY + ((maxY - minY) * row) / (rows - 1);
+          const el = document.elementFromPoint(x, y) as HTMLElement | null;
+          if (!el) continue;
+          if (!el.closest(".react-flow__pane")) continue;
+          if (el.closest(".react-flow__node")) continue;
+          results.push({ x, y });
+          if (results.length >= maxPoints) return results;
+        }
+      }
+      return results;
+    },
+    { canvasBox: box, maxPoints: count }
+  );
+
+  if (points.length < count) {
+    throw new Error(`Unable to find ${count} empty pane point(s), found ${points.length}`);
+  }
+
+  return points;
+}
 
 test.describe("Node Creation", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
@@ -25,15 +70,13 @@ test.describe("Node Creation", () => {
     await topoViewerPage.fit();
     await page.waitForTimeout(300);
 
-    // Get canvas center position
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-
     // Get node IDs before creation
     const nodeIdsBefore = await topoViewerPage.getNodeIds();
 
-    // Shift+Click AWAY from center to avoid hitting existing nodes
-    const clickX = canvasCenter.x + 200;
-    const clickY = canvasCenter.y + 150;
+    // Shift+Click on guaranteed empty pane area.
+    const [clickPoint] = await getEmptyPanePoints(page, topoViewerPage, 1);
+    const clickX = clickPoint.x;
+    const clickY = clickPoint.y;
     await shiftClick(page, clickX, clickY);
 
     // Wait for node to be created (use polling to handle timing variations)
@@ -96,17 +139,17 @@ test.describe("Node Creation", () => {
 
   test("creates multiple nodes with sequential Shift+Clicks", async ({ page, topoViewerPage }) => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
     const nodeIdsBefore = await topoViewerPage.getNodeIds();
+    const points = await getEmptyPanePoints(page, topoViewerPage, 3);
 
-    // Create 3 nodes at positions far from center to avoid hitting existing nodes
-    await shiftClick(page, canvasCenter.x - 200, canvasCenter.y - 150);
+    // Create 3 nodes on empty pane positions.
+    await shiftClick(page, points[0].x, points[0].y);
     await page.waitForTimeout(300);
 
-    await shiftClick(page, canvasCenter.x + 200, canvasCenter.y - 150);
+    await shiftClick(page, points[1].x, points[1].y);
     await page.waitForTimeout(300);
 
-    await shiftClick(page, canvasCenter.x, canvasCenter.y + 200);
+    await shiftClick(page, points[2].x, points[2].y);
     await page.waitForTimeout(300);
 
     // Wait for all 3 nodes to appear (shift-click can be timing-sensitive under load)

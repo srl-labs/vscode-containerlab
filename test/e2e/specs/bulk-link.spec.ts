@@ -1,22 +1,21 @@
+import type { Page } from "@playwright/test";
+
 import { test, expect } from "../fixtures/topoviewer";
-import { rightClick } from "../helpers/react-flow-helpers";
 
 const EMPTY_FILE = "empty.clab.yml";
 const KIND = "nokia_srlinux";
-const SEL_CONTEXT_MENU = '[data-testid="context-menu"]';
-const SEL_BULK_LINK_ITEM = '[data-testid="context-menu-item-bulk-link"]';
+const SEL_NAVBAR_BULK_LINK = '[data-testid="navbar-bulk-link"]';
 const SEL_BULK_LINK_MODAL = '[data-testid="bulk-link-modal"]';
 const SEL_BULK_LINK_SOURCE = '[data-testid="bulk-link-source"]';
 const SEL_BULK_LINK_TARGET = '[data-testid="bulk-link-target"]';
 const SEL_BULK_LINK_APPLY_BTN = '[data-testid="bulk-link-apply-btn"]';
-const SEL_BULK_LINK_CANCEL_BTN = '[data-testid="bulk-link-cancel-btn"]';
-const ERR_CANVAS_NOT_FOUND = "Canvas not found";
+const SEL_BULK_LINK_CLOSE_BTN = '[data-testid="bulk-link-close-btn"]';
 
 /**
  * Bulk Link Modal E2E Tests (MUI Dialog version)
  *
- * In the new MUI design, bulk link creation opens in a Dialog with
- * source/target pattern inputs and Apply/Cancel buttons. After Apply,
+ * In the new MUI design, bulk link creation opens from the navbar button
+ * in a Dialog with source/target pattern inputs and an Apply button. After Apply,
  * a confirmation dialog shows before creating the links.
  */
 test.describe("Bulk Link Devices", () => {
@@ -28,45 +27,34 @@ test.describe("Bulk Link Devices", () => {
     await topoViewerPage.unlock();
   });
 
-  test("opens bulk link modal via context menu", async ({ page, topoViewerPage }) => {
-    const canvasBox = await topoViewerPage.getCanvas().boundingBox();
-    if (!canvasBox) throw new Error(ERR_CANVAS_NOT_FOUND);
-    await rightClick(page, canvasBox.x + 30, canvasBox.y + 30);
-
-    const contextMenu = page.locator(SEL_CONTEXT_MENU);
-    await expect(contextMenu).toBeVisible();
-
-    await page.locator(SEL_BULK_LINK_ITEM).click();
+  async function openBulkLinkModal(page: Page): Promise<void> {
+    await page.locator(SEL_NAVBAR_BULK_LINK).click();
     await page.waitForTimeout(300);
+  }
+
+  test("opens bulk link modal via navbar button", async ({ page }) => {
+    await openBulkLinkModal(page);
 
     const modal = page.locator(SEL_BULK_LINK_MODAL);
     await expect(modal).toBeVisible();
   });
 
-  test("bulk link modal has source and target inputs", async ({ page, topoViewerPage }) => {
-    const canvasBox = await topoViewerPage.getCanvas().boundingBox();
-    if (!canvasBox) throw new Error(ERR_CANVAS_NOT_FOUND);
-    await rightClick(page, canvasBox.x + 30, canvasBox.y + 30);
-    await page.locator(SEL_BULK_LINK_ITEM).click();
-    await page.waitForTimeout(300);
+  test("bulk link modal has source and target inputs", async ({ page }) => {
+    await openBulkLinkModal(page);
 
     await expect(page.locator(SEL_BULK_LINK_SOURCE)).toBeVisible();
     await expect(page.locator(SEL_BULK_LINK_TARGET)).toBeVisible();
     await expect(page.locator(SEL_BULK_LINK_APPLY_BTN)).toBeVisible();
-    await expect(page.locator(SEL_BULK_LINK_CANCEL_BTN)).toBeVisible();
+    await expect(page.locator(SEL_BULK_LINK_CLOSE_BTN)).toBeVisible();
   });
 
-  test("cancel closes bulk link modal", async ({ page, topoViewerPage }) => {
-    const canvasBox = await topoViewerPage.getCanvas().boundingBox();
-    if (!canvasBox) throw new Error(ERR_CANVAS_NOT_FOUND);
-    await rightClick(page, canvasBox.x + 30, canvasBox.y + 30);
-    await page.locator(SEL_BULK_LINK_ITEM).click();
-    await page.waitForTimeout(300);
+  test("close button closes bulk link modal", async ({ page }) => {
+    await openBulkLinkModal(page);
 
     const modal = page.locator(SEL_BULK_LINK_MODAL);
     await expect(modal).toBeVisible();
 
-    await page.locator(SEL_BULK_LINK_CANCEL_BTN).click();
+    await page.locator(SEL_BULK_LINK_CLOSE_BTN).click();
     await page.waitForTimeout(300);
 
     await expect(modal).not.toBeVisible();
@@ -81,12 +69,8 @@ test.describe("Bulk Link Devices", () => {
     await expect.poll(() => topoViewerPage.getNodeCount()).toBe(4);
     await expect.poll(() => topoViewerPage.getEdgeCount()).toBe(0);
 
-    // Open bulk link modal via context menu
-    const canvasBox = await topoViewerPage.getCanvas().boundingBox();
-    if (!canvasBox) throw new Error(ERR_CANVAS_NOT_FOUND);
-    await rightClick(page, canvasBox.x + 30, canvasBox.y + 30);
-    await page.locator(SEL_BULK_LINK_ITEM).click();
-    await page.waitForTimeout(300);
+    // Open bulk link modal via navbar
+    await openBulkLinkModal(page);
 
     // Fill source and target patterns
     await page.locator(SEL_BULK_LINK_SOURCE).locator("input").fill("leaf*");

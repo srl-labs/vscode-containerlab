@@ -170,7 +170,7 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
           sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
         >
           Bulk Link Devices
-          <IconButton size="small" onClick={handleCancel}>
+          <IconButton size="small" onClick={handleCancel} data-testid="bulk-link-close-btn">
             <CloseIcon fontSize="small" />
           </IconButton>
         </DialogTitle>

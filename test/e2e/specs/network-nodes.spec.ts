@@ -12,9 +12,7 @@ const EMPTY_FILE = "empty.clab.yml";
 const SIMPLE_FILE = "simple.clab.yml";
 const KIND_NOKIA_SRLINUX = "nokia_srlinux";
 
-const SEL_PANEL_TITLE = '[data-testid="panel-title"]';
 const SEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
-const SEL_BACK_BTN = '[data-testid="panel-back-btn"]';
 
 // Load schema for validation
 const schemaPath = path.join(__dirname, "../../../schema/clab.schema.json");
@@ -305,7 +303,7 @@ function networkLinkExists(parsed: unknown, networkId: string, networkType: stri
 }
 
 async function expectNetworkEditorOpen(page: Page): Promise<void> {
-  await expect(page.locator(SEL_PANEL_TITLE)).toHaveText("Network Editor", { timeout: 5000 });
+  await expect(page.getByText("Network Editor", { exact: true })).toBeVisible({ timeout: 5000 });
   await expect(page.locator("#network-type")).toBeVisible({ timeout: 5000 });
 }
 
@@ -670,7 +668,6 @@ test.describe("Network Node Modification", () => {
     const validation = validateYamlAgainstSchema(yamlAfter);
     expect(validation.valid).toBe(true);
 
-    await page.locator(SEL_BACK_BTN).click();
   });
 
   test("editing host interface updates YAML and node id", async ({ page, topoViewerPage }) => {
@@ -711,7 +708,6 @@ test.describe("Network Node Modification", () => {
     expect(annotations.networkNodeAnnotations?.some((n: any) => n.id === newHostId)).toBe(true);
     expect(annotations.networkNodeAnnotations?.some((n: any) => n.id === hostId)).toBe(false);
 
-    await page.locator(SEL_BACK_BTN).click();
   });
 
   test("editing bridge label persists to annotations", async ({ page, topoViewerPage }) => {
@@ -739,7 +735,6 @@ test.describe("Network Node Modification", () => {
       }, { timeout: 5000 })
       .toBe("LAN A");
 
-    await page.locator(SEL_BACK_BTN).click();
   });
 });
 
@@ -797,8 +792,6 @@ test.describe("Bridge Rename Persistence", () => {
       const graphNodeIds = await topoViewerPage.getNodeIds();
       expect(graphNodeIds).toContain(newBridgeId);
       expect(graphNodeIds).not.toContain(bridgeId);
-
-      await page.locator(SEL_BACK_BTN).click();
 
       await topoViewerPage.deleteNode(newBridgeId);
 

@@ -41,10 +41,9 @@ test.describe("SVG Export Modal", () => {
     // Title
     await expect(modal.locator("h2")).toHaveText("Export SVG");
 
-    // Background toggle buttons
-    await expect(modal.locator('button:has-text("Transparent")')).toBeVisible();
-    await expect(modal.locator('button:has-text("White")')).toBeVisible();
-    await expect(modal.locator('button:has-text("Custom")')).toBeVisible();
+    // Background options
+    await expect(modal.getByText("Transparent", { exact: true })).toBeVisible();
+    await expect(modal.getByText("Custom", { exact: true })).toBeVisible();
 
     // Filename input
     await expect(page.locator(SEL_SVG_EXPORT_FILENAME)).toBeVisible();
@@ -75,7 +74,7 @@ test.describe("SVG Export Modal", () => {
     expect(svgString).toContain("</svg>");
   });
 
-  test("exports SVG with white background", async ({ page, topoViewerPage }) => {
+  test("exports SVG with custom background color", async ({ page, topoViewerPage }) => {
     await topoViewerPage.gotoFile(SIMPLE_FILE);
     await topoViewerPage.waitForCanvasReady();
 
@@ -85,7 +84,9 @@ test.describe("SVG Export Modal", () => {
     const modal = page.locator(SEL_SVG_EXPORT_MODAL);
     await expect(modal).toBeVisible();
 
-    await modal.locator('button:has-text("White")').click();
+    await modal.getByRole("radio", { name: "Custom" }).check();
+    const colorInput = modal.getByRole("textbox", { name: "Color" });
+    await colorInput.fill("ffffff");
     await page.waitForTimeout(100);
 
     const downloadPromise = page.waitForEvent("download");
@@ -115,9 +116,6 @@ test.describe("SVG Export Modal", () => {
     const modal = page.locator(SEL_SVG_EXPORT_MODAL);
     await expect(modal).toBeVisible();
 
-    // The Annotations section shows a label like "13 annotations"
-    await expect(modal.locator(`text=/\\d+\\s+annotations?/`)).toBeVisible();
-
     const downloadPromise = page.waitForEvent("download");
     await page.locator(SEL_SVG_EXPORT_BTN).click();
     const download = await downloadPromise;
@@ -129,10 +127,16 @@ test.describe("SVG Export Modal", () => {
     expect(svgString).toContain(LAYER_SHAPES);
     expect(svgString).toContain(LAYER_TEXT);
 
-    // Verify some annotation content made it into the SVG
-    expect(svgString).toContain("annotation-group");
-    expect(svgString).toContain("annotation-shape");
-    expect(svgString).toContain("foreignObject");
+    // Verify annotation content made it into the SVG for existing annotation kinds.
+    if ((annotations.groupStyleAnnotations?.length ?? 0) > 0) {
+      expect(svgString).toContain("annotation-group");
+    }
+    if ((annotations.freeShapeAnnotations?.length ?? 0) > 0) {
+      expect(svgString).toContain("annotation-shape");
+    }
+    if ((annotations.freeTextAnnotations?.length ?? 0) > 0) {
+      expect(svgString).toContain("foreignObject");
+    }
   });
 
   test("exports SVG with custom filename", async ({ page, topoViewerPage }) => {

@@ -50,7 +50,7 @@ test.describe("Find Node Popover", () => {
 
     const searchBtn = page.locator(SEL_FIND_NODE_SEARCH_BTN);
     await expect(searchBtn).toBeVisible();
-    await expect(searchBtn).toHaveText("Search");
+    await expect(searchBtn.locator("svg")).toBeVisible();
   });
 
   test("search finds matching nodes", async ({ page, topoViewerPage }) => {

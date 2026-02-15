@@ -87,7 +87,7 @@ test.describe("Box Selection", () => {
     expect(selectedIds).not.toContain(nodeIds[1]);
   });
 
-  test("box selection with Shift adds to existing selection", async ({ page, topoViewerPage }) => {
+  test("box selection with Shift replaces existing selection", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
@@ -111,11 +111,11 @@ test.describe("Box Selection", () => {
       y: node2Box!.y + node2Box!.height + 10
     };
 
-    // Perform box selection for the second node (replaces selection)
+    // Perform box selection for the second node
     await boxSelect(page, from, to);
     await page.waitForTimeout(300);
 
-    // Only the second node should now be selected
+    // Selection should be replaced with the box selection result
     selectedIds = await topoViewerPage.getSelectedNodeIds();
     expect(selectedIds.length).toBe(1);
     expect(selectedIds).not.toContain(nodeIds[0]);
@@ -207,9 +207,10 @@ test.describe("Box Selection", () => {
     await boxSelect(page, from, to);
     await page.waitForTimeout(300);
 
-    // Selection is cleared if box selects nothing
+    // Shift-box selection is additive; selecting empty area preserves existing selection
     selectedIds = await topoViewerPage.getSelectedNodeIds();
-    expect(selectedIds.length).toBe(0);
+    expect(selectedIds.length).toBe(1);
+    expect(selectedIds).toContain(nodeIds[0]);
   });
 
   test("box selection works after zoom and pan", async ({ page, topoViewerPage }) => {

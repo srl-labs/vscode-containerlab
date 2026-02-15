@@ -4,9 +4,9 @@ import { rightClick, getEdgeMidpoint } from "../helpers/react-flow-helpers";
 const SIMPLE_FILE = "simple.clab.yml";
 const SEL_CONTEXT_MENU = '[data-testid="context-menu"]';
 const SEL_EDIT_NODE_ITEM = '[data-testid="context-menu-item-edit-node"]';
+const SEL_DELETE_NODE_ITEM = '[data-testid="context-menu-item-delete-node"]';
 const SEL_EDIT_EDGE_ITEM = '[data-testid="context-menu-item-edit-edge"]';
 const SEL_CONTEXT_PANEL = '[data-testid="context-panel"]';
-const SEL_PANEL_TITLE = '[data-testid="panel-title"]';
 
 /**
  * Context Menu Actions E2E Tests (MUI version)
@@ -40,7 +40,7 @@ test.describe("Context Menu Actions", () => {
       await expect(contextMenu).toBeVisible();
 
       await expect(page.locator(SEL_EDIT_NODE_ITEM)).toBeVisible();
-      await expect(page.locator('[data-testid="context-menu-item-delete-node"]')).toBeVisible();
+      await expect(page.locator(SEL_DELETE_NODE_ITEM)).toBeVisible();
       await expect(page.locator('[data-testid="context-menu-item-create-link"]')).toBeVisible();
     });
 
@@ -58,9 +58,9 @@ test.describe("Context Menu Actions", () => {
       await expect(page.locator(SEL_CONTEXT_MENU)).not.toBeVisible();
 
       // Node editor should open in context panel
-      const panelTitle = page.locator(SEL_PANEL_TITLE);
-      await expect(panelTitle).toBeVisible();
-      await expect(panelTitle).toHaveText("Node Editor");
+      const panel = page.locator(SEL_CONTEXT_PANEL);
+      await expect(panel).toBeVisible();
+      await expect(panel.getByText("Node Editor", { exact: true })).toBeVisible();
     });
 
     test("clicking Delete removes the node", async ({ page, topoViewerPage }) => {
@@ -74,7 +74,7 @@ test.describe("Context Menu Actions", () => {
       await rightClick(page, nodeBox!.x + nodeBox!.width / 2, nodeBox!.y + nodeBox!.height / 2);
       await expect(page.locator(SEL_CONTEXT_MENU)).toBeVisible();
 
-      await page.locator('[data-testid="context-menu-item-delete-node"]').click();
+      await page.locator(SEL_DELETE_NODE_ITEM).click();
       await expect(page.locator(SEL_CONTEXT_MENU)).not.toBeVisible();
 
       await expect.poll(() => topoViewerPage.getNodeCount(), { timeout: 5000 }).toBe(
@@ -108,7 +108,10 @@ test.describe("Context Menu Actions", () => {
       await expect(contextMenu).not.toBeVisible();
     });
 
-    test("no context menu when canvas is locked", async ({ page, topoViewerPage }) => {
+    test("locked mode shows context menu with edit actions disabled", async ({
+      page,
+      topoViewerPage
+    }) => {
       await topoViewerPage.lock();
 
       const nodeIds = await topoViewerPage.getNodeIds();
@@ -119,9 +122,13 @@ test.describe("Context Menu Actions", () => {
 
       await rightClick(page, nodeBox!.x + nodeBox!.width / 2, nodeBox!.y + nodeBox!.height / 2);
 
-      // When locked, context menu is disabled; allow a short time for any UI to appear.
-      await page.waitForTimeout(300);
-      await expect(page.locator(SEL_CONTEXT_MENU)).not.toBeVisible();
+      const contextMenu = page.locator(SEL_CONTEXT_MENU);
+      await expect(contextMenu).toBeVisible();
+
+      // Locked mode allows opening the menu, but edit/delete/link actions are disabled.
+      await expect(page.locator(SEL_EDIT_NODE_ITEM)).toBeDisabled();
+      await expect(page.locator(SEL_DELETE_NODE_ITEM)).toBeDisabled();
+      await expect(page.locator('[data-testid="context-menu-item-create-link"]')).toBeDisabled();
     });
   });
 
@@ -195,9 +202,9 @@ test.describe("Context Menu Actions", () => {
       await editItem.click();
 
       // Link editor should open in context panel
-      const panelTitle = page.locator(SEL_PANEL_TITLE);
-      await expect(panelTitle).toBeVisible();
-      await expect(panelTitle).toHaveText("Link Editor");
+      const panel = page.locator(SEL_CONTEXT_PANEL);
+      await expect(panel).toBeVisible();
+      await expect(panel.getByText("Link Editor", { exact: true })).toBeVisible();
     });
 
     test("clicking Delete removes the edge", async ({ page, topoViewerPage }) => {

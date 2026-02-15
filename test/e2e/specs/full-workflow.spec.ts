@@ -8,8 +8,7 @@ const KIND = "nokia_srlinux";
 
 // Selectors
 const SEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
-const SEL_BACK_BTN = '[data-testid="panel-back-btn"]';
-const SEL_PANEL_TITLE = '[data-testid="panel-title"]';
+const SEL_PANEL_TOGGLE_BTN = '[data-testid="panel-toggle-btn"]';
 const SEL_PANEL_TAB_BASIC = '[data-testid="panel-tab-basic"]';
 const SEL_NODE_NAME = "#node-name";
 
@@ -24,6 +23,18 @@ async function clickNode(page: Page, nodeId: string): Promise<void> {
   if (!box) throw new Error(`Node ${nodeId} has no bounding box`);
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await page.waitForTimeout(300);
+}
+
+async function returnToPalette(page: Page): Promise<void> {
+  const search = page.getByPlaceholder("Search nodes...");
+  if (await search.isVisible().catch(() => false)) return;
+
+  const toggle = page.locator(SEL_PANEL_TOGGLE_BTN);
+  await expect(toggle).toBeVisible({ timeout: 3000 });
+  await toggle.click();
+  await page.waitForTimeout(200);
+  await toggle.click();
+  await expect(search).toBeVisible({ timeout: 5000 });
 }
 
 /**
@@ -76,8 +87,7 @@ test.describe("Full Workflow", () => {
     expect(yaml).toContain("kind: linux");
 
     // Step 4: Undo the kind change
-    await page.locator(SEL_BACK_BTN).click();
-    await page.waitForTimeout(200);
+    await returnToPalette(page);
     await topoViewerPage.undo();
     await page.waitForTimeout(500);
 
@@ -202,7 +212,7 @@ test.describe.serial("Full Workflow E2E Test (Integration)", () => {
     await page.waitForTimeout(500);
 
     await clickNode(page, "router1");
-    await expect(page.locator(SEL_PANEL_TITLE)).toHaveText("Node Editor", { timeout: 5000 });
+    await expect(page.getByText("Node Editor", { exact: true })).toBeVisible({ timeout: 5000 });
 
     const nameField = page.locator(SEL_NODE_NAME);
     await nameField.clear();
@@ -215,9 +225,7 @@ test.describe.serial("Full Workflow E2E Test (Integration)", () => {
       CORE_ROUTER_YAML_KEY
     );
 
-    const backBtn = page.locator(SEL_BACK_BTN);
-    await backBtn.click();
-    await page.waitForTimeout(500);
+    await returnToPalette(page);
 
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds).toContain(CORE_ROUTER);
@@ -419,13 +427,10 @@ test.describe.serial("Full Workflow E2E Test (Integration)", () => {
     await topoViewerPage.fit();
     await page.waitForTimeout(500);
     await clickNode(page, "router1");
-    await expect(page.locator(SEL_PANEL_TITLE)).toHaveText("Node Editor", { timeout: 5000 });
+    await expect(page.getByText("Node Editor", { exact: true })).toBeVisible({ timeout: 5000 });
     await page.locator(SEL_NODE_NAME).fill(CORE_ROUTER);
     await page.locator(SEL_APPLY_BTN).click();
-    {
-      const backBtn = page.locator(SEL_BACK_BTN);
-      await backBtn.click();
-    }
+    await returnToPalette(page);
     await page.waitForTimeout(500);
 
     // Reload file

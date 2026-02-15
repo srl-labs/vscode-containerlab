@@ -137,12 +137,12 @@ test.describe("Lab Settings Modal", () => {
     await expect(labNameInput).toHaveValue("test-lab");
   });
 
-  test("Save button exists in edit mode", async ({ page }) => {
+  test("Apply button exists in edit mode", async ({ page }) => {
     await openModal(page);
 
     const saveBtn = page.locator(SEL_LAB_SETTINGS_SAVE_BTN);
     await expect(saveBtn).toBeVisible();
-    await expect(saveBtn).toHaveText("Save");
+    await expect(saveBtn).toHaveText("Apply");
   });
 
   test("save button persists lab name to YAML", async ({ page, topoViewerPage }) => {

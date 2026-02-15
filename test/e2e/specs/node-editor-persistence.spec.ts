@@ -6,7 +6,7 @@ import { test, expect } from "../fixtures/topoviewer";
 // Test selectors - ContextPanel-based
 const SEL_CONTEXT_PANEL = '[data-testid="context-panel"]';
 const SEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
-const SEL_BACK_BTN = '[data-testid="panel-back-btn"]';
+const SEL_TOGGLE_BTN = '[data-testid="panel-toggle-btn"]';
 
 // Tab identifiers
 const TAB = {
@@ -95,6 +95,18 @@ async function openNodeEditor(page: Page, nodeId: string): Promise<void> {
   await waitForNodeEditor(page);
 }
 
+async function returnToPalette(page: Page): Promise<void> {
+  const search = page.getByPlaceholder("Search nodes...");
+  if (await search.isVisible().catch(() => false)) return;
+
+  const toggle = page.locator(SEL_TOGGLE_BTN);
+  await expect(toggle).toBeVisible({ timeout: 3000 });
+  await toggle.click();
+  await page.waitForTimeout(200);
+  await toggle.click();
+  await expect(search).toBeVisible({ timeout: 5000 });
+}
+
 /**
  * Node Editor Persistence E2E Tests (MUI ContextPanel version)
  *
@@ -131,8 +143,7 @@ test.describe("Node Editor Persistence", () => {
       .toContain(`kind: ${TEST_KIND}`);
 
     // Close editor
-    await page.locator(SEL_BACK_BTN).click();
-    await page.waitForTimeout(300);
+    await returnToPalette(page);
 
     // Reopen editor
     await openNodeEditor(page, nodeId);
@@ -206,8 +217,7 @@ test.describe("Node Editor Persistence", () => {
       .toBe(true);
 
     // Close and reopen editor to verify all fields
-    await page.locator(SEL_BACK_BTN).click();
-    await page.waitForTimeout(300);
+    await returnToPalette(page);
     await openNodeEditor(page, nodeId);
 
     await navigateToTab(page, TAB.BASIC);
@@ -231,21 +241,19 @@ test.describe("Node Editor Persistence", () => {
     await openNodeEditor(page, nodeId);
     await navigateToTab(page, TAB.CONFIG);
 
-    // Click the "Enforce startup config" radio button (value="enforce")
-    const enforceRadio = page.locator('input[type="radio"][value="enforce"]');
-    await enforceRadio.click({ force: true });
+    // Startup config mode is now a select field.
+    await selectMuiOption(page, "node-startup-config-mode", "Enforce startup config");
     await page.waitForTimeout(200);
 
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(500);
 
-    await page.locator(SEL_BACK_BTN).click();
-    await page.waitForTimeout(300);
+    await returnToPalette(page);
 
     // Reopen and verify
     await openNodeEditor(page, nodeId);
     await navigateToTab(page, TAB.CONFIG);
-    await expect(page.locator('input[type="radio"][value="enforce"]')).toBeChecked();
+    await expect(page.locator("#node-startup-config-mode")).toContainText("Enforce startup config");
 
     const yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
     expect(yamlContent).toContain("enforce-startup-config: true");
@@ -321,8 +329,7 @@ test.describe("Node Editor Persistence", () => {
     // Click Apply and close
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(500);
-    await page.locator(SEL_BACK_BTN).click();
-    await page.waitForTimeout(300);
+    await returnToPalette(page);
 
     // Reload the page
     await topoViewerPage.gotoFile(TEST_TOPOLOGY);

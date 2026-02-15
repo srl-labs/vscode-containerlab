@@ -8,9 +8,8 @@ const TOPOLOGY_FILE = "empty.clab.yml";
 const SPINE_LEAF_FILE = "spine-leaf.clab.yml";
 const DATACENTER_FILE = "datacenter.clab.yml";
 
-const SEL_PANEL_TITLE = '[data-testid="panel-title"]';
 const SEL_PANEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
-const SEL_PANEL_BACK_BTN = '[data-testid="panel-back-btn"]';
+const SEL_PANEL_TOGGLE_BTN = '[data-testid="panel-toggle-btn"]';
 const SEL_CONTEXT_PANEL = '[data-testid="context-panel"]';
 
 type NodeBox = { x: number; y: number; width: number; height: number };
@@ -113,13 +112,12 @@ async function applyAndBack(page: Page) {
   await page.keyboard.press("Enter");
   await page.waitForTimeout(300);
 
-  const back = page.locator(SEL_PANEL_BACK_BTN);
-  if (await back.isVisible().catch(() => false)) {
-    await back.click();
-    await page.waitForTimeout(300);
-  }
-
-  // Some editors may already return to the palette after Apply.
+  // Return to palette by toggling panel closed/open.
+  const toggle = page.locator(SEL_PANEL_TOGGLE_BTN);
+  await expect(toggle).toBeVisible({ timeout: 3000 });
+  await toggle.click();
+  await page.waitForTimeout(200);
+  await toggle.click();
   await expect(page.getByPlaceholder("Search nodes...")).toBeVisible({ timeout: 5000 });
 }
 
@@ -416,7 +414,7 @@ test.describe("Group Operations - Membership promotions", () => {
     await openGroupContextMenu(page, secondGroupId);
     await page.locator('[data-testid="context-menu-item-edit-group"]').click();
 
-    await expect(page.locator(SEL_PANEL_TITLE)).toHaveText("Edit Group", { timeout: 5000 });
+    await expect(page.getByText("Edit Group", { exact: true })).toBeVisible({ timeout: 5000 });
     // Group editor uses a Typography label, not a native <label> association.
     // Target the unique placeholder instead of an accessible name to avoid false negatives.
     const panel = page.locator(SEL_CONTEXT_PANEL);

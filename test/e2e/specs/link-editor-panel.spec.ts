@@ -4,8 +4,6 @@ import { test, expect } from "../fixtures/topoviewer";
 import { getEdgeMidpoint, rightClick } from "../helpers/react-flow-helpers";
 
 // Test selectors for the new MUI ContextPanel-based editor
-const SEL_PANEL_TITLE = '[data-testid="panel-title"]';
-const SEL_PANEL_BACK_BTN = '[data-testid="panel-back-btn"]';
 const SEL_PANEL_TOGGLE_BTN = '[data-testid="panel-toggle-btn"]';
 const SEL_PANEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
 const SEL_EDIT_EDGE_ITEM = '[data-testid="context-menu-item-edit-edge"]';
@@ -44,18 +42,16 @@ test.describe("Link Editor Panel", () => {
 
     await openLinkEditor(page, edgeIds[0]);
 
-    const panelTitle = page.locator(SEL_PANEL_TITLE);
+    const panelTitle = page.getByText(PANEL_TITLE_LINK_EDITOR, { exact: true });
     await expect(panelTitle).toBeVisible();
-    await expect(panelTitle).toHaveText(PANEL_TITLE_LINK_EDITOR);
   });
 
   test("link editor panel has correct title", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
     await openLinkEditor(page, edgeIds[0]);
 
-    const title = page.locator(SEL_PANEL_TITLE);
+    const title = page.getByText(PANEL_TITLE_LINK_EDITOR, { exact: true });
     await expect(title).toBeVisible();
-    await expect(title).toHaveText(PANEL_TITLE_LINK_EDITOR);
   });
 
   test("link editor panel has Basic tab selected by default", async ({ page, topoViewerPage }) => {
@@ -71,7 +67,7 @@ test.describe("Link Editor Panel", () => {
     const edgeIds = await topoViewerPage.getEdgeIds();
     await openLinkEditor(page, edgeIds[0]);
 
-    const panelTitle = page.locator(SEL_PANEL_TITLE);
+    const panelTitle = page.getByText(PANEL_TITLE_LINK_EDITOR, { exact: true });
     await expect(panelTitle).toBeVisible();
 
     const toggleBtn = page.locator(SEL_PANEL_TOGGLE_BTN);
@@ -81,23 +77,19 @@ test.describe("Link Editor Panel", () => {
     await expect(panelTitle).not.toBeVisible();
   });
 
-  test("closes link editor panel with back button", async ({ page, topoViewerPage }) => {
+  test("returns to palette after closing and reopening panel", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
     expect(edgeIds.length).toBeGreaterThan(0);
 
     await openLinkEditor(page, edgeIds[0]);
 
-    const panelTitle = page.locator(SEL_PANEL_TITLE);
+    const panelTitle = page.getByText(PANEL_TITLE_LINK_EDITOR, { exact: true });
     await expect(panelTitle).toBeVisible();
-    await expect(panelTitle).toHaveText(PANEL_TITLE_LINK_EDITOR);
+    const toggleBtn = page.locator(SEL_PANEL_TOGGLE_BTN);
+    await toggleBtn.click();
+    await page.waitForTimeout(200);
+    await toggleBtn.click();
 
-    const backBtn = page.locator(SEL_PANEL_BACK_BTN);
-    await backBtn.click();
-    await page.waitForTimeout(300);
-
-    // Back returns the context panel to palette view.
-    await expect(panelTitle).toBeVisible();
-    await expect(panelTitle).toHaveText("Palette");
     await expect(page.getByPlaceholder("Search nodes...")).toBeVisible();
   });
 
@@ -127,7 +119,9 @@ test.describe("Link Editor Panel", () => {
     await rightClick(page, midpoint!.x, midpoint!.y);
     await page.waitForTimeout(200);
 
-    await expect(page.locator(SEL_EDIT_EDGE_ITEM)).not.toBeVisible();
+    const editItem = page.locator(SEL_EDIT_EDGE_ITEM);
+    await expect(editItem).toBeVisible();
+    await expect(editItem).toHaveAttribute("aria-disabled", "true");
   });
 
   test("Apply button exists in link editor panel", async ({ page, topoViewerPage }) => {

@@ -4,7 +4,6 @@ import { test, expect } from "../fixtures/topoviewer";
 
 // Test selectors - ContextPanel-based
 const SEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
-const SEL_BACK_BTN = '[data-testid="panel-back-btn"]';
 const SEL_CONTEXT_PANEL = '[data-testid="context-panel"]';
 
 // Tab identifiers
@@ -100,9 +99,6 @@ topology:
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(500);
 
-    await page.locator(SEL_BACK_BTN).click();
-    await page.waitForTimeout(300);
-
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
     const srl1Section = yamlContent.split("srl2:")[0];
     expect(srl1Section).not.toContain("user:");
@@ -143,9 +139,6 @@ topology:
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(500);
 
-    await page.locator(SEL_BACK_BTN).click();
-    await page.waitForTimeout(300);
-
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
     const srl1Section = yamlContent.split("srl2:")[0];
     expect(srl1Section).not.toContain("mgmt-ipv4:");
@@ -185,8 +178,6 @@ topology:
 
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(700);
-    await page.locator(SEL_BACK_BTN).click();
-    await page.waitForTimeout(300);
 
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
     const srl1Section = yamlContent.split("srl2:")[0];
@@ -229,8 +220,6 @@ topology:
 
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(700);
-    await page.locator(SEL_BACK_BTN).click();
-    await page.waitForTimeout(300);
 
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
     const srl1Section = yamlContent.split("srl2:")[0];
@@ -324,8 +313,6 @@ topology:
 
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(700);
-    await page.locator(SEL_BACK_BTN).click();
-    await page.waitForTimeout(300);
 
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
     const srl1Section = yamlContent.split("srl2:")[0];
@@ -365,8 +352,6 @@ topology:
     await page.waitForTimeout(200);
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(700);
-    await page.locator(SEL_BACK_BTN).click();
-    await page.waitForTimeout(300);
 
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
     const srl1Section = yamlContent.split("srl2:")[0];
@@ -407,8 +392,6 @@ topology:
 
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(700);
-    await page.locator(SEL_BACK_BTN).click();
-    await page.waitForTimeout(300);
 
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
     const srl1Section = yamlContent.split("srl2:")[0];

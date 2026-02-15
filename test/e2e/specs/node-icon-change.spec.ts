@@ -36,9 +36,7 @@ async function clickNode(page: Page, nodeId: string): Promise<void> {
 async function openNodeEditor(page: Page, nodeId: string): Promise<void> {
   await clickNode(page, nodeId);
   // Ensure we actually opened the Node Editor (not e.g. link editor/info view).
-  await expect(page.locator('[data-testid="panel-title"]')).toHaveText("Node Editor", {
-    timeout: 5000
-  });
+  await expect(page.getByText("Node Editor", { exact: true })).toBeVisible({ timeout: 5000 });
   await expect(page.locator("#node-kind")).toBeVisible({ timeout: 5000 });
 }
 
