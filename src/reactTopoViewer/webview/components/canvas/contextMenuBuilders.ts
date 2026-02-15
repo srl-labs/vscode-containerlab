@@ -366,9 +366,6 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
   if (!isEditMode) {
     return [impairmentItem, linkInfoItem];
   }
-  if (isLocked) {
-    return [linkInfoItem, impairmentItem];
-  }
   return [
     {
       id: "edit-edge",
