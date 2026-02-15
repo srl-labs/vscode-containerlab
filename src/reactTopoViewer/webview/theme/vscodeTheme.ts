@@ -90,7 +90,7 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
       }
     }
   },
-  MuiButton: { defaultProps: { disableElevation: true } },
+  MuiButton: { defaultProps: { disableElevation: true, variant: "contained" } },
   MuiTabs: { styleOverrides: { root: { minHeight: 36 } } },
   MuiTab: { styleOverrides: { root: { minHeight: 36, padding: "6px 12px" } } },
   MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } },

@@ -151,11 +151,15 @@ const PaletteDraggableCard: React.FC<{
   </Tooltip>
 );
 
-const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
+const SectionHeader: React.FC<{ title: string; action?: React.ReactNode }> = ({
+  title,
+  action
+}) => (
   <>
     <Divider />
-    <Box sx={{ px: 2, py: 1 }}>
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}>
       <Typography variant="subtitle2">{title}</Typography>
+      {action}
     </Box>
     <Divider />
   </>
@@ -385,8 +389,23 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
     }
   }, [requestedTab, visibleTabs]);
 
-  // Force edit/info tab when active, fall back to user's manual selection otherwise
-  const activeTab = showEditTab ? "edit" : showInfoTab ? "info" : userTab;
+  // Auto-switch when edit/info tab appears (one-time, not forced)
+  useEffect(() => {
+    if (showEditTab) setUserTab("edit");
+  }, [showEditTab]);
+
+  useEffect(() => {
+    if (showInfoTab && !showEditTab) setUserTab("info");
+  }, [showInfoTab, showEditTab]);
+
+  // Fall back to "nodes" when current tab is no longer visible
+  useEffect(() => {
+    if (!visibleTabs.some((t) => t.id === userTab)) {
+      setUserTab("nodes");
+    }
+  }, [visibleTabs, userTab]);
+
+  const activeTab = userTab;
 
   const [yamlError, setYamlError] = useState<string | null>(null);
   const [annotationsError, setAnnotationsError] = useState<string | null>(null);
@@ -558,7 +577,16 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
                 />
               </Box>
 
-              <SectionHeader title="Node Templates" />
+              <SectionHeader
+                title="Node Templates"
+                action={
+                  !filter ? (
+                    <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddNewNode} sx={{ py: 0 }}>
+                      Add
+                    </Button>
+                  ) : undefined
+                }
+              />
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1, p: 2 }}>
                 {filteredNodes.length === 0 && (
                   <Typography variant="body2" color={TEXT_SECONDARY}>
@@ -575,16 +603,6 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
                     onSetDefault={onSetDefaultCustomNode}
                   />
                 ))}
-                {!filter && (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<AddIcon />}
-                    onClick={handleAddNewNode}
-                  >
-                    New custom node
-                  </Button>
-                )}
               </Box>
 
               <SectionHeader title="Networks" />

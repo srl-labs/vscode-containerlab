@@ -154,7 +154,6 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onPreviewOffs
         </Typography>
         <Button
           size="small"
-          variant="outlined"
           onClick={handleOffsetReset}
           title={`Reset to ${DEFAULT_ENDPOINT_LABEL_OFFSET}`}
         >

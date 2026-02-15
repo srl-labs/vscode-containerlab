@@ -59,10 +59,10 @@ export const ConfirmBulkLinksModal: React.FC<ConfirmBulkLinksModalProps> = ({
       </Box>
     </DialogContent>
     <DialogActions sx={{ px: 2, py: 1.5 }}>
-      <Button variant="outlined" size="small" onClick={onCancel}>
+      <Button size="small" onClick={onCancel}>
         Cancel
       </Button>
-      <Button variant="contained" size="small" onClick={onConfirm}>
+      <Button size="small" onClick={onConfirm}>
         Create Links
       </Button>
     </DialogActions>

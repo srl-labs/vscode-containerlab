@@ -419,7 +419,6 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             <Divider />
             <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, p: 1.5 }}>
               <Button
-                variant={footer.hasChanges ? "contained" : "outlined"}
                 size="small"
                 onClick={footer.handleApply}
                 data-testid="panel-apply-btn"

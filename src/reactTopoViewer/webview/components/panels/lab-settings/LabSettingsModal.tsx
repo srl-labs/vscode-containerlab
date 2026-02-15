@@ -59,7 +59,6 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
       {!isReadOnly && (
         <DialogActions>
           <Button
-            variant="contained"
             size="small"
             onClick={() => void saveRef.current?.()}
             data-testid="lab-settings-save-btn"

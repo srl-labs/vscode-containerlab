@@ -66,7 +66,7 @@ export const RuntimeTab: React.FC<TabProps> = ({ data, onChange }) => {
         }}
       >
         <Typography variant="subtitle2">Exec Commands</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddExec} sx={{ py: 0 }}>
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddExec} sx={{ py: 0 }}>
           ADD
         </Button>
       </Box>

@@ -4,7 +4,6 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
-import PaletteIcon from "@mui/icons-material/Palette";
 
 import { InputField, FilterableDropdown, IconPreview } from "../../ui/form";
 import { IconSelectorModal } from "../../ui/IconSelectorModal";
@@ -328,9 +327,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
           />
         </Box>
         <Button
-          variant="outlined"
           size="small"
-          startIcon={<PaletteIcon fontSize="small" />}
           onClick={() => setIsModalOpen(true)}
           sx={{ whiteSpace: "nowrap", alignSelf: "stretch" }}
         >

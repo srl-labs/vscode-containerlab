@@ -435,7 +435,6 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       </DialogContent>
       <DialogActions>
         <Button
-          variant="contained"
           fullWidth
           onClick={() => void handleExport()}
           disabled={isExporting || !isExportAvailable}

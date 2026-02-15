@@ -394,7 +394,6 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
               Custom Icons
             </Typography>
             <Button
-              variant="outlined"
               size="small"
               onClick={handleUploadIcon}
               sx={{ textTransform: "none", fontSize: "0.7rem", py: 0, minHeight: 24 }}
@@ -480,10 +479,10 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
         </Box>
       </DialogContent>
       <DialogActions sx={{ px: 2, py: 1.5 }}>
-        <Button variant="outlined" size="small" onClick={onClose}>
+        <Button size="small" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="contained" size="small" onClick={handleSave}>
+        <Button size="small" onClick={handleSave}>
           Apply
         </Button>
       </DialogActions>

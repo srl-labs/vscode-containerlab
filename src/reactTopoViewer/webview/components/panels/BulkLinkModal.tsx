@@ -219,7 +219,6 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
         </DialogContent>
         <DialogActions>
           <Button
-            variant="contained"
             size="small"
             onClick={handleCompute}
             data-testid="bulk-link-apply-btn"

@@ -108,7 +108,7 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
         }}
       >
         <Typography variant="subtitle2">Capabilities</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddCapability} sx={{ py: 0 }}>
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddCapability} sx={{ py: 0 }}>
           ADD
         </Button>
       </Box>
@@ -134,7 +134,7 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
         }}
       >
         <Typography variant="subtitle2">Sysctls</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddSysctl} sx={{ py: 0 }}>
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddSysctl} sx={{ py: 0 }}>
           ADD
         </Button>
       </Box>
@@ -161,7 +161,7 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
         }}
       >
         <Typography variant="subtitle2">Devices</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddDevice} sx={{ py: 0 }}>
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddDevice} sx={{ py: 0 }}>
           ADD
         </Button>
       </Box>
@@ -222,7 +222,7 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
             }}
           >
             <Typography variant="subtitle2">SANs (Subject Alternative Names)</Typography>
-            <Button size="small" startIcon={<AddIcon />} onClick={handleAddSan} sx={{ py: 0 }}>
+            <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddSan} sx={{ py: 0 }}>
               ADD
             </Button>
           </Box>

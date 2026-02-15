@@ -105,7 +105,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
         }}
       >
         <Typography variant="subtitle2">Bind Mounts</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddBind} sx={{ py: 0 }}>
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddBind} sx={{ py: 0 }}>
           ADD
         </Button>
       </Box>
@@ -131,7 +131,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
         }}
       >
         <Typography variant="subtitle2">Environment Variables</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddEnvVar} sx={{ py: 0 }}>
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddEnvVar} sx={{ py: 0 }}>
           ADD
         </Button>
       </Box>
@@ -158,7 +158,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
         }}
       >
         <Typography variant="subtitle2">Environment Files</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddEnvFile} sx={{ py: 0 }}>
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddEnvFile} sx={{ py: 0 }}>
           ADD
         </Button>
       </Box>
@@ -184,7 +184,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
         }}
       >
         <Typography variant="subtitle2">Labels</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddLabel} sx={{ py: 0 }}>
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddLabel} sx={{ py: 0 }}>
           ADD
         </Button>
       </Box>

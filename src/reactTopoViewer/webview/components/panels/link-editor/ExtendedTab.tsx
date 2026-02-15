@@ -37,7 +37,7 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
         }}
       >
         <Typography variant="subtitle2">Variables</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddVar} sx={{ py: 0 }}>
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddVar} sx={{ py: 0 }}>
           ADD
         </Button>
       </Box>
@@ -63,7 +63,7 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
         }}
       >
         <Typography variant="subtitle2">Labels</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddLabel} sx={{ py: 0 }}>
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddLabel} sx={{ py: 0 }}>
           ADD
         </Button>
       </Box>

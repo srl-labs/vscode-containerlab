@@ -74,7 +74,7 @@ export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
         }}
       >
         <Typography variant="subtitle2">Port Mappings</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddPort} sx={{ py: 0 }}>
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddPort} sx={{ py: 0 }}>
           ADD
         </Button>
       </Box>
@@ -100,7 +100,7 @@ export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
         }}
       >
         <Typography variant="subtitle2">DNS Servers</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddDns} sx={{ py: 0 }}>
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddDns} sx={{ py: 0 }}>
           ADD
         </Button>
       </Box>
@@ -126,7 +126,7 @@ export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
         }}
       >
         <Typography variant="subtitle2">Network Aliases</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddAlias} sx={{ py: 0 }}>
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddAlias} sx={{ py: 0 }}>
           ADD
         </Button>
       </Box>

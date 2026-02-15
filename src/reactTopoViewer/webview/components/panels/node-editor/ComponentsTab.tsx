@@ -178,8 +178,8 @@ const MdaSectionWrapper: React.FC<MdaSectionWrapperProps> = ({
   <>
     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}>
       <Typography variant="subtitle2">MDA Components</Typography>
-      <Button size="small" startIcon={<AddIcon />} onClick={() => onAddMda(parentIndex)} sx={{ py: 0 }}>
-        Add MDA
+      <Button variant="text" size="small" startIcon={<AddIcon />} onClick={() => onAddMda(parentIndex)} sx={{ py: 0 }}>
+        Add
       </Button>
     </Box>
     <Divider />
@@ -376,6 +376,7 @@ const ComponentXiomSection: React.FC<
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}>
         <Typography variant="subtitle2">XIOM Components</Typography>
         <Button
+          variant="text"
           size="small"
           startIcon={<AddIcon />}
           onClick={() => onAddXiom(index)}
@@ -383,7 +384,7 @@ const ComponentXiomSection: React.FC<
           title={xioms.length >= 2 ? "XIOM slots x1 and x2 are already defined" : undefined}
           sx={{ py: 0 }}
         >
-          Add XIOM
+          Add
         </Button>
       </Box>
       <Divider />
@@ -463,7 +464,6 @@ interface ComponentSectionProps {
     updates: Partial<SrosMda>
   ) => void;
   removeXiomMda: (compIndex: number, xiomIndex: number, mdaIndex: number) => void;
-  addButtonLabel: string;
   onAdd: () => void;
   addDisabled?: boolean;
   addDisabledTitle?: string;
@@ -485,7 +485,6 @@ const ComponentSection: React.FC<ComponentSectionProps> = ({
   addXiomMda,
   updateXiomMda,
   removeXiomMda,
-  addButtonLabel,
   onAdd,
   addDisabled,
   addDisabledTitle
@@ -497,6 +496,7 @@ const ComponentSection: React.FC<ComponentSectionProps> = ({
     >
       <Typography variant="subtitle2">{title}</Typography>
       <Button
+        variant="text"
         size="small"
         startIcon={<AddIcon />}
         onClick={onAdd}
@@ -504,7 +504,7 @@ const ComponentSection: React.FC<ComponentSectionProps> = ({
         title={addDisabled ? addDisabledTitle : undefined}
         sx={{ py: 0 }}
       >
-        {addButtonLabel}
+        Add
       </Button>
     </Box>
     <Divider />
@@ -665,8 +665,8 @@ const IntegratedModeSection: React.FC<IntegratedModeSectionProps> = ({
         }}
       >
         <Typography variant="subtitle2">MDA Configuration</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={addMda} sx={{ py: 0 }}>
-          Add MDA
+        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={addMda} sx={{ py: 0 }}>
+          Add
         </Button>
       </Box>
       <Divider />
@@ -849,7 +849,6 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
         {...commonSectionProps}
         title="Control Processing Modules (CPM)"
         filteredComponents={cpmComponents}
-        addButtonLabel="Add CPM"
         onAdd={addCpm}
         addDisabled={cpmComponents.length >= 2}
         addDisabledTitle="CPM slots A and B are already defined"
@@ -860,7 +859,6 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
         {...commonSectionProps}
         title="Line Cards"
         filteredComponents={cardComponents}
-        addButtonLabel="Add Card"
         onAdd={addCard}
       />
 
