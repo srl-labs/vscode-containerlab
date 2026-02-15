@@ -63,13 +63,6 @@ export interface EditorTabContentProps {
     handleSave: (data: NetworkEditorData) => void;
     handleApply: (data: NetworkEditorData) => void;
   };
-  // Custom template editor
-  customTemplateEditorData: NodeEditorData | null;
-  customTemplateHandlers: {
-    handleClose: () => void;
-    handleSave: (data: NodeEditorData) => void;
-    handleApply: (data: NodeEditorData) => void;
-  };
   // Link impairment
   linkImpairmentData: LinkImpairmentData | null;
   linkImpairmentHandlers: {
@@ -132,8 +125,6 @@ export const EditorTabContent: React.FC<EditorTabContentProps> = ({
   linkEditorHandlers,
   editingNetworkData,
   networkEditorHandlers,
-  customTemplateEditorData,
-  customTemplateHandlers,
   linkImpairmentData,
   linkImpairmentHandlers,
   editingTextAnnotation,
@@ -158,16 +149,6 @@ export const EditorTabContent: React.FC<EditorTabContentProps> = ({
           onSave={nodeEditorHandlers.handleSave}
           onApply={nodeEditorHandlers.handleApply}
           inheritedProps={editingNodeInheritedProps}
-          onFooterRef={onFooterRef}
-          readOnly={isReadOnly}
-        />
-      );
-    case "customTemplateEditor":
-      return (
-        <NodeEditorView
-          nodeData={customTemplateEditorData}
-          onSave={customTemplateHandlers.handleSave}
-          onApply={customTemplateHandlers.handleApply}
           onFooterRef={onFooterRef}
           readOnly={isReadOnly}
         />

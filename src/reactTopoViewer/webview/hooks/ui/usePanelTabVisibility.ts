@@ -43,7 +43,6 @@ export function usePanelTabVisibility(): PanelTabVisibility {
     state.editingNode ||
     state.editingEdge ||
     state.editingNetwork ||
-    state.editingCustomTemplate ||
     state.editingImpairment ||
     annotationUI.editingTextAnnotation ||
     annotationUI.editingShapeAnnotation ||

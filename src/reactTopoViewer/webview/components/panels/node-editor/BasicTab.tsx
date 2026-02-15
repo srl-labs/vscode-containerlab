@@ -378,18 +378,27 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      {/* Configuration section */}
+      {/* Custom Node Template section - only for custom templates */}
+      {data.isCustomTemplate && (
+        <>
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="subtitle2">Template</Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+            <CustomNodeTemplateFields data={data} onChange={onChange} />
+          </Box>
+        </>
+      )}
+
+      {/* Node Parameters section */}
+      <Divider />
       <Box sx={{ px: 2, py: 1 }}>
         <Typography variant="subtitle2">Node Parameters</Typography>
       </Box>
       <Divider />
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
-        {/* Show Node Name for regular nodes, Custom Template fields for custom node templates */}
-        {data.isCustomTemplate ? (
-          <CustomNodeTemplateFields data={data} onChange={onChange} />
-        ) : (
-          <NodeNameField data={data} onChange={onChange} />
-        )}
+        {!data.isCustomTemplate && <NodeNameField data={data} onChange={onChange} />}
 
         {/* Kind/Type fields - use schema data */}
         <KindField

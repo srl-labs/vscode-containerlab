@@ -6,20 +6,18 @@ import type { TopoViewerActions, TopoViewerState } from "../../stores/topoViewer
 import {
   useNodeEditorHandlers,
   useLinkEditorHandlers,
-  useNetworkEditorHandlers,
-  useCustomTemplateEditor
+  useNetworkEditorHandlers
 } from "../editor";
 
 import type { useSelectionData } from "./useAppContentHelpers";
 
 interface AppEditorBindingsParams {
-  state: Pick<TopoViewerState, "edgeAnnotations" | "editingCustomTemplate">;
+  state: Pick<TopoViewerState, "edgeAnnotations">;
   actions: Pick<
     TopoViewerActions,
     | "editNode"
     | "editEdge"
     | "editNetwork"
-    | "editCustomTemplate"
     | "setEdgeAnnotations"
     | "refreshEditorData"
   >;
@@ -41,7 +39,6 @@ export function useAppEditorBindings({
     editNode,
     editEdge,
     editNetwork,
-    editCustomTemplate,
     setEdgeAnnotations,
     refreshEditorData
   } = actions;
@@ -70,14 +67,9 @@ export function useAppEditorBindings({
     renameNodeInGraph
   );
 
-  const { editorData: customTemplateEditorData, handlers: customTemplateHandlers } =
-    useCustomTemplateEditor(state.editingCustomTemplate, editCustomTemplate);
-
   return {
     nodeEditorHandlers,
     linkEditorHandlers,
-    networkEditorHandlers,
-    customTemplateEditorData,
-    customTemplateHandlers
+    networkEditorHandlers
   };
 }

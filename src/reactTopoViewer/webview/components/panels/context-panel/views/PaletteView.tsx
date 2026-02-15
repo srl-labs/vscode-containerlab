@@ -2,6 +2,7 @@
 import React, { useCallback, useMemo, useRef } from "react";
 
 import { PaletteSection } from "../../lab-drawer/PaletteSection";
+import { NodeTemplateModal } from "../../node-editor/NodeTemplateModal";
 import type { GroupEditorData } from "../../../../hooks/canvas";
 import type {
   FreeTextAnnotation,
@@ -53,12 +54,6 @@ export interface PaletteViewProps {
       handleClose: () => void;
       handleSave: (data: NetworkEditorData) => void;
       handleApply: (data: NetworkEditorData) => void;
-    };
-    customTemplateEditorData: NodeEditorData | null;
-    customTemplateHandlers: {
-      handleClose: () => void;
-      handleSave: (data: NodeEditorData) => void;
-      handleApply: (data: NodeEditorData) => void;
     };
     linkImpairmentData: LinkImpairmentData | null;
     linkImpairmentHandlers: {
@@ -181,8 +176,6 @@ export const PaletteView: React.FC<PaletteViewProps> = ({
       linkEditorHandlers={editor.linkEditorHandlers}
       editingNetworkData={editor.editingNetworkData}
       networkEditorHandlers={editor.networkEditorHandlers}
-      customTemplateEditorData={editor.customTemplateEditorData}
-      customTemplateHandlers={editor.customTemplateHandlers}
       linkImpairmentData={editor.linkImpairmentData}
       linkImpairmentHandlers={editor.linkImpairmentHandlers}
       editingTextAnnotation={editor.editingTextAnnotation}
@@ -197,21 +190,24 @@ export const PaletteView: React.FC<PaletteViewProps> = ({
   ) : null;
 
   return (
-    <PaletteSection
-      mode={mode}
-      isLocked={isLocked}
-      requestedTab={requestedTab}
-      onEditCustomNode={onEditCustomNode}
-      onDeleteCustomNode={onDeleteCustomNode}
-      onSetDefaultCustomNode={onSetDefaultCustomNode}
-      editTabContent={editTabContent}
-      showEditTab={showEditTab}
-      editTabTitle={editTabTitle}
-      onEditDelete={editDeleteHandler}
-      onEditTabLeave={handleEditTabLeave}
-      infoTabContent={infoTabContent}
-      showInfoTab={showInfoTab}
-      infoTabTitle={infoTabTitle}
-    />
+    <>
+      <PaletteSection
+        mode={mode}
+        isLocked={isLocked}
+        requestedTab={requestedTab}
+        onEditCustomNode={onEditCustomNode}
+        onDeleteCustomNode={onDeleteCustomNode}
+        onSetDefaultCustomNode={onSetDefaultCustomNode}
+        editTabContent={editTabContent}
+        showEditTab={showEditTab}
+        editTabTitle={editTabTitle}
+        onEditDelete={editDeleteHandler}
+        onEditTabLeave={handleEditTabLeave}
+        infoTabContent={infoTabContent}
+        showInfoTab={showInfoTab}
+        infoTabTitle={infoTabTitle}
+      />
+      <NodeTemplateModal />
+    </>
   );
 };

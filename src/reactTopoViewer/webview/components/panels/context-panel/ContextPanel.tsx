@@ -82,12 +82,6 @@ export interface ContextPanelEditorProps {
     handleSave: (data: NetworkEditorData) => void;
     handleApply: (data: NetworkEditorData) => void;
   };
-  customTemplateEditorData: NodeEditorData | null;
-  customTemplateHandlers: {
-    handleClose: () => void;
-    handleSave: (data: NodeEditorData) => void;
-    handleApply: (data: NodeEditorData) => void;
-  };
   linkImpairmentData: LinkImpairmentData | null;
   linkImpairmentHandlers: {
     onError: (error: string) => void;

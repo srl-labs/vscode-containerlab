@@ -19,8 +19,7 @@ export type PanelViewKind =
   | "linkImpairment"
   | "freeTextEditor"
   | "freeShapeEditor"
-  | "groupEditor"
-  | "customTemplateEditor";
+  | "groupEditor";
 
 export interface PanelView {
   kind: PanelViewKind;
@@ -32,14 +31,6 @@ export interface PanelView {
 const PALETTE_VIEW: PanelView = { kind: "palette", title: "Palette", hasFooter: false };
 
 function resolveEditingView(state: TopoViewerState): PanelView | null {
-  if (state.editingCustomTemplate) {
-    const isNew = state.editingCustomTemplate.id !== "edit-custom-node";
-    return {
-      kind: "customTemplateEditor",
-      title: isNew ? "Create Custom Node" : "Edit Custom Node",
-      hasFooter: true
-    };
-  }
   if (state.editingNode) return { kind: "nodeEditor", title: "Node Editor", hasFooter: true };
   if (state.editingEdge) return { kind: "linkEditor", title: "Link Editor", hasFooter: true };
   if (state.editingNetwork)

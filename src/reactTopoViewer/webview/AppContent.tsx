@@ -392,20 +392,16 @@ export const AppContent: React.FC<AppContentProps> = ({
   const {
     nodeEditorHandlers,
     linkEditorHandlers,
-    networkEditorHandlers,
-    customTemplateEditorData,
-    customTemplateHandlers
+    networkEditorHandlers
   } = useAppEditorBindings({
     selectionData,
     state: {
-      edgeAnnotations: state.edgeAnnotations,
-      editingCustomTemplate: state.editingCustomTemplate
+      edgeAnnotations: state.edgeAnnotations
     },
     actions: {
       editNode: topoActions.editNode,
       editEdge: topoActions.editEdge,
       editNetwork: topoActions.editNetwork,
-      editCustomTemplate: topoActions.editCustomTemplate,
       setEdgeAnnotations: topoActions.setEdgeAnnotations,
       refreshEditorData: topoActions.refreshEditorData
     },
@@ -501,7 +497,6 @@ export const AppContent: React.FC<AppContentProps> = ({
     topoActions.editEdge(null);
     topoActions.editImpairment(null);
     topoActions.editNetwork(null);
-    topoActions.editCustomTemplate(null);
     topoActions.selectNode(null);
     topoActions.selectEdge(null);
     annotationUiActions.closeTextEditor();
@@ -516,7 +511,6 @@ export const AppContent: React.FC<AppContentProps> = ({
     !!state.editingEdge ||
     !!state.editingNetwork ||
     !!state.editingImpairment ||
-    !!state.editingCustomTemplate ||
     !!annotations.editingTextAnnotation ||
     !!annotations.editingShapeAnnotation ||
     !!annotations.editingGroup;
@@ -760,12 +754,6 @@ export const AppContent: React.FC<AppContentProps> = ({
                 handleClose: networkEditorHandlers.handleClose,
                 handleSave: handleNetworkSave,
                 handleApply: handleNetworkApply
-              },
-              customTemplateEditorData,
-              customTemplateHandlers: {
-                handleClose: customTemplateHandlers.handleClose,
-                handleSave: customTemplateHandlers.handleSave,
-                handleApply: customTemplateHandlers.handleApply
               },
               linkImpairmentData: selectionData.selectedLinkImpairmentData,
               linkImpairmentHandlers: {
