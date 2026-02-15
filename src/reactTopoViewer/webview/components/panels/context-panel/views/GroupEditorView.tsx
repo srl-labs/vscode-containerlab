@@ -50,7 +50,7 @@ export const GroupEditorView: React.FC<GroupEditorViewProps> = ({
       groupIdRef.current = groupData.id;
       hasPreviewRef.current = false;
     }
-  }, [groupData?.id]);
+  }, [groupData]);
 
   // Revert on unmount if there are uncommitted preview changes
   useEffect(() => {

@@ -7,7 +7,10 @@ import { useFooterControlsRef } from "../../../../hooks/ui";
 import { useLinkImpairmentForm } from "../../../../hooks/editor/useLinkImpairmentForm";
 import type { LinkImpairmentData, LinkImpairmentTabId } from "../../link-impairment/types";
 import { applyNetemSettings } from "../../link-impairment/LinkImpairmentUtils";
-import { LinkImpairmentTab } from "../../link-impairment/LinkImpairmentTab";
+import {
+  LinkImpairmentTab,
+  type LinkImpairmentTabProps
+} from "../../link-impairment/LinkImpairmentTab";
 
 export interface LinkImpairmentViewProps {
   linkData: LinkImpairmentData | null;
@@ -72,7 +75,7 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
   }, [formData, onApply, onError, readOnly, resetAfterApply, validationErrors]);
 
   // Dynamic tabs based on endpoint names
-  const tabs: TabConfig[] = useMemo(
+  const tabs: Array<TabConfig<LinkImpairmentTabProps>> = useMemo(
     () =>
       formData
         ? [

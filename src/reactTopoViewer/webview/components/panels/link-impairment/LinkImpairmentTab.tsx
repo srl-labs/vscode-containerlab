@@ -7,7 +7,7 @@ import { InputField } from "../../ui/form";
 
 import type { NetemState } from "./types";
 
-interface LinkImpairmentTabProps {
+export interface LinkImpairmentTabProps {
   data: NetemState;
   onChange: (updates: Partial<NetemState>) => void;
 }

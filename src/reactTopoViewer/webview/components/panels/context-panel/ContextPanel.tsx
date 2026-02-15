@@ -45,6 +45,43 @@ interface FooterRef {
   hasChanges: boolean;
 }
 
+interface SideConfig {
+  isLeft: boolean;
+  tooltipPlacement: "left" | "right";
+  positionProp: "left" | "right";
+  openIcon: typeof ChevronRightIcon;
+  closeIcon: typeof ChevronLeftIcon;
+  borderRadius: string;
+  borderZeroProp: "borderLeft" | "borderRight";
+  moveTargetLabel: "left" | "right";
+}
+
+function getSideConfig(side: "left" | "right"): SideConfig {
+  if (side === "left") {
+    return {
+      isLeft: true,
+      tooltipPlacement: "right",
+      positionProp: "left",
+      openIcon: ChevronRightIcon,
+      closeIcon: ChevronLeftIcon,
+      borderRadius: "0 4px 4px 0",
+      borderZeroProp: "borderLeft",
+      moveTargetLabel: "right"
+    };
+  }
+
+  return {
+    isLeft: false,
+    tooltipPlacement: "left",
+    positionProp: "right",
+    openIcon: ChevronLeftIcon,
+    closeIcon: ChevronRightIcon,
+    borderRadius: "4px 0 0 4px",
+    borderZeroProp: "borderRight",
+    moveTargetLabel: "left"
+  };
+}
+
 export interface ContextPanelPaletteProps {
   mode?: "edit" | "view";
   requestedTab?: { tabId: string };
@@ -141,11 +178,19 @@ const ToggleHandle: React.FC<{
   onBack: () => void;
   onToggleSide: () => void;
 }> = ({ isOpen, panelWidth, isDragging, onOpen, onClose, onBack, side, onToggleSide }) => {
-  const isLeft = side === "left";
-  const tooltipPlacement = isLeft ? "right" : "left";
-  const positionProp = isLeft ? "left" : "right";
-  const OpenIcon = isLeft ? ChevronRightIcon : ChevronLeftIcon;
-  const CloseChevron = isLeft ? ChevronLeftIcon : ChevronRightIcon;
+  const sideConfig = getSideConfig(side);
+  const anchorOffset = isOpen ? panelWidth : 0;
+  const toggleTitle = isOpen ? "Close panel" : "Open panel";
+  const ActiveIcon = isOpen ? sideConfig.closeIcon : sideConfig.openIcon;
+  const handleToggle = useCallback(() => {
+    if (isOpen) {
+      onBack();
+      onClose();
+      return;
+    }
+
+    onOpen();
+  }, [isOpen, onBack, onClose, onOpen]);
 
   const handleStyle = {
     display: "flex",
@@ -153,9 +198,9 @@ const ToggleHandle: React.FC<{
     justifyContent: "center",
     width: 20,
     cursor: "pointer",
-    borderRadius: isLeft ? "0 4px 4px 0" : "4px 0 0 4px",
+    borderRadius: sideConfig.borderRadius,
     border: 1,
-    [isLeft ? "borderLeft" : "borderRight"]: 0,
+    [sideConfig.borderZeroProp]: 0,
     borderColor: "divider",
     bgcolor: "background.paper",
     "&:hover": { bgcolor: ACTION_HOVER }
@@ -165,13 +210,13 @@ const ToggleHandle: React.FC<{
     <Box
       sx={{
         position: "absolute",
-        [isLeft ? "left" : "right"]: isOpen ? panelWidth : 0,
+        [sideConfig.positionProp]: anchorOffset,
         top: "50%",
         transform: "translateY(-50%)",
         transition: isDragging
           ? "none"
           : (theme) =>
-              theme.transitions.create(positionProp, {
+              theme.transitions.create(sideConfig.positionProp, {
                 duration: theme.transitions.duration.short
               }),
         zIndex: 15,
@@ -181,28 +226,16 @@ const ToggleHandle: React.FC<{
         gap: 0.5
       }}
     >
-      <Tooltip title={isOpen ? "Close panel" : "Open panel"} placement={tooltipPlacement}>
-        <Box
-          onClick={
-            isOpen
-              ? () => {
-                  onBack();
-                  onClose();
-                }
-              : onOpen
-          }
-          data-testid="panel-toggle-btn"
-          sx={{ ...handleStyle, height: 48 }}
-        >
-          {isOpen ? (
-            <CloseChevron sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
-          ) : (
-            <OpenIcon sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
-          )}
+      <Tooltip title={toggleTitle} placement={sideConfig.tooltipPlacement}>
+        <Box onClick={handleToggle} data-testid="panel-toggle-btn" sx={{ ...handleStyle, height: 48 }}>
+          <ActiveIcon sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
         </Box>
       </Tooltip>
       {isOpen && (
-        <Tooltip title={`Move panel to ${isLeft ? "right" : "left"}`} placement={tooltipPlacement}>
+        <Tooltip
+          title={`Move panel to ${sideConfig.moveTargetLabel}`}
+          placement={sideConfig.tooltipPlacement}
+        >
           <Box onClick={onToggleSide} sx={{ ...handleStyle, height: 24 }}>
             <SwapHorizIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
           </Box>

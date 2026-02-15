@@ -38,6 +38,102 @@ interface ContextMenuItemsParams {
   onAddShapeAtPosition?: (position: { x: number; y: number }, shapeType?: string) => void;
 }
 
+interface ResolveContextMenuItemsParams extends ContextMenuItemsParams {
+  type: "node" | "edge" | "pane" | null;
+  targetId: string | null;
+  menuPosition: { x: number; y: number };
+  nodes: Node[];
+  edges: Edge[];
+  isEditMode: boolean;
+  isLocked: boolean;
+}
+
+function buildNodeItems(
+  params: ResolveContextMenuItemsParams & { targetId: string }
+): ContextMenuItem[] {
+  const targetNode = params.nodes.find((node) => node.id === params.targetId);
+  const targetNodeType = targetNode?.type;
+
+  return buildNodeContextMenu({
+    targetId: params.targetId,
+    targetNodeType,
+    isEditMode: params.isEditMode,
+    isLocked: params.isLocked,
+    closeContextMenu: params.handlers.closeContextMenu,
+    editNode: params.editNode,
+    editNetwork: params.editNetwork,
+    handleDeleteNode: params.handleDeleteNode,
+    showNodeInfo: params.showNodeInfo,
+    linkSourceNode: params.linkSourceNode,
+    startLinkCreation: params.startLinkCreation,
+    cancelLinkCreation: params.cancelLinkCreation,
+    editFreeText: params.annotationHandlers?.onEditFreeText,
+    editFreeShape: params.annotationHandlers?.onEditFreeShape,
+    deleteFreeText: params.annotationHandlers?.onDeleteFreeText,
+    deleteFreeShape: params.annotationHandlers?.onDeleteFreeShape,
+    editGroup: params.annotationHandlers?.onEditGroup,
+    deleteGroup: params.annotationHandlers?.onDeleteGroup
+  });
+}
+
+function buildEdgeItems(
+  params: ResolveContextMenuItemsParams & { targetId: string }
+): ContextMenuItem[] {
+  const targetEdge = params.edges.find((edge) => edge.id === params.targetId);
+  const edgeData = targetEdge?.data as
+    | { sourceEndpoint?: string; targetEndpoint?: string; extraData?: Record<string, unknown> }
+    | undefined;
+
+  return buildEdgeContextMenu({
+    targetId: params.targetId,
+    sourceNode: targetEdge?.source,
+    targetNode: targetEdge?.target,
+    sourceEndpoint: edgeData?.sourceEndpoint,
+    targetEndpoint: edgeData?.targetEndpoint,
+    extraData: edgeData?.extraData,
+    isEditMode: params.isEditMode,
+    isLocked: params.isLocked,
+    closeContextMenu: params.handlers.closeContextMenu,
+    editEdge: params.editEdge,
+    handleDeleteEdge: params.handleDeleteEdge,
+    showLinkInfo: params.showLinkInfo,
+    showLinkImpairment: params.showLinkImpairment
+  });
+}
+
+function buildPaneItems(params: ResolveContextMenuItemsParams): ContextMenuItem[] {
+  return buildPaneContextMenu({
+    isEditMode: params.isEditMode,
+    isLocked: params.isLocked,
+    closeContextMenu: params.handlers.closeContextMenu,
+    reactFlowInstance: params.handlers.reactFlowInstance,
+    onOpenNodePalette: params.onOpenNodePalette,
+    onAddDefaultNode: params.onAddDefaultNode,
+    menuPosition: params.menuPosition,
+    onAddGroup: params.onAddGroup,
+    onAddText: params.onAddText,
+    onAddTextAtPosition: params.onAddTextAtPosition,
+    onAddShapes: params.onAddShapes,
+    onAddShapeAtPosition: params.onAddShapeAtPosition
+  });
+}
+
+function resolveContextMenuItems(params: ResolveContextMenuItemsParams): ContextMenuItem[] {
+  if (params.type === "node" && params.targetId) {
+    return buildNodeItems({ ...params, targetId: params.targetId });
+  }
+
+  if (params.type === "edge" && params.targetId) {
+    return buildEdgeItems({ ...params, targetId: params.targetId });
+  }
+
+  if (params.type === "pane") {
+    return buildPaneItems(params);
+  }
+
+  return [];
+}
+
 /**
  * Hook for building context menu items.
  */
@@ -70,74 +166,16 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
   const { type, targetId, position: menuPosition } = handlers.contextMenu;
 
   return useMemo(() => {
-    const isEditMode = state.mode === "edit";
-    const isLocked = state.isLocked;
-    const nodes = nodesRef.current ?? [];
-    const edges = edgesRef.current ?? [];
-
-    if (type === "node" && targetId) {
-      const targetNode = nodes.find((n) => n.id === targetId);
-      const targetNodeType = targetNode?.type;
-
-      return buildNodeContextMenu({
-        targetId,
-        targetNodeType,
-        isEditMode,
-        isLocked,
-        closeContextMenu: handlers.closeContextMenu,
-        editNode,
-        editNetwork,
-        handleDeleteNode,
-        showNodeInfo,
-        linkSourceNode,
-        startLinkCreation,
-        cancelLinkCreation,
-        editFreeText: annotationHandlers?.onEditFreeText,
-        editFreeShape: annotationHandlers?.onEditFreeShape,
-        deleteFreeText: annotationHandlers?.onDeleteFreeText,
-        deleteFreeShape: annotationHandlers?.onDeleteFreeShape,
-        editGroup: annotationHandlers?.onEditGroup,
-        deleteGroup: annotationHandlers?.onDeleteGroup
-      });
-    }
-    if (type === "edge" && targetId) {
-      const targetEdge = edges.find((e) => e.id === targetId);
-      const edgeData = targetEdge?.data as
-        | { sourceEndpoint?: string; targetEndpoint?: string; extraData?: Record<string, unknown> }
-        | undefined;
-      return buildEdgeContextMenu({
-        targetId,
-        sourceNode: targetEdge?.source,
-        targetNode: targetEdge?.target,
-        sourceEndpoint: edgeData?.sourceEndpoint,
-        targetEndpoint: edgeData?.targetEndpoint,
-        extraData: edgeData?.extraData,
-        isEditMode,
-        isLocked,
-        closeContextMenu: handlers.closeContextMenu,
-        editEdge,
-        handleDeleteEdge,
-        showLinkInfo,
-        showLinkImpairment
-      });
-    }
-    if (type === "pane") {
-      return buildPaneContextMenu({
-        isEditMode,
-        isLocked,
-        closeContextMenu: handlers.closeContextMenu,
-        reactFlowInstance: handlers.reactFlowInstance,
-        onOpenNodePalette,
-        onAddDefaultNode,
-        menuPosition,
-        onAddGroup,
-        onAddText,
-        onAddTextAtPosition,
-        onAddShapes,
-        onAddShapeAtPosition
-      });
-    }
-    return [];
+    return resolveContextMenuItems({
+      ...params,
+      type,
+      targetId,
+      menuPosition,
+      nodes: nodesRef.current ?? [],
+      edges: edgesRef.current ?? [],
+      isEditMode: state.mode === "edit",
+      isLocked: state.isLocked
+    });
   }, [
     type,
     targetId,

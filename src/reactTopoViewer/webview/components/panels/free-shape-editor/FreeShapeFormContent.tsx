@@ -26,20 +26,17 @@ interface Props {
   ) => void;
 }
 
-// Main component
-export const FreeShapeFormContent: React.FC<Props> = ({ formData, updateField }) => {
-  const isLine = formData.shapeType === "line";
-  const isRectangle = formData.shapeType === "rectangle";
+interface SectionProps extends Props {
+  isLine: boolean;
+}
 
-  const opacity = formData.fillOpacity ?? DEFAULT_FILL_OPACITY;
+interface BorderSectionProps extends SectionProps {
+  isRectangle: boolean;
+}
 
-  const borderWidth = formData.borderWidth ?? DEFAULT_BORDER_WIDTH;
-
-  const hasArrows = formData.lineStartArrow || formData.lineEndArrow;
-
+const ShapeSection: React.FC<SectionProps> = ({ formData, updateField, isLine }) => {
   return (
-    <Box sx={{ display: "flex", flexDirection: "column" }}>
-      {/* Shape */}
+    <>
       <Box sx={{ px: 2, py: 1 }}>
         <Typography variant="subtitle2">Shape</Typography>
       </Box>
@@ -91,37 +88,54 @@ export const FreeShapeFormContent: React.FC<Props> = ({ formData, updateField })
           </Box>
         )}
       </Box>
+    </>
+  );
+};
 
-      {/* Fill (only for non-lines) */}
-      {!isLine && (
-        <>
-          <Divider />
-          <Box sx={{ px: 2, py: 1 }}>
-            <Typography variant="subtitle2">Fill</Typography>
-          </Box>
-          <Divider />
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, p: 2 }}>
-            <ColorField
-              label="Fill Color"
-              value={formData.fillColor ?? DEFAULT_FILL_COLOR}
-              onChange={(v) => updateField("fillColor", v)}
-            />
-            <InputField
-              id="shape-opacity"
-              label="Opacity"
-              type="number"
-              value={opacity ? String(Math.round(opacity * 100)) : ""}
-              onChange={(v) => updateField("fillOpacity", v ? Number(v) / 100 : 0)}
-              min={0}
-              max={100}
-              suffix="%"
-              clearable
-            />
-          </Box>
-        </>
-      )}
+const FillSection: React.FC<SectionProps> = ({ formData, updateField, isLine }) => {
+  if (isLine) return null;
 
-      {/* Border / Line */}
+  const opacity = formData.fillOpacity ?? DEFAULT_FILL_OPACITY;
+
+  return (
+    <>
+      <Divider />
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Fill</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, p: 2 }}>
+        <ColorField
+          label="Fill Color"
+          value={formData.fillColor ?? DEFAULT_FILL_COLOR}
+          onChange={(v) => updateField("fillColor", v)}
+        />
+        <InputField
+          id="shape-opacity"
+          label="Opacity"
+          type="number"
+          value={opacity ? String(Math.round(opacity * 100)) : ""}
+          onChange={(v) => updateField("fillOpacity", v ? Number(v) / 100 : 0)}
+          min={0}
+          max={100}
+          suffix="%"
+          clearable
+        />
+      </Box>
+    </>
+  );
+};
+
+const BorderSection: React.FC<BorderSectionProps> = ({
+  formData,
+  updateField,
+  isLine,
+  isRectangle
+}) => {
+  const borderWidth = formData.borderWidth ?? DEFAULT_BORDER_WIDTH;
+
+  return (
+    <>
       <Divider />
       <Box sx={{ px: 2, py: 1 }}>
         <Typography variant="subtitle2">{isLine ? "Line" : "Border"}</Typography>
@@ -172,45 +186,70 @@ export const FreeShapeFormContent: React.FC<Props> = ({ formData, updateField })
           />
         </Box>
       </Box>
+    </>
+  );
+};
 
-      {/* Arrows (only for lines) */}
-      {isLine && (
-        <>
-          <Divider />
-          <Box sx={{ px: 2, py: 1 }}>
-            <Typography variant="subtitle2">Arrows</Typography>
-          </Box>
-          <Divider />
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
-            <Box sx={{ display: "flex", gap: 1 }}>
-              <Toggle
-                active={formData.lineStartArrow ?? false}
-                onClick={() => updateField("lineStartArrow", !formData.lineStartArrow)}
-              >
-                Start Arrow
-              </Toggle>
-              <Toggle
-                active={formData.lineEndArrow ?? false}
-                onClick={() => updateField("lineEndArrow", !formData.lineEndArrow)}
-              >
-                End Arrow
-              </Toggle>
-            </Box>
-            {hasArrows && (
-              <InputField
-                id="shape-arrow-size"
-                label="Arrow Size"
-                type="number"
-                value={String(formData.lineArrowSize ?? DEFAULT_ARROW_SIZE)}
-                onChange={(v) => updateField("lineArrowSize", Number(v))}
-                min={5}
-                max={50}
-                suffix="px"
-              />
-            )}
-          </Box>
-        </>
-      )}
+const ArrowSection: React.FC<SectionProps> = ({ formData, updateField, isLine }) => {
+  if (!isLine) return null;
+
+  const hasArrows = Boolean(formData.lineStartArrow || formData.lineEndArrow);
+
+  return (
+    <>
+      <Divider />
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Arrows</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Toggle
+            active={formData.lineStartArrow ?? false}
+            onClick={() => updateField("lineStartArrow", !formData.lineStartArrow)}
+          >
+            Start Arrow
+          </Toggle>
+          <Toggle
+            active={formData.lineEndArrow ?? false}
+            onClick={() => updateField("lineEndArrow", !formData.lineEndArrow)}
+          >
+            End Arrow
+          </Toggle>
+        </Box>
+        {hasArrows && (
+          <InputField
+            id="shape-arrow-size"
+            label="Arrow Size"
+            type="number"
+            value={String(formData.lineArrowSize ?? DEFAULT_ARROW_SIZE)}
+            onChange={(v) => updateField("lineArrowSize", Number(v))}
+            min={5}
+            max={50}
+            suffix="px"
+          />
+        )}
+      </Box>
+    </>
+  );
+};
+
+// Main component
+export const FreeShapeFormContent: React.FC<Props> = ({ formData, updateField }) => {
+  const isLine = formData.shapeType === "line";
+  const isRectangle = formData.shapeType === "rectangle";
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      <ShapeSection formData={formData} updateField={updateField} isLine={isLine} />
+      <FillSection formData={formData} updateField={updateField} isLine={isLine} />
+      <BorderSection
+        formData={formData}
+        updateField={updateField}
+        isLine={isLine}
+        isRectangle={isRectangle}
+      />
+      <ArrowSection formData={formData} updateField={updateField} isLine={isLine} />
     </Box>
   );
 };

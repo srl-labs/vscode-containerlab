@@ -38,7 +38,6 @@ import {
   useLinkCreation,
   useSourceNodePosition
 } from "../../hooks/canvas";
-import { DEFAULT_GRID_LINE_WIDTH } from "../../hooks/ui";
 import { useCanvasStore, useFitViewRequestId } from "../../stores/canvasStore";
 import { useGraphActions } from "../../stores/graphStore";
 import { useIsLocked, useMode, useTopoViewerActions } from "../../stores/topoViewerStore";
@@ -60,6 +59,7 @@ import type {
 
 const GRID_SIZE = 20;
 const QUADRATIC_GRID_SIZE = 40;
+const DEFAULT_GRID_LINE_WIDTH = 0.5;
 
 /** Hook for wrapped node click handling */
 function handleAltDelete(
@@ -851,11 +851,12 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         getGeoUpdateForNode: geoLayout.getGeoUpdateForNode
       }
     });
+    const { closeContextMenu } = handlers;
 
     const { handleDeleteNode, handleDeleteEdge } = useDeleteHandlers(
       selectNode,
       selectEdge,
-      handlers.closeContextMenu,
+      closeContextMenu,
       onNodeDelete,
       onEdgeDelete
     );
@@ -1113,7 +1114,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       (event: React.MouseEvent) => {
         const { clientX, clientY } = event;
         flushSync(() => {
-          handlers.closeContextMenu();
+          closeContextMenu();
         });
         const target = document.elementFromPoint(clientX, clientY);
         if (target) {
@@ -1129,7 +1130,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           );
         }
       },
-      [handlers.closeContextMenu]
+      [closeContextMenu]
     );
 
     return (
@@ -1197,7 +1198,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           isVisible={contextMenuVisible}
           position={handlers.contextMenu.position}
           items={contextMenuItems}
-          onClose={handlers.closeContextMenu}
+          onClose={closeContextMenu}
           onBackdropContextMenu={handleBackdropContextMenu}
         />
 

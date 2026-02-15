@@ -15,12 +15,103 @@ import {
 
 import type { LinkTabProps } from "./types";
 
+interface EndpointInterfaceFieldProps {
+  isNetwork: boolean;
+  nodeName: string;
+  inputId: string;
+  endpoint: string | undefined;
+  onChange: (value: string) => void;
+}
+
+const EndpointInterfaceField: React.FC<EndpointInterfaceFieldProps> = ({
+  isNetwork,
+  nodeName,
+  inputId,
+  endpoint,
+  onChange
+}) => {
+  if (isNetwork) {
+    return (
+      <Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+          {nodeName} Interface
+        </Typography>
+        <ReadOnlyBadge>{nodeName || "Unknown"}</ReadOnlyBadge>
+      </Box>
+    );
+  }
+
+  return (
+    <InputField
+      id={inputId}
+      label={`${nodeName} Interface`}
+      required
+      value={endpoint ?? ""}
+      onChange={onChange}
+      placeholder="e.g., eth1, e1-1"
+    />
+  );
+};
+
+interface LabelOffsetSectionProps {
+  endpointOffsetValue: number;
+  onOffsetChange: (_event: Event, value: number | number[]) => void;
+  onOffsetReset: () => void;
+}
+
+const LabelOffsetSection: React.FC<LabelOffsetSectionProps> = ({
+  endpointOffsetValue,
+  onOffsetChange,
+  onOffsetReset
+}) => {
+  return (
+    <>
+      <Divider />
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle2">Label Offset</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, px: 2, py: 1 }}>
+        <Typography variant="body2" color="text.secondary">
+          {ENDPOINT_LABEL_OFFSET_MIN}
+        </Typography>
+        <Slider
+          id="link-endpoint-offset"
+          value={endpointOffsetValue}
+          min={ENDPOINT_LABEL_OFFSET_MIN}
+          max={ENDPOINT_LABEL_OFFSET_MAX}
+          step={1}
+          onChange={onOffsetChange}
+          valueLabelDisplay="auto"
+          sx={{ flex: 1 }}
+        />
+        <Typography variant="body2" color="text.secondary">
+          {ENDPOINT_LABEL_OFFSET_MAX}
+        </Typography>
+        <Button
+          size="small"
+          onClick={onOffsetReset}
+          title={`Reset to ${DEFAULT_ENDPOINT_LABEL_OFFSET}`}
+        >
+          Reset
+        </Button>
+      </Box>
+    </>
+  );
+};
+
+function resolveEndpointOffsetValue(offset: unknown): number {
+  if (typeof offset === "number" && Number.isFinite(offset)) {
+    return offset;
+  }
+
+  return DEFAULT_ENDPOINT_LABEL_OFFSET;
+}
+
 export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onPreviewOffset }) => {
-  const rawEndpointOffset =
-    typeof data.endpointLabelOffset === "number" ? data.endpointLabelOffset : Number.NaN;
-  const endpointOffsetValue = Number.isFinite(rawEndpointOffset)
-    ? rawEndpointOffset
-    : DEFAULT_ENDPOINT_LABEL_OFFSET;
+  const sourceName = data.source ?? "Source";
+  const targetName = data.target ?? "Target";
+  const endpointOffsetValue = resolveEndpointOffsetValue(data.endpointLabelOffset);
 
   const handleOffsetChange = (_event: Event, value: number | number[]) => {
     const nextOffset = typeof value === "number" ? value : value[0];
@@ -51,69 +142,40 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onPreviewOffs
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      {/* Endpoints section */}
       <Box sx={{ px: 2, py: 1 }}>
         <Typography variant="subtitle2">Endpoints</Typography>
       </Box>
       <Divider />
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-          {data.sourceIsNetwork ? (
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mb: 0.5 }}
-              >
-                {data.source || "Source"} Interface
-              </Typography>
-              <ReadOnlyBadge>{data.source || "Unknown"}</ReadOnlyBadge>
-            </Box>
-          ) : (
-            <InputField
-              id="link-source-interface"
-              label={`${data.source || "Source"} Interface`}
-              required
-              value={data.sourceEndpoint || ""}
-              onChange={(value) => onChange({ sourceEndpoint: value })}
-              placeholder="e.g., eth1, e1-1"
-            />
-          )}
-          {data.targetIsNetwork ? (
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mb: 0.5 }}
-              >
-                {data.target || "Target"} Interface
-              </Typography>
-              <ReadOnlyBadge>{data.target || "Unknown"}</ReadOnlyBadge>
-            </Box>
-          ) : (
-            <InputField
-              id="link-target-interface"
-              label={`${data.target || "Target"} Interface`}
-              required
-              value={data.targetEndpoint || ""}
-              onChange={(value) => onChange({ targetEndpoint: value })}
-              placeholder="e.g., eth1, e1-1"
-            />
-          )}
+          <EndpointInterfaceField
+            isNetwork={Boolean(data.sourceIsNetwork)}
+            nodeName={sourceName}
+            inputId="link-source-interface"
+            endpoint={data.sourceEndpoint}
+            onChange={(value) => onChange({ sourceEndpoint: value })}
+          />
+          <EndpointInterfaceField
+            isNetwork={Boolean(data.targetIsNetwork)}
+            nodeName={targetName}
+            inputId="link-target-interface"
+            endpoint={data.targetEndpoint}
+            onChange={(value) => onChange({ targetEndpoint: value })}
+          />
         </Box>
 
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
           <InputField
             id="link-source-mac"
-            label={`${data.source || "Source"} MAC`}
-            value={data.sourceMac || ""}
+            label={`${sourceName} MAC`}
+            value={data.sourceMac ?? ""}
             onChange={(value) => onChange({ sourceMac: value })}
             placeholder="e.g., 02:42:ac:11:00:01"
           />
           <InputField
             id="link-target-mac"
-            label={`${data.target || "Target"} MAC`}
-            value={data.targetMac || ""}
+            label={`${targetName} MAC`}
+            value={data.targetMac ?? ""}
             onChange={(value) => onChange({ targetMac: value })}
             placeholder="e.g., 02:42:ac:11:00:02"
           />
@@ -129,37 +191,11 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onPreviewOffs
         />
       </Box>
 
-      {/* Label Offset section */}
-      <Divider />
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Label Offset</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, px: 2, py: 1 }}>
-        <Typography variant="body2" color="text.secondary">
-          {ENDPOINT_LABEL_OFFSET_MIN}
-        </Typography>
-        <Slider
-          id="link-endpoint-offset"
-          value={endpointOffsetValue}
-          min={ENDPOINT_LABEL_OFFSET_MIN}
-          max={ENDPOINT_LABEL_OFFSET_MAX}
-          step={1}
-          onChange={handleOffsetChange}
-          valueLabelDisplay="auto"
-          sx={{ flex: 1 }}
-        />
-        <Typography variant="body2" color="text.secondary">
-          {ENDPOINT_LABEL_OFFSET_MAX}
-        </Typography>
-        <Button
-          size="small"
-          onClick={handleOffsetReset}
-          title={`Reset to ${DEFAULT_ENDPOINT_LABEL_OFFSET}`}
-        >
-          Reset
-        </Button>
-      </Box>
+      <LabelOffsetSection
+        endpointOffsetValue={endpointOffsetValue}
+        onOffsetChange={handleOffsetChange}
+        onOffsetReset={handleOffsetReset}
+      />
     </Box>
   );
 };

@@ -109,33 +109,51 @@ export const ExtendedTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
   );
 };
 
+function addRequiredNodeErrors(data: LinkEditorData, errors: string[]): void {
+  if (!data.source) {
+    errors.push("Source node is required");
+  }
+
+  if (!data.target) {
+    errors.push("Target node is required");
+  }
+}
+
+function addInterfaceRequirementErrors(
+  data: LinkEditorData,
+  errors: string[],
+  isSelfLoop: boolean
+): void {
+  const needsSourceInterface = !data.sourceEndpoint && !data.sourceIsNetwork && !isSelfLoop;
+  if (needsSourceInterface) {
+    errors.push(`${data.source || "Source"} interface is required`);
+  }
+
+  const needsTargetInterface = !data.targetEndpoint && !data.targetIsNetwork && !isSelfLoop;
+  if (needsTargetInterface) {
+    errors.push(`${data.target || "Target"} interface is required`);
+  }
+}
+
+function hasSelfLoopEndpointConflict(data: LinkEditorData, isSelfLoop: boolean): boolean {
+  if (!isSelfLoop) return false;
+  if (!data.sourceEndpoint || !data.targetEndpoint) return false;
+  return data.sourceEndpoint === data.targetEndpoint;
+}
+
 /**
  * Validation function for link editor data
  */
 export function validateLinkEditorData(data: LinkEditorData): string[] {
   const errors: string[] = [];
-
-  if (!data.source) {
-    errors.push("Source node is required");
-  }
-  if (!data.target) {
-    errors.push("Target node is required");
-  }
   const isSelfLoop = !!data.source && data.source === data.target;
-  // Only require interface for regular (non-network) endpoints
-  if (!data.sourceEndpoint && !data.sourceIsNetwork && !isSelfLoop) {
-    errors.push(`${data.source || "Source"} interface is required`);
-  }
-  if (!data.targetEndpoint && !data.targetIsNetwork && !isSelfLoop) {
-    errors.push(`${data.target || "Target"} interface is required`);
-  }
-  if (
-    isSelfLoop &&
-    data.sourceEndpoint &&
-    data.targetEndpoint &&
-    data.sourceEndpoint === data.targetEndpoint
-  ) {
+
+  addRequiredNodeErrors(data, errors);
+  addInterfaceRequirementErrors(data, errors, isSelfLoop);
+
+  if (hasSelfLoopEndpointConflict(data, isSelfLoop)) {
     errors.push("Source and target interfaces must be different for a self-loop");
   }
+
   return errors;
 }

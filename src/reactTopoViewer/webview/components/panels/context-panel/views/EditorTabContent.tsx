@@ -17,13 +17,17 @@ import type {
 } from "../../../../../shared/types/topology";
 import type { GroupEditorData } from "../../../../hooks/canvas";
 
-import { NodeEditorView } from "./NodeEditorView";
-import { LinkEditorView } from "./LinkEditorView";
-import { NetworkEditorView } from "./NetworkEditorView";
-import { LinkImpairmentView } from "./LinkImpairmentView";
-import { FreeTextEditorView } from "./FreeTextEditorView";
-import { FreeShapeEditorView } from "./FreeShapeEditorView";
-import { GroupEditorView } from "./GroupEditorView";
+import { editorViews } from "./editorViews";
+
+const {
+  FreeShapeEditorView,
+  FreeTextEditorView,
+  GroupEditorView,
+  LinkEditorView,
+  LinkImpairmentView,
+  NetworkEditorView,
+  NodeEditorView
+} = editorViews;
 
 /** Footer ref for editor apply/save actions */
 export interface EditorFooterRef {

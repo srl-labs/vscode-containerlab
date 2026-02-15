@@ -69,6 +69,7 @@ import {
 } from "./utils/netemOverrides";
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;
+const DUMP_CSS_VARS = false;
 
 interface DeleteMenuHandlers {
   handleDeleteNode: (nodeId: string) => void;
@@ -214,8 +215,6 @@ export const AppContent: React.FC<AppContentProps> = ({
   const isInteractionLocked = getInteractionLockState(state.isLocked, isProcessing);
   const interactionMode = getInteractionMode(state.mode, isProcessing);
 
-  // Dump all --vscode-* CSS variables to a file via the extension (dev debug aid)
-  const DUMP_CSS_VARS = false;
   React.useEffect(() => {
     if (!DUMP_CSS_VARS) return;
     const htmlStyle = document.querySelector("html")?.getAttribute("style");

@@ -5,7 +5,11 @@ import { EditorPanel } from "../../../ui/editor/EditorPanel";
 import type { TabConfig } from "../../../ui/editor/EditorPanel";
 import { useApplySaveHandlers, useFooterControlsRef } from "../../../../hooks/ui";
 import { useNodeEditorForm, hasFieldChanged } from "../../../../hooks/editor/useNodeEditorForm";
-import type { NodeEditorData, NodeEditorTabId } from "../../node-editor/types";
+import type {
+  NodeEditorData,
+  NodeEditorTabId,
+  TabProps as NodeEditorTabProps
+} from "../../node-editor/types";
 import { BasicTab } from "../../node-editor/BasicTab";
 import { ComponentsTab } from "../../node-editor/ComponentsTab";
 import { ConfigTab } from "../../node-editor/ConfigTab";
@@ -31,7 +35,7 @@ export interface NodeEditorFooterRef {
   hasChanges: boolean;
 }
 
-const BASE_TABS: TabConfig[] = [
+const BASE_TABS: Array<TabConfig<NodeEditorTabProps>> = [
   { id: "basic", label: "Basic", component: BasicTab },
   { id: "config", label: "Configuration", component: ConfigTab },
   { id: "runtime", label: "Runtime", component: RuntimeTab },
@@ -39,13 +43,13 @@ const BASE_TABS: TabConfig[] = [
   { id: "advanced", label: "Advanced", component: AdvancedTab }
 ];
 
-const COMPONENTS_TAB: TabConfig = {
+const COMPONENTS_TAB: TabConfig<NodeEditorTabProps> = {
   id: "components",
   label: "Components",
   component: ComponentsTab
 };
 
-function getTabsForNode(kind: string | undefined): TabConfig[] {
+function getTabsForNode(kind: string | undefined): Array<TabConfig<NodeEditorTabProps>> {
   if (kind === "nokia_srsim") {
     return [BASE_TABS[0], COMPONENTS_TAB, ...BASE_TABS.slice(1)];
   }

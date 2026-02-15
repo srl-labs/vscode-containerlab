@@ -5,7 +5,7 @@ import { EditorPanel } from "../../../ui/editor/EditorPanel";
 import type { TabConfig } from "../../../ui/editor/EditorPanel";
 import { useFooterControlsRef } from "../../../../hooks/ui";
 import { useLinkEditorForm } from "../../../../hooks/editor/useLinkEditorForm";
-import type { LinkEditorData, LinkEditorTabId } from "../../link-editor/types";
+import type { LinkEditorData, LinkEditorTabId, LinkTabProps } from "../../link-editor/types";
 import { validateLinkEditorData, ExtendedTab  } from "../../link-editor/ExtendedTab";
 import { BasicTab } from "../../link-editor/BasicTab";
 
@@ -34,12 +34,14 @@ export interface LinkEditorFooterRef {
   hasChanges: boolean;
 }
 
-const ALL_TABS: TabConfig[] = [
+const ALL_TABS: Array<TabConfig<LinkTabProps>> = [
   { id: "basic", label: "Basic", component: BasicTab },
   { id: "extended", label: "Extended", component: ExtendedTab }
 ];
 
-const BASIC_ONLY_TABS: TabConfig[] = [{ id: "basic", label: "Basic", component: BasicTab }];
+const BASIC_ONLY_TABS: Array<TabConfig<LinkTabProps>> = [
+  { id: "basic", label: "Basic", component: BasicTab }
+];
 
 export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
   linkData,

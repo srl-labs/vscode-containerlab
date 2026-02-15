@@ -18,7 +18,5 @@ export { FreeShapeEditorView } from "./FreeShapeEditorView";
 export type { FreeShapeEditorViewProps, FreeShapeEditorFooterRef } from "./FreeShapeEditorView";
 export { GroupEditorView } from "./GroupEditorView";
 export type { GroupEditorViewProps, GroupEditorFooterRef } from "./GroupEditorView";
-export { EditorTabContent } from "./EditorTabContent";
-export type { EditorTabContentProps, EditorFooterRef, EditorBannerRef } from "./EditorTabContent";
 export { InfoTabContent } from "./InfoTabContent";
 export type { InfoTabContentProps } from "./InfoTabContent";
