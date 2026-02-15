@@ -76,7 +76,7 @@ export const InputField: React.FC<InputFieldProps> = ({
               endAdornment: (
                 <InputAdornment position="end">
                   {suffix && (
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography color="text.secondary">
                       {suffix}
                     </Typography>
                   )}

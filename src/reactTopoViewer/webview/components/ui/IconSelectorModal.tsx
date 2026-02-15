@@ -1,17 +1,18 @@
 // Icon selector modal.
 import React, { useCallback, useState, useEffect, useMemo, useRef } from "react";
-import { Close as CloseIcon } from "@mui/icons-material";
+import { Close as CloseIcon, Replay as ResetIcon } from "@mui/icons-material";
 import {
   Box,
   Button,
-  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControlLabel,
+  Divider,
   IconButton as MuiIconButton,
-  Slider,
+  Tab,
+  Tabs,
+  Tooltip,
   Typography
 } from "@mui/material";
 
@@ -21,7 +22,7 @@ import { useEscapeKey } from "../../hooks/ui/useDomInteractions";
 import { useCustomIcons } from "../../stores/topoViewerStore";
 import { postCommand } from "../../messaging/extensionMessaging";
 import { isBuiltInIcon } from "../../../shared/types/icons";
-import { ColorField, IconPreview } from "./form";
+import { ColorField, IconPreview, InputField } from "./form";
 
 const AVAILABLE_ICONS: NodeType[] = [
   "pe",
@@ -69,6 +70,7 @@ const IconsGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
       gap: 0.5,
       borderRadius: 0.5,
       border: 1,
+      borderColor: "divider",
       p: 1
     }}
   >
@@ -113,9 +115,6 @@ interface UseIconSelectorStateReturn {
   setColor: (color: string) => void;
   radius: number;
   setRadius: (radius: number) => void;
-  useColor: boolean;
-  setUseColor: (useColor: boolean) => void;
-  displayColor: string;
   resultColor: string | null;
 }
 
@@ -131,19 +130,16 @@ function useIconSelectorState(
   const [icon, setIcon] = useState(initialIcon);
   const [color, setColor] = useState(initialColor || DEFAULT_COLOR);
   const [radius, setRadius] = useState(initialCornerRadius);
-  const [useColor, setUseColor] = useState(!!initialColor);
 
   useEffect(() => {
     if (isOpen) {
       setIcon(initialIcon);
       setColor(initialColor || DEFAULT_COLOR);
       setRadius(initialCornerRadius);
-      setUseColor(!!initialColor);
     }
   }, [isOpen, initialIcon, initialColor, initialCornerRadius]);
 
-  const displayColor = useColor ? color : DEFAULT_COLOR;
-  const resultColor = useColor && color !== DEFAULT_COLOR ? color : null;
+  const resultColor = color !== DEFAULT_COLOR ? color : null;
 
   return {
     icon,
@@ -152,9 +148,6 @@ function useIconSelectorState(
     setColor,
     radius,
     setRadius,
-    useColor,
-    setUseColor,
-    displayColor,
     resultColor
   };
 }
@@ -262,22 +255,25 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
   );
 });
 
-const RadiusSlider: React.FC<{ value: number; onChange: (v: number) => void }> = ({
+const RadiusField: React.FC<{ value: number; onChange: (v: number) => void }> = ({
   value,
   onChange
 }) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-    <Typography variant="caption" color="text.secondary">
-      Corner Radius: {value}px
-    </Typography>
-    <Slider
-      size="small"
-      min={0}
-      max={MAX_RADIUS}
-      value={value}
-      onChange={(_e, v) => onChange(v as number)}
-    />
-  </Box>
+  <InputField
+    id="icon-corner-radius"
+    label="Corner Radius"
+    type="number"
+    value={String(value)}
+    onChange={(v) => {
+      const n = parseInt(v, 10);
+      if (!isNaN(n)) onChange(Math.max(0, Math.min(MAX_RADIUS, n)));
+      else if (v === "") onChange(0);
+    }}
+    min={0}
+    max={MAX_RADIUS}
+    step={1}
+    suffix="px"
+  />
 );
 
 export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
@@ -297,16 +293,13 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
     setColor,
     radius,
     setRadius,
-    useColor,
-    setUseColor,
-    displayColor,
     resultColor
   } = useIconSelectorState(isOpen, initialIcon, initialColor, initialCornerRadius);
 
   useEscapeKey(isOpen, onClose);
 
   // Debounce color for icon grid to reduce SVG regeneration during color picker drag
-  const debouncedGridColor = useDebouncedValue(displayColor, COLOR_DEBOUNCE_MS);
+  const debouncedGridColor = useDebouncedValue(color, COLOR_DEBOUNCE_MS);
 
   // Check if current icon is a custom icon
   const currentCustomIcon = useMemo(() => {
@@ -352,163 +345,157 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
     if (currentCustomIcon) {
       return currentCustomIcon.dataUri;
     }
-    return getIconSrc(icon, displayColor);
-  }, [icon, displayColor, currentCustomIcon]);
+    return getIconSrc(icon, color);
+  }, [icon, color, currentCustomIcon]);
+
+  const [iconTab, setIconTab] = useState<"built-in" | "custom">("built-in");
 
   return (
     <Dialog open={isOpen} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle
         sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
       >
-        Select Icon
+        Edit Icons
         <MuiIconButton size="small" onClick={onClose}>
           <CloseIcon fontSize="small" />
         </MuiIconButton>
       </DialogTitle>
-      <DialogContent dividers>
-        {/* Built-in Icons Grid */}
-        <Box sx={{ mb: 1.5 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-            Built-in Icons
-          </Typography>
-          <IconsGrid>
-            {AVAILABLE_ICONS.map((i) => (
-              <IconButton
-                key={i}
-                icon={i}
-                isSelected={icon === i}
-                iconSrc={iconSources[i]}
-                cornerRadius={radius}
-                onClick={iconClickHandlers.current[i]}
-              />
-            ))}
-          </IconsGrid>
-        </Box>
-
-        {/* Custom Icons Section */}
-        <Box sx={{ mb: 1.5 }}>
-          <Box
-            sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}
+      <DialogContent dividers sx={{ p: 0 }}>
+        <Box sx={{ display: "flex", flexDirection: "column" }}>
+          {/* Icon tabs */}
+          <Tabs
+            value={iconTab}
+            onChange={(_e, v) => setIconTab(v)}
+            variant="fullWidth"
           >
-            <Typography variant="caption" color="text.secondary">
-              Custom Icons
-            </Typography>
-            <Button
-              size="small"
-              onClick={handleUploadIcon}
-              sx={{ textTransform: "none", fontSize: "0.7rem", py: 0, minHeight: 24 }}
-            >
-              + Add
-            </Button>
-          </Box>
-          {customIcons.length > 0 ? (
-            <IconsGrid>
-              {customIcons.map((ci) => (
-                <IconButton
-                  key={ci.name}
-                  icon={ci.name}
-                  isSelected={icon === ci.name}
-                  iconSrc={ci.dataUri}
-                  cornerRadius={radius}
-                  onClick={iconClickHandlers.current[ci.name]}
-                  onDelete={() => handleDeleteIcon(ci.name)}
-                  isCustom={true}
-                  source={ci.source}
-                />
-              ))}
-            </IconsGrid>
-          ) : (
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{
-                fontStyle: "italic",
-                p: 1,
-                textAlign: "center",
-                display: "block",
-                border: 1,
-                borderStyle: "dashed",
-                borderColor: "divider",
-                borderRadius: 0.5
-              }}
-            >
-              No custom icons. Click &quot;+ Add&quot; to upload.
-            </Typography>
-          )}
-        </Box>
+            <Tab value="built-in" label="Built-in" />
+            <Tab value="custom" label="Custom" />
+          </Tabs>
+          <Divider />
 
-        {/* Color, Radius, and Preview */}
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 1.5 }}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-            {/* Only show color picker for built-in icons */}
-            {isBuiltInIcon(icon) ? (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Icon Color
-                </Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        size="small"
-                        checked={useColor}
-                        onChange={(e) => setUseColor(e.target.checked)}
-                      />
-                    }
-                    label=""
-                    sx={{ m: 0, mr: -0.5 }}
+          {/* Built-in Icons tab content */}
+          {iconTab === "built-in" && (
+            <Box sx={{ p: 2 }}>
+              <IconsGrid>
+                {AVAILABLE_ICONS.map((i) => (
+                  <IconButton
+                    key={i}
+                    icon={i}
+                    isSelected={icon === i}
+                    iconSrc={iconSources[i]}
+                    cornerRadius={radius}
+                    onClick={iconClickHandlers.current[i]}
                   />
+                ))}
+              </IconsGrid>
+            </Box>
+          )}
+
+          {/* Custom Icons tab content */}
+          {iconTab === "custom" && (
+            <Box sx={{ p: 2 }}>
+              {customIcons.length > 0 ? (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                  <IconsGrid>
+                    {customIcons.map((ci) => (
+                      <IconButton
+                        key={ci.name}
+                        icon={ci.name}
+                        isSelected={icon === ci.name}
+                        iconSrc={ci.dataUri}
+                        cornerRadius={radius}
+                        onClick={iconClickHandlers.current[ci.name]}
+                        onDelete={() => handleDeleteIcon(ci.name)}
+                        isCustom={true}
+                        source={ci.source}
+                      />
+                    ))}
+                  </IconsGrid>
+                  <Button
+                    fullWidth
+                    size="small"
+                    onClick={handleUploadIcon}
+                  >
+                    + Add Icon
+                  </Button>
+                </Box>
+              ) : (
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5, py: 2 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontStyle: "italic" }}
+                  >
+                    No custom icons uploaded yet.
+                  </Typography>
+                  <Button
+                    fullWidth
+                    size="small"
+                    onClick={handleUploadIcon}
+                  >
+                    + Add Icon
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )}
+
+          {/* Appearance section */}
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="subtitle2">Appearance</Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+            <Tooltip
+              title={!isBuiltInIcon(icon) ? "Color cannot be modified for custom icons" : ""}
+              placement="top"
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                <Box sx={{ flex: 1 }}>
                   <ColorField
+                    label="Icon Color"
                     value={color}
-                    onChange={(v) => {
-                      setColor(v);
-                      setUseColor(true);
-                    }}
-                    disabled={!useColor}
+                    onChange={(v) => setColor(v)}
+                    disabled={!isBuiltInIcon(icon)}
                   />
                 </Box>
+                <Tooltip title="Reset to default color" placement="top">
+                  <span>
+                    <MuiIconButton
+                      size="small"
+                      onClick={() => setColor(DEFAULT_COLOR)}
+                      disabled={!isBuiltInIcon(icon) || color === DEFAULT_COLOR}
+                    >
+                      <ResetIcon fontSize="small" />
+                    </MuiIconButton>
+                  </span>
+                </Tooltip>
               </Box>
-            ) : (
-              <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
-                Custom icons use their original colors
-              </Typography>
-            )}
-            <RadiusSlider value={radius} onChange={setRadius} />
+            </Tooltip>
+            <RadiusField value={radius} onChange={setRadius} />
           </Box>
-          <PreviewCustom iconSrc={previewIconSrc} radius={radius} />
+
+          {/* Preview section */}
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="subtitle2">Preview</Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ p: 2, display: "flex", justifyContent: "center" }}>
+            <IconPreview src={previewIconSrc} alt="Preview" size={56} cornerRadius={radius} />
+          </Box>
         </Box>
       </DialogContent>
-      <DialogActions sx={{ px: 2, py: 1.5 }}>
-        <Button size="small" onClick={onClose}>
+      <DialogActions>
+        <Button variant="text" size="small" onClick={onClose}>
           Cancel
         </Button>
         <Button size="small" onClick={handleSave}>
-          Apply
+          Save
         </Button>
       </DialogActions>
     </Dialog>
   );
 };
 
-/**
- * Preview component that accepts direct icon source
- */
-const PreviewCustom: React.FC<{ iconSrc: string; radius: number }> = ({ iconSrc, radius }) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-    <Typography variant="caption" color="text.secondary">
-      Preview
-    </Typography>
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        borderRadius: 0.5,
-        border: 1,
-        p: 1.5
-      }}
-    >
-      <IconPreview src={iconSrc} alt="Preview" size={56} cornerRadius={radius} />
-    </Box>
-  </Box>
-);
