@@ -33,6 +33,152 @@ export interface ApplySnapshotOptions {
 }
 
 const LAYOUTABLE_NODE_TYPES = new Set(["topology-node", "network-node"]);
+const LEGACY_GROUP_PADDING = 40;
+const LEGACY_NODE_WIDTH = 100;
+const LEGACY_NODE_HEIGHT = 100;
+const DEFAULT_GROUP_WIDTH = 300;
+const DEFAULT_GROUP_HEIGHT = 200;
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function toFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+function toPosition(value: unknown): { x: number; y: number } | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const rec = value as Record<string, unknown>;
+  const x = toFiniteNumber(rec.x);
+  const y = toFiniteNumber(rec.y);
+  if (x === undefined || y === undefined) return undefined;
+  return { x, y };
+}
+
+function parseLegacyGroupIdentity(groupId: string): { name: string; level: string } {
+  const idx = groupId.lastIndexOf(":");
+  if (idx > 0 && idx < groupId.length - 1) {
+    return { name: groupId.slice(0, idx), level: groupId.slice(idx + 1) };
+  }
+  return { name: groupId, level: "1" };
+}
+
+function nodeBelongsToGroup(
+  annotation: NodeAnnotation,
+  groupId: string,
+  groupName: string,
+  groupLevel: string
+): boolean {
+  if (isNonEmptyString(annotation.groupId)) {
+    return annotation.groupId === groupId;
+  }
+  if (!isNonEmptyString(annotation.group)) {
+    return false;
+  }
+  if (annotation.group !== groupId && annotation.group !== groupName) {
+    return false;
+  }
+
+  const nodeLevel = isNonEmptyString(annotation.level) ? annotation.level : "1";
+  return nodeLevel === groupLevel;
+}
+
+function deriveLegacyGroupBounds(
+  groupId: string,
+  groupName: string,
+  groupLevel: string,
+  nodeAnnotations: NodeAnnotation[]
+): { position: { x: number; y: number }; width: number; height: number } | undefined {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  for (const annotation of nodeAnnotations) {
+    if (!nodeBelongsToGroup(annotation, groupId, groupName, groupLevel)) continue;
+    const position = toPosition(annotation.position);
+    if (!position) continue;
+
+    minX = Math.min(minX, position.x);
+    minY = Math.min(minY, position.y);
+    maxX = Math.max(maxX, position.x + LEGACY_NODE_WIDTH);
+    maxY = Math.max(maxY, position.y + LEGACY_NODE_HEIGHT);
+  }
+
+  if (
+    !Number.isFinite(minX) ||
+    !Number.isFinite(minY) ||
+    !Number.isFinite(maxX) ||
+    !Number.isFinite(maxY)
+  ) {
+    return undefined;
+  }
+
+  return {
+    position: { x: minX - LEGACY_GROUP_PADDING, y: minY - LEGACY_GROUP_PADDING },
+    width: Math.max(DEFAULT_GROUP_WIDTH, maxX - minX + LEGACY_GROUP_PADDING * 2),
+    height: Math.max(DEFAULT_GROUP_HEIGHT, maxY - minY + LEGACY_GROUP_PADDING * 2)
+  };
+}
+
+function normalizeFreeTextAnnotations(annotations: FreeTextAnnotation[]): FreeTextAnnotation[] {
+  return annotations.map((annotation) => ({
+    ...annotation,
+    position: toPosition(annotation.position) ?? { x: 0, y: 0 }
+  }));
+}
+
+function normalizeFreeShapeAnnotations(annotations: FreeShapeAnnotation[]): FreeShapeAnnotation[] {
+  return annotations.map((annotation) => {
+    const normalizedEnd = toPosition(annotation.endPosition);
+    return {
+      ...annotation,
+      position: toPosition(annotation.position) ?? { x: 0, y: 0 },
+      endPosition: normalizedEnd
+    };
+  });
+}
+
+function normalizeGroupStyleAnnotations(
+  groups: GroupStyleAnnotation[],
+  nodeAnnotations: NodeAnnotation[]
+): GroupStyleAnnotation[] {
+  return groups.map((group, index) => {
+    const id = isNonEmptyString(group.id) ? group.id : `legacy-group-${index + 1}`;
+    const identity = parseLegacyGroupIdentity(id);
+    const name = isNonEmptyString(group.name) ? group.name : identity.name;
+    const level = isNonEmptyString(group.level) ? group.level : identity.level;
+
+    const normalizedPosition = toPosition(group.position);
+    const normalizedWidth = toFiniteNumber(group.width);
+    const normalizedHeight = toFiniteNumber(group.height);
+    const derivedBounds =
+      normalizedPosition && normalizedWidth !== undefined && normalizedHeight !== undefined
+        ? undefined
+        : deriveLegacyGroupBounds(id, name, level, nodeAnnotations);
+
+    const legacyColor = (group as Record<string, unknown>).color;
+
+    return {
+      ...group,
+      id,
+      name,
+      level,
+      position: normalizedPosition ?? derivedBounds?.position ?? { x: 0, y: 0 },
+      width: normalizedWidth ?? derivedBounds?.width ?? DEFAULT_GROUP_WIDTH,
+      height: normalizedHeight ?? derivedBounds?.height ?? DEFAULT_GROUP_HEIGHT,
+      labelColor:
+        (isNonEmptyString(group.labelColor) ? group.labelColor : undefined) ??
+        (isNonEmptyString(legacyColor) ? legacyColor : undefined)
+    };
+  });
+}
 
 function syncUndoRedo(snapshot: TopologySnapshot): void {
   useTopoViewerStore.getState().setInitialData({
@@ -140,11 +286,16 @@ function normalizeAnnotations(annotations?: TopologyAnnotations): Required<Topol
     aliasEndpointAnnotations = [],
     viewerSettings = {}
   } = annotations ?? {};
+
+  const normalizedNodeAnnotations = nodeAnnotations;
   return {
-    freeTextAnnotations,
-    freeShapeAnnotations,
-    groupStyleAnnotations,
-    nodeAnnotations,
+    freeTextAnnotations: normalizeFreeTextAnnotations(freeTextAnnotations),
+    freeShapeAnnotations: normalizeFreeShapeAnnotations(freeShapeAnnotations),
+    groupStyleAnnotations: normalizeGroupStyleAnnotations(
+      groupStyleAnnotations,
+      normalizedNodeAnnotations
+    ),
+    nodeAnnotations: normalizedNodeAnnotations,
     networkNodeAnnotations,
     edgeAnnotations,
     aliasEndpointAnnotations,

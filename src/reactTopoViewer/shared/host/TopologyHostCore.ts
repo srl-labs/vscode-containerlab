@@ -4,7 +4,12 @@
 
 import * as YAML from "yaml";
 
-import type { ClabTopology, DeploymentState, TopologyAnnotations } from "../types/topology";
+import type {
+  ClabTopology,
+  DeploymentState,
+  TopologyAnnotations,
+  NodeAnnotation
+} from "../types/topology";
 import type { LabSettings } from "../types/labSettings";
 import type {
   TopologyHostCommand,
@@ -41,6 +46,11 @@ interface HistoryEntry {
 const DEFAULT_HISTORY_LIMIT = 50;
 const TOPOLOGY_HOST_ACK = "topology-host:ack";
 const RENAME_HISTORY_MERGE_WINDOW_MS = 800;
+const LEGACY_GROUP_PADDING = 40;
+const LEGACY_NODE_WIDTH = 100;
+const LEGACY_NODE_HEIGHT = 100;
+const LEGACY_DEFAULT_GROUP_WIDTH = 300;
+const LEGACY_DEFAULT_GROUP_HEIGHT = 200;
 
 /** Migration entry for graph label data (position, icon, group info) */
 interface GraphLabelMigration {
@@ -593,14 +603,15 @@ export class TopologyHostCore implements TopologyHost {
   private async readAnnotationsContent(): Promise<string | null> {
     const annotationsPath = this.annotationsIO.getAnnotationsFilePath(this.yamlFilePath);
     try {
-      const exists = await this.baseFs.exists(annotationsPath);
-      if (exists) {
-        return await this.baseFs.readFile(annotationsPath);
+      return await this.baseFs.readFile(annotationsPath);
+    } catch (err) {
+      if (isFileNotFoundError(err)) {
+        return null;
       }
-    } catch {
-      // fall through
+      throw new Error(
+        `Failed to read annotations file "${annotationsPath}": ${errorToMessage(err)}`
+      );
     }
-    return null;
   }
 
   private async buildSnapshot(): Promise<TopologySnapshot> {
@@ -615,6 +626,12 @@ export class TopologyHostCore implements TopologyHost {
     const annotationsUpdated = await this.reconcileAnnotationsForRenamedNodes(parsed);
     if (annotationsUpdated) {
       annotations = await this.annotationsIO.loadAnnotations(this.yamlFilePath, true);
+    }
+    const legacyMigration = migrateLegacyAnnotations(annotations);
+    if (legacyMigration.modified) {
+      await this.annotationsIO.saveAnnotations(this.yamlFilePath, legacyMigration.annotations);
+      annotations = legacyMigration.annotations;
+      this.logger.info("[TopologyHost] Migrated legacy annotations to current format");
     }
 
     const parseResult = this.parseTopology(yamlContent, annotations, parsed);
@@ -835,6 +852,213 @@ function normalizeAnnotations(
     edgeAnnotations: annotations.edgeAnnotations ?? [],
     aliasEndpointAnnotations: annotations.aliasEndpointAnnotations ?? [],
     viewerSettings: annotations.viewerSettings ?? {}
+  };
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function toFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+function toPosition(value: unknown): { x: number; y: number } | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const rec = value as Record<string, unknown>;
+  const x = toFiniteNumber(rec.x);
+  const y = toFiniteNumber(rec.y);
+  if (x === undefined || y === undefined) return undefined;
+  return { x, y };
+}
+
+function errorToMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+function isFileNotFoundError(error: unknown): boolean {
+  const errWithCode = error as { code?: unknown };
+  if (typeof errWithCode.code === "string" && errWithCode.code === "ENOENT") {
+    return true;
+  }
+  const msg = errorToMessage(error);
+  return msg.includes("ENOENT") || /no such file/i.test(msg);
+}
+
+function hasStrictNumericPosition(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const rec = value as Record<string, unknown>;
+  return (
+    typeof rec.x === "number" &&
+    Number.isFinite(rec.x) &&
+    typeof rec.y === "number" &&
+    Number.isFinite(rec.y)
+  );
+}
+
+function parseLegacyGroupIdentity(groupId: string): { name: string; level: string } {
+  const idx = groupId.lastIndexOf(":");
+  if (idx > 0 && idx < groupId.length - 1) {
+    return { name: groupId.slice(0, idx), level: groupId.slice(idx + 1) };
+  }
+  return { name: groupId, level: "1" };
+}
+
+function nodeBelongsToLegacyGroup(
+  annotation: NodeAnnotation,
+  groupId: string,
+  groupName: string,
+  groupLevel: string
+): boolean {
+  if (isNonEmptyString(annotation.groupId)) {
+    return annotation.groupId === groupId;
+  }
+  if (!isNonEmptyString(annotation.group)) {
+    return false;
+  }
+  if (annotation.group !== groupId && annotation.group !== groupName) {
+    return false;
+  }
+  const nodeLevel = isNonEmptyString(annotation.level) ? annotation.level : "1";
+  return nodeLevel === groupLevel;
+}
+
+function deriveLegacyGroupBounds(
+  groupId: string,
+  groupName: string,
+  groupLevel: string,
+  nodeAnnotations: NodeAnnotation[]
+): { position: { x: number; y: number }; width: number; height: number } | undefined {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  for (const annotation of nodeAnnotations) {
+    if (!nodeBelongsToLegacyGroup(annotation, groupId, groupName, groupLevel)) continue;
+    const position = toPosition(annotation.position);
+    if (!position) continue;
+    minX = Math.min(minX, position.x);
+    minY = Math.min(minY, position.y);
+    maxX = Math.max(maxX, position.x + LEGACY_NODE_WIDTH);
+    maxY = Math.max(maxY, position.y + LEGACY_NODE_HEIGHT);
+  }
+
+  if (
+    !Number.isFinite(minX) ||
+    !Number.isFinite(minY) ||
+    !Number.isFinite(maxX) ||
+    !Number.isFinite(maxY)
+  ) {
+    return undefined;
+  }
+
+  return {
+    position: { x: minX - LEGACY_GROUP_PADDING, y: minY - LEGACY_GROUP_PADDING },
+    width: Math.max(LEGACY_DEFAULT_GROUP_WIDTH, maxX - minX + LEGACY_GROUP_PADDING * 2),
+    height: Math.max(LEGACY_DEFAULT_GROUP_HEIGHT, maxY - minY + LEGACY_GROUP_PADDING * 2)
+  };
+}
+
+function migrateLegacyAnnotations(
+  annotations: TopologyAnnotations
+): { annotations: TopologyAnnotations; modified: boolean } {
+  const nodeAnnotations = annotations.nodeAnnotations ?? [];
+  let modified = false;
+
+  const freeTextAnnotations = (annotations.freeTextAnnotations ?? []).map((annotation) => {
+    const normalizedPosition = toPosition(annotation.position);
+    if (normalizedPosition && hasStrictNumericPosition(annotation.position)) {
+      return annotation;
+    }
+    modified = true;
+    return {
+      ...annotation,
+      position: normalizedPosition ?? { x: 0, y: 0 }
+    };
+  });
+
+  const freeShapeAnnotations = (annotations.freeShapeAnnotations ?? []).map((annotation) => {
+    const normalizedPosition = toPosition(annotation.position);
+    const normalizedEndPosition = toPosition(annotation.endPosition);
+    const needsPositionFix = !hasStrictNumericPosition(annotation.position);
+    const needsEndFix =
+      annotation.endPosition !== undefined && !hasStrictNumericPosition(annotation.endPosition);
+    if (!needsPositionFix && !needsEndFix) {
+      return annotation;
+    }
+    modified = true;
+    return {
+      ...annotation,
+      position: normalizedPosition ?? { x: 0, y: 0 },
+      endPosition: normalizedEndPosition
+    };
+  });
+
+  const groupStyleAnnotations = (annotations.groupStyleAnnotations ?? []).map((group, index) => {
+    const id = isNonEmptyString(group.id) ? group.id : `legacy-group-${index + 1}`;
+    const identity = parseLegacyGroupIdentity(id);
+    const name = isNonEmptyString(group.name) ? group.name : identity.name;
+    const level = isNonEmptyString(group.level) ? group.level : identity.level;
+
+    const normalizedPosition = toPosition(group.position);
+    const normalizedWidth = toFiniteNumber(group.width);
+    const normalizedHeight = toFiniteNumber(group.height);
+    const derivedBounds =
+      normalizedPosition && normalizedWidth !== undefined && normalizedHeight !== undefined
+        ? undefined
+        : deriveLegacyGroupBounds(id, name, level, nodeAnnotations);
+    const legacyColor = (group as Record<string, unknown>).color;
+    const labelColor =
+      (isNonEmptyString(group.labelColor) ? group.labelColor : undefined) ??
+      (isNonEmptyString(legacyColor) ? legacyColor : undefined);
+
+    const needsFix =
+      !isNonEmptyString(group.id) ||
+      !isNonEmptyString(group.name) ||
+      !isNonEmptyString(group.level) ||
+      !hasStrictNumericPosition(group.position) ||
+      typeof group.width !== "number" ||
+      !Number.isFinite(group.width) ||
+      typeof group.height !== "number" ||
+      !Number.isFinite(group.height) ||
+      (!isNonEmptyString(group.labelColor) && isNonEmptyString(legacyColor));
+
+    if (!needsFix) {
+      return group;
+    }
+
+    modified = true;
+    return {
+      ...group,
+      id,
+      name,
+      level,
+      position: normalizedPosition ?? derivedBounds?.position ?? { x: 0, y: 0 },
+      width: normalizedWidth ?? derivedBounds?.width ?? LEGACY_DEFAULT_GROUP_WIDTH,
+      height: normalizedHeight ?? derivedBounds?.height ?? LEGACY_DEFAULT_GROUP_HEIGHT,
+      labelColor
+    };
+  });
+
+  if (!modified) {
+    return { annotations, modified: false };
+  }
+
+  return {
+    annotations: {
+      ...annotations,
+      freeTextAnnotations,
+      freeShapeAnnotations,
+      groupStyleAnnotations
+    },
+    modified: true
   };
 }
 

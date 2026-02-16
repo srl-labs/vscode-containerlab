@@ -50,13 +50,18 @@ test.clab.yml
 #clab files
 clab-*/
 *.clab.yml*
+*.clab.yaml*
+*.annotations.json
 labs/
+labs2/
+.clab-icons/**
 
 # Development directories
 dev/**
 dist-dev/**
 .claude/**
 legacy-backup/**
+eslint-local-rules/**
 
 # Test and coverage output
 .nyc_output/**
