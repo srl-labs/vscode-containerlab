@@ -49,33 +49,16 @@
     "views": {
       "containerlabViewContainer": [
         {
-          "id": "runningLabs",
-          "name": "Running Labs"
-        },
-        {
-          "id": "localLabs",
-          "name": "Undeployed Local Labs"
-        },
-        {
-          "id": "helpFeedback",
-          "name": "Help & Feedback"
+          "id": "containerlabExplorerWebview",
+          "name": "Explorer",
+          "type": "webview"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "runningLabs",
-        "contents": "No running labs discovered\n[Deploy an existing lab](command:containerlab.lab.deploy.specificFile)"
-      },
-      {
-        "view": "localLabs",
-        "contents": "No labs discovered in the current directory\n[Create topology with TopoViewer](command:containerlab.editor.topoViewerEditor)\n[Clone Repository from git](command:containerlab.lab.cloneRepo)\n[Clone popular lab](command:containerlab.lab.clonePopularRepo)",
-        "when": "workbenchState != empty"
-      },
-      {
-        "view": "localLabs",
-        "contents": "No workspace open\n[Open folder](command:vscode.openFolder)\n[Create topology with TopoViewer](command:containerlab.editor.topoViewerEditor)",
-        "when": "workbenchState == empty"
+        "view": "containerlabExplorerWebview",
+        "contents": "Loading Containerlab explorer..."
       }
     ],
     "commands": [
@@ -507,58 +490,8 @@
       "view/title": [
         {
           "command": "containerlab.refresh",
-          "when": "view == runningLabs",
+          "when": "view == containerlabExplorerWebview",
           "group": "navigation@8"
-        },
-        {
-          "command": "containerlab.lab.deploy.specificFile",
-          "when": "view == runningLabs",
-          "group": "navigation@1"
-        },
-        {
-          "command": "containerlab.inspectAll",
-          "when": "view == runningLabs",
-          "group": "navigation@2"
-        },
-        {
-          "command": "containerlab.editor.topoViewerEditor",
-          "when": "view == localLabs",
-          "group": "navigation@1"
-        },
-        {
-          "command": "containerlab.lab.cloneRepo",
-          "when": "view == localLabs",
-          "group": "navigation@2"
-        },
-        {
-          "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
-          "when": "view == runningLabs && !containerlab:nonOwnedLabsHidden",
-          "group": "navigation@0"
-        },
-        {
-          "command": "containerlab.treeView.runningLabs.showNonOwnedLabs",
-          "when": "view == runningLabs && containerlab:nonOwnedLabsHidden",
-          "group": "navigation@0"
-        },
-        {
-          "command": "containerlab.treeView.runningLabs.filter",
-          "when": "view == runningLabs",
-          "group": "navigation@98"
-        },
-        {
-          "command": "containerlab.treeView.runningLabs.clearFilter",
-          "when": "view == runningLabs",
-          "group": "navigation@99"
-        },
-        {
-          "command": "containerlab.treeView.localLabs.filter",
-          "when": "view == localLabs && localLabsEmpty == false",
-          "group": "navigation@98"
-        },
-        {
-          "command": "containerlab.treeView.localLabs.clearFilter",
-          "when": "view == localLabs",
-          "group": "navigation@99"
         }
       ],
       "editor/title": [
@@ -1427,6 +1360,7 @@
     "@mui/icons-material": "^7.3.7",
     "@mui/material": "^7.3.7",
     "@mui/x-charts": "^8.27.0",
+    "@mui/x-tree-view": "^8.27.1",
     "@playwright/test": "^1.57.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.1",

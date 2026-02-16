@@ -12,6 +12,7 @@ import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 
 import { setHostContext } from "@webview/services/topologyHostClient";
 import { refreshTopologySnapshot } from "@webview/services/topologyHostCommands";
+import { useGraphStore, useTopoViewerStore } from "@webview/stores";
 import { applyDevVars } from "@webview/theme/devTheme";
 import { vscodeTheme } from "@webview/theme/vscodeTheme";
 
@@ -22,6 +23,17 @@ import { sampleCustomNodes, sampleCustomIcons } from "./mockData";
 import clabSchema from "../schema/clab.schema.json";
 import { parseSchemaData } from "@shared/schema";
 import type { SchemaData } from "@shared/schema";
+import {
+  buildExplorerSnapshot,
+  type ExplorerActionInvocation,
+  type ExplorerSnapshotOptions,
+  type ExplorerSnapshotProviders
+} from "../src/webviews/explorer/explorerSnapshotAdapter";
+import type {
+  ExplorerIncomingMessage,
+  ExplorerOutgoingMessage,
+  ExplorerUiState
+} from "../src/webviews/shared/explorer/types";
 
 const monacoGlobal = self as typeof self & {
   MonacoEnvironment?: {
@@ -117,17 +129,26 @@ const DEFAULT_TOPOLOGY = `${TOPOLOGIES_DIR}/simple.clab.yml`;
 
 let currentFilePath: string | null = null;
 
+function syncHostContext(
+  options: {
+    mode?: "edit" | "view";
+    deploymentState?: "deployed" | "undeployed" | "unknown";
+  } = {}
+): void {
+  setHostContext({
+    path: currentFilePath ?? DEFAULT_TOPOLOGY,
+    mode: options.mode ?? stateManager.getMode(),
+    deploymentState: options.deploymentState ?? stateManager.getDeploymentState(),
+    sessionId: sessionId ?? undefined
+  });
+}
+
 async function loadTopologyFile(filePath: string): Promise<void> {
   console.log(`%c[Dev] Loading topology: ${filePath}`, "color: #2196F3;");
   currentFilePath = filePath;
   stateManager.setLoadedFile(filePath);
 
-  setHostContext({
-    path: filePath,
-    mode: stateManager.getMode(),
-    deploymentState: stateManager.getDeploymentState(),
-    sessionId: sessionId ?? undefined
-  });
+  syncHostContext();
 
   renderApp();
   await refreshTopologySnapshot();
@@ -213,26 +234,431 @@ interface DevServerInterface {
   getCurrentFile: () => currentFilePath,
   setMode: (mode: "edit" | "view") => {
     stateManager.setMode(mode);
-    setHostContext({
-      path: currentFilePath ?? DEFAULT_TOPOLOGY,
-      mode: mode,
-      deploymentState: stateManager.getDeploymentState(),
-      sessionId: sessionId ?? undefined
-    });
+    syncHostContext({ mode });
     void refreshTopologySnapshot();
   },
   setDeploymentState: (state: "deployed" | "undeployed" | "unknown") => {
     stateManager.setDeploymentState(state);
-    setHostContext({
-      path: currentFilePath ?? DEFAULT_TOPOLOGY,
-      mode: stateManager.getMode(),
-      deploymentState: state,
-      sessionId: sessionId ?? undefined
-    });
+    syncHostContext({ deploymentState: state });
     void refreshTopologySnapshot();
   },
   onHostUpdate: () => {},
   stateManager
+};
+
+// Explorer bridge for Vite dev mode (uses the same snapshot adapter as the extension host).
+
+const EXPLORER_REFRESH_DEBOUNCE_MS = 90;
+const TREE_ITEM_NONE = 0;
+const TREE_ITEM_COLLAPSED = 1;
+
+interface DevExplorerTreeItem {
+  id?: string;
+  label: string;
+  description?: string;
+  tooltip?: string;
+  contextValue?: string;
+  command?: { command: string; title: string; arguments?: unknown[] };
+  collapsibleState?: number;
+  state?: string;
+  status?: string;
+  link?: string;
+  labPath?: { absolute: string; relative: string };
+  name?: string;
+  cID?: string;
+  kind?: string;
+  image?: string;
+  mac?: string;
+  v4Address?: string;
+  v6Address?: string;
+  children?: DevExplorerTreeItem[];
+}
+
+class DevExplorerProvider {
+  constructor(private readonly roots: DevExplorerTreeItem[]) {}
+
+  getChildren(element?: DevExplorerTreeItem): DevExplorerTreeItem[] {
+    if (!element) {
+      return this.roots;
+    }
+    return Array.isArray(element.children) ? element.children : [];
+  }
+}
+
+const HELP_LINKS = [
+  { label: "Containerlab Documentation", url: "https://containerlab.dev/" },
+  { label: "VS Code Extension Documentation", url: "https://containerlab.dev/manual/vsc-extension/" },
+  { label: "Browse Labs on GitHub (srl-labs)", url: "https://github.com/srl-labs/" },
+  {
+    label: 'Find more labs tagged with "clab-topo"',
+    url: "https://github.com/search?q=topic%3Aclab-topo++fork%3Atrue&type=repositories"
+  },
+  { label: "Join our Discord server", url: "https://discord.gg/vAyddtaEV9" },
+  {
+    label: "Download cshargextcap Wireshark plugin",
+    url: "https://github.com/siemens/cshargextcap/releases/latest"
+  }
+] as const;
+
+let explorerFilterText = "";
+let explorerUiState: ExplorerUiState = {};
+let explorerRefreshTimer: number | null = null;
+let explorerActionBindings = new Map<string, ExplorerActionInvocation>();
+const unhandledExplorerCommands = new Set<string>();
+
+function stripTopologySuffix(name: string): string {
+  return name.replace(/\.clab\.(ya?ml)$/i, "");
+}
+
+function safeFilename(pathValue: string): string {
+  const segments = pathValue.split("/").filter(Boolean);
+  return segments.length > 0 ? segments[segments.length - 1] : pathValue;
+}
+
+function sendExplorerMessage(message: ExplorerIncomingMessage): void {
+  window.dispatchEvent(new MessageEvent<ExplorerIncomingMessage>("message", { data: message }));
+}
+
+function postExplorerFilterState(): void {
+  sendExplorerMessage({ command: "filterState", filterText: explorerFilterText });
+}
+
+function postExplorerUiState(): void {
+  sendExplorerMessage({ command: "uiState", state: explorerUiState });
+}
+
+function postExplorerError(message: string): void {
+  sendExplorerMessage({ command: "error", message });
+}
+
+async function copyTextToClipboard(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    console.info(`[Dev Explorer] Clipboard write unavailable, value: ${text}`);
+  }
+}
+
+function filterTreeItems(items: DevExplorerTreeItem[], filterText: string): DevExplorerTreeItem[] {
+  const query = filterText.trim().toLowerCase();
+  if (query.length === 0) {
+    return items;
+  }
+
+  const visit = (item: DevExplorerTreeItem): DevExplorerTreeItem | null => {
+    const filteredChildren = (item.children ?? [])
+      .map((child) => visit(child))
+      .filter((child): child is DevExplorerTreeItem => child !== null);
+    const haystack = [item.label, item.description, item.tooltip]
+      .filter((value): value is string => typeof value === "string")
+      .join(" ")
+      .toLowerCase();
+
+    if (haystack.includes(query) || filteredChildren.length > 0) {
+      return { ...item, children: filteredChildren };
+    }
+    return null;
+  };
+
+  return items.map((item) => visit(item)).filter((item): item is DevExplorerTreeItem => item !== null);
+}
+
+function buildRunningLabItems(filterText: string): DevExplorerTreeItem[] {
+  if (stateManager.getDeploymentState() !== "deployed") {
+    return [];
+  }
+
+  const graphState = useGraphStore.getState();
+  const topoState = useTopoViewerStore.getState();
+  const pathValue = currentFilePath ?? topoState.yamlFileName;
+  const labName = stripTopologySuffix(topoState.labName || safeFilename(pathValue || "Current Lab"));
+
+  const edgeGroups = new Map<string, Array<{ peer: string; edgeId: string }>>();
+  for (const edge of graphState.edges) {
+    const source = String(edge.source);
+    const target = String(edge.target);
+    const edgeId = String(edge.id);
+    const sourceList = edgeGroups.get(source) ?? [];
+    sourceList.push({ peer: target, edgeId });
+    edgeGroups.set(source, sourceList);
+    const targetList = edgeGroups.get(target) ?? [];
+    targetList.push({ peer: source, edgeId });
+    edgeGroups.set(target, targetList);
+  }
+
+  const containers = graphState.nodes.map((node) => {
+    const nodeId = String(node.id);
+    const interfaces = (edgeGroups.get(nodeId) ?? []).map((entry, index) => ({
+      id: `running-interface:${nodeId}:${index}`,
+      label: `eth${index}`,
+      description: entry.peer,
+      contextValue: "containerlabInterfaceUp",
+      collapsibleState: TREE_ITEM_NONE,
+      cID: nodeId,
+      name: `eth${index}`,
+      mac: entry.edgeId
+    }));
+
+    return {
+      id: `running-container:${nodeId}`,
+      label: nodeId,
+      description: "container",
+      contextValue: "containerlabContainer",
+      collapsibleState: interfaces.length > 0 ? TREE_ITEM_COLLAPSED : TREE_ITEM_NONE,
+      state: "running",
+      status: "running",
+      name: nodeId,
+      cID: nodeId,
+      kind: typeof node.type === "string" ? node.type : "node",
+      image: typeof node.type === "string" ? node.type : "node",
+      v4Address: "N/A",
+      v6Address: "N/A",
+      children: interfaces
+    };
+  });
+
+  const labItem: DevExplorerTreeItem = {
+    id: `running-lab:${pathValue || labName}`,
+    label: labName,
+    description: pathValue,
+    tooltip: pathValue,
+    contextValue: "containerlabLabDeployed",
+    collapsibleState: containers.length > 0 ? TREE_ITEM_COLLAPSED : TREE_ITEM_NONE,
+    labPath: {
+      absolute: pathValue || labName,
+      relative: pathValue || labName
+    },
+    children: containers
+  };
+  labItem.command = {
+    command: "containerlab.lab.graph.topoViewer",
+    title: "Open TopoViewer",
+    arguments: [labItem]
+  };
+
+  return filterTreeItems([labItem], filterText);
+}
+
+async function buildLocalLabItems(filterText: string): Promise<DevExplorerTreeItem[]> {
+  const localFiles = await listTopologyFiles();
+  if (!Array.isArray(localFiles) || localFiles.length === 0) {
+    return [];
+  }
+
+  const items = localFiles.map((file) => {
+    const item: DevExplorerTreeItem = {
+      id: `local-lab:${file.path}`,
+      label: file.filename || safeFilename(file.path),
+      description: file.path,
+      tooltip: file.path,
+      contextValue: "containerlabLabUndeployed",
+      collapsibleState: TREE_ITEM_NONE,
+      labPath: {
+        absolute: file.path,
+        relative: file.path
+      },
+      children: []
+    };
+    item.command = {
+      command: "containerlab.lab.graph.topoViewer",
+      title: "Open TopoViewer",
+      arguments: [item]
+    };
+    return item;
+  });
+
+  return filterTreeItems(items, filterText);
+}
+
+function buildHelpItems(): DevExplorerTreeItem[] {
+  return HELP_LINKS.map((link) => ({
+    id: `help:${link.url}`,
+    label: link.label,
+    tooltip: link.url,
+    collapsibleState: TREE_ITEM_NONE,
+    command: {
+      command: "containerlab.openLink",
+      title: "Open Link",
+      arguments: [link.url]
+    },
+    children: []
+  }));
+}
+
+async function buildExplorerProviders(): Promise<ExplorerSnapshotProviders> {
+  const runningItems = buildRunningLabItems(explorerFilterText);
+  const localItems = await buildLocalLabItems(explorerFilterText);
+  const helpItems = buildHelpItems();
+
+  return {
+    runningProvider: new DevExplorerProvider(runningItems) as unknown as ExplorerSnapshotProviders["runningProvider"],
+    localProvider: new DevExplorerProvider(localItems) as unknown as ExplorerSnapshotProviders["localProvider"],
+    helpProvider: new DevExplorerProvider(helpItems) as unknown as ExplorerSnapshotProviders["helpProvider"]
+  };
+}
+
+async function postExplorerSnapshot(): Promise<void> {
+  try {
+    const providers = await buildExplorerProviders();
+    const options: ExplorerSnapshotOptions = {
+      hideNonOwnedLabs: false,
+      isLocalCaptureAllowed: true
+    };
+    const { snapshot, actionBindings } = await buildExplorerSnapshot(
+      providers,
+      explorerFilterText,
+      options
+    );
+    explorerActionBindings = actionBindings;
+    sendExplorerMessage(snapshot);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    postExplorerError(`Explorer refresh failed in dev mode: ${message}`);
+  }
+}
+
+function scheduleExplorerSnapshot(delay = EXPLORER_REFRESH_DEBOUNCE_MS): void {
+  if (explorerRefreshTimer !== null) {
+    window.clearTimeout(explorerRefreshTimer);
+  }
+  explorerRefreshTimer = window.setTimeout(() => {
+    explorerRefreshTimer = null;
+    void postExplorerSnapshot();
+  }, delay);
+}
+
+function firstArgAsTreeItem(args: unknown[]): DevExplorerTreeItem | undefined {
+  const arg = args[0];
+  if (!arg || typeof arg !== "object") {
+    return undefined;
+  }
+  return arg as DevExplorerTreeItem;
+}
+
+function resolveLabPath(args: unknown[]): string | undefined {
+  const first = args[0];
+  if (typeof first === "string" && first.length > 0) {
+    return first;
+  }
+  const item = firstArgAsTreeItem(args);
+  if (!item) {
+    return currentFilePath ?? undefined;
+  }
+  if (item.labPath?.absolute) {
+    return item.labPath.absolute;
+  }
+  if (typeof item.description === "string" && item.description.includes(".clab.")) {
+    return item.description;
+  }
+  return currentFilePath ?? undefined;
+}
+
+async function setDeploymentStateAndRefresh(
+  state: "deployed" | "undeployed" | "unknown",
+  labPath?: string
+): Promise<void> {
+  stateManager.setDeploymentState(state);
+  syncHostContext({ deploymentState: state });
+  if (labPath) {
+    await loadTopologyFile(labPath);
+    return;
+  }
+  await refreshTopologySnapshot();
+}
+
+function openExternalLink(url: string): void {
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+async function executeExplorerCommand(commandId: string, args: unknown[]): Promise<void> {
+  const item = firstArgAsTreeItem(args);
+  const labPath = resolveLabPath(args);
+
+  switch (commandId) {
+    case "containerlab.openLink": {
+      const link = typeof args[0] === "string" ? args[0] : undefined;
+      if (link) {
+        openExternalLink(link);
+      }
+      return;
+    }
+    case "containerlab.lab.graph.topoViewer":
+    case "containerlab.lab.openFile":
+    case "containerlab.editor.topoViewerEditor.open": {
+      if (labPath) {
+        await loadTopologyFile(labPath);
+      }
+      return;
+    }
+    case "containerlab.lab.copyPath": {
+      if (labPath) {
+        await copyTextToClipboard(labPath);
+      }
+      return;
+    }
+    case "containerlab.lab.deploy":
+    case "containerlab.lab.deploy.cleanup":
+    case "containerlab.lab.deploy.specificFile": {
+      await setDeploymentStateAndRefresh("deployed", labPath);
+      return;
+    }
+    case "containerlab.lab.destroy":
+    case "containerlab.lab.destroy.cleanup": {
+      await setDeploymentStateAndRefresh("undeployed");
+      return;
+    }
+    case "containerlab.lab.redeploy":
+    case "containerlab.lab.redeploy.cleanup": {
+      await setDeploymentStateAndRefresh("deployed", labPath);
+      return;
+    }
+    case "containerlab.node.copyName": {
+      await copyTextToClipboard(item?.name || item?.label || "");
+      return;
+    }
+    case "containerlab.node.copyID": {
+      await copyTextToClipboard(item?.cID || "");
+      return;
+    }
+    case "containerlab.node.copyKind": {
+      await copyTextToClipboard(item?.kind || "");
+      return;
+    }
+    case "containerlab.node.copyImage": {
+      await copyTextToClipboard(item?.image || "");
+      return;
+    }
+    case "containerlab.node.copyIPv4Address": {
+      await copyTextToClipboard(item?.v4Address || "");
+      return;
+    }
+    case "containerlab.node.copyIPv6Address": {
+      await copyTextToClipboard(item?.v6Address || "");
+      return;
+    }
+    case "containerlab.interface.copyMACAddress": {
+      await copyTextToClipboard(item?.mac || "");
+      return;
+    }
+    case "containerlab.lab.sshx.copyLink":
+    case "containerlab.lab.gotty.copyLink": {
+      const link = typeof args[0] === "string" ? args[0] : item?.link;
+      if (link) {
+        await copyTextToClipboard(link);
+      }
+      return;
+    }
+    default: {
+      if (!unhandledExplorerCommands.has(commandId)) {
+        unhandledExplorerCommands.add(commandId);
+        console.info(`[Dev Explorer] Command not implemented in dev mode: ${commandId}`);
+      }
+    }
+  }
+}
+
+(window as unknown as { __DEV__: DevServerInterface }).__DEV__.onHostUpdate = () => {
+  scheduleExplorerSnapshot();
 };
 
 console.log(
@@ -257,6 +683,9 @@ function setupDevModeCommandInterceptor(): void {
     level?: string;
     message?: string;
     fileLine?: string;
+    actionRef?: string;
+    value?: string;
+    state?: ExplorerUiState;
   };
 
   const warnedCommands = new Set<string>();
@@ -282,6 +711,61 @@ function setupDevModeCommandInterceptor(): void {
     logger(`${prefix}${message}`);
   };
 
+  const isExplorerOutgoingMessage = (
+    message: DevVscodeMessage
+  ): message is ExplorerOutgoingMessage => {
+    return (
+      message.command === "ready" ||
+      message.command === "setFilter" ||
+      message.command === "invokeAction" ||
+      message.command === "requestRefresh" ||
+      message.command === "persistUiState"
+    );
+  };
+
+  const handleExplorerMessage = (message: ExplorerOutgoingMessage): void => {
+    if (message.command === "ready") {
+      postExplorerFilterState();
+      postExplorerUiState();
+      scheduleExplorerSnapshot(0);
+      return;
+    }
+
+    if (message.command === "setFilter") {
+      explorerFilterText = message.value.trim();
+      postExplorerFilterState();
+      scheduleExplorerSnapshot(0);
+      return;
+    }
+
+    if (message.command === "persistUiState") {
+      explorerUiState = message.state || {};
+      return;
+    }
+
+    if (message.command === "requestRefresh") {
+      scheduleExplorerSnapshot(0);
+      return;
+    }
+
+    if (message.command === "invokeAction") {
+      const binding = explorerActionBindings.get(message.actionRef);
+      if (!binding) {
+        postExplorerError("Action is no longer available. Refresh the explorer and try again.");
+        return;
+      }
+
+      Promise.resolve(executeExplorerCommand(binding.commandId, binding.args ?? []))
+        .then(() => {
+          scheduleExplorerSnapshot(0);
+        })
+        .catch((error: unknown) => {
+          const actionError = error instanceof Error ? error.message : String(error);
+          postExplorerError(`Failed to execute action: ${actionError}`);
+        });
+    }
+  };
+
   const commandHandlers: Record<string, (msg: DevVscodeMessage) => void> = {
     reactTopoViewerLog: handleViewerLog,
     topoViewerLog: handleViewerLog
@@ -299,6 +783,11 @@ function setupDevModeCommandInterceptor(): void {
       }
 
       if (!msg?.command) return;
+
+      if (isExplorerOutgoingMessage(msg)) {
+        handleExplorerMessage(msg);
+        return;
+      }
 
       const handler = commandHandlers[msg.command];
       if (handler) {

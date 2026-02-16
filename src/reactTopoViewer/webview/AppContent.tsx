@@ -5,6 +5,7 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import Box from "@mui/material/Box";
 import LinearProgress from "@mui/material/LinearProgress";
 
+import { ContainerlabExplorerView } from "../../webviews/explorer/containerlabExplorerView.webview";
 import type { NetemState } from "../shared/parsing";
 import type { TopoEdge, TopoNode, TopologyEdgeData, TopologyHostCommand } from "../shared/types";
 
@@ -193,6 +194,11 @@ function getInteractionLockState(isLocked: boolean, isProcessing: boolean): bool
   return isLocked || isProcessing;
 }
 
+function isDevMockWebview(): boolean {
+  const maybeVscode = (window as unknown as { vscode?: { __isDevMock__?: boolean } }).vscode;
+  return Boolean(maybeVscode?.__isDevMock__);
+}
+
 export interface AppContentProps {
   reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
   rfInstance: ReactFlowInstance | null;
@@ -214,6 +220,7 @@ export const AppContent: React.FC<AppContentProps> = ({
   const isProcessing = state.isProcessing;
   const isInteractionLocked = getInteractionLockState(state.isLocked, isProcessing);
   const interactionMode = getInteractionMode(state.mode, isProcessing);
+  const showDevExplorer = React.useMemo(() => isDevMockWebview(), []);
 
   React.useEffect(() => {
     if (!DUMP_CSS_VARS) return;
@@ -706,6 +713,21 @@ export const AppContent: React.FC<AppContentProps> = ({
         />
         {isProcessing && <LinearProgress />}
         <Box sx={{ display: "flex", flexGrow: 1, overflow: "hidden", position: "relative" }}>
+          {showDevExplorer && (
+            <Box
+              sx={{
+                width: 360,
+                minWidth: 360,
+                flexShrink: 0,
+                borderRight: "1px solid",
+                borderColor: "divider",
+                bgcolor: "background.paper",
+                overflow: "hidden"
+              }}
+            >
+              <ContainerlabExplorerView />
+            </Box>
+          )}
           <ContextPanel
             isOpen={panelVisibility.isContextPanelOpen}
             side={panelVisibility.panelSide}

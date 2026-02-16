@@ -139,6 +139,26 @@ async function build() {
     }
   });
 
+  const explorerWebviewBuild = esbuild.build({
+    ...commonOptions,
+    entryPoints: ["src/webviews/explorer/containerlabExplorerView.webview.tsx"],
+    platform: "browser",
+    format: "iife",
+    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    outfile: "dist/containerlabExplorerView.js",
+    plugins: [ignoreCssPlugin],
+    jsx: "automatic",
+    loader: {
+      ".svg": "dataurl",
+      ".png": "dataurl",
+      ".jpg": "dataurl",
+      ".gif": "dataurl"
+    },
+    define: {
+      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
+    }
+  });
+
   // Build Monaco workers for webview (separate files for CSP-friendly worker-src)
   const monacoWorkersBuild = esbuild.build({
     ...commonOptions,
@@ -157,6 +177,7 @@ async function build() {
   await Promise.all([
     extensionBuild,
     webviewBuild,
+    explorerWebviewBuild,
     monacoWorkersBuild,
     copyFonts(),
     copyMapLibreWorker(),
@@ -197,6 +218,23 @@ async function build() {
       }
     });
 
+    const explorerWebCtx = await esbuild.context({
+      ...commonOptions,
+      entryPoints: ["src/webviews/explorer/containerlabExplorerView.webview.tsx"],
+      platform: "browser",
+      format: "iife",
+      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      outfile: "dist/containerlabExplorerView.js",
+      plugins: [ignoreCssPlugin],
+      jsx: "automatic",
+      loader: {
+        ".svg": "dataurl",
+        ".png": "dataurl",
+        ".jpg": "dataurl",
+        ".gif": "dataurl"
+      }
+    });
+
     const monacoWorkersCtx = await esbuild.context({
       ...commonOptions,
       entryPoints: {
@@ -210,7 +248,12 @@ async function build() {
       plugins: [ignoreCssPlugin]
     });
 
-    await Promise.all([extCtx.watch(), webCtx.watch(), monacoWorkersCtx.watch()]);
+    await Promise.all([
+      extCtx.watch(),
+      webCtx.watch(),
+      explorerWebCtx.watch(),
+      monacoWorkersCtx.watch()
+    ]);
 
     // Watch CSS files and rebuild
     const cssWatcher = watch("src/reactTopoViewer/webview/styles/**/*.css", {

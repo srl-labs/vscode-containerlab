@@ -22,9 +22,6 @@ import {
   setLocalLabsProvider,
   setRunningLabsProvider,
   setHelpFeedbackProvider,
-  setLocalTreeView,
-  setRunningTreeView,
-  setHelpTreeView,
   setHideNonOwnedLabsState
 } from "./globals";
 import { WelcomePage } from "./welcomePage";
@@ -45,6 +42,9 @@ import {
   onFallbackDataChanged,
   stopFallbackPolling
 } from "./services";
+import { ContainerlabExplorerViewProvider } from "./webviews/explorer/containerlabExplorerViewProvider";
+
+let explorerViewProvider: ContainerlabExplorerViewProvider | undefined;
 
 function registerUnsupportedViews(context: vscode.ExtensionContext) {
   let warningShown = false;
@@ -58,38 +58,57 @@ function registerUnsupportedViews(context: vscode.ExtensionContext) {
     );
   };
 
-  const unsupportedProvider: vscode.TreeDataProvider<vscode.TreeItem> = {
-    getTreeItem: (item: vscode.TreeItem) => item,
-    getChildren: () => {
-      const item = new vscode.TreeItem(
-        "Containerlab extension requires Linux or WSL.",
-        vscode.TreeItemCollapsibleState.None
-      );
-      item.description = "Features are disabled on this platform.";
-      item.iconPath = new vscode.ThemeIcon("warning");
-      item.command = {
-        command: "vscode.open",
-        title: "Open docs",
-        arguments: [vscode.Uri.parse("https://containerlab.dev/manual/vsc-extension/")]
+  const unsupportedProvider: vscode.WebviewViewProvider = {
+    resolveWebviewView(webviewView) {
+      webviewView.webview.options = {
+        enableScripts: false
       };
-      return [item];
+      webviewView.webview.html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: var(--vscode-font-family);
+      color: var(--vscode-foreground);
+      background: var(--vscode-editor-background);
+    }
+    .wrap {
+      padding: 12px;
+    }
+    a {
+      color: var(--vscode-textLink-foreground);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h3>Containerlab Requires Linux or WSL</h3>
+    <p>Features are disabled on this platform.</p>
+    <p><a href="https://containerlab.dev/manual/vsc-extension/">Open documentation</a></p>
+  </div>
+</body>
+</html>`;
+
+      context.subscriptions.push(
+        webviewView.onDidChangeVisibility(() => {
+          if (webviewView.visible) {
+            showWarningOnce();
+          }
+        })
+      );
     }
   };
 
-  ["runningLabs", "localLabs", "helpFeedback"].forEach((viewId) => {
-    const view = vscode.window.createTreeView(viewId, {
-      treeDataProvider: unsupportedProvider,
-      canSelectMany: false
-    });
-    context.subscriptions.push(
-      view.onDidChangeVisibility((e) => {
-        if (e.visible) {
-          showWarningOnce();
-        }
-      })
-    );
-    context.subscriptions.push(view);
-  });
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      ContainerlabExplorerViewProvider.viewType,
+      unsupportedProvider
+    )
+  );
 }
 
 // Session refresh functions are available from ./services/sessionRefresh directly
@@ -104,6 +123,7 @@ async function refreshLabViews() {
   Promise.resolve(runningLabsProvider.refresh()).catch(() => {
     /* ignore */
   });
+  explorerViewProvider?.requestRefresh();
 }
 
 function manageImpairments(node: c.ClabContainerTreeNode) {
@@ -195,11 +215,19 @@ async function filterRunningLabsCommand() {
     prompt: 'use * for wildcard, # for numbers: "srl*", "spine#-leaf*", "^spine.*"'
   });
   if (val !== undefined) {
-    runningLabsProvider.setTreeFilter(val);
+    if (explorerViewProvider) {
+      await explorerViewProvider.setFilter(val);
+    } else {
+      runningLabsProvider.setTreeFilter(val);
+    }
   }
 }
 
 function clearRunningLabsFilterCommand() {
+  if (explorerViewProvider) {
+    void explorerViewProvider.clearFilter();
+    return;
+  }
   runningLabsProvider.clearTreeFilter();
 }
 
@@ -209,11 +237,19 @@ async function filterLocalLabsCommand() {
     prompt: 'use * for wildcard, # for numbers: "spine", "*test*", "lab#", "^my-.*"'
   });
   if (val !== undefined) {
-    localLabsProvider.setTreeFilter(val);
+    if (explorerViewProvider) {
+      await explorerViewProvider.setFilter(val);
+    } else {
+      localLabsProvider.setTreeFilter(val);
+    }
   }
 }
 
 function clearLocalLabsFilterCommand() {
+  if (explorerViewProvider) {
+    void explorerViewProvider.clearFilter();
+    return;
+  }
   localLabsProvider.clearTreeFilter();
 }
 
@@ -590,36 +626,41 @@ export async function activate(context: vscode.ExtensionContext) {
   await refreshGottySessions();
   // Docker images are refreshed on TopoViewer open to avoid unnecessary calls
 
-  setLocalTreeView(
-    vscode.window.createTreeView("localLabs", {
-      treeDataProvider: newLocalProvider,
-      canSelectMany: true
-    })
-  );
-
-  setRunningTreeView(
-    vscode.window.createTreeView("runningLabs", {
-      treeDataProvider: newRunningProvider,
-      canSelectMany: true
-    })
-  );
-
-  setHelpTreeView(
-    vscode.window.createTreeView("helpFeedback", {
-      treeDataProvider: newHelpProvider,
-      canSelectMany: false
-    })
-  );
-
-  registerRealtimeUpdates(context);
-
   // Determine if local capture is allowed.
   const isLocalCaptureAllowed = vscode.env.remoteName !== "ssh-remote" && !utils.isOrbstack();
-  vscode.commands.executeCommand(
+  void vscode.commands.executeCommand(
     "setContext",
     "containerlab:isLocalCaptureAllowed",
     isLocalCaptureAllowed
   );
+  void vscode.commands.executeCommand("setContext", "containerlabExplorerVisible", false);
+
+  explorerViewProvider = new ContainerlabExplorerViewProvider(context, {
+    runningProvider: newRunningProvider,
+    localProvider: newLocalProvider,
+    helpProvider: newHelpProvider,
+    isLocalCaptureAllowed
+  });
+  void vscode.commands.executeCommand(
+    "setContext",
+    "containerlabExplorerFilterActive",
+    explorerViewProvider.isFilterActive()
+  );
+  context.subscriptions.push(
+    explorerViewProvider,
+    explorerViewProvider.onDidChangeVisibility((visible) => {
+      void vscode.commands.executeCommand("setContext", "containerlabExplorerVisible", visible);
+    }),
+    vscode.window.registerWebviewViewProvider(
+      ContainerlabExplorerViewProvider.viewType,
+      explorerViewProvider,
+      {
+        webviewOptions: { retainContextWhenHidden: true }
+      }
+    )
+  );
+
+  registerRealtimeUpdates(context);
 
   // Language features (YAML completion)
   registerClabImageCompletion(context);
@@ -636,6 +677,7 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
+  explorerViewProvider = undefined;
   if (outputChannel) {
     outputChannel.info("Deactivating Containerlab extension.");
   }

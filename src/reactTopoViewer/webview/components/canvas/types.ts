@@ -20,7 +20,7 @@ import type {
 } from "../../../shared/types/graph";
 import { DEFAULT_ICON_COLOR, ROLE_SVG_MAP } from "../../../shared/types/graph";
 import { vscodePalette } from "../../theme/vscodeTheme";
-import type { GridStyle } from "../../hooks/ui/useAppState";
+export type GridStyle = "dotted" | "quadratic";
 
 /** Edge label rendering mode */
 export type EdgeLabelMode = "show-all" | "on-select" | "hide";
