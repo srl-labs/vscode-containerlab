@@ -1,14 +1,18 @@
 // Grid settings popover.
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import Slider from "@mui/material/Slider";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Popover from "@mui/material/Popover";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 
 import type { GridStyle } from "../../hooks/ui";
+import { ColorField } from "../ui/form/ColorField";
+import { invertHexColor, resolveComputedColor } from "../../utils/color";
 
 interface GridSettingsPopoverProps {
   anchorPosition: { top: number; left: number } | null;
@@ -17,6 +21,11 @@ interface GridSettingsPopoverProps {
   onGridLineWidthChange: (width: number) => void;
   gridStyle: GridStyle;
   onGridStyleChange: (style: GridStyle) => void;
+  gridColor: string | null;
+  onGridColorChange: (color: string | null) => void;
+  gridBgColor: string | null;
+  onGridBgColorChange: (color: string | null) => void;
+  onResetColors: () => void;
 }
 
 export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
@@ -25,11 +34,39 @@ export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
   gridLineWidth,
   onGridLineWidthChange,
   gridStyle,
-  onGridStyleChange
+  onGridStyleChange,
+  gridColor,
+  onGridColorChange,
+  gridBgColor,
+  onGridBgColorChange,
+  onResetColors
 }) => {
   const open = Boolean(anchorPosition);
   const isGridStyle = (value: unknown): value is GridStyle =>
     value === "dotted" || value === "quadratic";
+
+  const [themeBgColor, setThemeBgColor] = useState("#1e1e1e");
+
+  useEffect(() => {
+    if (open) {
+      setThemeBgColor(resolveComputedColor("--vscode-editor-background", "#1e1e1e"));
+    }
+  }, [open]);
+
+  const effectiveBg = gridBgColor ?? themeBgColor;
+  const defaultGridColor = invertHexColor(effectiveBg);
+
+  const hasCustomColors = gridColor !== null || gridBgColor !== null;
+
+  const handleGridColorChange = useCallback(
+    (value: string) => onGridColorChange(value),
+    [onGridColorChange]
+  );
+
+  const handleBgColorChange = useCallback(
+    (value: string) => onGridBgColorChange(value),
+    [onGridBgColorChange]
+  );
 
   return (
     <Popover
@@ -79,6 +116,47 @@ export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
             <ToggleButton value="quadratic">Quadratic</ToggleButton>
           </ToggleButtonGroup>
         </Box>
+
+        <Divider />
+
+        <Box sx={{ px: 2, py: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Grid Color
+          </Typography>
+          <ColorField
+            value={gridColor ?? defaultGridColor}
+            onChange={handleGridColorChange}
+          />
+        </Box>
+
+        <Divider />
+
+        <Box sx={{ px: 2, py: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Background Color
+          </Typography>
+          <ColorField
+            value={gridBgColor ?? themeBgColor}
+            onChange={handleBgColorChange}
+          />
+        </Box>
+
+        {hasCustomColors && (
+          <>
+            <Divider />
+            <Box sx={{ px: 2, py: 1.5 }}>
+              <Button
+                size="small"
+                variant="text"
+                startIcon={<RestartAltIcon />}
+                onClick={onResetColors}
+                fullWidth
+              >
+                Reset to theme colors
+              </Button>
+            </Box>
+          </>
+        )}
       </Box>
     </Popover>
   );

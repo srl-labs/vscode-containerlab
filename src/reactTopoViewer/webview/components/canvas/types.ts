@@ -165,6 +165,8 @@ export interface ReactFlowCanvasProps {
   gridLineWidth?: number;
   /** Grid background style */
   gridStyle?: GridStyle;
+  gridColor?: string | null;
+  gridBgColor?: string | null;
   /** Annotation add mode state */
   annotationMode?: AnnotationModeState;
   /** Annotation event handlers */

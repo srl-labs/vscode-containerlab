@@ -800,6 +800,8 @@ export const AppContent: React.FC<AppContentProps> = ({
               isGeoLayout={layoutControls.isGeoLayout}
               gridLineWidth={layoutControls.gridLineWidth}
               gridStyle={layoutControls.gridStyle}
+              gridColor={layoutControls.gridColor}
+              gridBgColor={layoutControls.gridBgColor}
               annotationMode={annotationMode}
               annotationHandlers={canvasAnnotationHandlers}
               linkLabelMode={state.linkLabelMode}
@@ -868,6 +870,11 @@ export const AppContent: React.FC<AppContentProps> = ({
           onGridLineWidthChange={layoutControls.setGridLineWidth}
           gridStyle={layoutControls.gridStyle}
           onGridStyleChange={layoutControls.setGridStyle}
+          gridColor={layoutControls.gridColor}
+          onGridColorChange={layoutControls.setGridColor}
+          gridBgColor={layoutControls.gridBgColor}
+          onGridBgColorChange={layoutControls.setGridBgColor}
+          onResetColors={layoutControls.resetGridColors}
         />
         <FindNodePopover
           anchorPosition={panelVisibility.findPopoverPosition}

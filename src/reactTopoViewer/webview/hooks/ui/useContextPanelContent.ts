@@ -30,7 +30,9 @@ export interface PanelView {
 
 const PALETTE_VIEW: PanelView = { kind: "palette", title: "Palette", hasFooter: false };
 
-function resolveEditingView(state: TopoViewerState): PanelView | null {
+function resolveEditingView(
+  state: Pick<TopoViewerState, "editingNode" | "editingEdge" | "editingNetwork" | "editingImpairment">
+): PanelView | null {
   if (state.editingNode) return { kind: "nodeEditor", title: "Node Editor", hasFooter: true };
   if (state.editingEdge) return { kind: "linkEditor", title: "Link Editor", hasFooter: true };
   if (state.editingNetwork)
@@ -55,7 +57,9 @@ function resolveAnnotationView(annotationUI: AnnotationUIState): PanelView | nul
   return null;
 }
 
-function resolveSelectionView(state: TopoViewerState): PanelView | null {
+function resolveSelectionView(
+  state: Pick<TopoViewerState, "selectedNode" | "selectedEdge" | "mode">
+): PanelView | null {
   if (state.selectedNode && state.mode === "view")
     return { kind: "nodeInfo", title: "Node Properties", hasFooter: false };
   if (state.selectedEdge && state.mode === "view")

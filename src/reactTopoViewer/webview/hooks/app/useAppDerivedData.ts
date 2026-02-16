@@ -10,7 +10,19 @@ import { buildEdgeAnnotationLookup } from "../../annotations/edgeAnnotations";
 import { useFilteredGraphElements, useSelectionData } from "./useAppContentHelpers";
 
 interface AppDerivedDataParams {
-  state: TopoViewerState;
+  state: Pick<
+    TopoViewerState,
+    | "edgeAnnotations"
+    | "showDummyLinks"
+    | "selectedNode"
+    | "selectedEdge"
+    | "editingImpairment"
+    | "editingNode"
+    | "editingEdge"
+    | "editingNetwork"
+    | "endpointLabelOffset"
+    | "mode"
+  >;
   nodes: TopoNode[];
   edges: TopoEdge[];
 }

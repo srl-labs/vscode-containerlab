@@ -232,6 +232,7 @@ export function applySnapshotToStores(
   graphStore.setGraph(mergedNodes, edges as unknown as Edge[]);
 
   const offset = parseEndpointLabelOffset(annotations.viewerSettings.endpointLabelOffset);
+  const { gridColor, gridBgColor } = annotations.viewerSettings;
 
   useTopoViewerStore.getState().setInitialData({
     labName: snapshot.labName,
@@ -244,6 +245,8 @@ export function applySnapshotToStores(
     annotationsContent: snapshot.annotationsContent,
     edgeAnnotations: cleanedEdgeAnnotations,
     ...(offset !== null ? { endpointLabelOffset: offset } : {}),
+    gridColor: gridColor ?? null,
+    gridBgColor: gridBgColor ?? null,
     canUndo: snapshot.canUndo,
     canRedo: snapshot.canRedo
   });

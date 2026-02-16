@@ -44,6 +44,8 @@ export interface TopoViewerState {
   showDummyLinks: boolean;
   endpointLabelOffsetEnabled: boolean;
   endpointLabelOffset: number;
+  gridColor: string | null;
+  gridBgColor: string | null;
   edgeAnnotations: EdgeAnnotation[];
   canUndo: boolean;
   canRedo: boolean;
@@ -78,6 +80,8 @@ export interface TopoViewerActions {
   toggleDummyLinks: () => void;
   toggleEndpointLabelOffset: () => void;
   setEndpointLabelOffset: (value: number) => void;
+  setGridColor: (color: string | null) => void;
+  setGridBgColor: (color: string | null) => void;
 
   // Edge annotations
   setEdgeAnnotations: (annotations: EdgeAnnotation[]) => void;
@@ -130,6 +134,8 @@ const initialState: TopoViewerState = {
   showDummyLinks: true,
   endpointLabelOffsetEnabled: true,
   endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
+  gridColor: null,
+  gridBgColor: null,
   edgeAnnotations: [],
   canUndo: false,
   canRedo: false,
@@ -264,6 +270,14 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       ? clampEndpointLabelOffset(value)
       : DEFAULT_ENDPOINT_LABEL_OFFSET;
     set({ endpointLabelOffset: next });
+  },
+
+  setGridColor: (color) => {
+    set({ gridColor: color });
+  },
+
+  setGridBgColor: (color) => {
+    set({ gridBgColor: color });
   },
 
   // Edge annotations
@@ -413,6 +427,9 @@ export const useShowDummyLinks = () => useTopoViewerStore((state) => state.showD
 /** Get endpoint label offset */
 export const useEndpointLabelOffset = () =>
   useTopoViewerStore((state) => state.endpointLabelOffset);
+
+export const useGridColor = () => useTopoViewerStore((state) => state.gridColor);
+export const useGridBgColor = () => useTopoViewerStore((state) => state.gridBgColor);
 
 /** Get processing state */
 export const useIsProcessing = () => useTopoViewerStore((state) => state.isProcessing);

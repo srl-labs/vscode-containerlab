@@ -41,6 +41,7 @@ import {
 import { useCanvasStore, useFitViewRequestId } from "../../stores/canvasStore";
 import { useGraphActions } from "../../stores/graphStore";
 import { useIsLocked, useMode, useTopoViewerActions } from "../../stores/topoViewerStore";
+import { invertHexColor, resolveComputedColor } from "../../utils/color";
 import { ContextMenu } from "../context-menu/ContextMenu";
 
 import { AnnotationModeIndicator, HelperLines, LinkCreationIndicator } from "./CanvasOverlays";
@@ -574,8 +575,10 @@ function renderGeoMapLayer(
 function renderBackgroundLayer(params: {
   gridLineWidth: number;
   gridStyle: "dotted" | "quadratic";
+  effectiveGridColor: string;
+  gridBgColor: string | null;
 }): React.ReactElement {
-  const { gridLineWidth, gridStyle } = params;
+  const { gridLineWidth, gridStyle, effectiveGridColor, gridBgColor } = params;
   const isQuadraticGrid = gridStyle === "quadratic";
   return (
     <Background
@@ -583,7 +586,8 @@ function renderBackgroundLayer(params: {
       gap={isQuadraticGrid ? QUADRATIC_GRID_SIZE : GRID_SIZE}
       size={isQuadraticGrid ? undefined : gridLineWidth}
       lineWidth={isQuadraticGrid ? gridLineWidth : undefined}
-      color="var(--topoviewer-grid-color)"
+      color={effectiveGridColor}
+      style={gridBgColor ? { backgroundColor: gridBgColor } : undefined}
     />
   );
 }
@@ -632,6 +636,8 @@ function buildCanvasOverlays(params: {
   addModeMessage?: string | null;
   gridLineWidth: number;
   gridStyle: "dotted" | "quadratic";
+  effectiveGridColor: string;
+  gridBgColor: string | null;
 }): {
   geoMapLayer: React.ReactNode;
   backgroundLayer: React.ReactNode;
@@ -652,7 +658,9 @@ function buildCanvasOverlays(params: {
     isInAddMode,
     addModeMessage,
     gridLineWidth,
-    gridStyle
+    gridStyle,
+    effectiveGridColor,
+    gridBgColor
   } = params;
 
   const canShowGeoMap = isGeoLayout;
@@ -663,7 +671,7 @@ function buildCanvasOverlays(params: {
 
   const geoMapLayer = canShowGeoMap ? renderGeoMapLayer(geoContainerRef) : null;
   const backgroundLayer = canShowBackground
-    ? renderBackgroundLayer({ gridLineWidth, gridStyle })
+    ? renderBackgroundLayer({ gridLineWidth, gridStyle, effectiveGridColor, gridBgColor })
     : null;
   const linkCreationLine = canShowLinkCreation
     ? renderLinkCreationLine({
@@ -702,6 +710,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       isGeoLayout = false,
       gridLineWidth = DEFAULT_GRID_LINE_WIDTH,
       gridStyle = "dotted",
+      gridColor = null,
+      gridBgColor = null,
       annotationMode,
       annotationHandlers,
       onNodeDelete,
@@ -1093,6 +1103,12 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       });
       return changed ? nextNodes : allNodes;
     }, [allNodes, nodesDraggable]);
+    const effectiveGridColor = useMemo(() => {
+      if (gridColor) return gridColor;
+      const bg = gridBgColor ?? resolveComputedColor("--vscode-editor-background", "#1e1e1e");
+      return invertHexColor(bg);
+    }, [gridColor, gridBgColor]);
+
     const overlays = buildCanvasOverlays({
       isGeoLayout,
       isLowDetail,
@@ -1106,7 +1122,9 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       isInAddMode,
       addModeMessage,
       gridLineWidth,
-      gridStyle
+      gridStyle,
+      effectiveGridColor,
+      gridBgColor
     });
     const contextMenuVisible = handlers.contextMenu.type !== null;
 

@@ -94,6 +94,31 @@ export function normalizeHexColor(value: string | undefined, fallback = "#000000
   return fallback;
 }
 
+export function resolveComputedColor(cssVar: string, fallback: string): string {
+  try {
+    const raw = window.getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+    if (!raw) return fallback;
+    if (/^#[0-9a-f]{3,8}$/i.test(raw)) return normalizeHexColor(raw, fallback);
+    const rgb = parseRgb(raw);
+    if (rgb) return rgb.hex;
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function invertHexColor(hex: string, fallback = "#ffffff", strength = 0.5): string {
+  const normalized = normalizeHexColor(hex, "");
+  if (!normalized) return fallback;
+  const sr = parseInt(normalized.slice(1, 3), 16);
+  const sg = parseInt(normalized.slice(3, 5), 16);
+  const sb = parseInt(normalized.slice(5, 7), 16);
+  const r = Math.round(sr + (255 - 2 * sr) * strength);
+  const g = Math.round(sg + (255 - 2 * sg) * strength);
+  const b = Math.round(sb + (255 - 2 * sb) * strength);
+  return "#" + toHexByte(r) + toHexByte(g) + toHexByte(b);
+}
+
 export function normalizeShapeAnnotationColors(
   annotation: FreeShapeAnnotation
 ): FreeShapeAnnotation {
