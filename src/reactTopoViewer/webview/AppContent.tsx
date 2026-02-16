@@ -5,6 +5,7 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import Box from "@mui/material/Box";
 import LinearProgress from "@mui/material/LinearProgress";
 
+import { ContainerlabExplorerView } from "../../webviews/explorer/containerlabExplorerView.webview";
 import type { NetemState } from "../shared/parsing";
 import type { TopoEdge, TopoNode, TopologyEdgeData, TopologyHostCommand } from "../shared/types";
 
@@ -70,6 +71,12 @@ import {
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;
 const DUMP_CSS_VARS = false;
+const DEV_EXPLORER_MIN_WIDTH = 280;
+const DEV_EXPLORER_DEFAULT_WIDTH = 360;
+
+function getDevExplorerMaxWidth(): number {
+  return Math.max(DEV_EXPLORER_MIN_WIDTH, Math.floor(window.innerWidth / 2));
+}
 
 interface DeleteMenuHandlers {
   handleDeleteNode: (nodeId: string) => void;
@@ -193,6 +200,51 @@ function getInteractionLockState(isLocked: boolean, isProcessing: boolean): bool
   return isLocked || isProcessing;
 }
 
+function isDevMockWebview(): boolean {
+  const maybeVscode = (window as unknown as { vscode?: { __isDevMock__?: boolean } }).vscode;
+  return Boolean(maybeVscode?.__isDevMock__);
+}
+
+function isDevExplorerDisabledByUrl(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  const rawValue = params.get("devExplorer");
+  if (!rawValue) return false;
+  const normalized = rawValue.trim().toLowerCase();
+  return normalized === "0" || normalized === "false" || normalized === "off";
+}
+
+interface ContextSelectionState {
+  selectedNode: unknown;
+  selectedEdge: unknown;
+  editingNode: unknown;
+  editingEdge: unknown;
+  editingNetwork: unknown;
+  editingImpairment: unknown;
+}
+
+interface ContextAnnotationState {
+  editingTextAnnotation: unknown;
+  editingShapeAnnotation: unknown;
+  editingGroup: unknown;
+}
+
+function hasContextContentState(
+  state: ContextSelectionState,
+  annotations: ContextAnnotationState
+): boolean {
+  return Boolean(
+    state.selectedNode ||
+      state.selectedEdge ||
+      state.editingNode ||
+      state.editingEdge ||
+      state.editingNetwork ||
+      state.editingImpairment ||
+      annotations.editingTextAnnotation ||
+      annotations.editingShapeAnnotation ||
+      annotations.editingGroup
+  );
+}
+
 export interface AppContentProps {
   reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
   rfInstance: ReactFlowInstance | null;
@@ -214,6 +266,68 @@ export const AppContent: React.FC<AppContentProps> = ({
   const isProcessing = state.isProcessing;
   const isInteractionLocked = getInteractionLockState(state.isLocked, isProcessing);
   const interactionMode = getInteractionMode(state.mode, isProcessing);
+  const showDevExplorer = React.useMemo(
+    () => isDevMockWebview() && !isDevExplorerDisabledByUrl(),
+    []
+  );
+  const layoutRef = React.useRef<HTMLDivElement | null>(null);
+  const [devExplorerWidth, setDevExplorerWidth] = React.useState(DEV_EXPLORER_DEFAULT_WIDTH);
+  const [isDevExplorerDragging, setIsDevExplorerDragging] = React.useState(false);
+  const isDevExplorerDraggingRef = React.useRef(false);
+
+  const handleDevExplorerResizeStart = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!showDevExplorer) {
+        return;
+      }
+
+      event.preventDefault();
+      isDevExplorerDraggingRef.current = true;
+      setIsDevExplorerDragging(true);
+
+      const onMouseMove = (moveEvent: MouseEvent) => {
+        if (!isDevExplorerDraggingRef.current) {
+          return;
+        }
+        const layoutLeft = layoutRef.current?.getBoundingClientRect().left ?? 0;
+        const nextWidth = moveEvent.clientX - layoutLeft;
+        const clampedWidth = Math.min(
+          getDevExplorerMaxWidth(),
+          Math.max(DEV_EXPLORER_MIN_WIDTH, nextWidth)
+        );
+        setDevExplorerWidth(clampedWidth);
+      };
+
+      const onMouseUp = () => {
+        isDevExplorerDraggingRef.current = false;
+        setIsDevExplorerDragging(false);
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [showDevExplorer]
+  );
+
+  React.useEffect(() => {
+    if (!showDevExplorer) {
+      return;
+    }
+
+    const handleWindowResize = () => {
+      setDevExplorerWidth((currentWidth) =>
+        Math.min(getDevExplorerMaxWidth(), Math.max(DEV_EXPLORER_MIN_WIDTH, currentWidth))
+      );
+    };
+
+    handleWindowResize();
+    window.addEventListener("resize", handleWindowResize);
+    return () => {
+      window.removeEventListener("resize", handleWindowResize);
+    };
+  }, [showDevExplorer]);
 
   React.useEffect(() => {
     if (!DUMP_CSS_VARS) return;
@@ -503,16 +617,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     annotationUiActions.closeGroupEditor();
   }, [topoActions, annotationUiActions]);
 
-  const hasContextContent =
-    !!state.selectedNode ||
-    !!state.selectedEdge ||
-    !!state.editingNode ||
-    !!state.editingEdge ||
-    !!state.editingNetwork ||
-    !!state.editingImpairment ||
-    !!annotations.editingTextAnnotation ||
-    !!annotations.editingShapeAnnotation ||
-    !!annotations.editingGroup;
+  const hasContextContent = hasContextContentState(state, annotations);
 
   const handleEmptyCanvasClick = React.useCallback(() => {
     // When dismissing any context (editors/info) via empty canvas click, close the context panel
@@ -705,7 +810,46 @@ export const AppContent: React.FC<AppContentProps> = ({
           isPartyMode={easterEgg.state.isPartyMode}
         />
         {isProcessing && <LinearProgress />}
-        <Box sx={{ display: "flex", flexGrow: 1, overflow: "hidden", position: "relative" }}>
+        <Box
+          ref={layoutRef}
+          sx={{ display: "flex", flexGrow: 1, overflow: "hidden", position: "relative" }}
+        >
+          {showDevExplorer && (
+            <Box
+              sx={{
+                position: "relative",
+                width: devExplorerWidth,
+                minWidth: DEV_EXPLORER_MIN_WIDTH,
+                maxWidth: getDevExplorerMaxWidth(),
+                flexShrink: 0,
+                borderRight: "1px solid",
+                borderColor: "divider",
+                bgcolor: "background.paper",
+                overflow: "hidden"
+              }}
+            >
+              <ContainerlabExplorerView />
+              <Box
+                onMouseDown={handleDevExplorerResizeStart}
+                sx={{
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 4,
+                  cursor: "col-resize",
+                  zIndex: 2,
+                  "&:hover": { bgcolor: "primary.main", opacity: 0.3 },
+                  ...(isDevExplorerDragging
+                    ? {
+                        bgcolor: "primary.main",
+                        opacity: 0.28
+                      }
+                    : {})
+                }}
+              />
+            </Box>
+          )}
           <ContextPanel
             isOpen={panelVisibility.isContextPanelOpen}
             side={panelVisibility.panelSide}

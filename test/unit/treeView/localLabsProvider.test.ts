@@ -5,8 +5,7 @@
  * The provider scans the workspace for clab topology files and exposes them as
  * tree nodes. These tests stub the VS Code APIs so the provider can execute in
  * a plain Node.js environment. They assert that:
- *   1. When no topology files are discovered, the provider returns `undefined`
- *      and sets the `localLabsEmpty` context value.
+ *   1. When no topology files are discovered, the provider returns `undefined`.
  *   2. Running labs are filtered from the results and the remaining labs are
  *      returned alphabetically.
  */
@@ -92,21 +91,16 @@ describe("LocalLabTreeDataProvider", () => {
     sinon.restore();
   });
 
-  // When no topology files are present the provider should indicate an empty
-  // lab list by returning `undefined` and setting `localLabsEmpty`.
+  // When no topology files are present the provider should return `undefined`.
   it("returns undefined when no labs are discovered", async () => {
     sinon.stub(vscodeStub.workspace, "findFiles").resolves([]);
     const provider = new LocalLabTreeDataProvider();
     const nodes = await provider.getChildren(undefined);
     expect(nodes).to.be.undefined;
-    expect(vscodeStub.commands.executed).to.deep.include({
-      command: "setContext",
-      args: ["localLabsEmpty", true]
-    });
   });
 
   // Labs that are currently running should be filtered out and the remaining
-  // entries returned in alphabetical order with `localLabsEmpty` set to false.
+  // entries returned in alphabetical order.
   it("filters running labs and sorts results", async () => {
     sinon
       .stub(vscodeStub.workspace, "findFiles")
@@ -125,10 +119,6 @@ describe("LocalLabTreeDataProvider", () => {
     expect(node.label).to.equal("lab1.clab.yml");
     expect(node.labPath.absolute).to.equal(LAB_A);
     expect(node.description).to.equal("a");
-    expect(vscodeStub.commands.executed).to.deep.include({
-      command: "setContext",
-      args: ["localLabsEmpty", false]
-    });
   });
 
   it("lists root-level labs before folders", async () => {
@@ -179,10 +169,6 @@ describe("LocalLabTreeDataProvider", () => {
     expect(favNode.label).to.equal("lab.clab.yml");
     expect(favNode.favorite).to.be.true;
     expect(globals.favoriteLabs.size).to.equal(1);
-    expect(vscodeStub.commands.executed).to.deep.include({
-      command: "setContext",
-      args: ["localLabsEmpty", false]
-    });
   });
 
   it("filters labs by folder name including nested paths", async () => {

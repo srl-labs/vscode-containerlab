@@ -6,7 +6,6 @@ import { FilterUtils } from "../helpers/filterUtils";
 import * as utils from "../utils/utils";
 import {
   hideNonOwnedLabsState,
-  runningTreeView,
   username,
   favoriteLabs,
   sshxSessions,
@@ -35,13 +34,6 @@ type IconPath = vscode.TreeItem["iconPath"];
 interface LightDarkIcon {
   light: vscode.Uri;
   dark: vscode.Uri;
-}
-
-/**
- * Stored tooltip property added to tree items
- */
-interface TreeItemWithStoredTooltip extends vscode.TreeItem {
-  _storedTooltip?: string | vscode.MarkdownString;
 }
 
 type RunningTreeNode = c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabInterfaceTreeNode;
@@ -182,19 +174,11 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
   setTreeFilter(filterText: string) {
     this.treeFilter = filterText;
-    const treeViewRef = runningTreeView as vscode.TreeView<unknown> | undefined;
-    if (treeViewRef) {
-      treeViewRef.message = `Filter: ${filterText}`;
-    }
     void this.refreshWithoutDiscovery();
   }
 
   clearTreeFilter() {
     this.treeFilter = "";
-    const treeViewRef = runningTreeView as vscode.TreeView<unknown> | undefined;
-    if (treeViewRef) {
-      treeViewRef.message = undefined;
-    }
     void this.refreshWithoutDiscovery();
   }
 
@@ -234,31 +218,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   }
 
   getTreeItem(element: RunningTreeNode): vscode.TreeItem {
-    // Don't include tooltip here - it will be resolved lazily via resolveTreeItem
-    // This helps prevent tooltip dismissal during tree refreshes
-    // We store the tooltip on a separate property and clear it from the TreeItem
-    const storedTooltip = element.tooltip;
-    (element as TreeItemWithStoredTooltip)._storedTooltip = storedTooltip;
-    element.tooltip = undefined;
     return element;
-  }
-
-  /**
-   * Lazily resolve tree item details like tooltip.
-   * This is called by VS Code when it needs to display the tooltip,
-   * allowing the tooltip to persist better during tree refreshes.
-   */
-  resolveTreeItem(
-    item: vscode.TreeItem,
-    element: RunningTreeNode,
-    _token: vscode.CancellationToken
-  ): vscode.ProviderResult<vscode.TreeItem> {
-    // Restore the tooltip from our stored property
-    const storedTooltip = (element as TreeItemWithStoredTooltip)._storedTooltip;
-    if (storedTooltip !== undefined) {
-      item.tooltip = storedTooltip;
-    }
-    return item;
   }
 
   /**
@@ -281,8 +241,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
       : this.treeItems;
 
     const filtered = this.treeFilter ? this.filterLabs(labs, this.treeFilter) : labs;
-
-    vscode.commands.executeCommand("setContext", "runningLabsEmpty", filtered.length == 0);
     return filtered;
   }
 
@@ -433,14 +391,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     return false;
   }
 
-  private emitRefreshEvents(discovery: LabDiscoveryResult) {
-    if (discovery.rootChanged) {
-      this._onDidChangeTreeData.fire();
-      return;
-    }
-
-    discovery.labsToRefresh.forEach((lab) => this._onDidChangeTreeData.fire(lab));
-    discovery.containersToRefresh.forEach((container) => this._onDidChangeTreeData.fire(container));
+  private emitRefreshEvents(_discovery: LabDiscoveryResult) {
+    this._onDidChangeTreeData.fire();
   }
 
   private mergeLabNode(
@@ -949,14 +901,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     const allContainers = this.normalizeInspectData(inspectData);
 
     if (!inspectData || !allContainers) {
-      this.updateBadge(0);
       this.labsSnapshot = undefined;
       return undefined;
     }
 
     // If after normalization, we have no containers, return undefined
     if (allContainers.length === 0) {
-      this.updateBadge(0);
       this.labsSnapshot = undefined;
       return undefined;
     }
@@ -965,8 +915,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
     // --- Process the flat allContainers list ---
     const labs = this.buildLabsFromContainers(allContainers);
-
-    this.updateBadge(Object.keys(labs).length);
 
     this.labsSnapshot = labs;
     return labs;
@@ -1090,18 +1038,13 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   }
 
   private determineIcon(total: number, running: number, unhealthy: number): string {
-    if (running === 0 && total > 0) {
-      return c.CtrStateIcons.STOPPED;
-    }
-    if (running === total && unhealthy === 0) {
+    if (running === total && total > 0 && unhealthy === 0) {
       return c.CtrStateIcons.RUNNING;
     }
-    if (running === total && unhealthy > 0) {
+    if (running > 0 && running < total && unhealthy === 0) {
       return c.CtrStateIcons.PARTIAL;
     }
-    if (total > 0) {
-      return c.CtrStateIcons.PARTIAL;
-    }
+    // Red/Stopped for all non-healthy states (all stopped, unhealthy, or unknown mix)
     return c.CtrStateIcons.STOPPED;
   }
 
@@ -1114,19 +1057,9 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     if (sshxLink) {
       labNode.sshxNode = new c.ClabSshxLinkTreeNode(labNode.name!, sshxLink);
       labNode.description = `${relativePath} (Shared)`;
-      labNode.command = {
-        command: "containerlab.lab.sshx.copyLink",
-        title: "Copy SSHX link",
-        arguments: [sshxLink]
-      };
     } else if (gottyLink) {
       labNode.gottyNode = new c.ClabGottyLinkTreeNode(labNode.name!, gottyLink);
       labNode.description = `${relativePath} (Shared)`;
-      labNode.command = {
-        command: "containerlab.lab.gotty.copyLink",
-        title: "Copy GoTTY link",
-        arguments: [gottyLink]
-      };
     } else {
       labNode.description = relativePath;
     }
@@ -1215,17 +1148,14 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
   private buildTooltipParts(container: c.ClabJSON): string[] {
     const tooltipParts = [
-      `Container: ${container.name}`,
-      `ID: ${container.container_id}`,
+      `Name: ${container.name_short || container.name}`,
       `State: ${container.state}`,
       `Status: ${container.status || "Unknown"}`,
       `Kind: ${container.kind}`,
-      `Image: ${container.image}`
+      `Type: ${container.node_type || "Unknown"}`,
+      `Image: ${container.image}`,
+      `ID: ${container.container_id}`
     ];
-
-    if (container.node_type) {
-      tooltipParts.push(`Type: ${container.node_type}`);
-    }
 
     if (container.node_group && container.node_group.trim() !== "") {
       tooltipParts.push(`Group: ${container.node_group}`);
@@ -1453,20 +1383,5 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   // getResourceUri remains unchanged
   private getResourceUri(resource: string) {
     return vscode.Uri.file(this.context.asAbsolutePath(path.join("resources", resource)));
-  }
-
-  // updateBadge remains unchanged
-  private updateBadge(runningLabs: number) {
-    const treeViewRef = runningTreeView as vscode.TreeView<unknown> | undefined;
-    if (!treeViewRef) return; // Guard against treeView not being initialized yet
-
-    if (runningLabs < 1) {
-      treeViewRef.badge = undefined;
-    } else {
-      treeViewRef.badge = {
-        value: runningLabs,
-        tooltip: `${runningLabs} running lab(s)`
-      };
-    }
   }
 }

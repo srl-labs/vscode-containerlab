@@ -320,26 +320,21 @@ export async function getSelectedLabNode(
     return node;
   }
 
-  // Try to get from tree selection - import from globals to avoid circular dependency
-  const { localTreeView, runningTreeView } = await import("../globals");
-
-  // Try running tree first
-  if (runningTreeView && runningTreeView.selection.length > 0) {
-    const selected: unknown = runningTreeView.selection[0];
-    if (selected instanceof ClabLabTreeNode) {
-      return selected;
-    }
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    return undefined;
   }
 
-  // Then try local tree
-  if (localTreeView && localTreeView.selection.length > 0) {
-    const selected: unknown = localTreeView.selection[0];
-    if (selected instanceof ClabLabTreeNode) {
-      return selected;
-    }
+  const labPath = editor.document.uri.fsPath;
+  if (!/\.clab\.(yml|yaml)$/i.test(labPath)) {
+    return undefined;
   }
 
-  return undefined;
+  const fileName = path.basename(labPath);
+  return new ClabLabTreeNode(fileName, vscode.TreeItemCollapsibleState.None, {
+    absolute: labPath,
+    relative: fileName
+  });
 }
 
 // Sanitizes a string to a Docker-safe container name.

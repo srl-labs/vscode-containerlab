@@ -7,6 +7,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import importPlugin from "eslint-plugin-import-x";
 import boundaries from "eslint-plugin-boundaries";
 import unicorn from "eslint-plugin-unicorn";
+import noInlineVscodeVarOutsideThemeRule from "./eslint-local-rules/no-inline-vscode-var-outside-theme.mjs";
 
 export default [
   /* ─── files & globs ESLint must ignore ─────────────────────────── */
@@ -247,6 +248,21 @@ export default [
       "react-hooks/exhaustive-deps": "warn",
       "react/react-in-jsx-scope": "off", // Not needed in React 17+
       "react/prop-types": "off" // Using TypeScript
+    }
+  },
+
+  /* ---------- Theme variable hygiene for inline styles ---------- */
+  {
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    plugins: {
+      local: {
+        rules: {
+          "no-inline-vscode-var-outside-theme": noInlineVscodeVarOutsideThemeRule
+        }
+      }
+    },
+    rules: {
+      "local/no-inline-vscode-var-outside-theme": "warn"
     }
   },
 

@@ -38,9 +38,14 @@ import {
   useLinkCreation,
   useSourceNodePosition
 } from "../../hooks/canvas";
-import { useCanvasStore, useFitViewRequestId } from "../../stores/canvasStore";
-import { useGraphActions } from "../../stores/graphStore";
-import { useIsLocked, useMode, useTopoViewerActions } from "../../stores/topoViewerStore";
+import {
+  useCanvasStore,
+  useFitViewRequestId,
+  useGraphActions,
+  useIsLocked,
+  useMode,
+  useTopoViewerActions
+} from "../../stores";
 import { invertHexColor, resolveComputedColor } from "../../utils/color";
 import { ContextMenu } from "../context-menu/ContextMenu";
 
@@ -395,6 +400,88 @@ function handleCanvasDrop(
   }
 }
 
+function handleCanvasDropEvent(params: {
+  event: React.DragEvent;
+  mode: "view" | "edit";
+  isLocked: boolean;
+  reactFlowInstanceRef: React.RefObject<ReactFlowInstance | null>;
+  handlers: CanvasDropHandlers;
+}) {
+  const { event, mode, isLocked, reactFlowInstanceRef, handlers } = params;
+  event.preventDefault();
+
+  if (mode !== "edit" || isLocked) return;
+
+  const data = parseCanvasDropData(event);
+  if (!data) return;
+
+  const rfInstance = reactFlowInstanceRef.current;
+  if (!rfInstance) return;
+
+  const snappedPosition = getSnappedDropPosition(rfInstance, event);
+  handleCanvasDrop(data, snappedPosition, handlers);
+}
+
+function shouldRunFitView(params: {
+  fitViewRequestId: number;
+  lastFitViewRequestId: number;
+  isReactFlowReady: boolean;
+  reactFlowInstance: ReactFlowInstance | null;
+  nodeCount: number;
+  isGeoLayout: boolean;
+}): boolean {
+  const {
+    fitViewRequestId,
+    lastFitViewRequestId,
+    isReactFlowReady,
+    reactFlowInstance,
+    nodeCount,
+    isGeoLayout
+  } = params;
+  return (
+    fitViewRequestId > lastFitViewRequestId &&
+    isReactFlowReady &&
+    Boolean(reactFlowInstance) &&
+    nodeCount > 0 &&
+    !isGeoLayout
+  );
+}
+
+function getRenderableNodes(allNodes: Node[], nodesDraggable: boolean): Node[] {
+  if (nodesDraggable) return allNodes;
+
+  let changed = false;
+  const nextNodes = allNodes.map((node) => {
+    if (!isAnnotationNodeType(node.type) || node.draggable === false) {
+      return node;
+    }
+    changed = true;
+    return { ...node, draggable: false };
+  });
+  return changed ? nextNodes : allNodes;
+}
+
+function relayBackdropContextMenu(event: React.MouseEvent, closeContextMenu: () => void): void {
+  const { clientX, clientY } = event;
+  flushSync(() => {
+    closeContextMenu();
+  });
+  const target = document.elementFromPoint(clientX, clientY);
+  if (!target) {
+    return;
+  }
+  target.dispatchEvent(
+    new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY,
+      button: 2,
+      buttons: 2
+    })
+  );
+}
+
 /** Hook for node and edge refs that update each render */
 function useGraphRefs(nodes: Node[], edges: Edge[]) {
   const nodesRef = useRef<Node[]>(nodes);
@@ -551,6 +638,40 @@ function getCanvasInteractionConfig(params: {
       }
     : undefined;
   return { allowPanOnDrag, allowSelectionOnDrag, nodesDraggable, nodesConnectable, reactFlowStyle };
+}
+
+function getGeoEditableState(isGeoLayout: boolean, isLocked: boolean): boolean {
+  return isGeoLayout && !isLocked;
+}
+
+function getEffectiveEdgeRenderConfig(
+  edgeRenderConfig: { labelMode: EdgeLabelMode; suppressLabels: boolean; suppressHitArea: boolean },
+  isGeoLayout: boolean
+): { labelMode: EdgeLabelMode; suppressLabels: boolean; suppressHitArea: boolean } {
+  return {
+    ...edgeRenderConfig,
+    suppressLabels: edgeRenderConfig.suppressLabels || isGeoLayout,
+    suppressHitArea: edgeRenderConfig.suppressHitArea || isGeoLayout
+  };
+}
+
+function getCanvasContainerClassName(isGeoLayout: boolean, isGeoInteracting: boolean): string {
+  let className = "react-flow-canvas canvas-container";
+  if (isGeoLayout) {
+    className += " maplibre-active";
+  }
+  if (isGeoInteracting) {
+    className += " maplibre-moving";
+  }
+  return className;
+}
+
+function getGeoInteractingState(isGeoLayout: boolean, isInteracting: boolean): boolean {
+  return isGeoLayout && isInteracting;
+}
+
+function shouldOnlyRenderVisibleElements(isLowDetail: boolean, isGeoLayout: boolean): boolean {
+  return !isLowDetail && !isGeoLayout;
 }
 
 function renderGeoMapLayer(
@@ -806,7 +927,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       []
     );
 
-    const isGeoEditable = isGeoLayout && !isLocked;
+    const isGeoEditable = getGeoEditableState(isGeoLayout, isLocked);
 
     const geoLayout = useGeoMapLayout({
       isGeoLayout,
@@ -821,9 +942,18 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     useGeoWheelZoom(geoLayout, isGeoLayout, isGeoEdit, canvasContainerRef);
 
     useEffect(() => {
-      if (fitViewRequestId <= lastFitViewRequestRef.current) return;
-      if (!isReactFlowReady || !reactFlowInstanceRef.current || allNodes.length === 0) return;
-      if (isGeoLayout) return;
+      if (
+        !shouldRunFitView({
+          fitViewRequestId,
+          lastFitViewRequestId: lastFitViewRequestRef.current,
+          isReactFlowReady,
+          reactFlowInstance: reactFlowInstanceRef.current,
+          nodeCount: allNodes.length,
+          isGeoLayout
+        })
+      ) {
+        return;
+      }
       lastFitViewRequestRef.current = fitViewRequestId;
       setTimeout(() => {
         reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 }).catch(() => {
@@ -884,13 +1014,9 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       linkLabelMode,
       isGeoLayout
     );
-    const isGeoInteracting = isGeoLayout && geoLayout.isInteracting;
+    const isGeoInteracting = getGeoInteractingState(isGeoLayout, geoLayout.isInteracting);
     const effectiveEdgeRenderConfig = useMemo(
-      () => ({
-        ...edgeRenderConfig,
-        suppressLabels: edgeRenderConfig.suppressLabels || isGeoLayout,
-        suppressHitArea: edgeRenderConfig.suppressHitArea || isGeoLayout
-      }),
+      () => getEffectiveEdgeRenderConfig(edgeRenderConfig, isGeoLayout),
       [edgeRenderConfig, isGeoLayout]
     );
     const activeNodeTypes = useMemo(
@@ -1047,23 +1173,18 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     const handleDrop = useCallback(
       (event: React.DragEvent) => {
-        event.preventDefault();
-
-        if (mode !== "edit" || isLocked) return;
-
-        const data = parseCanvasDropData(event);
-        if (!data) return;
-
-        const rfInstance = handlersReactFlowInstance.current;
-        if (!rfInstance) return;
-
-        const snappedPosition = getSnappedDropPosition(rfInstance, event);
-        handleCanvasDrop(data, snappedPosition, {
-          onDropCreateNode,
-          onDropCreateNetwork,
-          onAddTextAtPosition,
-          onAddShapeAtPosition,
-          onAddGroupAtPosition
+        handleCanvasDropEvent({
+          event,
+          mode,
+          isLocked,
+          reactFlowInstanceRef: handlersReactFlowInstance,
+          handlers: {
+            onDropCreateNode,
+            onDropCreateNetwork,
+            onAddTextAtPosition,
+            onAddShapeAtPosition,
+            onAddGroupAtPosition
+          }
         });
       },
       [
@@ -1092,17 +1213,10 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       nodesConnectable,
       reactFlowStyle
     } = interactionConfig;
-    const renderNodes = useMemo(() => {
-      if (nodesDraggable) return allNodes;
-      let changed = false;
-      const nextNodes = allNodes.map((node) => {
-        if (!isAnnotationNodeType(node.type)) return node;
-        if (node.draggable === false) return node;
-        changed = true;
-        return { ...node, draggable: false };
-      });
-      return changed ? nextNodes : allNodes;
-    }, [allNodes, nodesDraggable]);
+    const renderNodes = useMemo(
+      () => getRenderableNodes(allNodes, nodesDraggable),
+      [allNodes, nodesDraggable]
+    );
     const effectiveGridColor = useMemo(() => {
       if (gridColor) return gridColor;
       const bg = gridBgColor ?? resolveComputedColor("--vscode-editor-background", "#1e1e1e");
@@ -1130,23 +1244,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     const handleBackdropContextMenu = useCallback(
       (event: React.MouseEvent) => {
-        const { clientX, clientY } = event;
-        flushSync(() => {
-          closeContextMenu();
-        });
-        const target = document.elementFromPoint(clientX, clientY);
-        if (target) {
-          target.dispatchEvent(
-            new MouseEvent("contextmenu", {
-              bubbles: true,
-              cancelable: true,
-              clientX,
-              clientY,
-              button: 2,
-              buttons: 2
-            })
-          );
-        }
+        relayBackdropContextMenu(event, closeContextMenu);
       },
       [closeContextMenu]
     );
@@ -1155,7 +1253,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       <div
         ref={canvasContainerRef}
         style={canvasStyle}
-        className={`react-flow-canvas canvas-container${isGeoLayout ? " maplibre-active" : ""}${isGeoInteracting ? " maplibre-moving" : ""}`}
+        className={getCanvasContainerClassName(isGeoLayout, isGeoInteracting)}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onContextMenu={(e) => e.preventDefault()}
@@ -1190,7 +1288,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           defaultViewport={defaultViewport}
           minZoom={0.1}
           maxZoom={Infinity}
-          onlyRenderVisibleElements={!isLowDetail && !isGeoLayout}
+          onlyRenderVisibleElements={shouldOnlyRenderVisibleElements(isLowDetail, isGeoLayout)}
           selectionMode={SelectionMode.Partial}
           selectNodesOnDrag={false}
           panOnDrag={allowPanOnDrag}

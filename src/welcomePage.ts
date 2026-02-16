@@ -216,7 +216,7 @@ topology:
           <div class="flex flex-col justify-between">
             <div class="">
               <h2 class="text-xl mb-4">Getting Started</h2>
-              <p>The Containerlab extension integrates <a href="https://containerlab.dev/">containerlab</a> directly into Visual Studio Code, providing a convenient tree view for managing labs and their containers.</p>
+              <p>The Containerlab extension integrates <a href="https://containerlab.dev/">containerlab</a> directly into Visual Studio Code, providing an explorer for managing labs and their containers.</p>
               <br><p>You can create, deploy, and manage network topologies with just a few clicks.</p>
               <button class="mt-4 rounded-sm p-2 transition cursor-pointer hover:opacity-50" style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground)"id="createExampleBtn">Create Example Topology</button>
               <p><small>This will create an example.clab.yml file in your current workspace</small></p>

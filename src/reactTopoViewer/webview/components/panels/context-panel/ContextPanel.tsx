@@ -312,8 +312,8 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                 gap: 0.5,
                 px: 2,
                 py: 0.5,
-                bgcolor: "error.main",
-                color: "error.contrastText"
+                bgcolor: "action.hover",
+                color: "text.secondary"
               }}
             >
               <LockIcon sx={{ fontSize: 14 }} />

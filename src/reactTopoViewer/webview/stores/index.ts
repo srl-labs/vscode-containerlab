@@ -11,14 +11,16 @@ export {
   useTopoViewerStore,
   parseInitialData,
   useTopoViewerActions,
-  useTopoViewerState
+  useTopoViewerState,
+  useMode,
+  useIsLocked
 } from "./topoViewerStore";
 export {
   useAnnotationUIStore,
   useAnnotationUIActions,
   useAnnotationUIState
 } from "./annotationUIStore";
-export { useCanvasStore, buildEdgeInfo, useEdgeInfo } from "./canvasStore";
+export { useCanvasStore, useFitViewRequestId, buildEdgeInfo, useEdgeInfo } from "./canvasStore";
 
 // Essential types (import other types directly from sub-modules)
 export type { GraphState, GraphActions, GraphStore } from "./graphStore";
