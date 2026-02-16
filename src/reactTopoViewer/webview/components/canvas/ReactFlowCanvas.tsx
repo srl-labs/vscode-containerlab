@@ -69,7 +69,7 @@ const GRID_SIZE = 20;
 const QUADRATIC_GRID_SIZE = 40;
 const DEFAULT_GRID_LINE_WIDTH = 0.5;
 const MIN_ZOOM = 0.1;
-const MAX_ZOOM = Number.MAX_SAFE_INTEGER;
+const MAX_FIT_ZOOM = 2;
 
 /** Hook for wrapped node click handling */
 function handleAltDelete(
@@ -1000,7 +1000,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           availableWidth,
           availableHeight,
           MIN_ZOOM,
-          MAX_ZOOM,
+          MAX_FIT_ZOOM,
           options.padding
         );
         if (!hasFiniteViewport(viewport)) {

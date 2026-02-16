@@ -12,6 +12,7 @@ import { useAnnotationHandlers } from "../../../stores/canvasStore";
 import { renderMarkdown } from "../../../utils/markdownRenderer";
 
 import { RotationHandle } from "./AnnotationHandles";
+import "./FreeTextNode.css";
 
 /** Minimum dimensions for resize */
 const MIN_WIDTH = 40;

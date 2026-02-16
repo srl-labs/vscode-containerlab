@@ -247,8 +247,12 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
     const prev = footerRef.current;
     const visibilityChanged = Boolean(prev) !== Boolean(ref);
     const hasChangesChanged = (prev?.hasChanges ?? false) !== (ref?.hasChanges ?? false);
+    const handlersChanged =
+      prev?.handleApply !== ref?.handleApply ||
+      prev?.handleSave !== ref?.handleSave ||
+      prev?.handleDiscard !== ref?.handleDiscard;
     footerRef.current = ref;
-    if (visibilityChanged || hasChangesChanged) {
+    if (visibilityChanged || hasChangesChanged || handlersChanged) {
       forceUpdate((n) => n + 1);
     }
   }, []);
