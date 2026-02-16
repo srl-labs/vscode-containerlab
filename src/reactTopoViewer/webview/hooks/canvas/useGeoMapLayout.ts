@@ -80,6 +80,74 @@ const ZOOM_END_DEBOUNCE_MS = 20;
 // Offset multiplier for distributing nodes without coordinates (smaller = tighter cluster)
 const GEO_OFFSET_MULTIPLIER = 0.15;
 
+let maplibreWorkerBlobUrl: string | null = null;
+let maplibreWorkerBlobSourceKey: string | null = null;
+
+function decodeBase64ToString(base64: string): string {
+  if (typeof window === "undefined" || typeof window.atob !== "function") {
+    throw new Error("Base64 decoding is unavailable in this environment");
+  }
+  const binary = window.atob(base64);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function getOrCreateWorkerBlobUrl(sourceKey: string, workerSource: string): string | null {
+  if (typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
+    return null;
+  }
+
+  if (maplibreWorkerBlobUrl && maplibreWorkerBlobSourceKey === sourceKey) {
+    return maplibreWorkerBlobUrl;
+  }
+
+  if (maplibreWorkerBlobUrl) {
+    URL.revokeObjectURL(maplibreWorkerBlobUrl);
+    maplibreWorkerBlobUrl = null;
+    maplibreWorkerBlobSourceKey = null;
+  }
+
+  maplibreWorkerBlobUrl = URL.createObjectURL(
+    new Blob([workerSource], { type: "text/javascript" })
+  );
+  maplibreWorkerBlobSourceKey = sourceKey;
+  return maplibreWorkerBlobUrl;
+}
+
+function resolveMapLibreWorkerUrl(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const workerSourceBase64 = window.maplibreWorkerSourceBase64;
+  if (workerSourceBase64) {
+    try {
+      const sourceKey = `inline:${workerSourceBase64.length}:${workerSourceBase64.slice(0, 32)}`;
+      const workerSource = decodeBase64ToString(workerSourceBase64);
+      return getOrCreateWorkerBlobUrl(sourceKey, workerSource);
+    } catch (error) {
+      log.warn(
+        `[GeoMap] Failed to decode embedded worker source, falling back to worker URL: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  }
+
+  const configuredWorkerUrl = window.maplibreWorkerUrl;
+  if (!configuredWorkerUrl) {
+    return null;
+  }
+
+  if (configuredWorkerUrl.startsWith("blob:") || configuredWorkerUrl.startsWith("data:")) {
+    return configuredWorkerUrl;
+  }
+
+  const sourceKey = `bootstrap:${configuredWorkerUrl}`;
+  const bootstrapSource = `importScripts(${JSON.stringify(configuredWorkerUrl)});`;
+  return getOrCreateWorkerBlobUrl(sourceKey, bootstrapSource) ?? configuredWorkerUrl;
+}
+
 function roundCoord(value: number): number {
   return Number(value.toFixed(6));
 }
@@ -451,8 +519,9 @@ export function useGeoMapLayout({
     if (!isGeoLayout || mapRef.current || !containerRef.current) return;
     try {
       if (!workerConfiguredRef.current) {
-        if (typeof window !== "undefined" && window.maplibreWorkerUrl) {
-          maplibregl.setWorkerUrl(window.maplibreWorkerUrl);
+        const workerUrl = resolveMapLibreWorkerUrl();
+        if (workerUrl) {
+          maplibregl.setWorkerUrl(workerUrl);
         }
         workerConfiguredRef.current = true;
       }

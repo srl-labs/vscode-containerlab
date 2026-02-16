@@ -153,6 +153,97 @@ function useMenuItemClick(item: ContextMenuItem, onClose: () => void) {
   }, [item, onClose]);
 }
 
+function handleSubmenuMouseEnter(params: {
+  event: React.MouseEvent<HTMLElement>;
+  openSubmenuOnHover: boolean;
+  cancelClose: () => void;
+  setAnchorEl: React.Dispatch<React.SetStateAction<HTMLElement | null>>;
+}) {
+  const { event, openSubmenuOnHover, cancelClose, setAnchorEl } = params;
+  if (!openSubmenuOnHover) {
+    return;
+  }
+  cancelClose();
+  setAnchorEl(event.currentTarget);
+}
+
+function handleSubmenuItemClick(item: ContextMenuItem, onClose: () => void): void {
+  if (!item.disabled && item.onClick) {
+    item.onClick();
+    onClose();
+  }
+}
+
+function handleSubmenuToggleClick(params: {
+  event: React.MouseEvent<HTMLElement>;
+  openSubmenuOnHover: boolean;
+  disabled?: boolean;
+  hasClickHandler: boolean;
+  cancelClose: () => void;
+  setAnchorEl: React.Dispatch<React.SetStateAction<HTMLElement | null>>;
+}) {
+  const { event, openSubmenuOnHover, disabled, hasClickHandler, cancelClose, setAnchorEl } = params;
+  if (openSubmenuOnHover || disabled || hasClickHandler) {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  cancelClose();
+  setAnchorEl((current) => (current ? null : event.currentTarget));
+}
+
+function renderSubmenuChild(params: {
+  child: ContextMenuItem;
+  onClose: () => void;
+  compact: boolean;
+  openSubmenuOnHover: boolean;
+  openToLeft: boolean;
+}): React.ReactElement {
+  const { child, onClose, compact, openSubmenuOnHover, openToLeft } = params;
+  if (child.divider) {
+    return <Divider key={child.id} />;
+  }
+  if (child.children && child.children.length > 0) {
+    return (
+      <MenuItemWithSubmenu
+        key={child.id}
+        item={child}
+        onClose={onClose}
+        compact={compact}
+        openSubmenuOnHover={openSubmenuOnHover}
+        openToLeft={openToLeft}
+      />
+    );
+  }
+  return (
+    <MenuItemButton
+      key={child.id}
+      item={child}
+      onClose={onClose}
+      compact={compact}
+      openToLeft={openToLeft}
+    />
+  );
+}
+
+function resolveSubmenuClickHandler(
+  hasClickHandler: boolean,
+  handleClick: (event: React.MouseEvent<HTMLElement>) => void,
+  handleOpenSubmenuByClick: (event: React.MouseEvent<HTMLElement>) => void
+): (event: React.MouseEvent<HTMLElement>) => void {
+  if (hasClickHandler) {
+    return handleClick;
+  }
+  return handleOpenSubmenuByClick;
+}
+
+function submenuItemSx(compact: boolean, openToLeft: boolean) {
+  return {
+    justifyContent: openToLeft ? "flex-start" : "space-between",
+    ...(compact ? { minHeight: 28, py: 0.2, px: 0.85 } : {})
+  };
+}
+
 const MenuItemButton: React.FC<MenuItemComponentProps> = ({
   item,
   onClose,
@@ -231,48 +322,67 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
 
   const handleMouseEnter = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
-      if (!openSubmenuOnHover) {
-        return;
-      }
-      cancelClose();
-      setAnchorEl(event.currentTarget);
+      handleSubmenuMouseEnter({
+        event,
+        openSubmenuOnHover,
+        cancelClose,
+        setAnchorEl
+      });
     },
     [cancelClose, openSubmenuOnHover]
   );
 
-  const handleClick = useCallback(() => {
-    if (!item.disabled && item.onClick) {
-      item.onClick();
-      onClose();
-    }
-  }, [item, onClose]);
+  const handleClick = useCallback(
+    (_event: React.MouseEvent<HTMLElement>) => {
+      handleSubmenuItemClick(item, onClose);
+    },
+    [item, onClose]
+  );
 
   const handleOpenSubmenuByClick = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
-      if (openSubmenuOnHover || item.disabled || item.onClick) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      cancelClose();
-      setAnchorEl((current) => (current ? null : event.currentTarget));
+      handleSubmenuToggleClick({
+        event,
+        openSubmenuOnHover,
+        disabled: item.disabled,
+        hasClickHandler: Boolean(item.onClick),
+        cancelClose,
+        setAnchorEl
+      });
     },
     [cancelClose, item.disabled, item.onClick, openSubmenuOnHover]
   );
+
+  const renderChild = useCallback(
+    (child: ContextMenuItem) =>
+      renderSubmenuChild({
+        child,
+        onClose,
+        compact,
+        openSubmenuOnHover,
+        openToLeft
+      }),
+    [compact, onClose, openSubmenuOnHover, openToLeft]
+  );
+
+  const clickHandler = resolveSubmenuClickHandler(
+    Boolean(item.onClick),
+    handleClick,
+    handleOpenSubmenuByClick
+  );
+  const anchorHorizontal = openToLeft ? "left" : "right";
+  const transformHorizontal = openToLeft ? "right" : "left";
 
   return (
     <>
       <MenuItem
         onMouseEnter={handleMouseEnter}
         onMouseLeave={scheduleClose}
-        onClick={item.onClick ? handleClick : handleOpenSubmenuByClick}
+        onClick={clickHandler}
         disabled={item.disabled}
         dense={compact}
         data-testid={`context-menu-item-${item.id}`}
-        sx={{
-          justifyContent: openToLeft ? "flex-start" : "space-between",
-          ...(compact ? { minHeight: 28, py: 0.2, px: 0.85 } : {})
-        }}
+        sx={submenuItemSx(compact, openToLeft)}
       >
         {openToLeft && (
           <Box sx={submenuGutterSx(compact)}>
@@ -305,11 +415,11 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
         onClose={() => setAnchorEl(null)}
         anchorOrigin={{
           vertical: "top",
-          horizontal: openToLeft ? "left" : "right"
+          horizontal: anchorHorizontal
         }}
         transformOrigin={{
           vertical: "top",
-          horizontal: openToLeft ? "right" : "left"
+          horizontal: transformHorizontal
         }}
         autoFocus={false}
         hideBackdrop
@@ -329,32 +439,7 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
           }
         }}
       >
-        {item.children?.map((child) => {
-          if (child.divider) {
-            return <Divider key={child.id} />;
-          }
-          if (child.children && child.children.length > 0) {
-            return (
-              <MenuItemWithSubmenu
-                key={child.id}
-                item={child}
-                onClose={onClose}
-                compact={compact}
-                openSubmenuOnHover={openSubmenuOnHover}
-                openToLeft={openToLeft}
-              />
-            );
-          }
-          return (
-            <MenuItemButton
-              key={child.id}
-              item={child}
-              onClose={onClose}
-              compact={compact}
-              openToLeft={openToLeft}
-            />
-          );
-        })}
+        {item.children?.map(renderChild)}
       </Menu>
     </>
   );

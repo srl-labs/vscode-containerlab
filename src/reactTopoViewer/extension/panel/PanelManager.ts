@@ -3,6 +3,7 @@
  */
 
 import * as crypto from "crypto";
+import * as fs from "fs";
 
 import * as vscode from "vscode";
 
@@ -83,6 +84,15 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
   const maplibreWorkerUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "dist", "maplibre-gl-csp-worker.js")
   );
+  const maplibreWorkerSourceBase64 = (() => {
+    try {
+      const workerPath = vscode.Uri.joinPath(extensionUri, "dist", "maplibre-gl-csp-worker.js");
+      const workerSource = fs.readFileSync(workerPath.fsPath, "utf8");
+      return Buffer.from(workerSource, "utf8").toString("base64");
+    } catch {
+      return "";
+    }
+  })();
   const monacoEditorWorkerUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "dist", "monaco-editor-worker.js")
   );
@@ -118,6 +128,7 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
     window.__INITIAL_DATA__ = ${initialDataJson};
     window.schemaUrl = "${schemaUri}";
     window.maplibreWorkerUrl = "${maplibreWorkerUri.toString()}";
+    window.maplibreWorkerSourceBase64 = "${maplibreWorkerSourceBase64}";
     window.monacoEditorWorkerUrl = "${monacoEditorWorkerUri.toString()}";
     window.monacoJsonWorkerUrl = "${monacoJsonWorkerUri.toString()}";
   </script>

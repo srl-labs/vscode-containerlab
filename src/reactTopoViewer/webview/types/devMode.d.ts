@@ -109,5 +109,6 @@ declare global {
     // Note: __SCHEMA_DATA__ is typed in hooks/editor/useSchema.ts
     __DOCKER_IMAGES__?: string[];
     maplibreWorkerUrl?: string;
+    maplibreWorkerSourceBase64?: string;
   }
 }

@@ -205,6 +205,38 @@ function isDevMockWebview(): boolean {
   return Boolean(maybeVscode?.__isDevMock__);
 }
 
+interface ContextSelectionState {
+  selectedNode: unknown;
+  selectedEdge: unknown;
+  editingNode: unknown;
+  editingEdge: unknown;
+  editingNetwork: unknown;
+  editingImpairment: unknown;
+}
+
+interface ContextAnnotationState {
+  editingTextAnnotation: unknown;
+  editingShapeAnnotation: unknown;
+  editingGroup: unknown;
+}
+
+function hasContextContentState(
+  state: ContextSelectionState,
+  annotations: ContextAnnotationState
+): boolean {
+  return Boolean(
+    state.selectedNode ||
+      state.selectedEdge ||
+      state.editingNode ||
+      state.editingEdge ||
+      state.editingNetwork ||
+      state.editingImpairment ||
+      annotations.editingTextAnnotation ||
+      annotations.editingShapeAnnotation ||
+      annotations.editingGroup
+  );
+}
+
 export interface AppContentProps {
   reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
   rfInstance: ReactFlowInstance | null;
@@ -574,16 +606,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     annotationUiActions.closeGroupEditor();
   }, [topoActions, annotationUiActions]);
 
-  const hasContextContent =
-    !!state.selectedNode ||
-    !!state.selectedEdge ||
-    !!state.editingNode ||
-    !!state.editingEdge ||
-    !!state.editingNetwork ||
-    !!state.editingImpairment ||
-    !!annotations.editingTextAnnotation ||
-    !!annotations.editingShapeAnnotation ||
-    !!annotations.editingGroup;
+  const hasContextContent = hasContextContentState(state, annotations);
 
   const handleEmptyCanvasClick = React.useCallback(() => {
     // When dismissing any context (editors/info) via empty canvas click, close the context panel

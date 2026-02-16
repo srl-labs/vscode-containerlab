@@ -142,6 +142,20 @@ interface ExplorerActionGroup {
   actions: ExplorerAction[];
 }
 
+type CommandMatcher = (command: string) => boolean;
+
+interface CommandIconRule {
+  match: CommandMatcher;
+  icon: SvgIconComponent;
+}
+
+interface CommandActionGroupRule {
+  match: CommandMatcher;
+  group: ActionGroupId;
+}
+
+type SharingBucket = "sshx" | "gotty" | "other";
+
 const ACTION_GROUP_ORDER_DEFAULT: ActionGroupId[] = [
   "topology",
   "graph",
@@ -191,6 +205,176 @@ const ACTION_GROUP_ORDER_BY_NODE_KIND: Record<ExplorerNodeKind, ActionGroupId[]>
   other: ACTION_GROUP_ORDER_DEFAULT
 };
 
+const ACTION_ICON_BY_COMMAND: Record<string, SvgIconComponent> = {
+  "containerlab.inspectall": ManageSearchIcon,
+  "containerlab.treeview.runninglabs.hidenonownedlabs": VisibilityOffIcon,
+  "containerlab.treeview.runninglabs.shownonownedlabs": VisibilityIcon,
+  "containerlab.treeview.runninglabs.togglenonownedlabs": VisibilityOffIcon,
+  "containerlab.editor.topoviewereditor": NoteAddIcon,
+  "containerlab.lab.clonerepo": SourceIcon,
+  "containerlab.lab.togglefavorite": StarBorderIcon,
+  "containerlab.lab.addtoworkspace": FolderOpenIcon,
+  "containerlab.lab.save": SaveOutlinedIcon,
+  "containerlab.node.save": SaveOutlinedIcon,
+  "containerlab.node.showlogs": ArticleOutlinedIcon,
+  "containerlab.node.stop": StopIcon,
+  "containerlab.node.pause": PauseCircleOutlineIcon,
+  "containerlab.node.unpause": PlayCircleOutlineIcon,
+  "containerlab.interface.setdelay": TuneIcon,
+  "containerlab.interface.setjitter": TuneIcon,
+  "containerlab.interface.setloss": TuneIcon,
+  "containerlab.interface.setrate": TuneIcon,
+  "containerlab.interface.setcorruption": TuneIcon,
+  "containerlab.lab.sshx.attach": LinkIcon,
+  "containerlab.lab.sshx.detach": LinkOffIcon,
+  "containerlab.lab.sshx.reattach": LinkIcon,
+  "containerlab.lab.sshx.copylink": LinkIcon,
+  "containerlab.lab.gotty.attach": OpenInBrowserIcon,
+  "containerlab.lab.gotty.detach": OpenInBrowserIcon,
+  "containerlab.lab.gotty.reattach": OpenInBrowserIcon,
+  "containerlab.lab.gotty.copylink": OpenInBrowserIcon
+};
+
+const ACTION_ICON_RULES: ReadonlyArray<CommandIconRule> = [
+  { match: (command) => command.includes("copy"), icon: ContentCopyIcon },
+  {
+    match: (command) =>
+      command.includes("destroy") || command.includes("delete") || command.includes("detach"),
+    icon: DeleteOutlineIcon
+  },
+  {
+    match: (command) => command.includes("refresh") || command.includes("redeploy"),
+    icon: RefreshIcon
+  },
+  { match: (command) => command.includes("stop"), icon: StopIcon },
+  { match: (command) => command.includes("unpause"), icon: PlayCircleOutlineIcon },
+  { match: (command) => command.includes("pause"), icon: PauseCircleOutlineIcon },
+  {
+    match: (command) =>
+      command.includes("ssh") || command.includes("shell") || command.includes("telnet"),
+    icon: TerminalIcon
+  },
+  { match: (command) => command.includes("filter"), icon: FilterAltIcon },
+  { match: (command) => command.includes(".save"), icon: SaveOutlinedIcon },
+  {
+    match: (command) => command.includes("showlogs") || command.includes("logs"),
+    icon: ArticleOutlinedIcon
+  },
+  { match: (command) => command.startsWith("containerlab.lab.fcli."), icon: BuildIcon },
+  { match: (command) => command.includes(".gotty."), icon: OpenInBrowserIcon },
+  { match: (command) => command.startsWith("containerlab.lab.graph."), icon: AccountTreeIcon },
+  {
+    match: (command) =>
+      command.includes("open") || command.includes("graph") || command.includes("inspect"),
+    icon: OpenInNewIcon
+  },
+  { match: (command) => command.includes("folder"), icon: FolderOpenIcon },
+  {
+    match: (command) => command.includes("capture") || command.includes("impairment"),
+    icon: SettingsEthernetIcon
+  },
+  {
+    match: (command) =>
+      command.includes("delay") ||
+      command.includes("jitter") ||
+      command.includes("loss") ||
+      command.includes("rate") ||
+      command.includes("corruption"),
+    icon: TuneIcon
+  },
+  {
+    match: (command) =>
+      command.includes("deploy") || command.includes("start") || command.includes("run"),
+    icon: PlayArrowIcon
+  },
+  { match: (command) => command.includes("link"), icon: LinkIcon }
+];
+
+const ACTION_GROUP_RULES: ReadonlyArray<CommandActionGroupRule> = [
+  { match: (command) => command.startsWith("containerlab.lab.graph."), group: "graph" },
+  { match: (command) => command.includes(".save"), group: "save" },
+  { match: (command) => command.startsWith("containerlab.lab.fcli."), group: "tools" },
+  {
+    match: (command) => command.startsWith("containerlab.interface.") || command.includes("impairment"),
+    group: "network"
+  },
+  { match: (command) => command.includes(".sshx.") || command.includes(".gotty."), group: "sharing" },
+  { match: (command) => command.includes("copy"), group: "copy" },
+  { match: (command) => command.includes("inspect") || command.includes("showlogs"), group: "inspect" },
+  {
+    match: (command) =>
+      command.includes("ssh") ||
+      command.includes("shell") ||
+      command.includes("telnet") ||
+      command.includes("openbrowser"),
+    group: "access"
+  },
+  {
+    match: (command) =>
+      command.includes("deploy") ||
+      command.includes("destroy") ||
+      command.includes("redeploy") ||
+      command.includes("start") ||
+      command.includes("stop") ||
+      command.includes("pause") ||
+      command.includes("unpause"),
+    group: "lifecycle"
+  },
+  {
+    match: (command) =>
+      command.includes("openfile") ||
+      command.includes("topoviewer") ||
+      command.includes("openfolder") ||
+      command.includes("addtoworkspace") ||
+      command.includes("togglefavorite") ||
+      command.includes("delete") ||
+      command.includes("clonerepo"),
+    group: "topology"
+  },
+  {
+    match: (command) =>
+      command.includes("filter") ||
+      command.includes("hide") ||
+      command.includes("show") ||
+      command.includes("refresh"),
+    group: "view"
+  }
+];
+
+const ACTION_GROUP_SECTION_DEFAULT_BY_NODE_KIND: Record<ExplorerNodeKind, number> = {
+  lab: 4,
+  container: 3,
+  interface: 1,
+  link: 2,
+  other: 1
+};
+
+const ACTION_GROUP_SECTION_BY_NODE_KIND: Partial<
+  Record<ExplorerNodeKind, Partial<Record<ActionGroupId, number>>>
+> = {
+  lab: {
+    topology: 1,
+    graph: 1,
+    lifecycle: 2,
+    save: 2,
+    access: 3,
+    sharing: 3,
+    inspect: 3,
+    tools: 3
+  },
+  container: {
+    access: 1,
+    inspect: 1,
+    lifecycle: 2,
+    save: 2,
+    network: 2
+  },
+  link: {
+    sharing: 1,
+    copy: 1
+  }
+};
+
 interface SectionTreeProps {
   section: ExplorerSectionSnapshot;
   expandedItems: string[];
@@ -220,6 +404,11 @@ interface ExplorerSectionCardProps {
   onExpandAllInSection: (sectionId: ExplorerSectionId, nodes: ExplorerNode[]) => void;
   onCollapseAllInSection: (sectionId: ExplorerSectionId) => void;
 }
+
+type SnapshotExplorerMessage = Extract<ExplorerIncomingMessage, { command: "snapshot" }>;
+type FilterStateExplorerMessage = Extract<ExplorerIncomingMessage, { command: "filterState" }>;
+type UiStateExplorerMessage = Extract<ExplorerIncomingMessage, { command: "uiState" }>;
+type ErrorExplorerMessage = Extract<ExplorerIncomingMessage, { command: "error" }>;
 
 function statusColor(indicator: string | undefined): string {
   if (!indicator) {
@@ -316,164 +505,29 @@ function nodeKindFromContext(contextValue: string | undefined): ExplorerNodeKind
 
 function actionIcon(action: ExplorerAction): SvgIconComponent {
   const command = action.commandId.toLowerCase();
-  const byCommandId: Record<string, SvgIconComponent> = {
-    "containerlab.inspectall": ManageSearchIcon,
-    "containerlab.treeview.runninglabs.hidenonownedlabs": VisibilityOffIcon,
-    "containerlab.treeview.runninglabs.shownonownedlabs": VisibilityIcon,
-    "containerlab.treeview.runninglabs.togglenonownedlabs": VisibilityOffIcon,
-    "containerlab.editor.topoviewereditor": NoteAddIcon,
-    "containerlab.lab.clonerepo": SourceIcon,
-    "containerlab.lab.togglefavorite": StarBorderIcon,
-    "containerlab.lab.addtoworkspace": FolderOpenIcon,
-    "containerlab.lab.save": SaveOutlinedIcon,
-    "containerlab.node.save": SaveOutlinedIcon,
-    "containerlab.node.showlogs": ArticleOutlinedIcon,
-    "containerlab.node.stop": StopIcon,
-    "containerlab.node.pause": PauseCircleOutlineIcon,
-    "containerlab.node.unpause": PlayCircleOutlineIcon,
-    "containerlab.interface.setdelay": TuneIcon,
-    "containerlab.interface.setjitter": TuneIcon,
-    "containerlab.interface.setloss": TuneIcon,
-    "containerlab.interface.setrate": TuneIcon,
-    "containerlab.interface.setcorruption": TuneIcon,
-    "containerlab.lab.sshx.attach": LinkIcon,
-    "containerlab.lab.sshx.detach": LinkOffIcon,
-    "containerlab.lab.sshx.reattach": LinkIcon,
-    "containerlab.lab.sshx.copylink": LinkIcon,
-    "containerlab.lab.gotty.attach": OpenInBrowserIcon,
-    "containerlab.lab.gotty.detach": OpenInBrowserIcon,
-    "containerlab.lab.gotty.reattach": OpenInBrowserIcon,
-    "containerlab.lab.gotty.copylink": OpenInBrowserIcon
-  };
-
-  const commandIcon = byCommandId[command];
+  const commandIcon = ACTION_ICON_BY_COMMAND[command];
   if (commandIcon) {
     return commandIcon;
   }
 
-  if (command.includes("copy")) {
-    return ContentCopyIcon;
+  for (const rule of ACTION_ICON_RULES) {
+    if (rule.match(command)) {
+      return rule.icon;
+    }
   }
-  if (command.includes("destroy") || command.includes("delete") || command.includes("detach")) {
-    return DeleteOutlineIcon;
-  }
-  if (command.includes("refresh") || command.includes("redeploy")) {
-    return RefreshIcon;
-  }
-  if (command.includes("stop")) {
-    return StopIcon;
-  }
-  if (command.includes("unpause")) {
-    return PlayCircleOutlineIcon;
-  }
-  if (command.includes("pause")) {
-    return PauseCircleOutlineIcon;
-  }
-  if (command.includes("ssh") || command.includes("shell") || command.includes("telnet")) {
-    return TerminalIcon;
-  }
-  if (command.includes("filter")) {
-    return FilterAltIcon;
-  }
-  if (command.includes(".save")) {
-    return SaveOutlinedIcon;
-  }
-  if (command.includes("showlogs") || command.includes("logs")) {
-    return ArticleOutlinedIcon;
-  }
-  if (command.startsWith("containerlab.lab.fcli.")) {
-    return BuildIcon;
-  }
-  if (command.includes(".gotty.")) {
-    return OpenInBrowserIcon;
-  }
-  if (command.startsWith("containerlab.lab.graph.")) {
-    return AccountTreeIcon;
-  }
-  if (command.includes("open") || command.includes("graph") || command.includes("inspect")) {
-    return OpenInNewIcon;
-  }
-  if (command.includes("folder")) {
-    return FolderOpenIcon;
-  }
-  if (command.includes("capture") || command.includes("impairment")) {
-    return SettingsEthernetIcon;
-  }
-  if (
-    command.includes("delay") ||
-    command.includes("jitter") ||
-    command.includes("loss") ||
-    command.includes("rate") ||
-    command.includes("corruption")
-  ) {
-    return TuneIcon;
-  }
-  if (command.includes("deploy") || command.includes("start") || command.includes("run")) {
-    return PlayArrowIcon;
-  }
-  if (command.includes("link")) {
-    return LinkIcon;
-  }
+
   return BuildIcon;
 }
 
 function actionGroupId(action: ExplorerAction): ActionGroupId {
   const command = action.commandId.toLowerCase();
 
-  if (command.startsWith("containerlab.lab.graph.")) {
-    return "graph";
+  for (const rule of ACTION_GROUP_RULES) {
+    if (rule.match(command)) {
+      return rule.group;
+    }
   }
-  if (command.includes(".save")) {
-    return "save";
-  }
-  if (command.startsWith("containerlab.lab.fcli.")) {
-    return "tools";
-  }
-  if (command.startsWith("containerlab.interface.") || command.includes("impairment")) {
-    return "network";
-  }
-  if (command.includes(".sshx.") || command.includes(".gotty.")) {
-    return "sharing";
-  }
-  if (command.includes("copy")) {
-    return "copy";
-  }
-  if (command.includes("inspect") || command.includes("showlogs")) {
-    return "inspect";
-  }
-  if (command.includes("ssh") || command.includes("shell") || command.includes("telnet") || command.includes("openbrowser")) {
-    return "access";
-  }
-  if (
-    command.includes("deploy") ||
-    command.includes("destroy") ||
-    command.includes("redeploy") ||
-    command.includes("start") ||
-    command.includes("stop") ||
-    command.includes("pause") ||
-    command.includes("unpause")
-  ) {
-    return "lifecycle";
-  }
-  if (
-    command.includes("openfile") ||
-    command.includes("topoviewer") ||
-    command.includes("openfolder") ||
-    command.includes("addtoworkspace") ||
-    command.includes("togglefavorite") ||
-    command.includes("delete") ||
-    command.includes("clonerepo")
-  ) {
-    return "topology";
-  }
-  if (
-    command.includes("filter") ||
-    command.includes("hide") ||
-    command.includes("show") ||
-    command.includes("refresh")
-  ) {
-    return "view";
-  }
+
   return "other";
 }
 
@@ -564,42 +618,12 @@ function isInterfaceTimingAction(commandId: string): boolean {
 }
 
 function actionGroupSection(groupId: ActionGroupId, nodeKind: ExplorerNodeKind): number {
-  if (nodeKind === "lab") {
-    if (groupId === "topology" || groupId === "graph") {
-      return 1;
-    }
-    if (groupId === "lifecycle" || groupId === "save") {
-      return 2;
-    }
-    if (
-      groupId === "access" ||
-      groupId === "sharing" ||
-      groupId === "inspect" ||
-      groupId === "tools"
-    ) {
-      return 3;
-    }
-    return 4;
+  const nodeKindSections = ACTION_GROUP_SECTION_BY_NODE_KIND[nodeKind];
+  const section = nodeKindSections?.[groupId];
+  if (section !== undefined) {
+    return section;
   }
-
-  if (nodeKind === "container") {
-    if (groupId === "access" || groupId === "inspect") {
-      return 1;
-    }
-    if (groupId === "lifecycle" || groupId === "save" || groupId === "network") {
-      return 2;
-    }
-    return 3;
-  }
-
-  if (nodeKind === "link") {
-    if (groupId === "sharing" || groupId === "copy") {
-      return 1;
-    }
-    return 2;
-  }
-
-  return 1;
+  return ACTION_GROUP_SECTION_DEFAULT_BY_NODE_KIND[nodeKind] ?? 1;
 }
 
 function withSectionDividers(
@@ -675,116 +699,140 @@ function nodeLeadingIcon(
   return undefined;
 }
 
-function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<ExplorerNodeLabelProps>) {
+function toContextMenuItem(
+  action: ExplorerAction,
+  onInvokeAction: (action: ExplorerAction) => void
+): ContextMenuItem {
+  const ActionIcon = actionIcon(action);
+  return {
+    id: action.id,
+    label: action.label,
+    icon: <ActionIcon fontSize="small" />,
+    danger: Boolean(action.destructive),
+    onClick: () => onInvokeAction(action)
+  };
+}
+
+function sharingBucketForCommand(commandId: string): SharingBucket {
+  const command = commandId.toLowerCase();
+  if (command.includes(".sshx.")) {
+    return "sshx";
+  }
+  if (command.includes(".gotty.")) {
+    return "gotty";
+  }
+  return "other";
+}
+
+function buildSharingGroupChildren(
+  actions: ExplorerAction[],
+  groupId: ActionGroupId,
+  onInvokeAction: (action: ExplorerAction) => void
+): ContextMenuItem[] {
+  const sharingChildren: ContextMenuItem[] = [];
+  let previousBucket: SharingBucket | null = null;
+
+  for (const action of actions) {
+    const bucket = sharingBucketForCommand(action.commandId);
+    if (sharingChildren.length > 0 && previousBucket !== null && bucket !== previousBucket) {
+      sharingChildren.push({
+        id: `group:${groupId}:divider:${action.id}`,
+        label: "",
+        divider: true
+      });
+    }
+    sharingChildren.push(toContextMenuItem(action, onInvokeAction));
+    previousBucket = bucket;
+  }
+
+  return sharingChildren;
+}
+
+function toGroupMenuItem(
+  group: ExplorerActionGroup,
+  onInvokeAction: (action: ExplorerAction) => void
+): ContextMenuItem {
+  if (group.actions.length === 1) {
+    return toContextMenuItem(group.actions[0], onInvokeAction);
+  }
+
+  const GroupIcon = actionGroupIcon(group.id);
+  const children =
+    group.id === "sharing"
+      ? buildSharingGroupChildren(group.actions, group.id, onInvokeAction)
+      : group.actions.map((action) => toContextMenuItem(action, onInvokeAction));
+
+  return {
+    id: `group:${group.id}`,
+    label: group.label,
+    icon: <GroupIcon fontSize="small" />,
+    children
+  };
+}
+
+function buildInterfaceMenuItems(
+  actions: ExplorerAction[],
+  onInvokeAction: (action: ExplorerAction) => void
+): ContextMenuItem[] {
+  const interfaceItems: ContextMenuItem[] = [];
+  let inTimingGroup = false;
+  for (const action of actions) {
+    const commandId = action.commandId.toLowerCase();
+    const isTimingAction = isInterfaceTimingAction(commandId);
+
+    if (isTimingAction && !inTimingGroup && interfaceItems.length > 0) {
+      interfaceItems.push({
+        id: `group:interface:timing-start:${action.id}`,
+        label: "",
+        divider: true
+      });
+    }
+    if (!isTimingAction && inTimingGroup) {
+      interfaceItems.push({
+        id: `group:interface:timing-end:${action.id}`,
+        label: "",
+        divider: true
+      });
+    }
+
+    interfaceItems.push(toContextMenuItem(action, onInvokeAction));
+    inTimingGroup = isTimingAction;
+  }
+
+  return interfaceItems;
+}
+
+function buildNodeContextMenuItems(
+  menuActions: ExplorerAction[],
+  nodeKind: ExplorerNodeKind,
+  onInvokeAction: (action: ExplorerAction) => void
+): ContextMenuItem[] {
+  if (nodeKind === "interface") {
+    return buildInterfaceMenuItems(menuActions, onInvokeAction);
+  }
+
+  const groupedActions = groupActions(menuActions, nodeKind);
+  return withSectionDividers(groupedActions, nodeKind, (group) =>
+    toGroupMenuItem(group, onInvokeAction)
+  );
+}
+
+function filterNodeMenuActions(nodeActions: ExplorerAction[], nodeKind: ExplorerNodeKind): ExplorerAction[] {
+  if (nodeKind !== "lab") {
+    return nodeActions;
+  }
+  return nodeActions.filter(
+    (action) => action.commandId.toLowerCase() !== "containerlab.lab.graph.topoviewer"
+  );
+}
+
+function useExplorerNodeMenu(params: {
+  hasActions: boolean;
+  hasContextMenuItems: boolean;
+}) {
+  const { hasActions, hasContextMenuItems } = params;
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const [menuOpenToLeft, setMenuOpenToLeft] = useState(false);
-  const hasEntryTooltip = Boolean(node.tooltip);
-  const leadingIcon = nodeLeadingIcon(node, sectionId);
-  const nodeKind = nodeKindFromContext(node.contextValue);
-  const menuActions = useMemo(() => {
-    if (nodeKind === "lab") {
-      return node.actions.filter(
-        (action) => action.commandId.toLowerCase() !== "containerlab.lab.graph.topoviewer"
-      );
-    }
-    return node.actions;
-  }, [node.actions, nodeKind]);
-  const hasActions = menuActions.length > 0;
-  const contextMenuItems = useMemo<ContextMenuItem[]>(
-    () => {
-      const toMenuItem = (action: ExplorerAction): ContextMenuItem => {
-        const ActionIcon = actionIcon(action);
-        return {
-          id: action.id,
-          label: action.label,
-          icon: <ActionIcon fontSize="small" />,
-          danger: Boolean(action.destructive),
-          onClick: () => onInvokeAction(action)
-        };
-      };
-
-      if (nodeKind === "interface") {
-        const interfaceItems: ContextMenuItem[] = [];
-        let inTimingGroup = false;
-        for (const action of menuActions) {
-          const commandId = action.commandId.toLowerCase();
-          const isTimingAction = isInterfaceTimingAction(commandId);
-
-          if (isTimingAction && !inTimingGroup && interfaceItems.length > 0) {
-            interfaceItems.push({
-              id: `group:interface:timing-start:${action.id}`,
-              label: "",
-              divider: true
-            });
-          }
-          if (!isTimingAction && inTimingGroup) {
-            interfaceItems.push({
-              id: `group:interface:timing-end:${action.id}`,
-              label: "",
-              divider: true
-            });
-          }
-
-          interfaceItems.push(toMenuItem(action));
-          inTimingGroup = isTimingAction;
-        }
-        return interfaceItems;
-      }
-
-      const groupedActions = groupActions(menuActions, nodeKind);
-      return withSectionDividers(groupedActions, nodeKind, (group) => {
-        if (group.actions.length === 1) {
-          return toMenuItem(group.actions[0]);
-        }
-
-        let children = group.actions.map((action) => toMenuItem(action));
-        if (group.id === "sharing") {
-          const sharingChildren: ContextMenuItem[] = [];
-          let previousBucket: "sshx" | "gotty" | "other" | null = null;
-          for (let i = 0; i < group.actions.length; i += 1) {
-            const action = group.actions[i];
-            const command = action.commandId.toLowerCase();
-            let bucket: "sshx" | "gotty" | "other" = "other";
-            if (command.includes(".sshx.")) {
-              bucket = "sshx";
-            } else if (command.includes(".gotty.")) {
-              bucket = "gotty";
-            }
-            if (
-              sharingChildren.length > 0 &&
-              previousBucket !== null &&
-              bucket !== previousBucket
-            ) {
-              sharingChildren.push({
-                id: `group:${group.id}:divider:${action.id}`,
-                label: "",
-                divider: true
-              });
-            }
-            sharingChildren.push(toMenuItem(action));
-            previousBucket = bucket;
-          }
-          children = sharingChildren;
-        }
-
-        const GroupIcon = actionGroupIcon(group.id);
-        return {
-          id: `group:${group.id}`,
-          label: group.label,
-          icon: <GroupIcon fontSize="small" />,
-          children
-        };
-      });
-    },
-    [menuActions, nodeKind, onInvokeAction]
-  );
-  const secondaryText = node.description || node.statusDescription;
-  const isContainer = node.contextValue === "containerlabContainer";
-  const isInterface =
-    node.contextValue === "containerlabInterfaceUp" || node.contextValue === "containerlabInterfaceDown";
-  const inlineContainerStatus = isContainer ? secondaryText?.trim() : undefined;
-  const showSecondaryLine = Boolean(secondaryText) && !isContainer && !isInterface;
-  const showStatusDot = Boolean(node.statusIndicator) && !isInterface;
 
   const openMenuFromElement = useCallback((element: HTMLElement, openToLeft = true) => {
     const rect = element.getBoundingClientRect();
@@ -792,14 +840,17 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
     setMenuPosition({ x: Math.round(rect.right), y: Math.round(rect.bottom + 2) });
   }, []);
 
-  const handleMenuOpen = useCallback((event: MouseEvent<HTMLElement>) => {
-    if (!hasActions) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    openMenuFromElement(event.currentTarget, true);
-  }, [hasActions, openMenuFromElement]);
+  const handleMenuOpen = useCallback(
+    (event: MouseEvent<HTMLElement>) => {
+      if (!hasActions) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      openMenuFromElement(event.currentTarget, true);
+    },
+    [hasActions, openMenuFromElement]
+  );
 
   const handleRowContextMenu = useCallback(
     (event: MouseEvent<HTMLElement>) => {
@@ -819,19 +870,214 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
     setMenuPosition(null);
   }, []);
 
-  const handlePrimaryAction = useCallback(
+  const handleBackdropContextMenu = useCallback((event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setMenuPosition({ x: event.clientX + 2, y: event.clientY + 2 });
+  }, []);
+
+  const menuOpen = Boolean(menuPosition) && hasContextMenuItems;
+
+  return {
+    menuPosition,
+    menuOpenToLeft,
+    menuOpen,
+    handleMenuOpen,
+    handleRowContextMenu,
+    handleMenuClose,
+    handleBackdropContextMenu
+  };
+}
+
+function usePrimaryActionHandler(
+  primaryAction: ExplorerNode["primaryAction"],
+  onInvokeAction: (action: ExplorerAction) => void
+) {
+  return useCallback(
     (event: MouseEvent<HTMLElement>) => {
-      if (!node.primaryAction) {
+      if (!primaryAction) {
         return;
       }
       event.preventDefault();
       event.stopPropagation();
-      onInvokeAction(node.primaryAction);
+      onInvokeAction(primaryAction);
     },
-    [node.primaryAction, onInvokeAction]
+    [primaryAction, onInvokeAction]
   );
+}
 
-  const menuOpen = Boolean(menuPosition) && contextMenuItems.length > 0;
+interface ExplorerNodeTextBlockProps {
+  node: ExplorerNode;
+  hasEntryTooltip: boolean;
+  leadingIcon: ReturnType<typeof nodeLeadingIcon>;
+  showStatusDot: boolean;
+  inlineContainerStatus: string | undefined;
+  showSecondaryLine: boolean;
+  secondaryText: string | undefined;
+  handlePrimaryAction: (event: MouseEvent<HTMLElement>) => void;
+}
+
+function ExplorerNodeTextBlock({
+  node,
+  hasEntryTooltip,
+  leadingIcon,
+  showStatusDot,
+  inlineContainerStatus,
+  showSecondaryLine,
+  secondaryText,
+  handlePrimaryAction
+}: Readonly<ExplorerNodeTextBlockProps>) {
+  return (
+    <Box
+      onClick={handlePrimaryAction}
+      sx={{ minWidth: 0, flex: 1, cursor: node.primaryAction ? "pointer" : "default" }}
+    >
+      <Tooltip
+        title={hasEntryTooltip ? node.tooltip : ""}
+        placement="bottom"
+        enterDelay={300}
+        disableInteractive
+        disableHoverListener={!hasEntryTooltip}
+        disableFocusListener={!hasEntryTooltip}
+        disableTouchListener={!hasEntryTooltip}
+        slotProps={{
+          tooltip: {
+            sx: {
+              maxWidth: "min(360px, calc(100vw - 24px))",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word"
+            }
+          }
+        }}
+      >
+        <Stack direction="row" spacing={TREE_ROW_GAP} alignItems="center" sx={{ minWidth: 0 }}>
+          <Box
+            sx={{
+              width: NODE_MARKER_SLOT_PX,
+              flex: `0 0 ${NODE_MARKER_SLOT_PX}px`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+          >
+            {leadingIcon && (
+              <leadingIcon.Icon
+                fontSize="inherit"
+                sx={{ fontSize: 13, color: leadingIcon.color, flex: "0 0 auto" }}
+              />
+            )}
+            {!leadingIcon && showStatusDot && (
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  flex: "0 0 auto",
+                  bgcolor: statusColor(node.statusIndicator)
+                }}
+              />
+            )}
+          </Box>
+          <Typography variant="body2" noWrap sx={{ fontWeight: node.primaryAction ? 600 : 500 }}>
+            {node.label}
+          </Typography>
+          {inlineContainerStatus && (
+            <Typography variant="caption" color="text.secondary" noWrap>
+              {inlineContainerStatus}
+            </Typography>
+          )}
+        </Stack>
+      </Tooltip>
+      {showSecondaryLine && (
+        <Typography variant="caption" color="text.secondary" noWrap>
+          {secondaryText}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+interface ExplorerNodeActionsProps {
+  hasActions: boolean;
+  node: ExplorerNode;
+  menuOpen: boolean;
+  menuPosition: { x: number; y: number } | null;
+  contextMenuItems: ContextMenuItem[];
+  menuOpenToLeft: boolean;
+  handleMenuOpen: (event: MouseEvent<HTMLElement>) => void;
+  handleMenuClose: () => void;
+  handleBackdropContextMenu: (event: MouseEvent) => void;
+}
+
+function ExplorerNodeActions({
+  hasActions,
+  node,
+  menuOpen,
+  menuPosition,
+  contextMenuItems,
+  menuOpenToLeft,
+  handleMenuOpen,
+  handleMenuClose,
+  handleBackdropContextMenu
+}: Readonly<ExplorerNodeActionsProps>) {
+  if (!hasActions) {
+    return null;
+  }
+
+  return (
+    <>
+      <IconButton
+        size="small"
+        onClick={handleMenuOpen}
+        aria-label={`Actions for ${node.label}`}
+        data-node-actions-trigger="true"
+        sx={{ width: 22, height: 22, p: 0.25, color: COLOR_TEXT_PRIMARY }}
+      >
+        <MoreVertIcon fontSize="small" />
+      </IconButton>
+      <ContextMenu
+        isVisible={menuOpen}
+        position={menuPosition ?? { x: 0, y: 0 }}
+        items={contextMenuItems}
+        compact
+        openToLeft={menuOpenToLeft}
+        onClose={handleMenuClose}
+        onBackdropContextMenu={handleBackdropContextMenu}
+      />
+    </>
+  );
+}
+
+function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<ExplorerNodeLabelProps>) {
+  const hasEntryTooltip = Boolean(node.tooltip);
+  const leadingIcon = nodeLeadingIcon(node, sectionId);
+  const nodeKind = nodeKindFromContext(node.contextValue);
+  const menuActions = useMemo(() => filterNodeMenuActions(node.actions, nodeKind), [node.actions, nodeKind]);
+  const hasActions = menuActions.length > 0;
+  const contextMenuItems = useMemo<ContextMenuItem[]>(
+    () => buildNodeContextMenuItems(menuActions, nodeKind, onInvokeAction),
+    [menuActions, nodeKind, onInvokeAction]
+  );
+  const secondaryText = node.description || node.statusDescription;
+  const isContainer = node.contextValue === "containerlabContainer";
+  const isInterface =
+    node.contextValue === "containerlabInterfaceUp" || node.contextValue === "containerlabInterfaceDown";
+  const inlineContainerStatus = isContainer ? secondaryText?.trim() : undefined;
+  const showSecondaryLine = Boolean(secondaryText) && !isContainer && !isInterface;
+  const showStatusDot = Boolean(node.statusIndicator) && !isInterface;
+  const {
+    menuPosition,
+    menuOpenToLeft,
+    menuOpen,
+    handleMenuOpen,
+    handleRowContextMenu,
+    handleMenuClose,
+    handleBackdropContextMenu
+  } = useExplorerNodeMenu({
+    hasActions,
+    hasContextMenuItems: contextMenuItems.length > 0
+  });
+  const handlePrimaryAction = usePrimaryActionHandler(node.primaryAction, onInvokeAction);
 
   return (
     <Stack
@@ -841,99 +1087,27 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
       onContextMenu={handleRowContextMenu}
       sx={{ width: "100%" }}
     >
-      <Box
-        onClick={handlePrimaryAction}
-        sx={{ minWidth: 0, flex: 1, cursor: node.primaryAction ? "pointer" : "default" }}
-      >
-        <Tooltip
-          title={hasEntryTooltip ? node.tooltip : ""}
-          placement="bottom"
-          enterDelay={300}
-          disableInteractive
-          disableHoverListener={!hasEntryTooltip}
-          disableFocusListener={!hasEntryTooltip}
-          disableTouchListener={!hasEntryTooltip}
-          slotProps={{
-            tooltip: {
-              sx: {
-                maxWidth: "min(360px, calc(100vw - 24px))",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word"
-              }
-            }
-          }}
-        >
-          <Stack direction="row" spacing={TREE_ROW_GAP} alignItems="center" sx={{ minWidth: 0 }}>
-            <Box
-              sx={{
-                width: NODE_MARKER_SLOT_PX,
-                flex: `0 0 ${NODE_MARKER_SLOT_PX}px`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center"
-              }}
-            >
-              {leadingIcon && (
-                <leadingIcon.Icon
-                  fontSize="inherit"
-                  sx={{ fontSize: 13, color: leadingIcon.color, flex: "0 0 auto" }}
-                />
-              )}
-              {!leadingIcon && showStatusDot && (
-                <Box
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    flex: "0 0 auto",
-                    bgcolor: statusColor(node.statusIndicator)
-                  }}
-                />
-              )}
-            </Box>
-            <Typography variant="body2" noWrap sx={{ fontWeight: node.primaryAction ? 600 : 500 }}>
-              {node.label}
-            </Typography>
-            {inlineContainerStatus && (
-              <Typography variant="caption" color="text.secondary" noWrap>
-                {inlineContainerStatus}
-              </Typography>
-            )}
-          </Stack>
-        </Tooltip>
-        {showSecondaryLine && (
-          <Typography variant="caption" color="text.secondary" noWrap>
-            {secondaryText}
-          </Typography>
-        )}
-      </Box>
-
-      {hasActions && (
-        <>
-          <IconButton
-            size="small"
-            onClick={handleMenuOpen}
-            aria-label={`Actions for ${node.label}`}
-            data-node-actions-trigger="true"
-            sx={{ width: 22, height: 22, p: 0.25, color: COLOR_TEXT_PRIMARY }}
-          >
-            <MoreVertIcon fontSize="small" />
-          </IconButton>
-          <ContextMenu
-            isVisible={menuOpen}
-            position={menuPosition ?? { x: 0, y: 0 }}
-            items={contextMenuItems}
-            compact
-            openToLeft={menuOpenToLeft}
-            onClose={handleMenuClose}
-            onBackdropContextMenu={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setMenuPosition({ x: event.clientX + 2, y: event.clientY + 2 });
-            }}
-          />
-        </>
-      )}
+      <ExplorerNodeTextBlock
+        node={node}
+        hasEntryTooltip={hasEntryTooltip}
+        leadingIcon={leadingIcon}
+        showStatusDot={showStatusDot}
+        inlineContainerStatus={inlineContainerStatus}
+        showSecondaryLine={showSecondaryLine}
+        secondaryText={secondaryText}
+        handlePrimaryAction={handlePrimaryAction}
+      />
+      <ExplorerNodeActions
+        hasActions={hasActions}
+        node={node}
+        menuOpen={menuOpen}
+        menuPosition={menuPosition}
+        contextMenuItems={contextMenuItems}
+        menuOpenToLeft={menuOpenToLeft}
+        handleMenuOpen={handleMenuOpen}
+        handleMenuClose={handleMenuClose}
+        handleBackdropContextMenu={handleBackdropContextMenu}
+      />
     </Stack>
   );
 }
@@ -1247,91 +1421,104 @@ export function ContainerlabExplorerView() {
 
   useReadySignal();
 
+  const handleSnapshotMessage = useCallback((message: SnapshotExplorerMessage) => {
+    const pending = pendingFilterSyncRef.current;
+    if (pending !== null && message.filterText !== pending) {
+      return;
+    }
+    if (pending !== null && message.filterText === pending) {
+      pendingFilterSyncRef.current = null;
+    }
+
+    const filterActive = message.filterText.length > 0;
+    setSections(message.sections);
+    setSectionOrder((currentOrder) => mergeSectionOrder(currentOrder, message.sections));
+    setCollapsedBySection((current) => {
+      const next: Partial<Record<ExplorerSectionId, boolean>> = {};
+      for (const section of message.sections) {
+        next[section.id] = current[section.id] ?? !DEFAULT_EXPANDED_SECTIONS.has(section.id);
+      }
+      if (filterActive) {
+        next.runningLabs = false;
+        next.localLabs = false;
+      }
+      return next;
+    });
+
+    setExpandedBySection((current) => {
+      if (filterActive) {
+        if (!expandedBeforeFilterRef.current) {
+          expandedBeforeFilterRef.current = current;
+        }
+        const next: Partial<Record<ExplorerSectionId, string[]>> = { ...current };
+        for (const section of message.sections) {
+          if (section.id === "runningLabs" || section.id === "localLabs") {
+            next[section.id] = flattenExpandableNodeIds(section.nodes);
+          }
+        }
+        return next;
+      }
+
+      if (expandedBeforeFilterRef.current) {
+        const restored = expandedBeforeFilterRef.current;
+        expandedBeforeFilterRef.current = null;
+        return restored;
+      }
+
+      return current;
+    });
+
+    setFilterText(message.filterText);
+  }, []);
+
+  const handleFilterStateMessage = useCallback((message: FilterStateExplorerMessage) => {
+    const pending = pendingFilterSyncRef.current;
+    if (pending !== null && message.filterText !== pending) {
+      return;
+    }
+    if (pending !== null && message.filterText === pending) {
+      pendingFilterSyncRef.current = null;
+    }
+    setFilterText(message.filterText);
+  }, []);
+
+  const handleUiStateMessage = useCallback((message: UiStateExplorerMessage) => {
+    const state = message.state || {};
+    if (Array.isArray(state.sectionOrder) && state.sectionOrder.length > 0) {
+      setSectionOrder(state.sectionOrder.filter((id) => isExplorerSectionId(id)));
+    }
+    if (state.collapsedBySection) {
+      setCollapsedBySection(state.collapsedBySection);
+    }
+    if (state.expandedBySection) {
+      setExpandedBySection(state.expandedBySection);
+    }
+    setUiStateHydrated(true);
+  }, []);
+
+  const handleErrorMessage = useCallback((message: ErrorExplorerMessage) => {
+    setErrorMessage(message.message);
+  }, []);
+
   useMessageListener<ExplorerIncomingMessage>(
     useCallback((message) => {
-      if (message.command === "snapshot") {
-        const pending = pendingFilterSyncRef.current;
-        if (pending !== null && message.filterText !== pending) {
+      switch (message.command) {
+        case "snapshot":
+          handleSnapshotMessage(message);
           return;
-        }
-        if (pending !== null && message.filterText === pending) {
-          pendingFilterSyncRef.current = null;
-        }
-
-        const filterActive = message.filterText.length > 0;
-        setSections(message.sections);
-        setSectionOrder((currentOrder) => mergeSectionOrder(currentOrder, message.sections));
-        setCollapsedBySection((current) => {
-          const next: Partial<Record<ExplorerSectionId, boolean>> = {};
-          for (const section of message.sections) {
-            next[section.id] =
-              current[section.id] ?? !DEFAULT_EXPANDED_SECTIONS.has(section.id);
-          }
-          if (filterActive) {
-            next.runningLabs = false;
-            next.localLabs = false;
-          }
-          return next;
-        });
-
-        setExpandedBySection((current) => {
-          if (filterActive) {
-            if (!expandedBeforeFilterRef.current) {
-              expandedBeforeFilterRef.current = current;
-            }
-            const next: Partial<Record<ExplorerSectionId, string[]>> = { ...current };
-            for (const section of message.sections) {
-              if (section.id === "runningLabs" || section.id === "localLabs") {
-                next[section.id] = flattenExpandableNodeIds(section.nodes);
-              }
-            }
-            return next;
-          }
-
-          if (expandedBeforeFilterRef.current) {
-            const restored = expandedBeforeFilterRef.current;
-            expandedBeforeFilterRef.current = null;
-            return restored;
-          }
-
-          return current;
-        });
-
-        setFilterText(message.filterText);
-        return;
-      }
-
-      if (message.command === "filterState") {
-        const pending = pendingFilterSyncRef.current;
-        if (pending !== null && message.filterText !== pending) {
+        case "filterState":
+          handleFilterStateMessage(message);
           return;
-        }
-        if (pending !== null && message.filterText === pending) {
-          pendingFilterSyncRef.current = null;
-        }
-        setFilterText(message.filterText);
-        return;
+        case "uiState":
+          handleUiStateMessage(message);
+          return;
+        case "error":
+          handleErrorMessage(message);
+          return;
+        default:
+          return;
       }
-
-      if (message.command === "uiState") {
-        const state = message.state || {};
-        if (Array.isArray(state.sectionOrder) && state.sectionOrder.length > 0) {
-          setSectionOrder(state.sectionOrder.filter((id) => isExplorerSectionId(id)));
-        }
-        if (state.collapsedBySection) {
-          setCollapsedBySection(state.collapsedBySection);
-        }
-        if (state.expandedBySection) {
-          setExpandedBySection(state.expandedBySection);
-        }
-        setUiStateHydrated(true);
-        return;
-      }
-
-      if (message.command === "error") {
-        setErrorMessage(message.message);
-      }
-    }, [])
+    }, [handleErrorMessage, handleFilterStateMessage, handleSnapshotMessage, handleUiStateMessage])
   );
 
   const invokeAction = useCallback(
@@ -1485,7 +1672,7 @@ export function ContainerlabExplorerView() {
     }, UI_STATE_UPDATE_DEBOUNCE_MS);
   }, [sectionOrder, collapsedBySection, expandedBySection, uiStateHydrated, postMessage]);
 
-  const explorerContent = (
+  return (
     <Box
       sx={{
         width: "100%",
@@ -1561,8 +1748,6 @@ export function ContainerlabExplorerView() {
       </Stack>
     </Box>
   );
-
-  return explorerContent;
 }
 
 function mount(): void {
