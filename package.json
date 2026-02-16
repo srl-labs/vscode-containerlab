@@ -1432,7 +1432,7 @@
     "@testing-library/react": "^16.3.1",
     "@types/chai": "^5.2.3",
     "@types/d3-force": "^3.0.10",
-    "@types/dockerode": "^3.3.47",
+    "@types/dockerode": "^4.0.1",
     "@types/jsdom": "^27.0.0",
     "@types/markdown-it": "^14.1.2",
     "@types/markdown-it-emoji": "^3.0.1",
