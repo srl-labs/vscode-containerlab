@@ -174,10 +174,10 @@ const ACTION_GROUP_ORDER_DEFAULT: ActionGroupId[] = [
 
 const ACTION_GROUP_ORDER_BY_NODE_KIND: Record<ExplorerNodeKind, ActionGroupId[]> = {
   lab: [
-    "topology",
-    "graph",
     "lifecycle",
     "save",
+    "topology",
+    "graph",
     "access",
     "sharing",
     "inspect",
@@ -188,10 +188,10 @@ const ACTION_GROUP_ORDER_BY_NODE_KIND: Record<ExplorerNodeKind, ActionGroupId[]>
     "other"
   ],
   container: [
-    "access",
-    "inspect",
     "lifecycle",
     "save",
+    "access",
+    "inspect",
     "network",
     "copy",
     "sharing",
@@ -354,20 +354,20 @@ const ACTION_GROUP_SECTION_BY_NODE_KIND: Partial<
   Record<ExplorerNodeKind, Partial<Record<ActionGroupId, number>>>
 > = {
   lab: {
-    topology: 1,
-    graph: 1,
-    lifecycle: 2,
-    save: 2,
+    lifecycle: 1,
+    save: 1,
+    topology: 2,
+    graph: 2,
     access: 3,
     sharing: 3,
     inspect: 3,
     tools: 3
   },
   container: {
-    access: 1,
-    inspect: 1,
-    lifecycle: 2,
-    save: 2,
+    lifecycle: 1,
+    save: 1,
+    access: 2,
+    inspect: 2,
     network: 2
   },
   link: {
@@ -626,7 +626,9 @@ function isInterfaceTimingAction(commandId: string): boolean {
   return (
     commandId === "containerlab.interface.setdelay" ||
     commandId === "containerlab.interface.setjitter" ||
-    commandId === "containerlab.interface.setloss"
+    commandId === "containerlab.interface.setloss" ||
+    commandId === "containerlab.interface.setrate" ||
+    commandId === "containerlab.interface.setcorruption"
   );
 }
 
