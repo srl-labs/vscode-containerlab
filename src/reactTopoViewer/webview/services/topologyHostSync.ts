@@ -38,6 +38,9 @@ const LEGACY_NODE_WIDTH = 100;
 const LEGACY_NODE_HEIGHT = 100;
 const DEFAULT_GROUP_WIDTH = 300;
 const DEFAULT_GROUP_HEIGHT = 200;
+const LEGACY_DEFAULT_MEDIA_TEXT_WIDTH = 120;
+const LEGACY_MEDIA_TEXT_HEIGHT_RATIO = 0.62;
+const LEGACY_MIN_MEDIA_TEXT_HEIGHT = 48;
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -67,6 +70,15 @@ function parseLegacyGroupIdentity(groupId: string): { name: string; level: strin
     return { name: groupId.slice(0, idx), level: groupId.slice(idx + 1) };
   }
   return { name: groupId, level: "1" };
+}
+
+function isStandaloneMarkdownImage(value: unknown): boolean {
+  if (!isNonEmptyString(value)) return false;
+  return /^\s*!\[[^\]]*\]\([^)]+\)\s*$/u.test(value);
+}
+
+function inferLegacyMediaTextHeight(width: number): number {
+  return Math.max(LEGACY_MIN_MEDIA_TEXT_HEIGHT, Math.round(width * LEGACY_MEDIA_TEXT_HEIGHT_RATIO));
 }
 
 function nodeBelongsToGroup(
@@ -128,10 +140,35 @@ function deriveLegacyGroupBounds(
 }
 
 function normalizeFreeTextAnnotations(annotations: FreeTextAnnotation[]): FreeTextAnnotation[] {
-  return annotations.map((annotation) => ({
-    ...annotation,
-    position: toPosition(annotation.position) ?? { x: 0, y: 0 }
-  }));
+  return annotations.map((annotation) => {
+    const position = toPosition(annotation.position) ?? { x: 0, y: 0 };
+    const width = toFiniteNumber(annotation.width);
+    const height = toFiniteNumber(annotation.height);
+    const isMedia = isStandaloneMarkdownImage(annotation.text);
+    const mediaWidth = width ?? LEGACY_DEFAULT_MEDIA_TEXT_WIDTH;
+
+    const normalizedWidth = isMedia ? mediaWidth : width;
+    const normalizedHeight = isMedia
+      ? (height ?? inferLegacyMediaTextHeight(mediaWidth))
+      : height;
+
+    const normalizedAnnotation: FreeTextAnnotation = {
+      ...annotation,
+      position,
+    };
+    if (normalizedWidth !== undefined) {
+      normalizedAnnotation.width = normalizedWidth;
+    } else {
+      delete normalizedAnnotation.width;
+    }
+    if (normalizedHeight !== undefined) {
+      normalizedAnnotation.height = normalizedHeight;
+    } else {
+      delete normalizedAnnotation.height;
+    }
+
+    return normalizedAnnotation;
+  });
 }
 
 function normalizeFreeShapeAnnotations(annotations: FreeShapeAnnotation[]): FreeShapeAnnotation[] {

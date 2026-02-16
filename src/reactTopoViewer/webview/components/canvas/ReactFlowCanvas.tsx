@@ -111,8 +111,7 @@ function handleLinkCreationClick(
   return true;
 }
 
-function handleAnnotationEditClick(
-  event: React.MouseEvent,
+function openAnnotationEditor(
   node: { id: string; type?: string },
   clearContextForAnnotationEdit: () => void,
   annotationHandlers?: AnnotationHandlers
@@ -120,19 +119,16 @@ function handleAnnotationEditClick(
   if (!annotationHandlers) return false;
 
   if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers.onEditFreeText) {
-    event.stopPropagation();
     clearContextForAnnotationEdit();
     annotationHandlers.onEditFreeText(node.id);
     return true;
   }
   if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers.onEditFreeShape) {
-    event.stopPropagation();
     clearContextForAnnotationEdit();
     annotationHandlers.onEditFreeShape(node.id);
     return true;
   }
   if (node.type === GROUP_NODE_TYPE && annotationHandlers.onEditGroup) {
-    event.stopPropagation();
     clearContextForAnnotationEdit();
     annotationHandlers.onEditGroup(node.id);
     return true;
@@ -156,15 +152,13 @@ function useWrappedNodeClick(
       if (handleAltDelete(event, node, mode, isLocked, handleDeleteNode, annotationHandlers))
         return;
       if (handleLinkCreationClick(event, node, linkSourceNode, completeLinkCreation)) return;
-      if (
-        handleAnnotationEditClick(event, node, clearContextForAnnotationEdit, annotationHandlers)
-      ) {
-        // Still flow through to the base handler to ensure shared behavior
-        // like closing context menus stays consistent for annotation nodes.
-        onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
-        return;
-      }
+      const didOpenAnnotationEditor = openAnnotationEditor(
+        node,
+        clearContextForAnnotationEdit,
+        annotationHandlers
+      );
       onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
+      if (didOpenAnnotationEditor) return;
     },
     [
       linkSourceNode,

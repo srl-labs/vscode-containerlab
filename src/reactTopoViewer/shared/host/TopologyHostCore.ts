@@ -7,6 +7,7 @@ import * as YAML from "yaml";
 import type {
   ClabTopology,
   DeploymentState,
+  FreeTextAnnotation,
   TopologyAnnotations,
   NodeAnnotation
 } from "../types/topology";
@@ -51,6 +52,9 @@ const LEGACY_NODE_WIDTH = 100;
 const LEGACY_NODE_HEIGHT = 100;
 const LEGACY_DEFAULT_GROUP_WIDTH = 300;
 const LEGACY_DEFAULT_GROUP_HEIGHT = 200;
+const LEGACY_DEFAULT_MEDIA_TEXT_WIDTH = 120;
+const LEGACY_MEDIA_TEXT_HEIGHT_RATIO = 0.62;
+const LEGACY_MIN_MEDIA_TEXT_HEIGHT = 48;
 
 /** Migration entry for graph label data (position, icon, group info) */
 interface GraphLabelMigration {
@@ -902,6 +906,42 @@ function hasStrictNumericPosition(value: unknown): boolean {
   );
 }
 
+function isStandaloneMarkdownImage(value: unknown): boolean {
+  if (!isNonEmptyString(value)) return false;
+  return /^\s*!\[[^\]]*\]\([^)]+\)\s*$/u.test(value);
+}
+
+function inferLegacyMediaTextHeight(width: number): number {
+  return Math.max(LEGACY_MIN_MEDIA_TEXT_HEIGHT, Math.round(width * LEGACY_MEDIA_TEXT_HEIGHT_RATIO));
+}
+
+function normalizeLegacyFreeTextDimensions(annotation: FreeTextAnnotation): {
+  width?: number;
+  height?: number;
+  changed: boolean;
+} {
+  const width = toFiniteNumber(annotation.width);
+  const height = toFiniteNumber(annotation.height);
+  const isMedia = isStandaloneMarkdownImage(annotation.text);
+  const mediaWidth = width ?? LEGACY_DEFAULT_MEDIA_TEXT_WIDTH;
+
+  const normalizedWidth = isMedia ? mediaWidth : width;
+  const normalizedHeight = isMedia
+    ? (height ?? inferLegacyMediaTextHeight(mediaWidth))
+    : height;
+
+  const changed =
+    (annotation.width !== undefined && annotation.width !== normalizedWidth) ||
+    (annotation.height !== undefined && annotation.height !== normalizedHeight) ||
+    (isMedia && (annotation.width === undefined || annotation.height === undefined));
+
+  return {
+    ...(normalizedWidth !== undefined ? { width: normalizedWidth } : {}),
+    ...(normalizedHeight !== undefined ? { height: normalizedHeight } : {}),
+    changed
+  };
+}
+
 function parseLegacyGroupIdentity(groupId: string): { name: string; level: string } {
   const idx = groupId.lastIndexOf(":");
   if (idx > 0 && idx < groupId.length - 1) {
@@ -974,14 +1014,27 @@ function migrateLegacyAnnotations(
 
   const freeTextAnnotations = (annotations.freeTextAnnotations ?? []).map((annotation) => {
     const normalizedPosition = toPosition(annotation.position);
-    if (normalizedPosition && hasStrictNumericPosition(annotation.position)) {
+    const dimensions = normalizeLegacyFreeTextDimensions(annotation);
+    const hasPositionFix = !normalizedPosition || !hasStrictNumericPosition(annotation.position);
+    if (!hasPositionFix && !dimensions.changed) {
       return annotation;
     }
     modified = true;
-    return {
+    const normalizedAnnotation: FreeTextAnnotation = {
       ...annotation,
-      position: normalizedPosition ?? { x: 0, y: 0 }
+      position: normalizedPosition ?? { x: 0, y: 0 },
     };
+    if (dimensions.width !== undefined) {
+      normalizedAnnotation.width = dimensions.width;
+    } else {
+      delete normalizedAnnotation.width;
+    }
+    if (dimensions.height !== undefined) {
+      normalizedAnnotation.height = dimensions.height;
+    } else {
+      delete normalizedAnnotation.height;
+    }
+    return normalizedAnnotation;
   });
 
   const freeShapeAnnotations = (annotations.freeShapeAnnotations ?? []).map((annotation) => {

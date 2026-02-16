@@ -244,8 +244,13 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   const { panelWidth, isDragging, handleResizeStart } = usePanelResize(sideRef);
 
   const setFooterRef = useCallback((ref: FooterRef | null) => {
+    const prev = footerRef.current;
+    const visibilityChanged = Boolean(prev) !== Boolean(ref);
+    const hasChangesChanged = (prev?.hasChanges ?? false) !== (ref?.hasChanges ?? false);
     footerRef.current = ref;
-    forceUpdate((n) => n + 1);
+    if (visibilityChanged || hasChangesChanged) {
+      forceUpdate((n) => n + 1);
+    }
   }, []);
 
   const setBannerRef = useCallback((ref: BannerRef | null) => {

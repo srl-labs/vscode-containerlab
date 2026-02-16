@@ -37,7 +37,25 @@ function buildWrapperStyle(rotation: number, selected: boolean): React.CSSProper
 }
 
 /** Build text style for free text content */
-function buildTextStyle(data: FreeTextNodeData): React.CSSProperties {
+function getTextLayoutStyle(
+  data: FreeTextNodeData,
+  isMediaOnly: boolean
+): Pick<React.CSSProperties, "height" | "overflow"> {
+  const hasFixedHeight = typeof data.height === "number" && Number.isFinite(data.height);
+  if (!hasFixedHeight) {
+    return { height: "auto", overflow: "visible" };
+  }
+  if (isMediaOnly) {
+    return { height: "100%", overflow: "hidden" };
+  }
+  return { height: "100%", overflow: "auto" };
+}
+
+function isStandaloneMarkdownImage(value: string): boolean {
+  return /^\s*!\[[^\]]*\]\([^)]+\)\s*$/u.test(value);
+}
+
+function buildTextStyle(data: FreeTextNodeData, isMediaOnly: boolean): React.CSSProperties {
   const {
     fontSize = 14,
     fontColor = "#333",
@@ -49,6 +67,15 @@ function buildTextStyle(data: FreeTextNodeData): React.CSSProperties {
     fontFamily = "inherit",
     roundedBackground = true
   } = data;
+  const hasFixedHeight = typeof data.height === "number" && Number.isFinite(data.height);
+  const layoutStyle = getTextLayoutStyle(data, isMediaOnly);
+  let padding: React.CSSProperties["padding"] = "4px";
+  if (backgroundColor) {
+    padding = "4px 8px";
+  }
+  if (isMediaOnly && hasFixedHeight) {
+    padding = 0;
+  }
 
   return {
     fontSize: `${fontSize}px`,
@@ -59,12 +86,12 @@ function buildTextStyle(data: FreeTextNodeData): React.CSSProperties {
     textAlign,
     fontFamily,
     backgroundColor: backgroundColor || undefined,
-    padding: backgroundColor ? "4px 8px" : "4px",
+    padding,
     borderRadius: roundedBackground && backgroundColor ? 4 : undefined,
     width: "100%",
-    height: "100%",
+    height: layoutStyle.height,
     outline: "none",
-    overflow: "auto"
+    overflow: layoutStyle.overflow
   };
 }
 
@@ -106,6 +133,8 @@ const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const handleResizeEnd = useCallback(
     (_event: unknown, params: ResizeParams) => {
       annotationHandlers?.onUpdateFreeTextSize?.(id, params.width, params.height);
+      // Persist once at resize end to avoid stale snapshot re-apply jitter.
+      annotationHandlers?.onPersistAnnotations?.();
       setIsResizing(false);
     },
     [id, annotationHandlers]
@@ -123,6 +152,9 @@ const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   }, [id, annotationHandlers]);
 
   const renderedHtml = useMemo(() => renderMarkdown(nodeData.text || ""), [nodeData.text]);
+  const isMediaOnly = useMemo(() => isStandaloneMarkdownImage(nodeData.text || ""), [nodeData.text]);
+  const hasFixedContentSize =
+    typeof nodeData.height === "number" && Number.isFinite(nodeData.height);
   const isSelected = selected ?? false;
   // Show selection border when selected OR when actively resizing/rotating
   const showSelectionBorder = isSelected || isResizing || isRotating;
@@ -130,7 +162,7 @@ const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     () => buildWrapperStyle(rotation, showSelectionBorder),
     [rotation, showSelectionBorder]
   );
-  const textStyle = useMemo(() => buildTextStyle(nodeData), [nodeData]);
+  const textStyle = useMemo(() => buildTextStyle(nodeData, isMediaOnly), [nodeData, isMediaOnly]);
   // Show handles when selected in edit mode, or when actively resizing/rotating
   const showHandles = (isSelected || isResizing || isRotating) && canEditAnnotations;
 
@@ -158,7 +190,9 @@ const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
       )}
       <div
         style={textStyle}
-        className="free-text-content free-text-markdown nowheel"
+        className={`free-text-content free-text-markdown nowheel ${
+          hasFixedContentSize ? "free-text-content--fixed" : "free-text-content--auto"
+        } ${isMediaOnly ? "free-text-content--media" : ""}`}
         dangerouslySetInnerHTML={{ __html: renderedHtml }}
         onWheel={handleWheelEvent}
       />

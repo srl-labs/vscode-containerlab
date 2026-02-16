@@ -105,6 +105,7 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
   onRotationEnd
 }) => {
   const [isRotating, setIsRotating] = useState(false);
+  const lastEmittedRotationRef = useRef<number>(currentRotation);
   const dragStartRef = useRef<{
     startAngle: number;
     centerX: number;
@@ -115,6 +116,12 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
 
   // Get callback to sync node internals - only called after rotation completes
   const syncNodeInternals = useRotationInternalsSync(nodeId);
+
+  useEffect(() => {
+    if (!isRotating) {
+      lastEmittedRotationRef.current = currentRotation;
+    }
+  }, [currentRotation, isRotating]);
 
   useEffect(() => {
     if (!isRotating) return;
@@ -131,7 +138,10 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
         newRotation = Math.round(newRotation / 15) * 15;
       }
 
-      onRotationChange(nodeId, Math.round(newRotation));
+      const roundedRotation = Math.round(newRotation);
+      if (roundedRotation === lastEmittedRotationRef.current) return;
+      lastEmittedRotationRef.current = roundedRotation;
+      onRotationChange(nodeId, roundedRotation);
     };
 
     const handleMouseUp = () => {
@@ -171,6 +181,7 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
       const startAngle = calculateAngle(centerX, centerY, e.clientX, e.clientY);
 
       setIsRotating(true);
+      lastEmittedRotationRef.current = currentRotation;
       // Notify parent that rotation started (for undo/redo snapshot and keeping handles visible)
       onRotationStart?.();
       dragStartRef.current = {

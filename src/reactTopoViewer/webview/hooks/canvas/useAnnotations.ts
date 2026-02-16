@@ -323,13 +323,16 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       saveTextAnnotation: textActions.saveTextAnnotation,
       deleteTextAnnotation: textActions.deleteTextAnnotation,
       deleteSelectedTextAnnotations: textActions.deleteSelectedTextAnnotations,
-      updateTextRotation: (id: string, rotation: number) =>
-        derived.updateTextAnnotation(id, { rotation }),
+      updateTextRotation: (id: string, rotation: number) => {
+        const currentRotation = derived.textAnnotations.find((annotation) => annotation.id === id)
+          ?.rotation;
+        if ((currentRotation ?? 0) === rotation) return;
+        derived.updateTextAnnotation(id, { rotation });
+      },
       onTextRotationStart: textActions.onTextRotationStart,
       onTextRotationEnd: textActions.onTextRotationEnd,
       updateTextSize: (id, width, height) => {
         derived.updateTextAnnotation(id, { width, height });
-        persistAnnotationNodes();
       },
       updateTextGeoPosition: (id, coords) => {
         derived.updateTextAnnotation(id, { geoCoordinates: coords });
@@ -351,7 +354,12 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       saveShapeAnnotation: shapeActions.saveShapeAnnotation,
       deleteShapeAnnotation: shapeActions.deleteShapeAnnotation,
       deleteSelectedShapeAnnotations: shapeActions.deleteSelectedShapeAnnotations,
-      updateShapeRotation: (id, rotation) => derived.updateShapeAnnotation(id, { rotation }),
+      updateShapeRotation: (id, rotation) => {
+        const currentRotation = derived.shapeAnnotations.find((annotation) => annotation.id === id)
+          ?.rotation;
+        if ((currentRotation ?? 0) === rotation) return;
+        derived.updateShapeAnnotation(id, { rotation });
+      },
       onShapeRotationStart: shapeActions.onShapeRotationStart,
       onShapeRotationEnd: shapeActions.onShapeRotationEnd,
       updateShapeSize: (id, width, height) => {
