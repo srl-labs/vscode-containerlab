@@ -886,8 +886,27 @@ function useExplorerNodeMenu(params: {
   const handleBackdropContextMenu = useCallback((event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    setMenuPosition({ x: event.clientX + 2, y: event.clientY + 2 });
-  }, []);
+
+    const relayTarget = document
+      .elementsFromPoint(event.clientX, event.clientY)
+      .map((element) => element.closest<HTMLElement>('[data-explorer-node-row="true"]'))
+      .find((element): element is HTMLElement => Boolean(element));
+    if (!relayTarget) {
+      return;
+    }
+
+    handleMenuClose();
+    relayTarget.dispatchEvent(
+      new window.MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        button: 2,
+        buttons: 2
+      })
+    );
+  }, [handleMenuClose]);
 
   const menuOpen = Boolean(menuPosition) && hasContextMenuItems;
 
@@ -1145,6 +1164,7 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
       alignItems="center"
       spacing={0.75}
       onContextMenu={handleRowContextMenu}
+      data-explorer-node-row="true"
       sx={{ width: "100%" }}
     >
       <ExplorerNodeTextBlock
