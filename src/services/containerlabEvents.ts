@@ -1077,8 +1077,13 @@ function applyInterfaceEvent(event: ContainerlabEvent): void {
   }
   const existing = ifaceMap.get(ifaceName);
   const updated = buildUpdatedInterfaceRecord(ifaceName, attributes, existing);
+  const removedRenamedEntries = removeInterfaceRecordsWithSameIndex(
+    ifaceMap,
+    ifaceName,
+    updated.ifindex
+  );
 
-  const changed = !interfaceRecordsEqual(existing, updated);
+  const changed = removedRenamedEntries || !interfaceRecordsEqual(existing, updated);
 
   // Check if this event contains traffic stats - we always want to notify
   // for stats updates to ensure real-time traffic monitoring works
@@ -1101,6 +1106,29 @@ function applyInterfaceEvent(event: ContainerlabEvent): void {
   // or when structural data changed
   scheduleInitialResolution();
   scheduleDataChanged();
+}
+
+function removeInterfaceRecordsWithSameIndex(
+  ifaceMap: Map<string, InterfaceRecord>,
+  incomingName: string,
+  incomingIfindex: number | undefined
+): boolean {
+  if (incomingIfindex === undefined) {
+    return false;
+  }
+
+  let removed = false;
+  for (const [existingName, existingRecord] of ifaceMap.entries()) {
+    if (existingName === incomingName) {
+      continue;
+    }
+    if (existingRecord.ifindex === incomingIfindex) {
+      ifaceMap.delete(existingName);
+      removed = true;
+    }
+  }
+
+  return removed;
 }
 
 function removeInterfaceRecord(containerId: string, ifaceName: string): boolean {
