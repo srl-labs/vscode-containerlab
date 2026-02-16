@@ -164,6 +164,7 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
   const viewer = await provider.openViewer(labPath, labName, isViewMode);
 
   currentTopoViewer = viewer;
+  viewer.requestFitViewport();
 
   // Set context for any UI state
   vscode.commands.executeCommand("setContext", "isTopoviewerActive", true);

@@ -26,6 +26,33 @@ function getNodesMapOrError(
   return { nodesMap };
 }
 
+/**
+ * Ensures the document has topology.nodes and topology.links containers.
+ * Used when creating or upserting nodes from an empty/minimal YAML file.
+ */
+function ensureTopologyContainers(doc: YAML.Document.Parsed): YAML.YAMLMap {
+  if (!doc.contents || !YAML.isMap(doc.contents)) {
+    doc.contents = doc.createNode({}) as unknown as YAML.ParsedNode;
+  }
+
+  const topology = doc.get("topology", true);
+  if (!topology || !YAML.isMap(topology)) {
+    doc.set("topology", doc.createNode({}) as YAML.YAMLMap);
+  }
+
+  const nodesMap = doc.getIn(["topology", "nodes"], true);
+  if (!nodesMap || !YAML.isMap(nodesMap)) {
+    doc.setIn(["topology", "nodes"], doc.createNode({}) as YAML.YAMLMap);
+  }
+
+  const linksSeq = doc.getIn(["topology", "links"], true);
+  if (!linksSeq || !YAML.isSeq(linksSeq)) {
+    doc.setIn(["topology", "links"], doc.createNode([]) as YAML.YAMLSeq);
+  }
+
+  return doc.getIn(["topology", "nodes"], true) as YAML.YAMLMap;
+}
+
 /** Node data for save operations */
 export interface NodeSaveData {
   id: string;
@@ -364,9 +391,7 @@ export function addNodeToDoc(
   logger: IOLogger = noopLogger
 ): SaveResult {
   try {
-    const result = getNodesMapOrError(doc);
-    if ("error" in result) return result.error;
-    const { nodesMap } = result;
+    const nodesMap = ensureTopologyContainers(doc);
 
     const nodeId = nodeData.name || nodeData.id;
     if (!nodeId) {
@@ -400,9 +425,7 @@ export function editNodeInDoc(
   logger: IOLogger = noopLogger
 ): SaveResult {
   try {
-    const result = getNodesMapOrError(doc);
-    if ("error" in result) return result.error;
-    const { nodesMap } = result;
+    const nodesMap = ensureTopologyContainers(doc);
 
     const originalId = nodeData.id;
     const newName = nodeData.name || nodeData.id;

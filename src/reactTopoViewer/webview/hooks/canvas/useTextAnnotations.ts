@@ -104,6 +104,10 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
     void saveAnnotationNodesFromGraph();
   }, []);
 
+  const persistQuiet = useCallback(() => {
+    void saveAnnotationNodesFromGraph(undefined, { applySnapshot: false });
+  }, []);
+
   const saveTextAnnotation = useCallback(
     (annotation: FreeTextAnnotation) => {
       const isNew = !derived.textAnnotations.some((t) => t.id === annotation.id);
@@ -157,10 +161,10 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
     (id: string) => {
       if (pendingRotationRef.current === id) {
         pendingRotationRef.current = null;
-        persist();
+        persistQuiet();
       }
     },
-    [persist]
+    [persistQuiet]
   );
 
   const handleTextCanvasClick = useCallback(

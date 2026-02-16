@@ -208,6 +208,24 @@ function usePanelResize(sideRef: React.RefObject<string>) {
   return { panelWidth, isDragging, handleResizeStart };
 }
 
+function haveFooterHandlersChanged(prev: FooterRef | null, next: FooterRef | null): boolean {
+  return (
+    prev?.handleApply !== next?.handleApply ||
+    prev?.handleSave !== next?.handleSave ||
+    prev?.handleDiscard !== next?.handleDiscard
+  );
+}
+
+function hasFooterRefChanged(prev: FooterRef | null, next: FooterRef | null): boolean {
+  if (Boolean(prev) !== Boolean(next)) {
+    return true;
+  }
+  if ((prev?.hasChanges ?? false) !== (next?.hasChanges ?? false)) {
+    return true;
+  }
+  return haveFooterHandlersChanged(prev, next);
+}
+
 export interface ContextPanelProps {
   isOpen: boolean;
   side: "left" | "right";
@@ -244,8 +262,11 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   const { panelWidth, isDragging, handleResizeStart } = usePanelResize(sideRef);
 
   const setFooterRef = useCallback((ref: FooterRef | null) => {
+    const changed = hasFooterRefChanged(footerRef.current, ref);
     footerRef.current = ref;
-    forceUpdate((n) => n + 1);
+    if (changed) {
+      forceUpdate((n) => n + 1);
+    }
   }, []);
 
   const setBannerRef = useCallback((ref: BannerRef | null) => {

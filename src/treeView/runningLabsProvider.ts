@@ -235,13 +235,19 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     return undefined;
   }
 
+  async getRootChildrenCount(): Promise<number> {
+    if (!this.treeItems.length) {
+      await this.discoverLabs();
+    }
+    return this.getRootChildren().length;
+  }
+
   private getRootChildren(): RunningTreeNode[] {
     const labs = hideNonOwnedLabsState
       ? this.treeItems.filter((labNode) => labNode.owner == username)
       : this.treeItems;
 
-    const filtered = this.treeFilter ? this.filterLabs(labs, this.treeFilter) : labs;
-    return filtered;
+    return this.treeFilter ? this.filterLabs(labs, this.treeFilter) : labs;
   }
 
   private filterLabs(labs: c.ClabLabTreeNode[], text: string): c.ClabLabTreeNode[] {

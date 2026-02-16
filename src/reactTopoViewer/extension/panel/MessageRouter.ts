@@ -4,7 +4,7 @@
 
 import * as path from "path";
 
-import type * as vscode from "vscode";
+import * as vscode from "vscode";
 
 import { log, logWithLocation } from "../services/logger";
 import { labLifecycleService } from "../services/LabLifecycleService";
@@ -51,6 +51,7 @@ const TOPOLOGY_HOST_SNAPSHOT = "topology-host:snapshot";
 const TOPOLOGY_HOST_ACK = "topology-host:ack";
 const TOPOLOGY_HOST_REJECT = "topology-host:reject";
 const TOPOLOGY_HOST_ERROR = "topology-host:error";
+const SNAPSHOT_ERROR_MODAL_COOLDOWN_MS = 5000;
 /**
  * Context required by the message router
  */
@@ -68,6 +69,8 @@ export interface MessageRouterContext {
  */
 export class MessageRouter {
   private context: MessageRouterContext;
+  private lastSnapshotErrorModalAt = 0;
+  private lastSnapshotErrorModalKey = "";
 
   constructor(context: MessageRouterContext) {
     this.context = context;
@@ -167,12 +170,30 @@ export class MessageRouter {
         reason: "init"
       });
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      this.showSnapshotLoadErrorModal(errorMessage);
       this.postTopologyHostError(
         panel,
         requestId,
-        err instanceof Error ? err.message : String(err)
+        errorMessage
       );
     }
+  }
+
+  private showSnapshotLoadErrorModal(errorMessage: string): void {
+    const yamlPath = this.context.yamlFilePath || "unknown topology file";
+    const modalMessage = `Failed to read topology files for:\n${yamlPath}\n\n${errorMessage}`;
+    const modalKey = `${yamlPath}:${errorMessage}`;
+    const now = Date.now();
+    if (
+      this.lastSnapshotErrorModalKey === modalKey &&
+      now - this.lastSnapshotErrorModalAt < SNAPSHOT_ERROR_MODAL_COOLDOWN_MS
+    ) {
+      return;
+    }
+    this.lastSnapshotErrorModalKey = modalKey;
+    this.lastSnapshotErrorModalAt = now;
+    void vscode.window.showErrorMessage(modalMessage, { modal: true });
   }
 
   private async handleTopologyHostMessage(

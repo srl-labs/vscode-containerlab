@@ -16,6 +16,7 @@ import { TopologyHostCore } from "../shared/host/TopologyHostCore";
 import { nodeFsAdapter } from "../shared/io";
 import {
   MSG_EDGE_STATS_UPDATE,
+  MSG_FIT_VIEWPORT,
   MSG_NODE_DATA_UPDATED,
   MSG_TOPO_MODE_CHANGE
 } from "../shared/messages/webview";
@@ -448,6 +449,13 @@ export class ReactTopoViewer {
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to refresh link states: ${err}`);
     }
+  }
+
+  public requestFitViewport(): void {
+    if (!this.currentPanel) {
+      return;
+    }
+    this.currentPanel.webview.postMessage({ type: MSG_FIT_VIEWPORT });
   }
 }
 

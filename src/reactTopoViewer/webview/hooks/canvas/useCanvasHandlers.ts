@@ -873,9 +873,7 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
       log.info("[ReactFlowCanvas] React Flow initialized");
       // Don't auto-fitView in geo layout mode - map controls the viewport
       if (!geoLayout?.isGeoLayout) {
-        setTimeout(() => {
-          void instance.fitView({ padding: 0.2 });
-        }, 100);
+        void instance.fitView({ padding: 0.2, duration: 0 });
       }
     },
     [geoLayout?.isGeoLayout]

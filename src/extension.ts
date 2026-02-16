@@ -553,6 +553,38 @@ export async function activate(context: vscode.ExtensionContext) {
   setRunningLabsProvider(newRunningProvider);
   setHelpFeedbackProvider(newHelpProvider);
 
+  // Webview views are resolved lazily, so we keep a hidden tree view badge proxy
+  // to show running lab count on the activity icon before the explorer is opened.
+  const activityBadgeProxyProvider: vscode.TreeDataProvider<vscode.TreeItem> = {
+    getTreeItem: (element: vscode.TreeItem) => element,
+    getChildren: async () => []
+  };
+  const activityBadgeProxyView = vscode.window.createTreeView("containerlabActivityBadgeProxyView", {
+    treeDataProvider: activityBadgeProxyProvider,
+    showCollapseAll: false
+  });
+  const updateActivityBadgeProxy = async () => {
+    try {
+      const runningLabCount = await newRunningProvider.getRootChildrenCount();
+      activityBadgeProxyView.badge =
+        runningLabCount > 0
+          ? {
+              value: runningLabCount,
+              tooltip: runningLabCount === 1 ? "1 running lab" : `${runningLabCount} running labs`
+            }
+          : undefined;
+    } catch {
+      activityBadgeProxyView.badge = undefined;
+    }
+  };
+  context.subscriptions.push(
+    activityBadgeProxyView,
+    newRunningProvider.onDidChangeTreeData(() => {
+      void updateActivityBadgeProxy();
+    })
+  );
+  void updateActivityBadgeProxy();
+
   await refreshSshxSessions();
   await refreshGottySessions();
   // Docker images are refreshed on TopoViewer open to avoid unnecessary calls

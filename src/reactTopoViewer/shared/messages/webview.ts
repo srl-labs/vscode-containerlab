@@ -20,6 +20,9 @@ export const MSG_NODE_RENAMED = "node-renamed";
 /** Message type for updating node data */
 export const MSG_NODE_DATA_UPDATED = "node-data-updated";
 
+/** Message type to request fit-to-viewport in webview */
+export const MSG_FIT_VIEWPORT = "fit-viewport";
+
 export const MSG_PANEL_ACTION = "panel-action";
 
 export const MSG_CUSTOM_NODE_UPDATED = "custom-nodes-updated";
@@ -37,6 +40,7 @@ export type WebviewMessageType =
   | typeof MSG_TOPO_MODE_CHANGE
   | typeof MSG_NODE_RENAMED
   | typeof MSG_NODE_DATA_UPDATED
+  | typeof MSG_FIT_VIEWPORT
   | typeof MSG_PANEL_ACTION
   | typeof MSG_CUSTOM_NODE_UPDATED
   | typeof MSG_CUSTOM_NODE_ERROR

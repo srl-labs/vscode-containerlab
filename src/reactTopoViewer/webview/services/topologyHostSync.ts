@@ -14,13 +14,19 @@ import type {
   TopologyAnnotations
 } from "../../shared/types/topology";
 import type { TopoNode, TopoEdge } from "../../shared/types/graph";
+import {
+  annotationsToNodes,
+  applyGroupMembershipToNodes,
+  isNonEmptyString,
+  parseEndpointLabelOffset,
+  parseLegacyGroupIdentity,
+  pruneEdgeAnnotations,
+  toFiniteNumber,
+  toPosition
+} from "../annotations";
 import { useGraphStore } from "../stores/graphStore";
 import { useTopoViewerStore } from "../stores/topoViewerStore";
 import { useCanvasStore } from "../stores/canvasStore";
-import { applyGroupMembershipToNodes } from "../annotations/groupMembership";
-import { annotationsToNodes } from "../annotations/annotationNodeConverters";
-import { pruneEdgeAnnotations } from "../annotations/edgeAnnotations";
-import { parseEndpointLabelOffset } from "../annotations/endpointLabelOffset";
 import { applyForceLayout, hasPresetPositions } from "../components/canvas/layout";
 import { snapToGrid } from "../utils/grid";
 
@@ -33,6 +39,205 @@ export interface ApplySnapshotOptions {
 }
 
 const LAYOUTABLE_NODE_TYPES = new Set(["topology-node", "network-node"]);
+const LEGACY_GROUP_PADDING = 40;
+const LEGACY_NODE_WIDTH = 100;
+const LEGACY_NODE_HEIGHT = 100;
+const DEFAULT_GROUP_WIDTH = 300;
+const DEFAULT_GROUP_HEIGHT = 200;
+const LEGACY_DEFAULT_MEDIA_TEXT_WIDTH = 120;
+const LEGACY_MEDIA_TEXT_HEIGHT_RATIO = 0.62;
+const LEGACY_MIN_MEDIA_TEXT_HEIGHT = 48;
+
+function isStandaloneMarkdownImage(value: unknown): boolean {
+  if (!isNonEmptyString(value)) return false;
+  return /^\s*!\[[^\]]*\]\([^)]+\)\s*$/u.test(value);
+}
+
+function inferLegacyMediaTextHeight(width: number): number {
+  return Math.max(LEGACY_MIN_MEDIA_TEXT_HEIGHT, Math.round(width * LEGACY_MEDIA_TEXT_HEIGHT_RATIO));
+}
+
+function nodeBelongsToGroup(
+  annotation: NodeAnnotation,
+  groupId: string,
+  groupName: string,
+  groupLevel: string
+): boolean {
+  if (isNonEmptyString(annotation.groupId)) {
+    return annotation.groupId === groupId;
+  }
+  if (!isNonEmptyString(annotation.group)) {
+    return false;
+  }
+  if (annotation.group !== groupId && annotation.group !== groupName) {
+    return false;
+  }
+
+  const nodeLevel = isNonEmptyString(annotation.level) ? annotation.level : "1";
+  return nodeLevel === groupLevel;
+}
+
+function deriveLegacyGroupBounds(
+  groupId: string,
+  groupName: string,
+  groupLevel: string,
+  nodeAnnotations: NodeAnnotation[]
+): { position: { x: number; y: number }; width: number; height: number } | undefined {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  for (const annotation of nodeAnnotations) {
+    if (!nodeBelongsToGroup(annotation, groupId, groupName, groupLevel)) continue;
+    const position = toPosition(annotation.position);
+    if (!position) continue;
+
+    minX = Math.min(minX, position.x);
+    minY = Math.min(minY, position.y);
+    maxX = Math.max(maxX, position.x + LEGACY_NODE_WIDTH);
+    maxY = Math.max(maxY, position.y + LEGACY_NODE_HEIGHT);
+  }
+
+  if (
+    !Number.isFinite(minX) ||
+    !Number.isFinite(minY) ||
+    !Number.isFinite(maxX) ||
+    !Number.isFinite(maxY)
+  ) {
+    return undefined;
+  }
+
+  return {
+    position: { x: minX - LEGACY_GROUP_PADDING, y: minY - LEGACY_GROUP_PADDING },
+    width: Math.max(DEFAULT_GROUP_WIDTH, maxX - minX + LEGACY_GROUP_PADDING * 2),
+    height: Math.max(DEFAULT_GROUP_HEIGHT, maxY - minY + LEGACY_GROUP_PADDING * 2)
+  };
+}
+
+function normalizeFreeTextAnnotations(annotations: FreeTextAnnotation[]): FreeTextAnnotation[] {
+  return annotations.map((annotation) => {
+    const position = toPosition(annotation.position) ?? { x: 0, y: 0 };
+    const width = toFiniteNumber(annotation.width);
+    const height = toFiniteNumber(annotation.height);
+    const isMedia = isStandaloneMarkdownImage(annotation.text);
+    const mediaWidth = width ?? LEGACY_DEFAULT_MEDIA_TEXT_WIDTH;
+
+    const normalizedWidth = isMedia ? mediaWidth : width;
+    const normalizedHeight = isMedia
+      ? (height ?? inferLegacyMediaTextHeight(mediaWidth))
+      : height;
+
+    const normalizedAnnotation: FreeTextAnnotation = {
+      ...annotation,
+      position,
+    };
+    if (normalizedWidth !== undefined) {
+      normalizedAnnotation.width = normalizedWidth;
+    } else {
+      delete normalizedAnnotation.width;
+    }
+    if (normalizedHeight !== undefined) {
+      normalizedAnnotation.height = normalizedHeight;
+    } else {
+      delete normalizedAnnotation.height;
+    }
+
+    return normalizedAnnotation;
+  });
+}
+
+function normalizeFreeShapeAnnotations(annotations: FreeShapeAnnotation[]): FreeShapeAnnotation[] {
+  return annotations.map((annotation) => {
+    const normalizedEnd = toPosition(annotation.endPosition);
+    return {
+      ...annotation,
+      position: toPosition(annotation.position) ?? { x: 0, y: 0 },
+      endPosition: normalizedEnd
+    };
+  });
+}
+
+function resolveGroupIdentity(
+  group: GroupStyleAnnotation,
+  index: number
+): { id: string; name: string; level: string } {
+  const id = isNonEmptyString(group.id) ? group.id : `legacy-group-${index + 1}`;
+  const identity = parseLegacyGroupIdentity(id);
+  const name = isNonEmptyString(group.name) ? group.name : identity.name;
+  const level = isNonEmptyString(group.level) ? group.level : identity.level;
+  return { id, name, level };
+}
+
+function resolveGroupBounds(
+  group: GroupStyleAnnotation,
+  identity: { id: string; name: string; level: string },
+  nodeAnnotations: NodeAnnotation[]
+): { position: { x: number; y: number }; width: number; height: number } {
+  const normalizedPosition = toPosition(group.position);
+  const normalizedWidth = toFiniteNumber(group.width);
+  const normalizedHeight = toFiniteNumber(group.height);
+
+  if (
+    normalizedPosition !== undefined &&
+    normalizedWidth !== undefined &&
+    normalizedHeight !== undefined
+  ) {
+    return {
+      position: normalizedPosition,
+      width: normalizedWidth,
+      height: normalizedHeight
+    };
+  }
+
+  const derivedBounds = deriveLegacyGroupBounds(
+    identity.id,
+    identity.name,
+    identity.level,
+    nodeAnnotations
+  );
+
+  return {
+    position: normalizedPosition ?? derivedBounds?.position ?? { x: 0, y: 0 },
+    width: normalizedWidth ?? derivedBounds?.width ?? DEFAULT_GROUP_WIDTH,
+    height: normalizedHeight ?? derivedBounds?.height ?? DEFAULT_GROUP_HEIGHT
+  };
+}
+
+function resolveGroupLabelColor(group: GroupStyleAnnotation): string | undefined {
+  if (isNonEmptyString(group.labelColor)) {
+    return group.labelColor;
+  }
+  const legacyColor = (group as Record<string, unknown>).color;
+  return isNonEmptyString(legacyColor) ? legacyColor : undefined;
+}
+
+function normalizeGroupStyleAnnotation(
+  group: GroupStyleAnnotation,
+  index: number,
+  nodeAnnotations: NodeAnnotation[]
+): GroupStyleAnnotation {
+  const identity = resolveGroupIdentity(group, index);
+  const bounds = resolveGroupBounds(group, identity, nodeAnnotations);
+
+  return {
+    ...group,
+    id: identity.id,
+    name: identity.name,
+    level: identity.level,
+    position: bounds.position,
+    width: bounds.width,
+    height: bounds.height,
+    labelColor: resolveGroupLabelColor(group)
+  };
+}
+
+function normalizeGroupStyleAnnotations(
+  groups: GroupStyleAnnotation[],
+  nodeAnnotations: NodeAnnotation[]
+): GroupStyleAnnotation[] {
+  return groups.map((group, index) => normalizeGroupStyleAnnotation(group, index, nodeAnnotations));
+}
 
 function syncUndoRedo(snapshot: TopologySnapshot): void {
   useTopoViewerStore.getState().setInitialData({
@@ -140,11 +345,16 @@ function normalizeAnnotations(annotations?: TopologyAnnotations): Required<Topol
     aliasEndpointAnnotations = [],
     viewerSettings = {}
   } = annotations ?? {};
+
+  const normalizedNodeAnnotations = nodeAnnotations;
   return {
-    freeTextAnnotations,
-    freeShapeAnnotations,
-    groupStyleAnnotations,
-    nodeAnnotations,
+    freeTextAnnotations: normalizeFreeTextAnnotations(freeTextAnnotations),
+    freeShapeAnnotations: normalizeFreeShapeAnnotations(freeShapeAnnotations),
+    groupStyleAnnotations: normalizeGroupStyleAnnotations(
+      groupStyleAnnotations,
+      normalizedNodeAnnotations
+    ),
+    nodeAnnotations: normalizedNodeAnnotations,
     networkNodeAnnotations,
     edgeAnnotations,
     aliasEndpointAnnotations,

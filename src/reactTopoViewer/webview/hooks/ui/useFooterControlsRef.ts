@@ -18,11 +18,22 @@ export function useFooterControlsRef(
 ): void {
   useEffect(() => {
     if (!onFooterRef) return;
-    onFooterRef(
-      enabled
-        ? { handleApply, handleSave, handleDiscard: handleDiscard ?? (() => {}), hasChanges }
-        : null
-    );
-    return () => onFooterRef(null);
+    if (!enabled) {
+      onFooterRef(null);
+      return;
+    }
+    onFooterRef({
+      handleApply,
+      handleSave,
+      handleDiscard: handleDiscard ?? (() => {}),
+      hasChanges
+    });
   }, [onFooterRef, enabled, handleApply, handleSave, handleDiscard, hasChanges]);
+
+  useEffect(
+    () => () => {
+      onFooterRef?.(null);
+    },
+    [onFooterRef]
+  );
 }

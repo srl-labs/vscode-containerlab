@@ -16,6 +16,9 @@ import {
   ReactFlow,
   ReactFlowProvider,
   SelectionMode,
+  getNodesBounds,
+  getViewportForBounds,
+  useNodesInitialized,
   useStore,
   type Edge,
   type Node,
@@ -66,6 +69,8 @@ import type {
 const GRID_SIZE = 20;
 const QUADRATIC_GRID_SIZE = 40;
 const DEFAULT_GRID_LINE_WIDTH = 0.5;
+const MIN_ZOOM = 0.1;
+const MAX_FIT_ZOOM = 2;
 
 /** Hook for wrapped node click handling */
 function handleAltDelete(
@@ -111,8 +116,7 @@ function handleLinkCreationClick(
   return true;
 }
 
-function handleAnnotationEditClick(
-  event: React.MouseEvent,
+function openAnnotationEditor(
   node: { id: string; type?: string },
   clearContextForAnnotationEdit: () => void,
   annotationHandlers?: AnnotationHandlers
@@ -120,19 +124,16 @@ function handleAnnotationEditClick(
   if (!annotationHandlers) return false;
 
   if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers.onEditFreeText) {
-    event.stopPropagation();
     clearContextForAnnotationEdit();
     annotationHandlers.onEditFreeText(node.id);
     return true;
   }
   if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers.onEditFreeShape) {
-    event.stopPropagation();
     clearContextForAnnotationEdit();
     annotationHandlers.onEditFreeShape(node.id);
     return true;
   }
   if (node.type === GROUP_NODE_TYPE && annotationHandlers.onEditGroup) {
-    event.stopPropagation();
     clearContextForAnnotationEdit();
     annotationHandlers.onEditGroup(node.id);
     return true;
@@ -156,15 +157,13 @@ function useWrappedNodeClick(
       if (handleAltDelete(event, node, mode, isLocked, handleDeleteNode, annotationHandlers))
         return;
       if (handleLinkCreationClick(event, node, linkSourceNode, completeLinkCreation)) return;
-      if (
-        handleAnnotationEditClick(event, node, clearContextForAnnotationEdit, annotationHandlers)
-      ) {
-        // Still flow through to the base handler to ensure shared behavior
-        // like closing context menus stays consistent for annotation nodes.
-        onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
-        return;
-      }
+      const didOpenAnnotationEditor = openAnnotationEditor(
+        node,
+        clearContextForAnnotationEdit,
+        annotationHandlers
+      );
       onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
+      if (didOpenAnnotationEditor) return;
     },
     [
       linkSourceNode,
@@ -216,6 +215,42 @@ const fitViewOptions = { padding: 0.2 };
 const LOW_DETAIL_ZOOM_THRESHOLD = 0.5;
 const LARGE_GRAPH_NODE_THRESHOLD = 600;
 const LARGE_GRAPH_EDGE_THRESHOLD = 900;
+
+type CanvasOcclusion = {
+  side: "left" | "right" | null;
+  width: number;
+};
+
+function getContextPanelOcclusion(
+  canvasContainer: HTMLDivElement | null,
+  isContextPanelOpen: boolean
+): CanvasOcclusion {
+  if (!isContextPanelOpen || !canvasContainer) {
+    return { side: null, width: 0 };
+  }
+
+  const panel = document.querySelector<HTMLElement>("[data-testid='context-panel'] .MuiDrawer-paper");
+  if (!panel) {
+    return { side: null, width: 0 };
+  }
+
+  const canvasRect = canvasContainer.getBoundingClientRect();
+  const panelRect = panel.getBoundingClientRect();
+  const overlapWidth = Math.max(
+    0,
+    Math.min(canvasRect.right, panelRect.right) - Math.max(canvasRect.left, panelRect.left)
+  );
+  if (overlapWidth <= 0) {
+    return { side: null, width: 0 };
+  }
+
+  const side: "left" | "right" = panelRect.left <= canvasRect.left ? "left" : "right";
+  return { side, width: overlapWidth };
+}
+
+function hasFiniteViewport(viewport: { x: number; y: number; zoom: number }): boolean {
+  return Number.isFinite(viewport.x) && Number.isFinite(viewport.y) && Number.isFinite(viewport.zoom);
+}
 
 // ============================================================================
 // Hooks extracted for complexity reduction
@@ -426,24 +461,24 @@ function shouldRunFitView(params: {
   fitViewRequestId: number;
   lastFitViewRequestId: number;
   isReactFlowReady: boolean;
+  areNodesInitialized: boolean;
   reactFlowInstance: ReactFlowInstance | null;
-  nodeCount: number;
-  isGeoLayout: boolean;
+  fitNodeCount: number;
 }): boolean {
   const {
     fitViewRequestId,
     lastFitViewRequestId,
     isReactFlowReady,
+    areNodesInitialized,
     reactFlowInstance,
-    nodeCount,
-    isGeoLayout
+    fitNodeCount
   } = params;
   return (
     fitViewRequestId > lastFitViewRequestId &&
     isReactFlowReady &&
+    areNodesInitialized &&
     Boolean(reactFlowInstance) &&
-    nodeCount > 0 &&
-    !isGeoLayout
+    fitNodeCount > 0
   );
 }
 
@@ -874,6 +909,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const fitViewRequestId = useFitViewRequestId();
     const lastFitViewRequestRef = useRef(0);
     const [isReactFlowReady, setIsReactFlowReady] = useState(false);
+    const areNodesInitialized = useNodesInitialized({ includeHiddenNodes: false });
     const suppressSelectionSyncUntilRef = useRef(0);
 
     const topoState = useMemo(() => ({ mode, isLocked }), [mode, isLocked]);
@@ -885,6 +921,10 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     // All nodes (topology + annotation) are now unified in propNodes
     const allNodes = useMemo(() => (propNodes as Node[]) ?? [], [propNodes]);
     const allEdges = useMemo(() => (propEdges as Edge[]) ?? [], [propEdges]);
+    const visibleNodeCount = useMemo(
+      () => allNodes.reduce((count, node) => (node.hidden ? count : count + 1), 0),
+      [allNodes]
+    );
 
     const handleEdgeCreatedWithContextPanel = useCallback(
       (
@@ -941,26 +981,122 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const isGeoEdit = isGeoEditable;
     useGeoWheelZoom(geoLayout, isGeoLayout, isGeoEdit, canvasContainerRef);
 
+    const fitCanvasToVisibleViewport = useCallback(
+      async (options: { padding: number; duration: number }) => {
+        const instance = reactFlowInstanceRef.current;
+        const canvasContainer = canvasContainerRef.current;
+        const visibleNodes = allNodes.filter((node) => !node.hidden);
+
+        if (!instance || !canvasContainer || visibleNodes.length === 0) {
+          return;
+        }
+
+        const occlusion = getContextPanelOcclusion(canvasContainer, isContextPanelOpen);
+        if (occlusion.width <= 0) {
+          await instance.fitView(options);
+          return;
+        }
+
+        const canvasRect = canvasContainer.getBoundingClientRect();
+        const availableWidth = Math.max(1, canvasRect.width - occlusion.width);
+        const availableHeight = Math.max(1, canvasRect.height);
+        const bounds = getNodesBounds(visibleNodes);
+        const viewport = getViewportForBounds(
+          bounds,
+          availableWidth,
+          availableHeight,
+          MIN_ZOOM,
+          MAX_FIT_ZOOM,
+          options.padding
+        );
+        if (!hasFiniteViewport(viewport)) {
+          await instance.fitView(options);
+          return;
+        }
+
+        const adjustedX = occlusion.side === "left" ? viewport.x + occlusion.width : viewport.x;
+        await instance.setViewport({ x: adjustedX, y: viewport.y, zoom: viewport.zoom }, options);
+      },
+      [allNodes, isContextPanelOpen]
+    );
+
     useEffect(() => {
       if (
         !shouldRunFitView({
           fitViewRequestId,
           lastFitViewRequestId: lastFitViewRequestRef.current,
           isReactFlowReady,
+          areNodesInitialized,
           reactFlowInstance: reactFlowInstanceRef.current,
-          nodeCount: allNodes.length,
-          isGeoLayout
+          fitNodeCount: visibleNodeCount
         })
       ) {
         return;
       }
-      lastFitViewRequestRef.current = fitViewRequestId;
-      setTimeout(() => {
-        reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 }).catch(() => {
-          /* ignore */
-        });
-      }, 50);
-    }, [fitViewRequestId, allNodes.length, isGeoLayout, isReactFlowReady]);
+
+      let cancelled = false;
+      const requestedFitId = fitViewRequestId;
+      let completedPasses = 0;
+      const requiredPasses = 2;
+
+      const tryFit = () => {
+        if (cancelled) return;
+        if (requestedFitId <= lastFitViewRequestRef.current) return;
+
+        if (isGeoLayout) {
+          if (!geoLayout.isReady) {
+            window.requestAnimationFrame(tryFit);
+            return;
+          }
+          geoLayout.fitToViewport({ duration: 0 });
+          completedPasses += 1;
+          if (completedPasses < requiredPasses) {
+            window.requestAnimationFrame(tryFit);
+            return;
+          }
+          lastFitViewRequestRef.current = requestedFitId;
+          return;
+        }
+
+        const canvasContainer = canvasContainerRef.current;
+        const canvasRect = canvasContainer?.getBoundingClientRect();
+        const hasCanvasArea = Boolean(canvasRect && canvasRect.width > 1 && canvasRect.height > 1);
+        if (!hasCanvasArea) {
+          window.requestAnimationFrame(tryFit);
+          return;
+        }
+
+        void fitCanvasToVisibleViewport({ padding: 0.2, duration: 0 })
+          .then(() => {
+            if (cancelled) return;
+            if (requestedFitId <= lastFitViewRequestRef.current) return;
+            completedPasses += 1;
+            if (completedPasses < requiredPasses) {
+              window.requestAnimationFrame(tryFit);
+              return;
+            }
+            lastFitViewRequestRef.current = requestedFitId;
+          })
+          .catch(() => {
+            if (cancelled) return;
+            window.requestAnimationFrame(tryFit);
+          });
+      };
+
+      tryFit();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [
+      fitCanvasToVisibleViewport,
+      fitViewRequestId,
+      visibleNodeCount,
+      geoLayout,
+      isGeoLayout,
+      isReactFlowReady,
+      areNodesInitialized
+    ]);
 
     // Refs for context menu (to avoid re-renders)
     const { nodesRef, edgesRef } = useGraphRefs(allNodes, allEdges);
@@ -1054,10 +1190,10 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         geoLayout.fitToViewport();
         return;
       }
-      Promise.resolve(refMethods.fit()).catch(() => {
+      Promise.resolve(fitCanvasToVisibleViewport({ padding: 0.2, duration: 200 })).catch(() => {
         /* ignore */
       });
-    }, [isGeoLayout, geoLayout, refMethods]);
+    }, [fitCanvasToVisibleViewport, geoLayout, isGeoLayout]);
     const refHandle = useMemo(
       () => ({
         ...refMethods,
@@ -1286,7 +1422,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           fitView={!isGeoLayout}
           fitViewOptions={fitViewOptions}
           defaultViewport={defaultViewport}
-          minZoom={0.1}
+          minZoom={MIN_ZOOM}
           maxZoom={Infinity}
           onlyRenderVisibleElements={shouldOnlyRenderVisibleElements(isLowDetail, isGeoLayout)}
           selectionMode={SelectionMode.Partial}

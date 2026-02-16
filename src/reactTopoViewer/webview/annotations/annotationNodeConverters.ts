@@ -24,6 +24,12 @@ import type {
 } from "../components/canvas/types";
 
 import { DEFAULT_LINE_LENGTH } from "./constants";
+import {
+  isNonEmptyString,
+  normalizePosition,
+  parseLegacyGroupIdentity,
+  toFiniteNumber
+} from "./valueParsers";
 
 // ============================================================================
 // Constants
@@ -45,6 +51,8 @@ const ANNOTATION_NODE_TYPES: Set<string> = new Set([
 const LINE_PADDING = 20;
 /** Default zIndex for shapes so they render behind topology nodes */
 const DEFAULT_SHAPE_Z_INDEX = -1;
+const DEFAULT_GROUP_WIDTH = 200;
+const DEFAULT_GROUP_HEIGHT = 150;
 
 // ============================================================================
 // Helper Functions
@@ -85,11 +93,18 @@ interface LineBounds {
 /**
  * Compute line bounding box and positioning info for line shapes
  */
-function computeLineBounds(annotation: FreeShapeAnnotation): LineBounds {
-  const startX = annotation.position.x;
-  const startY = annotation.position.y;
-  const endX = annotation.endPosition?.x ?? startX + DEFAULT_LINE_LENGTH;
-  const endY = annotation.endPosition?.y ?? startY;
+function computeLineBounds(
+  annotation: FreeShapeAnnotation,
+  startPosition: { x: number; y: number }
+): LineBounds {
+  const startX = startPosition.x;
+  const startY = startPosition.y;
+  const endPosition = normalizePosition(annotation.endPosition, {
+    x: startX + DEFAULT_LINE_LENGTH,
+    y: startY
+  });
+  const endX = endPosition.x;
+  const endY = endPosition.y;
 
   // Compute bounding box with padding
   const minX = Math.min(startX, endX) - LINE_PADDING;
@@ -116,10 +131,11 @@ function computeLineBounds(annotation: FreeShapeAnnotation): LineBounds {
  * Convert a FreeTextAnnotation to a React Flow Node
  */
 export function freeTextToNode(annotation: FreeTextAnnotation): Node<FreeTextNodeData> {
+  const position = normalizePosition(annotation.position);
   return {
     id: annotation.id,
     type: FREE_TEXT_NODE_TYPE,
-    position: annotation.position,
+    position,
     // Width/height at top level for React Flow's NodeResizer compatibility
     width: annotation.width,
     height: annotation.height,
@@ -153,12 +169,13 @@ export function freeTextToNode(annotation: FreeTextAnnotation): Node<FreeTextNod
  */
 export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShapeNodeData> {
   const isLine = annotation.shapeType === "line";
+  const startPosition = normalizePosition(annotation.position);
   const resolvedZIndex =
     typeof annotation.zIndex === "number" ? annotation.zIndex : DEFAULT_SHAPE_Z_INDEX;
 
   if (isLine) {
     const { nodePosition, width, height, relativeEndPosition, lineStartInNode } =
-      computeLineBounds(annotation);
+      computeLineBounds(annotation, startPosition);
 
     return {
       id: annotation.id,
@@ -173,9 +190,12 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
         shapeType: "line",
         width,
         height,
-        endPosition: annotation.endPosition,
+        endPosition: normalizePosition(annotation.endPosition, {
+          x: startPosition.x + DEFAULT_LINE_LENGTH,
+          y: startPosition.y
+        }),
         relativeEndPosition,
-        startPosition: annotation.position,
+        startPosition,
         // Line start position within the node's bounding box
         lineStartInNode,
         fillColor: annotation.fillColor,
@@ -200,7 +220,7 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
   return {
     id: annotation.id,
     type: FREE_SHAPE_NODE_TYPE,
-    position: annotation.position,
+    position: startPosition,
     width: annotation.width ?? 100,
     height: annotation.height ?? 100,
     zIndex: resolvedZIndex,
@@ -230,32 +250,43 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
  * Groups are rendered with zIndex: -1 so they appear behind topology nodes
  */
 export function groupToNode(group: GroupStyleAnnotation): Node<GroupNodeData> {
+  const resolvedId = isNonEmptyString(group.id) ? group.id : "legacy-group";
+  const identity = parseLegacyGroupIdentity(resolvedId);
+  const resolvedName = isNonEmptyString(group.name) ? group.name : identity.name;
+  const resolvedLevel = isNonEmptyString(group.level) ? group.level : identity.level;
+  const resolvedPosition = normalizePosition(group.position);
+  const resolvedWidth = toFiniteNumber(group.width) ?? DEFAULT_GROUP_WIDTH;
+  const resolvedHeight = toFiniteNumber(group.height) ?? DEFAULT_GROUP_HEIGHT;
+  const legacyColor = (group as Record<string, unknown>).color;
+  const resolvedLabelColor =
+    (isNonEmptyString(group.labelColor) ? group.labelColor : undefined) ??
+    (isNonEmptyString(legacyColor) ? legacyColor : undefined);
   const resolvedParentId = resolveGroupParentId(group.parentId, group.groupId);
   const resolvedGroupId = resolveGroupParentId(group.groupId, group.parentId);
   return {
-    id: group.id,
+    id: resolvedId,
     type: GROUP_NODE_TYPE,
-    position: group.position,
+    position: resolvedPosition,
     // Width/height at top level for React Flow's NodeResizer compatibility
-    width: group.width ?? 200,
-    height: group.height ?? 150,
+    width: resolvedWidth,
+    height: resolvedHeight,
     // Groups render behind topology nodes
     zIndex: group.zIndex ?? -1,
     draggable: true,
     selectable: true,
     data: {
-      name: group.name,
-      label: group.name,
-      level: group.level,
-      width: group.width,
-      height: group.height,
+      name: resolvedName,
+      label: resolvedName,
+      level: resolvedLevel,
+      width: resolvedWidth,
+      height: resolvedHeight,
       backgroundColor: group.backgroundColor,
       backgroundOpacity: group.backgroundOpacity,
       borderColor: group.borderColor,
       borderWidth: group.borderWidth,
       borderStyle: group.borderStyle,
       borderRadius: group.borderRadius,
-      labelColor: group.labelColor,
+      labelColor: resolvedLabelColor,
       labelPosition: group.labelPosition,
       parentId: resolvedParentId,
       groupId: resolvedGroupId,
