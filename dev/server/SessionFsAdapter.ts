@@ -60,14 +60,30 @@ export class SessionFsAdapter implements FileSystemAdapter {
     return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
   }
 
+  private normalizeRelativePath(filePath: string): string {
+    const normalized = this.toPosixPath(filePath).replace(/^\.\//, "");
+    const marker = "/topologies/";
+    const markerIndex = normalized.lastIndexOf(marker);
+    if (markerIndex >= 0) {
+      return normalized.slice(markerIndex + marker.length);
+    }
+    if (normalized.startsWith("topologies/")) {
+      return normalized.slice("topologies/".length);
+    }
+    if (normalized.startsWith("dev/topologies/")) {
+      return normalized.slice("dev/topologies/".length);
+    }
+    return normalized;
+  }
+
   private resolveDiskPath(filePath: string): string {
     const candidate = path.isAbsolute(filePath)
       ? path.resolve(filePath)
-      : path.resolve(this.diskBasePath, filePath);
+      : path.resolve(this.diskBasePath, this.normalizeRelativePath(filePath));
     if (this.isPathInsideBase(candidate)) {
       return candidate;
     }
-    return path.join(this.diskBasePath, path.basename(filePath));
+    return path.join(this.diskBasePath, path.basename(this.normalizeRelativePath(filePath)));
   }
 
   /**

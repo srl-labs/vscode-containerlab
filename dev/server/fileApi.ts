@@ -89,15 +89,10 @@ function getFsAdapter(sessionId?: string): SessionFsAdapter | null {
 function normalizeTopologyPath(requestedPath: string): string {
   const baseDir = path.resolve(TOPOLOGIES_DIR);
   const input = requestedPath.trim();
+  const normalizedInput = toPosixPath(input).replace(/^\.\//, "");
 
-  const directCandidate = path.isAbsolute(input)
-    ? path.resolve(input)
-    : path.resolve(baseDir, input);
-  if (isPathInsideBase(baseDir, directCandidate)) {
-    return directCandidate;
-  }
-
-  const normalizedInput = toPosixPath(input);
+  // Accept paths that already include a topologies prefix (e.g. dev/topologies/foo.clab.yml)
+  // and reinterpret them as topology-root relative.
   const marker = "/topologies/";
   const markerIndex = normalizedInput.lastIndexOf(marker);
   if (markerIndex >= 0) {
@@ -106,6 +101,25 @@ function normalizeTopologyPath(requestedPath: string): string {
     if (isPathInsideBase(baseDir, rootedCandidate)) {
       return rootedCandidate;
     }
+  }
+  if (normalizedInput.startsWith("topologies/")) {
+    const rootedCandidate = path.resolve(baseDir, normalizedInput.slice("topologies/".length));
+    if (isPathInsideBase(baseDir, rootedCandidate)) {
+      return rootedCandidate;
+    }
+  }
+  if (normalizedInput.startsWith("dev/topologies/")) {
+    const rootedCandidate = path.resolve(baseDir, normalizedInput.slice("dev/topologies/".length));
+    if (isPathInsideBase(baseDir, rootedCandidate)) {
+      return rootedCandidate;
+    }
+  }
+
+  const directCandidate = path.isAbsolute(input)
+    ? path.resolve(input)
+    : path.resolve(baseDir, normalizedInput);
+  if (isPathInsideBase(baseDir, directCandidate)) {
+    return directCandidate;
   }
 
   return path.join(baseDir, path.basename(input));

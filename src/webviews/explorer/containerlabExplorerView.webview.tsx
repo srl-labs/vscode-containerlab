@@ -6,10 +6,12 @@ import {
   ContentCopy as ContentCopyIcon,
   DescriptionOutlined as DescriptionOutlinedIcon,
   DeleteOutline as DeleteOutlineIcon,
+  DownloadOutlined as DownloadOutlinedIcon,
   ExpandMore as ExpandMoreIcon,
   FilterAlt as FilterAltIcon,
   Folder as FolderIcon,
   FolderOpen as FolderOpenIcon,
+  ForumOutlined as ForumOutlinedIcon,
   Link as LinkIcon,
   LinkOff as LinkOffIcon,
   ManageSearch as ManageSearchIcon,
@@ -74,12 +76,17 @@ import {
 
 const COLOR_ERROR_MAIN = "error.main";
 const COLOR_TEXT_PRIMARY = "text.primary";
+const COLOR_TEXT_SECONDARY = "text.secondary";
 const COLOR_PRIMARY_MAIN = "primary.main";
 const COLOR_DIVIDER = "divider";
 const COLOR_TEXT_DISABLED = "text.disabled";
 const FILTER_UPDATE_DEBOUNCE_MS = 250;
 const UI_STATE_UPDATE_DEBOUNCE_MS = 160;
-const DEFAULT_EXPANDED_SECTIONS = new Set<ExplorerSectionId>(["runningLabs", "localLabs"]);
+const DEFAULT_EXPANDED_SECTIONS = new Set<ExplorerSectionId>([
+  "runningLabs",
+  "localLabs",
+  "helpFeedback"
+]);
 const TREE_DEPTH_INDENT = 1.6;
 const TREE_DISCLOSURE_SLOT_PX = 14;
 const TREE_ROW_GAP = 0.3;
@@ -109,6 +116,7 @@ const TOOLBAR_ICON_BUTTON_SX = {
 
 interface ExplorerNodeLabelProps {
   node: ExplorerNode;
+  sectionId: ExplorerSectionId;
   onInvokeAction: (action: ExplorerAction) => void;
 }
 
@@ -221,6 +229,9 @@ function statusColor(indicator: string | undefined): string {
 }
 
 function formatSectionTitle(section: ExplorerSectionSnapshot): string {
+  if (section.id === "helpFeedback") {
+    return section.label;
+  }
   return `${section.label} (${section.count})`;
 }
 
@@ -613,7 +624,41 @@ function withSectionDividers(
   return items;
 }
 
-function nodeLeadingIcon(node: ExplorerNode): { Icon: SvgIconComponent; color: string } | undefined {
+function isHelpFeedbackLinkNode(node: ExplorerNode, sectionId: ExplorerSectionId): boolean {
+  if (sectionId !== "helpFeedback") {
+    return false;
+  }
+  return node.primaryAction?.commandId.toLowerCase() === "containerlab.openlink";
+}
+
+function helpFeedbackIconForNode(node: ExplorerNode): SvgIconComponent {
+  const label = node.label.toLowerCase();
+  if (label.includes("discord")) {
+    return ForumOutlinedIcon;
+  }
+  if (label.includes("github")) {
+    return SourceIcon;
+  }
+  if (label.includes("download")) {
+    return DownloadOutlinedIcon;
+  }
+  if (label.includes("find")) {
+    return SearchIcon;
+  }
+  if (label.includes("extension")) {
+    return ArticleOutlinedIcon;
+  }
+  return DescriptionOutlinedIcon;
+}
+
+function nodeLeadingIcon(
+  node: ExplorerNode,
+  sectionId: ExplorerSectionId
+): { Icon: SvgIconComponent; color: string } | undefined {
+  if (isHelpFeedbackLinkNode(node, sectionId)) {
+    return { Icon: helpFeedbackIconForNode(node), color: COLOR_TEXT_SECONDARY };
+  }
+
   const context = node.contextValue;
   if (context === "containerlabInterfaceUp") {
     return { Icon: SettingsEthernetIcon, color: "success.main" };
@@ -622,19 +667,19 @@ function nodeLeadingIcon(node: ExplorerNode): { Icon: SvgIconComponent; color: s
     return { Icon: LinkOffIcon, color: "error.main" };
   }
   if (context === "containerlabFolder") {
-    return { Icon: FolderIcon, color: "text.secondary" };
+    return { Icon: FolderIcon, color: COLOR_TEXT_SECONDARY };
   }
   if (typeof context === "string" && context.includes("containerlabLabUndeployed")) {
-    return { Icon: DescriptionOutlinedIcon, color: "text.secondary" };
+    return { Icon: DescriptionOutlinedIcon, color: COLOR_TEXT_SECONDARY };
   }
   return undefined;
 }
 
-function ExplorerNodeLabel({ node, onInvokeAction }: Readonly<ExplorerNodeLabelProps>) {
+function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<ExplorerNodeLabelProps>) {
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const [menuOpenToLeft, setMenuOpenToLeft] = useState(false);
   const hasEntryTooltip = Boolean(node.tooltip);
-  const leadingIcon = nodeLeadingIcon(node);
+  const leadingIcon = nodeLeadingIcon(node, sectionId);
   const nodeKind = nodeKindFromContext(node.contextValue);
   const menuActions = useMemo(() => {
     if (nodeKind === "lab") {
@@ -895,6 +940,7 @@ function ExplorerNodeLabel({ node, onInvokeAction }: Readonly<ExplorerNodeLabelP
 
 interface SectionTreeNodeProps {
   node: ExplorerNode;
+  sectionId: ExplorerSectionId;
   depth: number;
   expandedItems: string[];
   onToggleExpanded: (nodeId: string) => void;
@@ -903,6 +949,7 @@ interface SectionTreeNodeProps {
 
 function SectionTreeNode({
   node,
+  sectionId,
   depth,
   expandedItems,
   onToggleExpanded,
@@ -950,7 +997,7 @@ function SectionTreeNode({
         </Box>
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <ExplorerNodeLabel node={node} onInvokeAction={onInvokeAction} />
+          <ExplorerNodeLabel node={node} sectionId={sectionId} onInvokeAction={onInvokeAction} />
         </Box>
       </Stack>
 
@@ -960,6 +1007,7 @@ function SectionTreeNode({
             <SectionTreeNode
               key={child.id}
               node={child}
+              sectionId={sectionId}
               depth={depth + 1}
               expandedItems={expandedItems}
               onToggleExpanded={onToggleExpanded}
@@ -1003,6 +1051,7 @@ function SectionTree({
         <SectionTreeNode
           key={node.id}
           node={node}
+          sectionId={section.id}
           depth={0}
           expandedItems={expandedItems}
           onToggleExpanded={toggleExpanded}
@@ -1086,10 +1135,13 @@ function ExplorerSectionCard({
   onExpandAllInSection,
   onCollapseAllInSection
 }: Readonly<ExplorerSectionCardProps>) {
+  const expandableIds = useMemo(() => flattenExpandableNodeIds(section.nodes), [section.nodes]);
+
   const allExpanded = useMemo(() => {
-    const expandableIds = flattenExpandableNodeIds(section.nodes);
     return expandableIds.length > 0 && expandableIds.every((id) => expandedItems.includes(id));
-  }, [expandedItems, section.nodes]);
+  }, [expandableIds, expandedItems]);
+
+  const showExpandAllControl = section.id !== "helpFeedback" && expandableIds.length > 0;
 
   return (
     <Paper
@@ -1131,24 +1183,26 @@ function ExplorerSectionCard({
 
         <SectionToolbarActions actions={section.toolbarActions} onInvokeAction={onInvokeAction} />
 
-        <Tooltip title={allExpanded ? "Collapse All" : "Expand All"}>
-          <IconButton
-            size="small"
-            sx={{ color: COLOR_TEXT_PRIMARY }}
-            aria-label={allExpanded ? "Collapse all" : "Expand all"}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              if (allExpanded) {
-                onCollapseAllInSection(section.id);
-              } else {
-                onExpandAllInSection(section.id, section.nodes);
-              }
-            }}
-          >
-            {allExpanded ? <ChevronRightIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-          </IconButton>
-        </Tooltip>
+        {showExpandAllControl && (
+          <Tooltip title={allExpanded ? "Collapse All" : "Expand All"}>
+            <IconButton
+              size="small"
+              sx={{ color: COLOR_TEXT_PRIMARY }}
+              aria-label={allExpanded ? "Collapse all" : "Expand all"}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (allExpanded) {
+                  onCollapseAllInSection(section.id);
+                } else {
+                  onExpandAllInSection(section.id, section.nodes);
+                }
+              }}
+            >
+              {allExpanded ? <ChevronRightIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        )}
       </Box>
 
       {!isCollapsed && (
@@ -1431,9 +1485,11 @@ export function ContainerlabExplorerView() {
     }, UI_STATE_UPDATE_DEBOUNCE_MS);
   }, [sectionOrder, collapsedBySection, expandedBySection, uiStateHydrated, postMessage]);
 
-  return (
+  const explorerContent = (
     <Box
       sx={{
+        width: "100%",
+        maxWidth: "100%",
         height: "100%",
         minHeight: 0,
         boxSizing: "border-box",
@@ -1505,6 +1561,8 @@ export function ContainerlabExplorerView() {
       </Stack>
     </Box>
   );
+
+  return explorerContent;
 }
 
 function mount(): void {

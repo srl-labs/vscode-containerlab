@@ -124,10 +124,31 @@ function renderApp(): void {
 
 // Topology Loading
 
-const TOPOLOGIES_DIR = "./dev/topologies";
-const DEFAULT_TOPOLOGY = `${TOPOLOGIES_DIR}/simple.clab.yml`;
+const DEFAULT_TOPOLOGY = "simple.clab.yml";
 
 let currentFilePath: string | null = null;
+
+function normalizeTopologyRequestPath(pathValue: string): string {
+  const trimmed = pathValue.trim();
+  if (trimmed.length === 0) {
+    return trimmed;
+  }
+
+  const normalized = trimmed.replace(/\\/g, "/").replace(/^\.\//, "");
+  const marker = "/topologies/";
+  const markerIndex = normalized.lastIndexOf(marker);
+  if (markerIndex >= 0) {
+    return normalized.slice(markerIndex + marker.length);
+  }
+  if (normalized.startsWith("topologies/")) {
+    return normalized.slice("topologies/".length);
+  }
+  if (normalized.startsWith("dev/topologies/")) {
+    return normalized.slice("dev/topologies/".length);
+  }
+
+  return trimmed;
+}
 
 function syncHostContext(
   options: {
@@ -135,8 +156,9 @@ function syncHostContext(
     deploymentState?: "deployed" | "undeployed" | "unknown";
   } = {}
 ): void {
+  const path = normalizeTopologyRequestPath(currentFilePath ?? DEFAULT_TOPOLOGY);
   setHostContext({
-    path: currentFilePath ?? DEFAULT_TOPOLOGY,
+    path,
     mode: options.mode ?? stateManager.getMode(),
     deploymentState: options.deploymentState ?? stateManager.getDeploymentState(),
     sessionId: sessionId ?? undefined
@@ -144,9 +166,10 @@ function syncHostContext(
 }
 
 async function loadTopologyFile(filePath: string): Promise<void> {
-  console.log(`%c[Dev] Loading topology: ${filePath}`, "color: #2196F3;");
-  currentFilePath = filePath;
-  stateManager.setLoadedFile(filePath);
+  const normalizedPath = normalizeTopologyRequestPath(filePath);
+  console.log(`%c[Dev] Loading topology: ${normalizedPath}`, "color: #2196F3;");
+  currentFilePath = normalizedPath;
+  stateManager.setLoadedFile(normalizedPath);
 
   syncHostContext();
 
@@ -441,7 +464,7 @@ function buildDevInterfaceTooltip(name: string, peer: string, mac: string): stri
 }
 
 function createMockRunningLabItem(): DevExplorerTreeItem {
-  const pathValue = `${TOPOLOGIES_DIR}/test/test.clab.yml`;
+  const pathValue = "test/test.clab.yml";
   const spineStatus = "Up 18 minutes";
   const leafStatus = "Up 11 minutes";
   const image = "ghcr.io/nokia/srlinux:latest";
@@ -790,19 +813,19 @@ function firstArgAsTreeItem(args: unknown[]): DevExplorerTreeItem | undefined {
 function resolveLabPath(args: unknown[]): string | undefined {
   const first = args[0];
   if (typeof first === "string" && first.length > 0) {
-    return first;
+    return normalizeTopologyRequestPath(first);
   }
   const item = firstArgAsTreeItem(args);
   if (!item) {
-    return currentFilePath ?? undefined;
+    return currentFilePath ? normalizeTopologyRequestPath(currentFilePath) : undefined;
   }
   if (item.labPath?.absolute) {
-    return item.labPath.absolute;
+    return normalizeTopologyRequestPath(item.labPath.absolute);
   }
   if (typeof item.description === "string" && item.description.includes(".clab.")) {
-    return item.description;
+    return normalizeTopologyRequestPath(item.description);
   }
-  return currentFilePath ?? undefined;
+  return currentFilePath ? normalizeTopologyRequestPath(currentFilePath) : undefined;
 }
 
 async function setDeploymentStateAndRefresh(
