@@ -1337,7 +1337,7 @@
     "package": "rm -rf dist && npm run lint && vsce package",
     "vscode:prepublish": "node esbuild.config.js",
     "package:dev": "node esbuild.config.js --watch --dev",
-    "lint": "npm run typecheck && (npm run lint:ts & npm run lint:circular & npm run lint:deps & npm run lint:cpd & npm run lint:barrels & wait)",
+    "lint": "npm run typecheck && (npm run lint:ts & p1=$!; npm run lint:circular & p2=$!; npm run lint:deps & p3=$!; npm run lint:cpd & p4=$!; npm run lint:barrels & p5=$!; wait $p1; s1=$?; wait $p2; s2=$?; wait $p3; s3=$?; wait $p4; s4=$?; wait $p5; s5=$?; [ $s1 -eq 0 ] && [ $s2 -eq 0 ] && [ $s3 -eq 0 ] && [ $s4 -eq 0 ] && [ $s5 -eq 0 ])",
     "lint:ts": "eslint --cache --cache-location node_modules/.cache/eslint --ext .ts,.tsx .",
     "lint:ts:fix": "eslint --ext .ts,.tsx . --fix",
     "lint:fix": "npm run lint:ts:fix",
