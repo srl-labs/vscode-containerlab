@@ -5,8 +5,8 @@
  * This enables Playwright tests to run in parallel without file conflicts.
  *
  * Storage model:
- * - YAML files stored in session Map<filename, content>
- * - Annotations stored in session Map<yamlFilename, content | null>
+ * - YAML files stored in session Map<relativePath, content>
+ * - Annotations stored in session Map<relativeYamlPath, content | null>
  * - Falls back to disk for files not yet in session
  */
 
@@ -49,10 +49,34 @@ export class SessionFsAdapter implements FileSystemAdapter {
   }
 
   /**
-   * Get filename from full path (for storage key)
+   * Normalize separators for stable map keys
+   */
+  private toPosixPath(pathValue: string): string {
+    return pathValue.replace(/\\/g, "/");
+  }
+
+  private isPathInsideBase(targetPath: string): boolean {
+    const relative = path.relative(this.diskBasePath, targetPath);
+    return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  }
+
+  private resolveDiskPath(filePath: string): string {
+    const candidate = path.isAbsolute(filePath)
+      ? path.resolve(filePath)
+      : path.resolve(this.diskBasePath, filePath);
+    if (this.isPathInsideBase(candidate)) {
+      return candidate;
+    }
+    return path.join(this.diskBasePath, path.basename(filePath));
+  }
+
+  /**
+   * Get relative path key for session storage.
    */
   private getStorageKey(filePath: string): string {
-    return path.basename(filePath);
+    const diskPath = this.resolveDiskPath(filePath);
+    const relative = path.relative(this.diskBasePath, diskPath);
+    return this.toPosixPath(relative);
   }
 
   /**
@@ -63,23 +87,24 @@ export class SessionFsAdapter implements FileSystemAdapter {
   }
 
   /**
-   * Get YAML filename from annotations path
+   * Get YAML storage key from annotations path
    */
-  private getYamlFilename(annotationsPath: string): string {
-    const filename = path.basename(annotationsPath);
-    return filename.replace(".annotations.json", "");
+  private getYamlStorageKey(annotationsPath: string): string {
+    const annotationsKey = this.getStorageKey(annotationsPath);
+    return annotationsKey.replace(/\.annotations\.json$/, "");
   }
 
   async readFile(filePath: string): Promise<string> {
-    const filename = this.getStorageKey(filePath);
+    const storageKey = this.getStorageKey(filePath);
+    const diskPath = this.resolveDiskPath(filePath);
     const isAnnotation = this.isAnnotationsFile(filePath);
 
     if (isAnnotation) {
-      const yamlFilename = this.getYamlFilename(filePath);
+      const yamlKey = this.getYamlStorageKey(filePath);
 
       // Check session cache
-      if (this.annotationsStorage.has(yamlFilename)) {
-        const content = this.annotationsStorage.get(yamlFilename);
+      if (this.annotationsStorage.has(yamlKey)) {
+        const content = this.annotationsStorage.get(yamlKey);
         if (content === null || content === undefined) {
           throw new Error(`ENOENT: no such file ${filePath}`);
         }
@@ -87,26 +112,24 @@ export class SessionFsAdapter implements FileSystemAdapter {
       }
 
       // Try to load from disk into session
-      const diskPath = path.join(this.diskBasePath, filename);
       try {
         const content = await fs.promises.readFile(diskPath, "utf8");
-        this.annotationsStorage.set(yamlFilename, content);
+        this.annotationsStorage.set(yamlKey, content);
         return content;
       } catch {
-        this.annotationsStorage.set(yamlFilename, null);
+        this.annotationsStorage.set(yamlKey, null);
         throw new Error(`ENOENT: no such file ${filePath}`);
       }
     } else {
       // YAML file
-      if (this.yamlStorage.has(filename)) {
-        return this.yamlStorage.get(filename)!;
+      if (this.yamlStorage.has(storageKey)) {
+        return this.yamlStorage.get(storageKey)!;
       }
 
       // Try to load from disk into session
-      const diskPath = path.join(this.diskBasePath, filename);
       try {
         const content = await fs.promises.readFile(diskPath, "utf8");
-        this.yamlStorage.set(filename, content);
+        this.yamlStorage.set(storageKey, content);
         return content;
       } catch {
         throw new Error(`ENOENT: no such file ${filePath}`);
@@ -115,30 +138,30 @@ export class SessionFsAdapter implements FileSystemAdapter {
   }
 
   async writeFile(filePath: string, content: string): Promise<void> {
-    const filename = this.getStorageKey(filePath);
+    const storageKey = this.getStorageKey(filePath);
     const isAnnotation = this.isAnnotationsFile(filePath);
 
     if (isAnnotation) {
-      const yamlFilename = this.getYamlFilename(filePath);
-      this.annotationsStorage.set(yamlFilename, content);
-      console.log(`[SessionFs] Session ${this.sessionId}: Wrote annotations: ${yamlFilename}`);
+      const yamlKey = this.getYamlStorageKey(filePath);
+      this.annotationsStorage.set(yamlKey, content);
+      console.log(`[SessionFs] Session ${this.sessionId}: Wrote annotations: ${yamlKey}`);
     } else {
-      this.yamlStorage.set(filename, content);
-      console.log(`[SessionFs] Session ${this.sessionId}: Wrote YAML: ${filename}`);
+      this.yamlStorage.set(storageKey, content);
+      console.log(`[SessionFs] Session ${this.sessionId}: Wrote YAML: ${storageKey}`);
     }
   }
 
   async unlink(filePath: string): Promise<void> {
-    const filename = this.getStorageKey(filePath);
+    const storageKey = this.getStorageKey(filePath);
     const isAnnotation = this.isAnnotationsFile(filePath);
 
     if (isAnnotation) {
-      const yamlFilename = this.getYamlFilename(filePath);
-      this.annotationsStorage.set(yamlFilename, null); // Mark as deleted
-      console.log(`[SessionFs] Session ${this.sessionId}: Deleted annotations: ${yamlFilename}`);
+      const yamlKey = this.getYamlStorageKey(filePath);
+      this.annotationsStorage.set(yamlKey, null); // Mark as deleted
+      console.log(`[SessionFs] Session ${this.sessionId}: Deleted annotations: ${yamlKey}`);
     } else {
-      this.yamlStorage.delete(filename);
-      console.log(`[SessionFs] Session ${this.sessionId}: Deleted YAML: ${filename}`);
+      this.yamlStorage.delete(storageKey);
+      console.log(`[SessionFs] Session ${this.sessionId}: Deleted YAML: ${storageKey}`);
     }
   }
 
@@ -151,8 +174,8 @@ export class SessionFsAdapter implements FileSystemAdapter {
     }
 
     if (oldIsAnnotation) {
-      const oldKey = this.getYamlFilename(oldPath);
-      const newKey = this.getYamlFilename(newPath);
+      const oldKey = this.getYamlStorageKey(oldPath);
+      const newKey = this.getYamlStorageKey(newPath);
       if (this.annotationsStorage.has(oldKey)) {
         const content = this.annotationsStorage.get(oldKey);
         this.annotationsStorage.set(newKey, content ?? null);
@@ -161,8 +184,9 @@ export class SessionFsAdapter implements FileSystemAdapter {
       }
 
       // Fall back to disk if not in session
-      const diskOld = path.join(this.diskBasePath, path.basename(oldPath));
-      const diskNew = path.join(this.diskBasePath, path.basename(newPath));
+      const diskOld = this.resolveDiskPath(oldPath);
+      const diskNew = this.resolveDiskPath(newPath);
+      await fs.promises.mkdir(path.dirname(diskNew), { recursive: true });
       await fs.promises.rename(diskOld, diskNew);
       return;
     }
@@ -177,25 +201,26 @@ export class SessionFsAdapter implements FileSystemAdapter {
     }
 
     // Fall back to disk if not in session
-    const diskOld = path.join(this.diskBasePath, path.basename(oldPath));
-    const diskNew = path.join(this.diskBasePath, path.basename(newPath));
+    const diskOld = this.resolveDiskPath(oldPath);
+    const diskNew = this.resolveDiskPath(newPath);
+    await fs.promises.mkdir(path.dirname(diskNew), { recursive: true });
     await fs.promises.rename(diskOld, diskNew);
   }
 
   async exists(filePath: string): Promise<boolean> {
-    const filename = this.getStorageKey(filePath);
+    const storageKey = this.getStorageKey(filePath);
+    const diskPath = this.resolveDiskPath(filePath);
     const isAnnotation = this.isAnnotationsFile(filePath);
 
     if (isAnnotation) {
-      const yamlFilename = this.getYamlFilename(filePath);
+      const yamlKey = this.getYamlStorageKey(filePath);
 
       // Check session cache
-      if (this.annotationsStorage.has(yamlFilename)) {
-        return this.annotationsStorage.get(yamlFilename) !== null;
+      if (this.annotationsStorage.has(yamlKey)) {
+        return this.annotationsStorage.get(yamlKey) !== null;
       }
 
       // Check disk
-      const diskPath = path.join(this.diskBasePath, filename);
       try {
         await fs.promises.access(diskPath);
         return true;
@@ -204,12 +229,11 @@ export class SessionFsAdapter implements FileSystemAdapter {
       }
     } else {
       // YAML file
-      if (this.yamlStorage.has(filename)) {
+      if (this.yamlStorage.has(storageKey)) {
         return true;
       }
 
       // Check disk
-      const diskPath = path.join(this.diskBasePath, filename);
       try {
         await fs.promises.access(diskPath);
         return true;
@@ -254,25 +278,41 @@ export async function resetSession(
   yamlMap.clear();
   annotMap.clear();
 
+  const toPosixPath = (pathValue: string): string => pathValue.replace(/\\/g, "/");
+  const collectYamlFiles = async (currentDir: string): Promise<string[]> => {
+    const entries = await fs.promises.readdir(currentDir, { withFileTypes: true });
+    const yamlFiles: string[] = [];
+    for (const entry of entries) {
+      const fullPath = path.join(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        yamlFiles.push(...(await collectYamlFiles(fullPath)));
+        continue;
+      }
+      if (entry.isFile() && entry.name.endsWith(".clab.yml")) {
+        yamlFiles.push(fullPath);
+      }
+    }
+    return yamlFiles;
+  };
+
   // Copy disk files to session
   try {
-    const files = await fs.promises.readdir(diskBasePath);
-    const yamlFiles = files.filter((f) => f.endsWith(".clab.yml"));
+    const yamlFiles = await collectYamlFiles(diskBasePath);
 
-    for (const filename of yamlFiles) {
+    for (const yamlPath of yamlFiles) {
+      const relativeYamlPath = toPosixPath(path.relative(diskBasePath, yamlPath));
       // Read YAML
-      const yamlPath = path.join(diskBasePath, filename);
       const yamlContent = await fs.promises.readFile(yamlPath, "utf8");
-      yamlMap.set(filename, yamlContent);
+      yamlMap.set(relativeYamlPath, yamlContent);
 
       // Read annotations if they exist
-      const annotPath = path.join(diskBasePath, `${filename}.annotations.json`);
+      const annotPath = `${yamlPath}.annotations.json`;
       try {
         const annotContent = await fs.promises.readFile(annotPath, "utf8");
-        annotMap.set(filename, annotContent);
+        annotMap.set(relativeYamlPath, annotContent);
       } catch {
         // No annotations file - that's fine
-        annotMap.set(filename, null);
+        annotMap.set(relativeYamlPath, null);
       }
     }
   } catch (err) {

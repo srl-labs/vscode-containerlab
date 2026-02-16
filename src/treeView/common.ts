@@ -83,6 +83,7 @@ export class ClabFolderTreeNode extends vscode.TreeItem {
     this.fullPath = fullPath;
     this.contextValue = "containerlabFolder";
     this.iconPath = vscode.ThemeIcon.Folder;
+    this.id = `folder:${fullPath}`;
   }
 }
 

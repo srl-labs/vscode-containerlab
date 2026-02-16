@@ -175,7 +175,7 @@ export function startFileWatcher(topologiesDir: string): void {
     }
   });
 
-  fileWatcher.on("change", (filePath) => {
+  const onFileEvent = (eventName: string, filePath: string) => {
     // Only watch .clab.yml and .annotations.json files
     if (!filePath.endsWith(".clab.yml") && !filePath.endsWith(".annotations.json")) {
       return;
@@ -183,9 +183,13 @@ export function startFileWatcher(topologiesDir: string): void {
     if (isInternalUpdate(filePath)) {
       return;
     }
-    console.log(`[SSE] Disk file changed: ${filePath}`);
+    console.log(`[SSE] Disk file ${eventName}: ${filePath}`);
     broadcastFileChangeToAll(filePath);
-  });
+  };
+
+  fileWatcher.on("add", (filePath) => onFileEvent("added", filePath));
+  fileWatcher.on("change", (filePath) => onFileEvent("changed", filePath));
+  fileWatcher.on("unlink", (filePath) => onFileEvent("removed", filePath));
 
   fileWatcher.on("error", (error) => {
     console.error("[SSE] File watcher error:", error);

@@ -17,6 +17,58 @@ const TOPOLOGIES_ORIGINAL_DIR = path.join(__dirname, "../topologies-original");
 // Host cache (per session + file)
 const topologyHosts = new Map<string, TopologyHostCore>();
 
+function toPosixPath(pathValue: string): string {
+  return pathValue.replace(/\\/g, "/");
+}
+
+function isPathInsideBase(baseDir: string, targetPath: string): boolean {
+  const relative = path.relative(baseDir, targetPath);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+async function listRelativeFilesRecursive(rootDir: string): Promise<string[]> {
+  const result: string[] = [];
+
+  async function walk(currentDir: string): Promise<void> {
+    const entries = await fs.promises.readdir(currentDir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(fullPath);
+        continue;
+      }
+      if (!entry.isFile()) {
+        continue;
+      }
+      result.push(toPosixPath(path.relative(rootDir, fullPath)));
+    }
+  }
+
+  await walk(rootDir);
+  return result;
+}
+
+async function copyDirectoryContents(sourceDir: string, targetDir: string): Promise<void> {
+  await fs.promises.mkdir(targetDir, { recursive: true });
+  const entries = await fs.promises.readdir(sourceDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const sourcePath = path.join(sourceDir, entry.name);
+    const targetPath = path.join(targetDir, entry.name);
+
+    if (entry.isDirectory()) {
+      await copyDirectoryContents(sourcePath, targetPath);
+      continue;
+    }
+    if (!entry.isFile()) {
+      continue;
+    }
+
+    await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
+    await fs.promises.copyFile(sourcePath, targetPath);
+  }
+}
+
 // ============================================================================
 // Session Management
 // ============================================================================
@@ -35,8 +87,28 @@ function getFsAdapter(sessionId?: string): SessionFsAdapter | null {
 }
 
 function normalizeTopologyPath(requestedPath: string): string {
-  const filename = path.basename(requestedPath);
-  return path.join(TOPOLOGIES_DIR, filename);
+  const baseDir = path.resolve(TOPOLOGIES_DIR);
+  const input = requestedPath.trim();
+
+  const directCandidate = path.isAbsolute(input)
+    ? path.resolve(input)
+    : path.resolve(baseDir, input);
+  if (isPathInsideBase(baseDir, directCandidate)) {
+    return directCandidate;
+  }
+
+  const normalizedInput = toPosixPath(input);
+  const marker = "/topologies/";
+  const markerIndex = normalizedInput.lastIndexOf(marker);
+  if (markerIndex >= 0) {
+    const relative = normalizedInput.slice(markerIndex + marker.length);
+    const rootedCandidate = path.resolve(baseDir, relative);
+    if (isPathInsideBase(baseDir, rootedCandidate)) {
+      return rootedCandidate;
+    }
+  }
+
+  return path.join(baseDir, path.basename(input));
 }
 
 function getTopologyHost(
@@ -97,30 +169,8 @@ async function resetDiskFiles(): Promise<void> {
   console.log("[FileAPI] Resetting disk files from topologies-original...");
 
   try {
-    // First, delete all annotation files in topologies (clean slate)
-    const currentFiles = await fs.promises.readdir(TOPOLOGIES_DIR);
-    for (const file of currentFiles) {
-      if (file.endsWith(".annotations.json")) {
-        const filePath = path.join(TOPOLOGIES_DIR, file);
-        try {
-          await fs.promises.unlink(filePath);
-          console.log("[FileAPI] Deleted:", file);
-        } catch {
-          // Ignore errors
-        }
-      }
-    }
-
-    // Copy all files from topologies-original to topologies
-    const originalFiles = await fs.promises.readdir(TOPOLOGIES_ORIGINAL_DIR);
-    for (const file of originalFiles) {
-      const srcPath = path.join(TOPOLOGIES_ORIGINAL_DIR, file);
-      const destPath = path.join(TOPOLOGIES_DIR, file);
-
-      const content = await fs.promises.readFile(srcPath, "utf8");
-      await fs.promises.writeFile(destPath, content, "utf8");
-      console.log("[FileAPI] Restored:", file);
-    }
+    await fs.promises.rm(TOPOLOGIES_DIR, { recursive: true, force: true });
+    await copyDirectoryContents(TOPOLOGIES_ORIGINAL_DIR, TOPOLOGIES_DIR);
 
     console.log("[FileAPI] Disk reset complete");
   } catch (err) {
@@ -145,8 +195,9 @@ interface TopologyFile {
 async function listTopologyFiles(sessionId?: string): Promise<TopologyFile[]> {
   try {
     // Always read disk files as base
-    const files = await fs.promises.readdir(TOPOLOGIES_DIR);
-    const diskYamlFiles = files.filter((f) => f.endsWith(".clab.yml"));
+    const relativeFiles = await listRelativeFilesRecursive(TOPOLOGIES_DIR);
+    const diskYamlFiles = relativeFiles.filter((f) => f.endsWith(".clab.yml"));
+    const diskFileSet = new Set(relativeFiles);
 
     // If session exists, merge with session storage (session takes priority)
     if (sessionId && sessionMaps.yamlFiles.has(sessionId)) {
@@ -162,20 +213,22 @@ async function listTopologyFiles(sessionId?: string): Promise<TopologyFile[]> {
         }
       }
 
-      return Array.from(allFiles).map((filename) => ({
-        filename,
-        path: path.join(TOPOLOGIES_DIR, filename),
-        hasAnnotations: annotMap.has(filename)
-          ? annotMap.get(filename) !== null
-          : files.includes(`${filename}.annotations.json`)
-      }));
+      return Array.from(allFiles)
+        .sort()
+        .map((yamlRelativePath) => ({
+          filename: path.basename(yamlRelativePath),
+          path: path.join(TOPOLOGIES_DIR, yamlRelativePath),
+          hasAnnotations: annotMap.has(yamlRelativePath)
+            ? annotMap.get(yamlRelativePath) !== null
+            : diskFileSet.has(`${yamlRelativePath}.annotations.json`)
+        }));
     }
 
     // No session - just return disk files
-    return diskYamlFiles.map((filename) => ({
-      filename,
-      path: path.join(TOPOLOGIES_DIR, filename),
-      hasAnnotations: files.includes(`${filename}.annotations.json`)
+    return diskYamlFiles.sort().map((yamlRelativePath) => ({
+      filename: path.basename(yamlRelativePath),
+      path: path.join(TOPOLOGIES_DIR, yamlRelativePath),
+      hasAnnotations: diskFileSet.has(`${yamlRelativePath}.annotations.json`)
     }));
   } catch (err) {
     console.error("[FileAPI] Failed to list topologies:", err);
@@ -314,12 +367,7 @@ export function fileApiPlugin(): Plugin {
       if (!fs.existsSync(TOPOLOGIES_DIR)) {
         fs.mkdirSync(TOPOLOGIES_DIR, { recursive: true });
         if (fs.existsSync(TOPOLOGIES_ORIGINAL_DIR)) {
-          for (const file of fs.readdirSync(TOPOLOGIES_ORIGINAL_DIR)) {
-            fs.copyFileSync(
-              path.join(TOPOLOGIES_ORIGINAL_DIR, file),
-              path.join(TOPOLOGIES_DIR, file)
-            );
-          }
+          fs.cpSync(TOPOLOGIES_ORIGINAL_DIR, TOPOLOGIES_DIR, { recursive: true });
           console.log("[FileAPI] Created topologies/ from topologies-original/");
         }
       }

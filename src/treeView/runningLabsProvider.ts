@@ -1090,18 +1090,13 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   }
 
   private determineIcon(total: number, running: number, unhealthy: number): string {
-    if (running === 0 && total > 0) {
-      return c.CtrStateIcons.STOPPED;
-    }
-    if (running === total && unhealthy === 0) {
+    if (running === total && total > 0 && unhealthy === 0) {
       return c.CtrStateIcons.RUNNING;
     }
-    if (running === total && unhealthy > 0) {
+    if (running > 0 && running < total && unhealthy === 0) {
       return c.CtrStateIcons.PARTIAL;
     }
-    if (total > 0) {
-      return c.CtrStateIcons.PARTIAL;
-    }
+    // Red/Stopped for all non-healthy states (all stopped, unhealthy, or unknown mix)
     return c.CtrStateIcons.STOPPED;
   }
 
@@ -1215,17 +1210,14 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
   private buildTooltipParts(container: c.ClabJSON): string[] {
     const tooltipParts = [
-      `Container: ${container.name}`,
-      `ID: ${container.container_id}`,
+      `Name: ${container.name_short || container.name}`,
       `State: ${container.state}`,
       `Status: ${container.status || "Unknown"}`,
       `Kind: ${container.kind}`,
-      `Image: ${container.image}`
+      `Type: ${container.node_type || "Unknown"}`,
+      `Image: ${container.image}`,
+      `ID: ${container.container_id}`
     ];
-
-    if (container.node_type) {
-      tooltipParts.push(`Type: ${container.node_type}`);
-    }
 
     if (container.node_group && container.node_group.trim() !== "") {
       tooltipParts.push(`Group: ${container.node_group}`);

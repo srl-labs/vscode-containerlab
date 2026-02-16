@@ -190,11 +190,18 @@ function subscribeToFileChanges(): void {
   const url = sessionId ? `/api/events?sessionId=${sessionId}` : "/api/events";
   const source = new EventSource(url);
   source.addEventListener("file-changed", (event) => {
-    if (!currentFilePath) return;
     const message = (event as MessageEvent).data;
     if (!message) return;
     try {
       const payload = JSON.parse(message) as { path?: string; type?: string };
+      if (payload.type === "yaml") {
+        scheduleExplorerSnapshot(0);
+      }
+
+      if (!currentFilePath) {
+        return;
+      }
+
       const filename = currentFilePath.split("/").pop();
       if (!filename) return;
 
@@ -363,80 +370,278 @@ function filterTreeItems(items: DevExplorerTreeItem[], filterText: string): DevE
   return items.map((item) => visit(item)).filter((item): item is DevExplorerTreeItem => item !== null);
 }
 
-function buildRunningLabItems(filterText: string): DevExplorerTreeItem[] {
-  if (stateManager.getDeploymentState() !== "deployed") {
-    return [];
+interface DevLocalLabFile {
+  filename: string;
+  path: string;
+  hasAnnotations: boolean;
+}
+
+interface DevLocalFolderBranch {
+  name: string;
+  relativePath: string;
+  folders: Map<string, DevLocalFolderBranch>;
+  labs: DevExplorerTreeItem[];
+}
+
+function toPosixPath(pathValue: string): string {
+  return pathValue.replace(/\\/g, "/");
+}
+
+function topologyRelativePath(pathValue: string): string {
+  const normalized = toPosixPath(pathValue);
+  const marker = "/topologies/";
+  const markerIndex = normalized.lastIndexOf(marker);
+  if (markerIndex >= 0) {
+    return normalized.slice(markerIndex + marker.length);
+  }
+  return safeFilename(pathValue);
+}
+
+interface DevContainerTooltipInput {
+  name: string;
+  state: string;
+  status: string;
+  kind: string;
+  type: string;
+  image: string;
+  id: string;
+  ipv4?: string;
+  ipv6?: string;
+}
+
+function buildDevContainerTooltip(input: DevContainerTooltipInput): string {
+  const lines = [
+    `Name: ${input.name}`,
+    `State: ${input.state}`,
+    `Status: ${input.status}`,
+    `Kind: ${input.kind}`,
+    `Type: ${input.type}`,
+    `Image: ${input.image}`,
+    `ID: ${input.id}`
+  ];
+
+  if (input.ipv4 && input.ipv4 !== "N/A") {
+    lines.push(`IPv4: ${input.ipv4}`);
+  }
+  if (input.ipv6 && input.ipv6 !== "N/A") {
+    lines.push(`IPv6: ${input.ipv6}`);
   }
 
-  const graphState = useGraphStore.getState();
-  const topoState = useTopoViewerStore.getState();
-  const pathValue = currentFilePath ?? topoState.yamlFileName;
-  const labName = stripTopologySuffix(topoState.labName || safeFilename(pathValue || "Current Lab"));
+  return lines.join("\n");
+}
 
-  const edgeGroups = new Map<string, Array<{ peer: string; edgeId: string }>>();
-  for (const edge of graphState.edges) {
-    const source = String(edge.source);
-    const target = String(edge.target);
-    const edgeId = String(edge.id);
-    const sourceList = edgeGroups.get(source) ?? [];
-    sourceList.push({ peer: target, edgeId });
-    edgeGroups.set(source, sourceList);
-    const targetList = edgeGroups.get(target) ?? [];
-    targetList.push({ peer: source, edgeId });
-    edgeGroups.set(target, targetList);
-  }
+function buildDevInterfaceTooltip(name: string, peer: string, mac: string): string {
+  return [
+    `Name: ${name}`,
+    "State: up",
+    "Type: veth",
+    `Peer: ${peer}`,
+    `MAC: ${mac}`
+  ].join("\n");
+}
 
-  const containers = graphState.nodes.map((node) => {
-    const nodeId = String(node.id);
-    const interfaces = (edgeGroups.get(nodeId) ?? []).map((entry, index) => ({
-      id: `running-interface:${nodeId}:${index}`,
-      label: `eth${index}`,
-      description: entry.peer,
-      contextValue: "containerlabInterfaceUp",
-      collapsibleState: TREE_ITEM_NONE,
-      cID: nodeId,
-      name: `eth${index}`,
-      mac: entry.edgeId
-    }));
+function createMockRunningLabItem(): DevExplorerTreeItem {
+  const pathValue = `${TOPOLOGIES_DIR}/test/test.clab.yml`;
+  const spineStatus = "Up 18 minutes";
+  const leafStatus = "Up 11 minutes";
+  const image = "ghcr.io/nokia/srlinux:latest";
+  const type = "ixrd2";
 
-    return {
-      id: `running-container:${nodeId}`,
-      label: nodeId,
-      description: "container",
+  const containers: DevExplorerTreeItem[] = [
+    {
+      id: "running-container:dev-mock-spine1",
+      label: "dev-mock-spine1",
+      description: spineStatus,
+      tooltip: buildDevContainerTooltip({
+        name: "dev-mock-spine1",
+        state: "running",
+        status: spineStatus,
+        kind: "srl",
+        type,
+        image,
+        id: "dev-mock-spine1",
+        ipv4: "N/A",
+        ipv6: "N/A"
+      }),
       contextValue: "containerlabContainer",
-      collapsibleState: interfaces.length > 0 ? TREE_ITEM_COLLAPSED : TREE_ITEM_NONE,
+      collapsibleState: TREE_ITEM_COLLAPSED,
       state: "running",
-      status: "running",
-      name: nodeId,
-      cID: nodeId,
-      kind: typeof node.type === "string" ? node.type : "node",
-      image: typeof node.type === "string" ? node.type : "node",
+      status: spineStatus,
+      name: "dev-mock-spine1",
+      cID: "dev-mock-spine1",
+      kind: "srl",
+      image,
       v4Address: "N/A",
       v6Address: "N/A",
-      children: interfaces
-    };
-  });
+      children: [
+        {
+          id: "running-interface:dev-mock-spine1:0",
+          label: "eth1",
+          description: "dev-mock-leaf1",
+          tooltip: buildDevInterfaceTooltip("eth1", "dev-mock-leaf1", "00:00:5e:00:53:01"),
+          contextValue: "containerlabInterfaceUp",
+          collapsibleState: TREE_ITEM_NONE,
+          cID: "dev-mock-spine1",
+          name: "eth1",
+          mac: "00:00:5e:00:53:01"
+        }
+      ]
+    },
+    {
+      id: "running-container:dev-mock-leaf1",
+      label: "dev-mock-leaf1",
+      description: leafStatus,
+      tooltip: buildDevContainerTooltip({
+        name: "dev-mock-leaf1",
+        state: "running",
+        status: leafStatus,
+        kind: "srl",
+        type,
+        image,
+        id: "dev-mock-leaf1",
+        ipv4: "N/A",
+        ipv6: "N/A"
+      }),
+      contextValue: "containerlabContainer",
+      collapsibleState: TREE_ITEM_COLLAPSED,
+      state: "running",
+      status: leafStatus,
+      name: "dev-mock-leaf1",
+      cID: "dev-mock-leaf1",
+      kind: "srl",
+      image,
+      v4Address: "N/A",
+      v6Address: "N/A",
+      children: [
+        {
+          id: "running-interface:dev-mock-leaf1:0",
+          label: "eth1",
+          description: "dev-mock-spine1",
+          tooltip: buildDevInterfaceTooltip("eth1", "dev-mock-spine1", "00:00:5e:00:53:02"),
+          contextValue: "containerlabInterfaceUp",
+          collapsibleState: TREE_ITEM_NONE,
+          cID: "dev-mock-leaf1",
+          name: "eth1",
+          mac: "00:00:5e:00:53:02"
+        }
+      ]
+    }
+  ];
 
   const labItem: DevExplorerTreeItem = {
-    id: `running-lab:${pathValue || labName}`,
-    label: labName,
+    id: "running-lab:dev-mock",
+    label: "dev-mock-running-lab",
     description: pathValue,
     tooltip: pathValue,
     contextValue: "containerlabLabDeployed",
-    collapsibleState: containers.length > 0 ? TREE_ITEM_COLLAPSED : TREE_ITEM_NONE,
+    collapsibleState: TREE_ITEM_COLLAPSED,
     labPath: {
-      absolute: pathValue || labName,
-      relative: pathValue || labName
+      absolute: pathValue,
+      relative: pathValue
     },
     children: containers
   };
+
   labItem.command = {
     command: "containerlab.lab.graph.topoViewer",
     title: "Open TopoViewer",
     arguments: [labItem]
   };
 
-  return filterTreeItems([labItem], filterText);
+  return labItem;
+}
+
+function buildRunningLabItems(filterText: string): DevExplorerTreeItem[] {
+  const items: DevExplorerTreeItem[] = [];
+
+  if (stateManager.getDeploymentState() === "deployed") {
+    const graphState = useGraphStore.getState();
+    const topoState = useTopoViewerStore.getState();
+    const pathValue = currentFilePath ?? topoState.yamlFileName;
+    const labName = stripTopologySuffix(topoState.labName || safeFilename(pathValue || "Current Lab"));
+
+    const edgeGroups = new Map<string, Array<{ peer: string; edgeId: string }>>();
+    for (const edge of graphState.edges) {
+      const source = String(edge.source);
+      const target = String(edge.target);
+      const edgeId = String(edge.id);
+      const sourceList = edgeGroups.get(source) ?? [];
+      sourceList.push({ peer: target, edgeId });
+      edgeGroups.set(source, sourceList);
+      const targetList = edgeGroups.get(target) ?? [];
+      targetList.push({ peer: source, edgeId });
+      edgeGroups.set(target, targetList);
+    }
+
+    const containers = graphState.nodes.map((node, index) => {
+      const nodeId = String(node.id);
+      const uptime = `Up ${(index + 1) * 3} minutes`;
+      const nodeType = typeof node.type === "string" ? node.type : "node";
+      const nodeImage = nodeType;
+      const interfaces = (edgeGroups.get(nodeId) ?? []).map((entry, index) => ({
+        id: `running-interface:${nodeId}:${index}`,
+        label: `eth${index}`,
+        description: entry.peer,
+        tooltip: buildDevInterfaceTooltip(`eth${index}`, entry.peer, entry.edgeId),
+        contextValue: "containerlabInterfaceUp",
+        collapsibleState: TREE_ITEM_NONE,
+        cID: nodeId,
+        name: `eth${index}`,
+        mac: entry.edgeId
+      }));
+
+      return {
+        id: `running-container:${nodeId}`,
+        label: nodeId,
+        description: uptime,
+        tooltip: buildDevContainerTooltip({
+          name: nodeId,
+          state: "running",
+          status: uptime,
+          kind: nodeType,
+          type: nodeType,
+          image: nodeImage,
+          id: nodeId,
+          ipv4: "N/A",
+          ipv6: "N/A"
+        }),
+        contextValue: "containerlabContainer",
+        collapsibleState: interfaces.length > 0 ? TREE_ITEM_COLLAPSED : TREE_ITEM_NONE,
+        state: "running",
+        status: uptime,
+        name: nodeId,
+        cID: nodeId,
+        kind: nodeType,
+        image: nodeImage,
+        v4Address: "N/A",
+        v6Address: "N/A",
+        children: interfaces
+      };
+    });
+
+    const labItem: DevExplorerTreeItem = {
+      id: `running-lab:${pathValue || labName}`,
+      label: labName,
+      description: pathValue,
+      tooltip: pathValue,
+      contextValue: "containerlabLabDeployed",
+      collapsibleState: containers.length > 0 ? TREE_ITEM_COLLAPSED : TREE_ITEM_NONE,
+      labPath: {
+        absolute: pathValue || labName,
+        relative: pathValue || labName
+      },
+      children: containers
+    };
+    labItem.command = {
+      command: "containerlab.lab.graph.topoViewer",
+      title: "Open TopoViewer",
+      arguments: [labItem]
+    };
+    items.push(labItem);
+  }
+
+  items.push(createMockRunningLabItem());
+  return filterTreeItems(items, filterText);
 }
 
 async function buildLocalLabItems(filterText: string): Promise<DevExplorerTreeItem[]> {
@@ -445,7 +650,39 @@ async function buildLocalLabItems(filterText: string): Promise<DevExplorerTreeIt
     return [];
   }
 
-  const items = localFiles.map((file) => {
+  const root: DevLocalFolderBranch = {
+    name: "",
+    relativePath: "",
+    folders: new Map<string, DevLocalFolderBranch>(),
+    labs: []
+  };
+
+  const files = localFiles as DevLocalLabFile[];
+  for (const file of files) {
+    const relativePath = topologyRelativePath(file.path);
+    const segments = toPosixPath(relativePath).split("/").filter(Boolean);
+    if (segments.length === 0) {
+      continue;
+    }
+
+    const folderSegments = segments.slice(0, -1);
+    let current = root;
+    let currentRelativePath = "";
+    for (const segment of folderSegments) {
+      currentRelativePath = currentRelativePath
+        ? `${currentRelativePath}/${segment}`
+        : segment;
+      if (!current.folders.has(segment)) {
+        current.folders.set(segment, {
+          name: segment,
+          relativePath: currentRelativePath,
+          folders: new Map<string, DevLocalFolderBranch>(),
+          labs: []
+        });
+      }
+      current = current.folders.get(segment)!;
+    }
+
     const item: DevExplorerTreeItem = {
       id: `local-lab:${file.path}`,
       label: file.filename || safeFilename(file.path),
@@ -455,7 +692,7 @@ async function buildLocalLabItems(filterText: string): Promise<DevExplorerTreeIt
       collapsibleState: TREE_ITEM_NONE,
       labPath: {
         absolute: file.path,
-        relative: file.path
+        relative: relativePath
       },
       children: []
     };
@@ -464,10 +701,25 @@ async function buildLocalLabItems(filterText: string): Promise<DevExplorerTreeIt
       title: "Open TopoViewer",
       arguments: [item]
     };
-    return item;
-  });
+    current.labs.push(item);
+  }
 
-  return filterTreeItems(items, filterText);
+  const toTreeItems = (branch: DevLocalFolderBranch): DevExplorerTreeItem[] => {
+    const labItems = [...branch.labs].sort((a, b) => String(a.label).localeCompare(String(b.label)));
+    const folderItems = Array.from(branch.folders.values())
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((folder) => ({
+        id: `local-folder:${folder.relativePath}`,
+        label: folder.name,
+        tooltip: folder.relativePath,
+        contextValue: "containerlabFolder",
+        collapsibleState: TREE_ITEM_COLLAPSED,
+        children: toTreeItems(folder)
+      }));
+    return [...labItems, ...folderItems];
+  };
+
+  return filterTreeItems(toTreeItems(root), filterText);
 }
 
 function buildHelpItems(): DevExplorerTreeItem[] {

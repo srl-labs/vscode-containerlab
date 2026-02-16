@@ -185,6 +185,41 @@ function isFavoriteLab(contextValue: string | undefined): boolean {
   return typeof contextValue === "string" && contextValue.includes("Favorite");
 }
 
+function shouldHideNodeDescription(contextValue: string | undefined): boolean {
+  return isLabContext(contextValue);
+}
+
+function labStatusIndicatorFromChildren(children: ExplorerNode[]): ExplorerNode["statusIndicator"] {
+  const containers = children.filter((child) => child.contextValue === "containerlabContainer");
+  if (containers.length === 0) {
+    return undefined;
+  }
+
+  let healthyRunning = 0;
+  let notRunning = 0;
+  let unhealthyRunning = 0;
+
+  for (const container of containers) {
+    if (container.statusIndicator === "green") {
+      healthyRunning += 1;
+      continue;
+    }
+    if (container.statusIndicator === "yellow") {
+      unhealthyRunning += 1;
+      continue;
+    }
+    notRunning += 1;
+  }
+
+  if (healthyRunning === containers.length) {
+    return "green";
+  }
+  if (healthyRunning > 0 && notRunning > 0 && unhealthyRunning === 0) {
+    return "yellow";
+  }
+  return "red";
+}
+
 function getStatusIndicator(item: ExplorerTreeItemLike): ExplorerNode["statusIndicator"] {
   const context = item.contextValue;
   if (context === "containerlabInterfaceUp") {
@@ -203,12 +238,6 @@ function getStatusIndicator(item: ExplorerTreeItemLike): ExplorerNode["statusInd
       return "green";
     }
     return "red";
-  }
-  if (isDeployedLab(context)) {
-    return "blue";
-  }
-  if (isUndeployedLab(context)) {
-    return "gray";
   }
   return undefined;
 }
@@ -493,7 +522,10 @@ async function buildNode(
   pathId: string
 ): Promise<ExplorerNode> {
   const label = labelToText(item.label);
-  const description = descriptionToText(item.description);
+  const contextValue = item.contextValue;
+  const description = shouldHideNodeDescription(contextValue)
+    ? undefined
+    : descriptionToText(item.description);
   const tooltip = tooltipToText(item.tooltip);
   const childrenItems = shouldResolveChildren(item)
     ? await getProviderChildren(provider, item)
@@ -505,14 +537,17 @@ async function buildNode(
   );
   const nodeActions = getNodeActions(sectionId, item, registry, options);
   const primaryAction = nodeActions.length > 0 ? nodeActions[0] : undefined;
+  const statusIndicator = isDeployedLab(contextValue)
+    ? labStatusIndicatorFromChildren(children)
+    : getStatusIndicator(item);
 
   return {
     id: item.id || pathId,
     label,
     description,
     tooltip,
-    contextValue: item.contextValue,
-    statusIndicator: getStatusIndicator(item),
+    contextValue,
+    statusIndicator,
     statusDescription: description,
     primaryAction,
     actions: nodeActions,

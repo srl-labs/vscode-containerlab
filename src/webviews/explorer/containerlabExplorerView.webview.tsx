@@ -1,18 +1,36 @@
 import {
+  AccountTree as AccountTreeIcon,
+  ArticleOutlined as ArticleOutlinedIcon,
+  Build as BuildIcon,
   ChevronRight as ChevronRightIcon,
   ContentCopy as ContentCopyIcon,
+  DescriptionOutlined as DescriptionOutlinedIcon,
   DeleteOutline as DeleteOutlineIcon,
   ExpandMore as ExpandMoreIcon,
   FilterAlt as FilterAltIcon,
+  Folder as FolderIcon,
   FolderOpen as FolderOpenIcon,
   Link as LinkIcon,
+  LinkOff as LinkOffIcon,
+  ManageSearch as ManageSearchIcon,
   MoreVert as MoreVertIcon,
+  NoteAdd as NoteAddIcon,
+  OpenInBrowser as OpenInBrowserIcon,
   OpenInNew as OpenInNewIcon,
   PlayArrow as PlayArrowIcon,
+  PlayCircleOutline as PlayCircleOutlineIcon,
+  PauseCircleOutline as PauseCircleOutlineIcon,
   Refresh as RefreshIcon,
+  SaveOutlined as SaveOutlinedIcon,
   Search as SearchIcon,
   SettingsEthernet as SettingsEthernetIcon,
+  Source as SourceIcon,
+  StarBorder as StarBorderIcon,
+  Stop as StopIcon,
   Terminal as TerminalIcon,
+  Tune as TuneIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
   type SvgIconComponent
 } from "@mui/icons-material";
 import {
@@ -20,9 +38,6 @@ import {
   Box,
   IconButton,
   InputAdornment,
-  ListItemIcon,
-  Menu,
-  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -42,6 +57,10 @@ import {
 } from "react";
 
 import { MuiThemeProvider } from "../../reactTopoViewer/webview/theme";
+import {
+  ContextMenu,
+  type ContextMenuItem
+} from "../../reactTopoViewer/webview/components/context-menu/ContextMenu";
 import { useMessageListener, usePostMessage, useReadySignal } from "../shared/hooks";
 import {
   EXPLORER_SECTION_ORDER,
@@ -88,6 +107,77 @@ interface ExplorerNodeLabelProps {
   node: ExplorerNode;
   onInvokeAction: (action: ExplorerAction) => void;
 }
+
+type ActionGroupId =
+  | "topology"
+  | "graph"
+  | "lifecycle"
+  | "save"
+  | "access"
+  | "sharing"
+  | "network"
+  | "inspect"
+  | "copy"
+  | "tools"
+  | "view"
+  | "other";
+
+type ExplorerNodeKind = "lab" | "container" | "interface" | "link" | "other";
+
+interface ExplorerActionGroup {
+  id: ActionGroupId;
+  label: string;
+  actions: ExplorerAction[];
+}
+
+const ACTION_GROUP_ORDER_DEFAULT: ActionGroupId[] = [
+  "topology",
+  "graph",
+  "lifecycle",
+  "save",
+  "access",
+  "sharing",
+  "network",
+  "inspect",
+  "copy",
+  "tools",
+  "view",
+  "other"
+];
+
+const ACTION_GROUP_ORDER_BY_NODE_KIND: Record<ExplorerNodeKind, ActionGroupId[]> = {
+  lab: [
+    "topology",
+    "graph",
+    "lifecycle",
+    "save",
+    "access",
+    "sharing",
+    "inspect",
+    "tools",
+    "copy",
+    "view",
+    "network",
+    "other"
+  ],
+  container: [
+    "access",
+    "inspect",
+    "lifecycle",
+    "save",
+    "network",
+    "copy",
+    "sharing",
+    "tools",
+    "view",
+    "topology",
+    "graph",
+    "other"
+  ],
+  interface: ACTION_GROUP_ORDER_DEFAULT,
+  link: ["sharing", "copy", "view", "topology", "graph", "lifecycle", "save", "network", "inspect", "tools", "other", "access"],
+  other: ACTION_GROUP_ORDER_DEFAULT
+};
 
 interface SectionTreeProps {
   section: ExplorerSectionSnapshot;
@@ -190,8 +280,60 @@ function isExplorerSectionId(value: string): value is ExplorerSectionId {
   return EXPLORER_SECTION_ORDER.includes(value as ExplorerSectionId);
 }
 
+function nodeKindFromContext(contextValue: string | undefined): ExplorerNodeKind {
+  if (!contextValue) {
+    return "other";
+  }
+  if (contextValue.includes("containerlabLab")) {
+    return "lab";
+  }
+  if (contextValue === "containerlabContainer") {
+    return "container";
+  }
+  if (contextValue === "containerlabInterfaceUp" || contextValue === "containerlabInterfaceDown") {
+    return "interface";
+  }
+  if (contextValue === "containerlabSSHXLink" || contextValue === "containerlabGottyLink") {
+    return "link";
+  }
+  return "other";
+}
+
 function actionIcon(action: ExplorerAction): SvgIconComponent {
   const command = action.commandId.toLowerCase();
+  const byCommandId: Record<string, SvgIconComponent> = {
+    "containerlab.inspectall": ManageSearchIcon,
+    "containerlab.treeview.runninglabs.hidenonownedlabs": VisibilityOffIcon,
+    "containerlab.treeview.runninglabs.shownonownedlabs": VisibilityIcon,
+    "containerlab.editor.topoviewereditor": NoteAddIcon,
+    "containerlab.lab.clonerepo": SourceIcon,
+    "containerlab.lab.togglefavorite": StarBorderIcon,
+    "containerlab.lab.addtoworkspace": FolderOpenIcon,
+    "containerlab.lab.save": SaveOutlinedIcon,
+    "containerlab.node.save": SaveOutlinedIcon,
+    "containerlab.node.showlogs": ArticleOutlinedIcon,
+    "containerlab.node.stop": StopIcon,
+    "containerlab.node.pause": PauseCircleOutlineIcon,
+    "containerlab.node.unpause": PlayCircleOutlineIcon,
+    "containerlab.interface.setdelay": TuneIcon,
+    "containerlab.interface.setjitter": TuneIcon,
+    "containerlab.interface.setloss": TuneIcon,
+    "containerlab.interface.setrate": TuneIcon,
+    "containerlab.interface.setcorruption": TuneIcon,
+    "containerlab.lab.sshx.attach": LinkIcon,
+    "containerlab.lab.sshx.detach": LinkOffIcon,
+    "containerlab.lab.sshx.reattach": LinkIcon,
+    "containerlab.lab.sshx.copylink": LinkIcon,
+    "containerlab.lab.gotty.attach": OpenInBrowserIcon,
+    "containerlab.lab.gotty.detach": OpenInBrowserIcon,
+    "containerlab.lab.gotty.reattach": OpenInBrowserIcon,
+    "containerlab.lab.gotty.copylink": OpenInBrowserIcon
+  };
+
+  const commandIcon = byCommandId[command];
+  if (commandIcon) {
+    return commandIcon;
+  }
 
   if (command.includes("copy")) {
     return ContentCopyIcon;
@@ -202,11 +344,35 @@ function actionIcon(action: ExplorerAction): SvgIconComponent {
   if (command.includes("refresh") || command.includes("redeploy")) {
     return RefreshIcon;
   }
+  if (command.includes("stop")) {
+    return StopIcon;
+  }
+  if (command.includes("unpause")) {
+    return PlayCircleOutlineIcon;
+  }
+  if (command.includes("pause")) {
+    return PauseCircleOutlineIcon;
+  }
   if (command.includes("ssh") || command.includes("shell") || command.includes("telnet")) {
     return TerminalIcon;
   }
   if (command.includes("filter")) {
     return FilterAltIcon;
+  }
+  if (command.includes(".save")) {
+    return SaveOutlinedIcon;
+  }
+  if (command.includes("showlogs") || command.includes("logs")) {
+    return ArticleOutlinedIcon;
+  }
+  if (command.startsWith("containerlab.lab.fcli.")) {
+    return BuildIcon;
+  }
+  if (command.includes(".gotty.")) {
+    return OpenInBrowserIcon;
+  }
+  if (command.startsWith("containerlab.lab.graph.")) {
+    return AccountTreeIcon;
   }
   if (command.includes("open") || command.includes("graph") || command.includes("inspect")) {
     return OpenInNewIcon;
@@ -214,8 +380,17 @@ function actionIcon(action: ExplorerAction): SvgIconComponent {
   if (command.includes("folder")) {
     return FolderOpenIcon;
   }
-  if (command.includes("capture") || command.includes("impairment") || command.includes("delay")) {
+  if (command.includes("capture") || command.includes("impairment")) {
     return SettingsEthernetIcon;
+  }
+  if (
+    command.includes("delay") ||
+    command.includes("jitter") ||
+    command.includes("loss") ||
+    command.includes("rate") ||
+    command.includes("corruption")
+  ) {
+    return TuneIcon;
   }
   if (command.includes("deploy") || command.includes("start") || command.includes("run")) {
     return PlayArrowIcon;
@@ -223,21 +398,358 @@ function actionIcon(action: ExplorerAction): SvgIconComponent {
   if (command.includes("link")) {
     return LinkIcon;
   }
-  return MoreVertIcon;
+  return BuildIcon;
+}
+
+function actionGroupId(action: ExplorerAction): ActionGroupId {
+  const command = action.commandId.toLowerCase();
+
+  if (command.startsWith("containerlab.lab.graph.")) {
+    return "graph";
+  }
+  if (command.includes(".save")) {
+    return "save";
+  }
+  if (command.startsWith("containerlab.lab.fcli.")) {
+    return "tools";
+  }
+  if (command.startsWith("containerlab.interface.") || command.includes("impairment")) {
+    return "network";
+  }
+  if (command.includes(".sshx.") || command.includes(".gotty.")) {
+    return "sharing";
+  }
+  if (command.includes("copy")) {
+    return "copy";
+  }
+  if (command.includes("inspect") || command.includes("showlogs")) {
+    return "inspect";
+  }
+  if (command.includes("ssh") || command.includes("shell") || command.includes("telnet") || command.includes("openbrowser")) {
+    return "access";
+  }
+  if (
+    command.includes("deploy") ||
+    command.includes("destroy") ||
+    command.includes("redeploy") ||
+    command.includes("start") ||
+    command.includes("stop") ||
+    command.includes("pause") ||
+    command.includes("unpause")
+  ) {
+    return "lifecycle";
+  }
+  if (
+    command.includes("openfile") ||
+    command.includes("topoviewer") ||
+    command.includes("openfolder") ||
+    command.includes("addtoworkspace") ||
+    command.includes("togglefavorite") ||
+    command.includes("delete") ||
+    command.includes("clonerepo")
+  ) {
+    return "topology";
+  }
+  if (
+    command.includes("filter") ||
+    command.includes("hide") ||
+    command.includes("show") ||
+    command.includes("refresh")
+  ) {
+    return "view";
+  }
+  return "other";
+}
+
+function actionGroupLabel(groupId: ActionGroupId): string {
+  const labels: Record<ActionGroupId, string> = {
+    topology: "Topology",
+    graph: "Graph",
+    lifecycle: "Lifecycle",
+    save: "Save",
+    access: "Access",
+    sharing: "Sharing",
+    network: "Network",
+    inspect: "Inspect",
+    copy: "Copy",
+    tools: "Tools",
+    view: "View",
+    other: "Other"
+  };
+  return labels[groupId];
+}
+
+function actionGroupIcon(groupId: ActionGroupId): SvgIconComponent {
+  const icons: Record<ActionGroupId, SvgIconComponent> = {
+    topology: FolderOpenIcon,
+    graph: AccountTreeIcon,
+    lifecycle: PlayArrowIcon,
+    save: SaveOutlinedIcon,
+    access: TerminalIcon,
+    sharing: LinkIcon,
+    network: SettingsEthernetIcon,
+    inspect: ManageSearchIcon,
+    copy: ContentCopyIcon,
+    tools: BuildIcon,
+    view: FilterAltIcon,
+    other: BuildIcon
+  };
+  return icons[groupId];
+}
+
+function sortGroupActions(groupId: ActionGroupId, actions: ExplorerAction[]): ExplorerAction[] {
+  if (groupId !== "graph") {
+    return actions;
+  }
+
+  const graphCommandOrder = new Map<string, number>([
+    ["containerlab.lab.graph.topoviewer", 1],
+    ["containerlab.lab.graph.drawio.interactive", 2],
+    ["containerlab.lab.graph.drawio.horizontal", 3],
+    ["containerlab.lab.graph.drawio.vertical", 4]
+  ]);
+
+  return [...actions].sort((a, b) => {
+    const aOrder = graphCommandOrder.get(a.commandId.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+    const bOrder = graphCommandOrder.get(b.commandId.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+    if (aOrder !== bOrder) {
+      return aOrder - bOrder;
+    }
+    return a.label.localeCompare(b.label);
+  });
+}
+
+function groupActions(actions: ExplorerAction[], nodeKind: ExplorerNodeKind): ExplorerActionGroup[] {
+  const grouped = new Map<ActionGroupId, ExplorerAction[]>();
+  const order = ACTION_GROUP_ORDER_BY_NODE_KIND[nodeKind] ?? ACTION_GROUP_ORDER_DEFAULT;
+
+  for (const action of actions) {
+    const groupId = actionGroupId(action);
+    const bucket = grouped.get(groupId) ?? [];
+    bucket.push(action);
+    grouped.set(groupId, bucket);
+  }
+
+  return order
+    .map((groupId) => ({
+      id: groupId,
+      label: actionGroupLabel(groupId),
+      actions: sortGroupActions(groupId, grouped.get(groupId) ?? [])
+    }))
+    .filter((group) => group.actions.length > 0);
+}
+
+function isInterfaceTimingAction(commandId: string): boolean {
+  return (
+    commandId === "containerlab.interface.setdelay" ||
+    commandId === "containerlab.interface.setjitter" ||
+    commandId === "containerlab.interface.setloss"
+  );
+}
+
+function actionGroupSection(groupId: ActionGroupId, nodeKind: ExplorerNodeKind): number {
+  if (nodeKind === "lab") {
+    if (groupId === "topology" || groupId === "graph") {
+      return 1;
+    }
+    if (groupId === "lifecycle" || groupId === "save") {
+      return 2;
+    }
+    if (
+      groupId === "access" ||
+      groupId === "sharing" ||
+      groupId === "inspect" ||
+      groupId === "tools"
+    ) {
+      return 3;
+    }
+    return 4;
+  }
+
+  if (nodeKind === "container") {
+    if (groupId === "access" || groupId === "inspect") {
+      return 1;
+    }
+    if (groupId === "lifecycle" || groupId === "save" || groupId === "network") {
+      return 2;
+    }
+    return 3;
+  }
+
+  if (nodeKind === "link") {
+    if (groupId === "sharing" || groupId === "copy") {
+      return 1;
+    }
+    return 2;
+  }
+
+  return 1;
+}
+
+function withSectionDividers(
+  groups: ExplorerActionGroup[],
+  nodeKind: ExplorerNodeKind,
+  renderGroup: (group: ExplorerActionGroup) => ContextMenuItem
+): ContextMenuItem[] {
+  if (groups.length === 0) {
+    return [];
+  }
+
+  const items: ContextMenuItem[] = [];
+  let previousSection: number | null = null;
+  for (const group of groups) {
+    const section = actionGroupSection(group.id, nodeKind);
+    if (items.length > 0 && previousSection !== null && section !== previousSection) {
+      items.push({ id: `divider:${nodeKind}:${group.id}:${items.length}`, label: "", divider: true });
+    }
+    items.push(renderGroup(group));
+    previousSection = section;
+  }
+  return items;
+}
+
+function nodeLeadingIcon(node: ExplorerNode): { Icon: SvgIconComponent; color: string } | undefined {
+  const context = node.contextValue;
+  if (context === "containerlabInterfaceUp") {
+    return { Icon: SettingsEthernetIcon, color: "success.main" };
+  }
+  if (context === "containerlabInterfaceDown") {
+    return { Icon: LinkOffIcon, color: "error.main" };
+  }
+  if (context === "containerlabFolder") {
+    return { Icon: FolderIcon, color: "text.secondary" };
+  }
+  if (typeof context === "string" && context.includes("containerlabLabUndeployed")) {
+    return { Icon: DescriptionOutlinedIcon, color: "text.secondary" };
+  }
+  return undefined;
 }
 
 function ExplorerNodeLabel({ node, onInvokeAction }: Readonly<ExplorerNodeLabelProps>) {
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
-  const hasActions = node.actions.length > 0;
-  const hasEntryTooltip = Boolean(node.tooltip) && node.children.length === 0;
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [menuOpenToLeft, setMenuOpenToLeft] = useState(false);
+  const hasEntryTooltip = Boolean(node.tooltip);
+  const leadingIcon = nodeLeadingIcon(node);
+  const nodeKind = nodeKindFromContext(node.contextValue);
+  const menuActions = useMemo(() => {
+    if (nodeKind === "lab") {
+      return node.actions.filter(
+        (action) => action.commandId.toLowerCase() !== "containerlab.lab.graph.topoviewer"
+      );
+    }
+    return node.actions;
+  }, [node.actions, nodeKind]);
+  const hasActions = menuActions.length > 0;
+  const contextMenuItems = useMemo<ContextMenuItem[]>(
+    () => {
+      const toMenuItem = (action: ExplorerAction): ContextMenuItem => {
+        const ActionIcon = actionIcon(action);
+        return {
+          id: action.id,
+          label: action.label,
+          icon: <ActionIcon fontSize="small" />,
+          danger: Boolean(action.destructive),
+          onClick: () => onInvokeAction(action)
+        };
+      };
+
+      if (nodeKind === "interface") {
+        const interfaceItems: ContextMenuItem[] = [];
+        let inTimingGroup = false;
+        for (const action of menuActions) {
+          const commandId = action.commandId.toLowerCase();
+          const isTimingAction = isInterfaceTimingAction(commandId);
+
+          if (isTimingAction && !inTimingGroup && interfaceItems.length > 0) {
+            interfaceItems.push({
+              id: `group:interface:timing-start:${action.id}`,
+              label: "",
+              divider: true
+            });
+          }
+          if (!isTimingAction && inTimingGroup) {
+            interfaceItems.push({
+              id: `group:interface:timing-end:${action.id}`,
+              label: "",
+              divider: true
+            });
+          }
+
+          interfaceItems.push(toMenuItem(action));
+          inTimingGroup = isTimingAction;
+        }
+        return interfaceItems;
+      }
+
+      const groupedActions = groupActions(menuActions, nodeKind);
+      return withSectionDividers(groupedActions, nodeKind, (group) => {
+        if (group.actions.length === 1) {
+          return toMenuItem(group.actions[0]);
+        }
+
+        let children = group.actions.map((action) => toMenuItem(action));
+        if (group.id === "sharing") {
+          const sharingChildren: ContextMenuItem[] = [];
+          let previousBucket: "sshx" | "gotty" | "other" | null = null;
+          for (let i = 0; i < group.actions.length; i += 1) {
+            const action = group.actions[i];
+            const command = action.commandId.toLowerCase();
+            let bucket: "sshx" | "gotty" | "other" = "other";
+            if (command.includes(".sshx.")) {
+              bucket = "sshx";
+            } else if (command.includes(".gotty.")) {
+              bucket = "gotty";
+            }
+            if (
+              sharingChildren.length > 0 &&
+              previousBucket !== null &&
+              bucket !== previousBucket
+            ) {
+              sharingChildren.push({
+                id: `group:${group.id}:divider:${action.id}`,
+                label: "",
+                divider: true
+              });
+            }
+            sharingChildren.push(toMenuItem(action));
+            previousBucket = bucket;
+          }
+          children = sharingChildren;
+        }
+
+        const GroupIcon = actionGroupIcon(group.id);
+        return {
+          id: `group:${group.id}`,
+          label: group.label,
+          icon: <GroupIcon fontSize="small" />,
+          children
+        };
+      });
+    },
+    [menuActions, nodeKind, onInvokeAction]
+  );
+  const secondaryText = node.description || node.statusDescription;
+  const isContainer = node.contextValue === "containerlabContainer";
+  const isInterface =
+    node.contextValue === "containerlabInterfaceUp" || node.contextValue === "containerlabInterfaceDown";
+  const inlineContainerStatus = isContainer ? secondaryText?.trim() : undefined;
+  const showSecondaryLine = Boolean(secondaryText) && !isContainer && !isInterface;
+  const showStatusDot = Boolean(node.statusIndicator) && !isInterface;
+
+  const openMenuFromElement = useCallback((element: HTMLElement, openToLeft = true) => {
+    const rect = element.getBoundingClientRect();
+    setMenuOpenToLeft(openToLeft);
+    setMenuPosition({ x: Math.round(rect.right), y: Math.round(rect.bottom + 2) });
+  }, []);
 
   const handleMenuOpen = useCallback((event: MouseEvent<HTMLElement>) => {
+    if (!hasActions) {
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
-    setAnchorEl(event.currentTarget);
-    setMenuPosition(null);
-  }, []);
+    openMenuFromElement(event.currentTarget, true);
+  }, [hasActions, openMenuFromElement]);
 
   const handleRowContextMenu = useCallback(
     (event: MouseEvent<HTMLElement>) => {
@@ -246,14 +758,14 @@ function ExplorerNodeLabel({ node, onInvokeAction }: Readonly<ExplorerNodeLabelP
       }
       event.preventDefault();
       event.stopPropagation();
-      setAnchorEl(null);
-      setMenuPosition({ top: event.clientY + 2, left: event.clientX + 2 });
+      const trigger = event.currentTarget.querySelector<HTMLElement>('[data-node-actions-trigger="true"]');
+      openMenuFromElement(trigger ?? event.currentTarget, true);
     },
-    [hasActions]
+    [hasActions, openMenuFromElement]
   );
 
   const handleMenuClose = useCallback(() => {
-    setAnchorEl(null);
+    setMenuOpenToLeft(false);
     setMenuPosition(null);
   }, []);
 
@@ -269,20 +781,7 @@ function ExplorerNodeLabel({ node, onInvokeAction }: Readonly<ExplorerNodeLabelP
     [node.primaryAction, onInvokeAction]
   );
 
-  const menuOpen = Boolean(anchorEl || menuPosition);
-
-  useEffect(() => {
-    if (!menuOpen) {
-      return;
-    }
-
-    const closeMenuOnBlur = () => {
-      handleMenuClose();
-    };
-
-    window.addEventListener("blur", closeMenuOnBlur);
-    return () => window.removeEventListener("blur", closeMenuOnBlur);
-  }, [menuOpen, handleMenuClose]);
+  const menuOpen = Boolean(menuPosition) && contextMenuItems.length > 0;
 
   return (
     <Stack
@@ -315,7 +814,13 @@ function ExplorerNodeLabel({ node, onInvokeAction }: Readonly<ExplorerNodeLabelP
           }}
         >
           <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
-            {node.statusIndicator && (
+            {leadingIcon && (
+              <leadingIcon.Icon
+                fontSize="inherit"
+                sx={{ fontSize: 14, color: leadingIcon.color, flex: "0 0 auto" }}
+              />
+            )}
+            {showStatusDot && (
               <Box
                 sx={{
                   width: 8,
@@ -329,11 +834,16 @@ function ExplorerNodeLabel({ node, onInvokeAction }: Readonly<ExplorerNodeLabelP
             <Typography variant="body2" noWrap sx={{ fontWeight: node.primaryAction ? 600 : 500 }}>
               {node.label}
             </Typography>
+            {inlineContainerStatus && (
+              <Typography variant="caption" color="text.secondary" noWrap>
+                {inlineContainerStatus}
+              </Typography>
+            )}
           </Stack>
         </Tooltip>
-        {(node.description || node.statusDescription) && (
+        {showSecondaryLine && (
           <Typography variant="caption" color="text.secondary" noWrap>
-            {node.description || node.statusDescription}
+            {secondaryText}
           </Typography>
         )}
       </Box>
@@ -344,55 +854,24 @@ function ExplorerNodeLabel({ node, onInvokeAction }: Readonly<ExplorerNodeLabelP
             size="small"
             onClick={handleMenuOpen}
             aria-label={`Actions for ${node.label}`}
+            data-node-actions-trigger="true"
             sx={{ width: 22, height: 22, p: 0.25, color: COLOR_TEXT_PRIMARY }}
           >
             <MoreVertIcon fontSize="small" />
           </IconButton>
-          <Menu
-            anchorEl={anchorEl}
-            anchorReference={menuPosition ? "anchorPosition" : "anchorEl"}
-            anchorPosition={menuPosition ?? undefined}
-            open={menuOpen}
+          <ContextMenu
+            isVisible={menuOpen}
+            position={menuPosition ?? { x: 0, y: 0 }}
+            items={contextMenuItems}
+            compact
+            openToLeft={menuOpenToLeft}
             onClose={handleMenuClose}
-            onClick={handleMenuClose}
-            slotProps={{
-              list: { dense: true },
-              paper: {
-                sx: {
-                  minWidth: 230,
-                  border: "1px solid",
-                  borderColor: COLOR_DIVIDER,
-                  "& .MuiMenuItem-root": { minHeight: 30, py: 0.25 }
-                }
-              }
+            onBackdropContextMenu={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setMenuPosition({ x: event.clientX + 2, y: event.clientY + 2 });
             }}
-          >
-            {node.actions.map((action) => {
-              const IconComponent = actionIcon(action);
-              const isDestructive = Boolean(action.destructive);
-              return (
-                <MenuItem
-                  key={action.id}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    onInvokeAction(action);
-                  }}
-                  sx={isDestructive ? { color: COLOR_ERROR_MAIN } : undefined}
-                >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: 24,
-                      color: isDestructive ? COLOR_ERROR_MAIN : COLOR_TEXT_PRIMARY
-                    }}
-                  >
-                    <IconComponent fontSize="small" />
-                  </ListItemIcon>
-                  <Typography variant="body2">{action.label}</Typography>
-                </MenuItem>
-              );
-            })}
-          </Menu>
+          />
         </>
       )}
     </Stack>
@@ -419,15 +898,19 @@ function SectionTreeNode({
 
   return (
     <Box>
-      <Stack direction="row" alignItems="flex-start" spacing={0.45} sx={{ minHeight: 24 }}>
+      <Stack
+        direction="row"
+        alignItems="flex-start"
+        spacing={0.45}
+        sx={{ minHeight: 24, pl: depth * 2.5 }}
+      >
         <Box
           sx={{
             width: 16,
             flex: "0 0 16px",
             display: "flex",
             justifyContent: "center",
-            pt: 0.05,
-            ml: depth * 1.2
+            pt: 0.05
           }}
         >
           {hasChildren && (
