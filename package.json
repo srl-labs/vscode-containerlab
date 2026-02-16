@@ -49,6 +49,11 @@
     "views": {
       "containerlabViewContainer": [
         {
+          "id": "containerlabActivityBadgeProxyView",
+          "name": "Running Labs Badge",
+          "visibility": "hidden"
+        },
+        {
           "id": "containerlabExplorerWebview",
           "name": "Explorer",
           "type": "webview"
