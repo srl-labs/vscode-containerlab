@@ -8,6 +8,7 @@
  * - custom-node-error: Show error
  * - icon-list-response: Update customIcons
  * - lab-lifecycle-status: Clear processing state
+ * - fit-viewport: Fit graph to current viewport
  */
 import { useEffect } from "react";
 
@@ -17,6 +18,7 @@ import {
   subscribeToWebviewMessages,
   type TypedMessageEvent
 } from "../../messaging/webviewMessageBus";
+import { useCanvasStore } from "../../stores/canvasStore";
 import { useTopoViewerStore, type DeploymentState } from "../../stores/topoViewerStore";
 
 // ============================================================================
@@ -58,6 +60,10 @@ interface LabLifecycleStatusMessage {
   type: "lab-lifecycle-status";
 }
 
+interface FitViewportMessage {
+  type: "fit-viewport";
+}
+
 type ExtensionMessage =
   | TopoModeChangedMessage
   | PanelActionMessage
@@ -65,6 +71,7 @@ type ExtensionMessage =
   | CustomNodeErrorMessage
   | IconListResponseMessage
   | LabLifecycleStatusMessage
+  | FitViewportMessage
   | { type: string; data?: Record<string, unknown> };
 
 // ============================================================================
@@ -138,6 +145,11 @@ function handleLabLifecycleStatus(): void {
   setProcessing(false);
 }
 
+function handleFitViewport(): void {
+  const { requestFitView } = useCanvasStore.getState();
+  requestFitView();
+}
+
 // ============================================================================
 // Hook
 // ============================================================================
@@ -170,6 +182,9 @@ export function useTopoViewerMessageSubscription(): void {
           break;
         case "lab-lifecycle-status":
           handleLabLifecycleStatus();
+          break;
+        case "fit-viewport":
+          handleFitViewport();
           break;
       }
     };

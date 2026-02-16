@@ -31,7 +31,7 @@ export interface GeoMapLayoutApi {
   mapRef: RefObject<MapLibreMap | null>;
   isReady: boolean;
   isInteracting: boolean;
-  fitToViewport: () => void;
+  fitToViewport: (options?: { duration?: number }) => void;
   getGeoCoordinatesForNode: (node: Node) => GeoCoordinates | null;
   getGeoUpdateForNode: (
     node: Node
@@ -878,29 +878,33 @@ export function useGeoMapLayout({
     []
   );
 
-  const fitToViewport = useCallback(() => {
-    if (!isGeoLayout) return;
-    const map = mapRef.current;
-    if (!map) return;
+  const fitToViewport = useCallback(
+    (options?: { duration?: number }) => {
+      if (!isGeoLayout) return;
+      const map = mapRef.current;
+      if (!map) return;
+      const duration = typeof options?.duration === "number" ? options.duration : 200;
 
-    resetGeoInteractionState({
-      interactionEndTimeoutRef,
-      isInteractingRef,
-      interactionBaseRef,
-      viewportElementRef,
-      viewportTransformOverrideActiveRef,
-      setIsInteracting,
-      reactFlowInstance: reactFlowInstanceRef.current,
-      resetViewport: true
-    });
+      resetGeoInteractionState({
+        interactionEndTimeoutRef,
+        isInteractingRef,
+        interactionBaseRef,
+        viewportElementRef,
+        viewportTransformOverrideActiveRef,
+        setIsInteracting,
+        reactFlowInstance: reactFlowInstanceRef.current,
+        resetViewport: true
+      });
 
-    const bounds = buildGeoBounds(nodesRef.current);
-    if (bounds) {
-      map.fitBounds(bounds, { padding: 120, duration: 200, maxZoom: 12 });
-      return;
-    }
-    map.easeTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration: 200 });
-  }, [isGeoLayout, reactFlowInstanceRef]);
+      const bounds = buildGeoBounds(nodesRef.current);
+      if (bounds) {
+        map.fitBounds(bounds, { padding: 120, duration, maxZoom: 12 });
+        return;
+      }
+      map.easeTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration });
+    },
+    [isGeoLayout, reactFlowInstanceRef]
+  );
 
   return useMemo(
     () => ({

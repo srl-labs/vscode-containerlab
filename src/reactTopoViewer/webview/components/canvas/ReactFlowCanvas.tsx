@@ -18,6 +18,7 @@ import {
   SelectionMode,
   getNodesBounds,
   getViewportForBounds,
+  useNodesInitialized,
   useStore,
   type Edge,
   type Node,
@@ -460,24 +461,24 @@ function shouldRunFitView(params: {
   fitViewRequestId: number;
   lastFitViewRequestId: number;
   isReactFlowReady: boolean;
+  areNodesInitialized: boolean;
   reactFlowInstance: ReactFlowInstance | null;
-  nodeCount: number;
-  isGeoLayout: boolean;
+  fitNodeCount: number;
 }): boolean {
   const {
     fitViewRequestId,
     lastFitViewRequestId,
     isReactFlowReady,
+    areNodesInitialized,
     reactFlowInstance,
-    nodeCount,
-    isGeoLayout
+    fitNodeCount
   } = params;
   return (
     fitViewRequestId > lastFitViewRequestId &&
     isReactFlowReady &&
+    areNodesInitialized &&
     Boolean(reactFlowInstance) &&
-    nodeCount > 0 &&
-    !isGeoLayout
+    fitNodeCount > 0
   );
 }
 
@@ -908,6 +909,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const fitViewRequestId = useFitViewRequestId();
     const lastFitViewRequestRef = useRef(0);
     const [isReactFlowReady, setIsReactFlowReady] = useState(false);
+    const areNodesInitialized = useNodesInitialized({ includeHiddenNodes: false });
     const suppressSelectionSyncUntilRef = useRef(0);
 
     const topoState = useMemo(() => ({ mode, isLocked }), [mode, isLocked]);
@@ -919,6 +921,10 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     // All nodes (topology + annotation) are now unified in propNodes
     const allNodes = useMemo(() => (propNodes as Node[]) ?? [], [propNodes]);
     const allEdges = useMemo(() => (propEdges as Edge[]) ?? [], [propEdges]);
+    const visibleNodeCount = useMemo(
+      () => allNodes.reduce((count, node) => (node.hidden ? count : count + 1), 0),
+      [allNodes]
+    );
 
     const handleEdgeCreatedWithContextPanel = useCallback(
       (
@@ -1020,20 +1026,77 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           fitViewRequestId,
           lastFitViewRequestId: lastFitViewRequestRef.current,
           isReactFlowReady,
+          areNodesInitialized,
           reactFlowInstance: reactFlowInstanceRef.current,
-          nodeCount: allNodes.length,
-          isGeoLayout
+          fitNodeCount: visibleNodeCount
         })
       ) {
         return;
       }
-      lastFitViewRequestRef.current = fitViewRequestId;
-      setTimeout(() => {
-        void fitCanvasToVisibleViewport({ padding: 0.2, duration: 200 }).catch(() => {
-          /* ignore */
-        });
-      }, 50);
-    }, [fitCanvasToVisibleViewport, fitViewRequestId, allNodes.length, isGeoLayout, isReactFlowReady]);
+
+      let cancelled = false;
+      const requestedFitId = fitViewRequestId;
+      let completedPasses = 0;
+      const requiredPasses = 2;
+
+      const tryFit = () => {
+        if (cancelled) return;
+        if (requestedFitId <= lastFitViewRequestRef.current) return;
+
+        if (isGeoLayout) {
+          if (!geoLayout.isReady) {
+            window.requestAnimationFrame(tryFit);
+            return;
+          }
+          geoLayout.fitToViewport({ duration: 0 });
+          completedPasses += 1;
+          if (completedPasses < requiredPasses) {
+            window.requestAnimationFrame(tryFit);
+            return;
+          }
+          lastFitViewRequestRef.current = requestedFitId;
+          return;
+        }
+
+        const canvasContainer = canvasContainerRef.current;
+        const canvasRect = canvasContainer?.getBoundingClientRect();
+        const hasCanvasArea = Boolean(canvasRect && canvasRect.width > 1 && canvasRect.height > 1);
+        if (!hasCanvasArea) {
+          window.requestAnimationFrame(tryFit);
+          return;
+        }
+
+        void fitCanvasToVisibleViewport({ padding: 0.2, duration: 0 })
+          .then(() => {
+            if (cancelled) return;
+            if (requestedFitId <= lastFitViewRequestRef.current) return;
+            completedPasses += 1;
+            if (completedPasses < requiredPasses) {
+              window.requestAnimationFrame(tryFit);
+              return;
+            }
+            lastFitViewRequestRef.current = requestedFitId;
+          })
+          .catch(() => {
+            if (cancelled) return;
+            window.requestAnimationFrame(tryFit);
+          });
+      };
+
+      tryFit();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [
+      fitCanvasToVisibleViewport,
+      fitViewRequestId,
+      visibleNodeCount,
+      geoLayout,
+      isGeoLayout,
+      isReactFlowReady,
+      areNodesInitialized
+    ]);
 
     // Refs for context menu (to avoid re-renders)
     const { nodesRef, edgesRef } = useGraphRefs(allNodes, allEdges);
