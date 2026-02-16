@@ -80,6 +80,10 @@ const COLOR_TEXT_DISABLED = "text.disabled";
 const FILTER_UPDATE_DEBOUNCE_MS = 250;
 const UI_STATE_UPDATE_DEBOUNCE_MS = 160;
 const DEFAULT_EXPANDED_SECTIONS = new Set<ExplorerSectionId>(["runningLabs", "localLabs"]);
+const TREE_DEPTH_INDENT = 1.6;
+const TREE_DISCLOSURE_SLOT_PX = 14;
+const TREE_ROW_GAP = 0.3;
+const NODE_MARKER_SLOT_PX = 14;
 
 const STATUS_COLOR_MAP: Record<string, string> = {
   green: "success.main",
@@ -305,6 +309,7 @@ function actionIcon(action: ExplorerAction): SvgIconComponent {
     "containerlab.inspectall": ManageSearchIcon,
     "containerlab.treeview.runninglabs.hidenonownedlabs": VisibilityOffIcon,
     "containerlab.treeview.runninglabs.shownonownedlabs": VisibilityIcon,
+    "containerlab.treeview.runninglabs.togglenonownedlabs": VisibilityOffIcon,
     "containerlab.editor.topoviewereditor": NoteAddIcon,
     "containerlab.lab.clonerepo": SourceIcon,
     "containerlab.lab.togglefavorite": StarBorderIcon,
@@ -813,24 +818,34 @@ function ExplorerNodeLabel({ node, onInvokeAction }: Readonly<ExplorerNodeLabelP
             }
           }}
         >
-          <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
-            {leadingIcon && (
-              <leadingIcon.Icon
-                fontSize="inherit"
-                sx={{ fontSize: 14, color: leadingIcon.color, flex: "0 0 auto" }}
-              />
-            )}
-            {showStatusDot && (
-              <Box
-                sx={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  flex: "0 0 auto",
-                  bgcolor: statusColor(node.statusIndicator)
-                }}
-              />
-            )}
+          <Stack direction="row" spacing={TREE_ROW_GAP} alignItems="center" sx={{ minWidth: 0 }}>
+            <Box
+              sx={{
+                width: NODE_MARKER_SLOT_PX,
+                flex: `0 0 ${NODE_MARKER_SLOT_PX}px`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+            >
+              {leadingIcon && (
+                <leadingIcon.Icon
+                  fontSize="inherit"
+                  sx={{ fontSize: 13, color: leadingIcon.color, flex: "0 0 auto" }}
+                />
+              )}
+              {!leadingIcon && showStatusDot && (
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    flex: "0 0 auto",
+                    bgcolor: statusColor(node.statusIndicator)
+                  }}
+                />
+              )}
+            </Box>
             <Typography variant="body2" noWrap sx={{ fontWeight: node.primaryAction ? 600 : 500 }}>
               {node.label}
             </Typography>
@@ -900,23 +915,28 @@ function SectionTreeNode({
     <Box>
       <Stack
         direction="row"
-        alignItems="flex-start"
-        spacing={0.45}
-        sx={{ minHeight: 24, pl: depth * 2.5 }}
+        alignItems="center"
+        spacing={TREE_ROW_GAP}
+        sx={{ minHeight: 22, pl: depth * TREE_DEPTH_INDENT }}
       >
         <Box
           sx={{
-            width: 16,
-            flex: "0 0 16px",
+            width: TREE_DISCLOSURE_SLOT_PX,
+            flex: `0 0 ${TREE_DISCLOSURE_SLOT_PX}px`,
             display: "flex",
             justifyContent: "center",
-            pt: 0.05
+            alignItems: "center"
           }}
         >
           {hasChildren && (
             <IconButton
               size="small"
-              sx={{ width: 16, height: 16, p: 0, color: COLOR_TEXT_PRIMARY }}
+              sx={{
+                width: TREE_DISCLOSURE_SLOT_PX,
+                height: TREE_DISCLOSURE_SLOT_PX,
+                p: 0,
+                color: COLOR_TEXT_PRIMARY
+              }}
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
