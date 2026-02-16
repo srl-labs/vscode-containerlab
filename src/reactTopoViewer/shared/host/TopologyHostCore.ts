@@ -621,7 +621,7 @@ export class TopologyHostCore implements TopologyHost {
   private async buildSnapshot(): Promise<TopologySnapshot> {
     const yamlContent = await this.baseFs.readFile(this.yamlFilePath);
     const yamlDoc = YAML.parseDocument(yamlContent);
-    const parsed = yamlDoc.toJS() as ClabTopology;
+    const parsed = normalizeParsedTopologyValue(yamlDoc.toJS());
     this.currentClabTopology = parsed;
 
     const annotationsContent = await this.readAnnotationsContent();
@@ -691,22 +691,46 @@ export class TopologyHostCore implements TopologyHost {
     pendingMigrations: Array<{ nodeId: string; interfacePattern: string }>;
     graphLabelMigrations: GraphLabelMigration[];
   } {
+    const fallbackLabName = this.getFallbackLabName();
     if (this.mode === "view") {
       return parsed
         ? TopologyParser.parseToReactFlowFromParsed(parsed, {
             annotations,
+            labName: fallbackLabName,
             containerDataProvider: this.containerDataProvider,
             logger: this.parserLogger
           })
         : TopologyParser.parseToReactFlow(yamlContent, {
             annotations,
+            labName: fallbackLabName,
             containerDataProvider: this.containerDataProvider,
             logger: this.parserLogger
           });
     }
     return parsed
-      ? TopologyParser.parseForEditorRFParsed(parsed, annotations)
-      : TopologyParser.parseForEditorRF(yamlContent, annotations);
+      ? TopologyParser.parseToReactFlowFromParsed(parsed, {
+          annotations,
+          labName: fallbackLabName
+        })
+      : TopologyParser.parseToReactFlow(yamlContent, {
+          annotations,
+          labName: fallbackLabName
+        });
+  }
+
+  private getFallbackLabName(): string {
+    const yamlFileName = this.baseFs.basename(this.yamlFilePath);
+    const clabName = yamlFileName.replace(/\.clab\.ya?ml$/i, "");
+    if (clabName && clabName !== yamlFileName) {
+      return clabName;
+    }
+
+    const yamlName = yamlFileName.replace(/\.ya?ml$/i, "");
+    if (yamlName && yamlName !== yamlFileName) {
+      return yamlName;
+    }
+
+    return "topology";
   }
 
   private async applyMigrations(
@@ -893,6 +917,13 @@ function isFileNotFoundError(error: unknown): boolean {
   }
   const msg = errorToMessage(error);
   return msg.includes("ENOENT") || /no such file/i.test(msg);
+}
+
+function normalizeParsedTopologyValue(parsed: unknown): ClabTopology {
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    return parsed as ClabTopology;
+  }
+  return {};
 }
 
 function hasStrictNumericPosition(value: unknown): boolean {

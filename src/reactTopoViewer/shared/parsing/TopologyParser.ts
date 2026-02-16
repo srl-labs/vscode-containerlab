@@ -63,7 +63,7 @@ export class TopologyParser {
    */
   static parse(yamlContent: string, options: ParseOptions = {}): ParseResult {
     const doc = YAML.parseDocument(yamlContent);
-    const parsed = doc.toJS() as ClabTopology;
+    const parsed = normalizeParsedTopology(doc.toJS());
     return TopologyParser.parseFromParsed(parsed, options);
   }
 
@@ -71,19 +71,23 @@ export class TopologyParser {
    * Parses a pre-parsed topology object into parsed elements (internal format).
    * Use this to avoid redundant YAML parsing when a document has already been parsed.
    */
-  static parseFromParsed(parsed: ClabTopology, options: ParseOptions = {}): ParseResult {
+  static parseFromParsed(
+    parsed: ClabTopology | null | undefined,
+    options: ParseOptions = {}
+  ): ParseResult {
     const log = options.logger ?? nullLogger;
+    const normalizedParsed = normalizeParsedTopology(parsed);
 
     // Get basic info
-    const labName = options.labName ?? getLabName(parsed);
-    const prefix = computeFullPrefix(parsed, labName);
+    const labName = options.labName ?? getLabName(normalizedParsed);
+    const prefix = computeFullPrefix(normalizedParsed, labName);
 
     // Handle annotations - detect graph label migrations
     let annotations = options.annotations;
     let graphLabelMigrations: GraphLabelMigration[] = [];
 
-    if (parsed.topology?.nodes) {
-      const migrations = detectGraphLabelMigrations(parsed, annotations);
+    if (normalizedParsed.topology?.nodes) {
+      const migrations = detectGraphLabelMigrations(normalizedParsed, annotations);
       if (migrations.length > 0) {
         graphLabelMigrations = migrations;
         annotations = applyGraphLabelMigrations(annotations, migrations);
@@ -94,7 +98,7 @@ export class TopologyParser {
     }
 
     // Build elements
-    const result = TopologyParser.buildElements(parsed, {
+    const result = TopologyParser.buildElements(normalizedParsed, {
       annotations,
       containerDataProvider: options.containerDataProvider,
       logger: log,
@@ -129,7 +133,7 @@ export class TopologyParser {
    * Parses a pre-parsed topology object into ReactFlow nodes/edges.
    */
   static parseToReactFlowFromParsed(
-    parsed: ClabTopology,
+    parsed: ClabTopology | null | undefined,
     options: ParseOptions = {}
   ): ParseResultRF {
     const result = TopologyParser.parseFromParsed(parsed, options);
@@ -160,7 +164,7 @@ export class TopologyParser {
    * Parses a pre-parsed topology object for editor mode and returns ReactFlow format.
    */
   static parseForEditorRFParsed(
-    parsed: ClabTopology,
+    parsed: ClabTopology | null | undefined,
     annotations?: TopologyAnnotations
   ): ParseResultRF {
     return TopologyParser.parseToReactFlowFromParsed(parsed, { annotations });
@@ -274,7 +278,7 @@ export function parseTopologyToReactFlow(
  * Parses a pre-parsed topology object to ReactFlow format.
  */
 export function parseTopologyToReactFlowFromParsed(
-  parsed: ClabTopology,
+  parsed: ClabTopology | null | undefined,
   options?: ParseOptions
 ): ParseResultRF {
   return TopologyParser.parseToReactFlowFromParsed(parsed, options);
@@ -295,8 +299,15 @@ export function parseTopologyForEditorRF(
  * Parses a pre-parsed topology object for editor mode.
  */
 export function parseTopologyForEditorRFParsed(
-  parsed: ClabTopology,
+  parsed: ClabTopology | null | undefined,
   annotations?: TopologyAnnotations
 ): ParseResultRF {
   return TopologyParser.parseForEditorRFParsed(parsed, annotations);
+}
+
+function normalizeParsedTopology(parsed: unknown): ClabTopology {
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    return parsed as ClabTopology;
+  }
+  return {};
 }
