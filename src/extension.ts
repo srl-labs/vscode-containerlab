@@ -196,7 +196,6 @@ topology:
 
 function updateHideNonOwnedLabs(hide: boolean) {
   setHideNonOwnedLabsState(hide);
-  vscode.commands.executeCommand("setContext", "containerlab:nonOwnedLabsHidden", hide);
 }
 
 function hideNonOwnedLabsCommand() {
@@ -207,50 +206,6 @@ function hideNonOwnedLabsCommand() {
 function showNonOwnedLabsCommand() {
   runningLabsProvider.refreshWithoutDiscovery();
   updateHideNonOwnedLabs(false);
-}
-
-async function filterRunningLabsCommand() {
-  const val = await vscode.window.showInputBox({
-    placeHolder: "Filter running labs",
-    prompt: 'use * for wildcard, # for numbers: "srl*", "spine#-leaf*", "^spine.*"'
-  });
-  if (val !== undefined) {
-    if (explorerViewProvider) {
-      await explorerViewProvider.setFilter(val);
-    } else {
-      runningLabsProvider.setTreeFilter(val);
-    }
-  }
-}
-
-function clearRunningLabsFilterCommand() {
-  if (explorerViewProvider) {
-    void explorerViewProvider.clearFilter();
-    return;
-  }
-  runningLabsProvider.clearTreeFilter();
-}
-
-async function filterLocalLabsCommand() {
-  const val = await vscode.window.showInputBox({
-    placeHolder: "Filter local labs",
-    prompt: 'use * for wildcard, # for numbers: "spine", "*test*", "lab#", "^my-.*"'
-  });
-  if (val !== undefined) {
-    if (explorerViewProvider) {
-      await explorerViewProvider.setFilter(val);
-    } else {
-      localLabsProvider.setTreeFilter(val);
-    }
-  }
-}
-
-function clearLocalLabsFilterCommand() {
-  if (explorerViewProvider) {
-    void explorerViewProvider.clearFilter();
-    return;
-  }
-  localLabsProvider.clearTreeFilter();
 }
 
 function onDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
@@ -379,30 +334,6 @@ function registerCommands(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "containerlab.treeView.runningLabs.showNonOwnedLabs",
       showNonOwnedLabsCommand
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "containerlab.treeView.runningLabs.filter",
-      filterRunningLabsCommand
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "containerlab.treeView.runningLabs.clearFilter",
-      clearRunningLabsFilterCommand
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "containerlab.treeView.localLabs.filter",
-      filterLocalLabsCommand
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "containerlab.treeView.localLabs.clearFilter",
-      clearLocalLabsFilterCommand
     )
   );
 }
@@ -611,7 +542,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Initial pull of inspect data
   void ins.update();
 
-  // Tree data provider
+  // Explorer data providers (backing model for React explorer)
   setExtensionContext(context);
   setFavoriteLabs(new Set(context.globalState.get<string[]>("favoriteLabs", [])));
 

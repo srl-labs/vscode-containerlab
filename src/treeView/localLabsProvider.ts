@@ -3,7 +3,7 @@ import path = require("path");
 import * as vscode from "vscode";
 
 import * as utils from "../utils/utils";
-import { localTreeView, favoriteLabs, outputChannel } from "../globals";
+import { favoriteLabs, outputChannel } from "../globals";
 import { FilterUtils } from "../helpers/filterUtils";
 
 import * as c from "./common";
@@ -30,23 +30,15 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
   // match on subdirs. deletion events only.
   private delSubdirWatcher = vscode.workspace.createFileSystemWatcher("**/", true, true, false);
   private treeFilter: string = "";
-  private labNodeCache: Map<string, c.ClabLabTreeNode> = new Map();
-
-  // Cache for file discovery results
-  private fileCache: vscode.Uri[] | null = null;
 
   constructor() {
     this.watcher.onDidCreate((uri) => {
       if (!uri.scheme || uri.scheme === "file") {
-        // Invalidate cache on file creation
-        this.fileCache = null;
         this.refresh();
       }
     });
     this.watcher.onDidDelete((uri) => {
       if (!uri.scheme || uri.scheme === "file") {
-        // Invalidate cache on file deletion
-        this.fileCache = null;
         this.refresh();
       }
     });
@@ -61,8 +53,6 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
     // of the subdir deletion.
     this.delSubdirWatcher.onDidDelete((uri) => {
       if (!uri.scheme || uri.scheme === "file") {
-        // Invalidate cache on directory deletion
-        this.fileCache = null;
         this.refresh();
       }
     });
@@ -72,25 +62,18 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
     this._onDidChangeTreeData.fire();
   }
 
-  // Force refresh with cache invalidation
+  // Force refresh
   forceRefresh(): void {
-    this.fileCache = null;
     this._onDidChangeTreeData.fire();
   }
 
   setTreeFilter(filterText: string) {
     this.treeFilter = filterText;
-    if (localTreeView) {
-      localTreeView.message = `Filter: ${filterText}`;
-    }
     this.refresh();
   }
 
   clearTreeFilter() {
     this.treeFilter = "";
-    if (localTreeView) {
-      localTreeView.message = undefined;
-    }
     this.refresh();
   }
 
@@ -135,28 +118,18 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
     const dirPath = dir ?? workspaceRoot;
     const { labNodes, folderNodes } = this.collectNodes(labs, dirPath, workspaceRoot);
 
-    this.cleanupCache(labs);
     labNodes.sort(this.compareLabs);
 
     const result: (c.ClabFolderTreeNode | c.ClabLabTreeNode)[] = [...labNodes, ...folderNodes];
     const isEmpty = result.length === 0 && dirPath === workspaceRoot;
-    if (dirPath === workspaceRoot) {
-      vscode.commands.executeCommand("setContext", "localLabsEmpty", isEmpty);
-    }
     return isEmpty ? undefined : result;
   }
 
   private async getLabUris(): Promise<vscode.Uri[]> {
-    if (this.fileCache) {
-      outputChannel.debug("[LocalTreeDataProvider] Using cached file list");
-      return this.fileCache;
-    }
     outputChannel.debug("[LocalTreeDataProvider] Performing file discovery");
-    const uris = (await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN)).filter(
+    return (await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN)).filter(
       (u) => !u.scheme || u.scheme === "file"
     );
-    this.fileCache = uris;
-    return uris;
   }
 
   private addLab(
@@ -174,30 +147,20 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
       ? "containerlabLabUndeployedFavorite"
       : "containerlabLabUndeployed";
 
-    let labNode = this.labNodeCache.get(normPath);
-
-    if (labNode) {
-      labNode.contextValue = contextVal;
-      labNode.favorite = isFavorite;
-      labNode.description = utils.getRelLabFolderPath(normPath);
-    } else {
-      labNode = new c.ClabLabTreeNode(
-        path.basename(filePath),
-        vscode.TreeItemCollapsibleState.None,
-        {
-          relative: filePath,
-          absolute: normPath
-        },
-        undefined,
-        undefined,
-        undefined,
-        contextVal,
-        isFavorite
-      );
-      labNode.description = utils.getRelLabFolderPath(normPath);
-      this.labNodeCache.set(normPath, labNode);
-    }
-
+    const labNode = new c.ClabLabTreeNode(
+      path.basename(filePath),
+      vscode.TreeItemCollapsibleState.None,
+      {
+        relative: filePath,
+        absolute: normPath
+      },
+      undefined,
+      undefined,
+      undefined,
+      contextVal,
+      isFavorite
+    );
+    labNode.description = utils.getRelLabFolderPath(normPath);
     labs[normPath] = labNode;
   }
 
@@ -255,14 +218,6 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
       .sort()
       .map((p) => new c.ClabFolderTreeNode(path.basename(p), p));
     return { labNodes, folderNodes };
-  }
-
-  private cleanupCache(labs: Record<string, c.ClabLabTreeNode>): void {
-    for (const key of Array.from(this.labNodeCache.keys())) {
-      if (!labs[key]) {
-        this.labNodeCache.delete(key);
-      }
-    }
   }
 
   private compareLabs(a: c.ClabLabTreeNode, b: c.ClabLabTreeNode): number {

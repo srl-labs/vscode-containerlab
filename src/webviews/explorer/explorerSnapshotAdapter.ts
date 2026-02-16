@@ -123,12 +123,8 @@ const COMMAND_LABELS: Record<string, string> = {
   "containerlab.inspectAll": "Inspect All Labs",
   "containerlab.treeView.runningLabs.hideNonOwnedLabs": "Hide Non-Owned Labs",
   "containerlab.treeView.runningLabs.showNonOwnedLabs": "Show Non-Owned Labs",
-  "containerlab.treeView.runningLabs.filter": "Filter Running Labs",
-  "containerlab.treeView.runningLabs.clearFilter": "Clear Running Labs Filter",
   "containerlab.editor.topoViewerEditor": "New Topology File",
-  "containerlab.lab.cloneRepo": "Clone Repository",
-  "containerlab.treeView.localLabs.filter": "Filter Local Labs",
-  "containerlab.treeView.localLabs.clearFilter": "Clear Local Labs Filter"
+  "containerlab.lab.cloneRepo": "Clone Repository"
 };
 
 const DESTRUCTIVE_COMMANDS = new Set<string>([

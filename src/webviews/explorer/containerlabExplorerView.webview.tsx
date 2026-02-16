@@ -210,7 +210,6 @@ const ACTION_ICON_BY_COMMAND: Record<string, SvgIconComponent> = {
   "containerlab.inspectall": ManageSearchIcon,
   "containerlab.treeview.runninglabs.hidenonownedlabs": VisibilityOffIcon,
   "containerlab.treeview.runninglabs.shownonownedlabs": VisibilityIcon,
-  "containerlab.treeview.runninglabs.togglenonownedlabs": VisibilityOffIcon,
   "containerlab.editor.topoviewereditor": NoteAddIcon,
   "containerlab.lab.clonerepo": SourceIcon,
   "containerlab.lab.togglefavorite": StarBorderIcon,

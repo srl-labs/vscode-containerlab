@@ -31,10 +31,6 @@ export interface RunningLabsProviderInterface {
 
 /** Our global output channel */
 export let outputChannel: vscode.LogOutputChannel;
-export let treeView: vscode.TreeView<unknown> | undefined;
-export let localTreeView: vscode.TreeView<unknown> | undefined;
-export let runningTreeView: vscode.TreeView<unknown> | undefined;
-export let helpTreeView: vscode.TreeView<unknown> | undefined;
 export let username: string;
 export let hideNonOwnedLabsState: boolean = false;
 export let favoriteLabs: Set<string> = new Set();
@@ -96,18 +92,6 @@ export function setRunningLabsProvider(provider: RunningLabsProviderInterface) {
 
 export function setHelpFeedbackProvider(provider: unknown) {
   helpFeedbackProvider = provider;
-}
-
-export function setLocalTreeView(view: vscode.TreeView<unknown>) {
-  localTreeView = view;
-}
-
-export function setRunningTreeView(view: vscode.TreeView<unknown>) {
-  runningTreeView = view;
-}
-
-export function setHelpTreeView(view: vscode.TreeView<unknown>) {
-  helpTreeView = view;
 }
 
 export function setHideNonOwnedLabsState(hide: boolean) {
