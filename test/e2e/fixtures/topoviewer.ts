@@ -474,7 +474,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       gotoFile: async (filename: string) => {
         const resolvedFilePath = path.join(TOPOLOGIES_DIR, filename);
         // Pass session ID via URL so auto-load uses correct session
-        await page.goto(`${API_BASE_URL}/?sessionId=${sessionId}`, {
+        await page.goto(`${API_BASE_URL}/?sessionId=${sessionId}&devExplorer=0`, {
           waitUntil: "domcontentloaded",
           timeout: 60000
         });

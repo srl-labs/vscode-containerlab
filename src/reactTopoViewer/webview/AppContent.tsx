@@ -205,6 +205,14 @@ function isDevMockWebview(): boolean {
   return Boolean(maybeVscode?.__isDevMock__);
 }
 
+function isDevExplorerDisabledByUrl(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  const rawValue = params.get("devExplorer");
+  if (!rawValue) return false;
+  const normalized = rawValue.trim().toLowerCase();
+  return normalized === "0" || normalized === "false" || normalized === "off";
+}
+
 interface ContextSelectionState {
   selectedNode: unknown;
   selectedEdge: unknown;
@@ -258,7 +266,10 @@ export const AppContent: React.FC<AppContentProps> = ({
   const isProcessing = state.isProcessing;
   const isInteractionLocked = getInteractionLockState(state.isLocked, isProcessing);
   const interactionMode = getInteractionMode(state.mode, isProcessing);
-  const showDevExplorer = React.useMemo(() => isDevMockWebview(), []);
+  const showDevExplorer = React.useMemo(
+    () => isDevMockWebview() && !isDevExplorerDisabledByUrl(),
+    []
+  );
   const layoutRef = React.useRef<HTMLDivElement | null>(null);
   const [devExplorerWidth, setDevExplorerWidth] = React.useState(DEV_EXPLORER_DEFAULT_WIDTH);
   const [isDevExplorerDragging, setIsDevExplorerDragging] = React.useState(false);
