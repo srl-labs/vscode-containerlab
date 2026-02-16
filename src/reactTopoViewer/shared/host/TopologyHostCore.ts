@@ -8,6 +8,7 @@ import type {
   ClabTopology,
   DeploymentState,
   FreeTextAnnotation,
+  GroupStyleAnnotation,
   TopologyAnnotations,
   NodeAnnotation
 } from "../types/topology";
@@ -1037,6 +1038,78 @@ function deriveLegacyGroupBounds(
   };
 }
 
+function resolveLegacyGroupIdentity(
+  group: GroupStyleAnnotation,
+  index: number
+): { id: string; name: string; level: string } {
+  const id = isNonEmptyString(group.id) ? group.id : `legacy-group-${index + 1}`;
+  const identity = parseLegacyGroupIdentity(id);
+  const name = isNonEmptyString(group.name) ? group.name : identity.name;
+  const level = isNonEmptyString(group.level) ? group.level : identity.level;
+  return { id, name, level };
+}
+
+function resolveLegacyGroupLabelColor(group: GroupStyleAnnotation): {
+  labelColor: string | undefined;
+  legacyColor: unknown;
+} {
+  const legacyColor = (group as Record<string, unknown>).color;
+  const explicitLabelColor = isNonEmptyString(group.labelColor) ? group.labelColor : undefined;
+  const fallbackLabelColor = isNonEmptyString(legacyColor) ? legacyColor : undefined;
+  return {
+    labelColor: explicitLabelColor ?? fallbackLabelColor,
+    legacyColor
+  };
+}
+
+function needsLegacyGroupStyleFix(group: GroupStyleAnnotation, legacyColor: unknown): boolean {
+  if (!isNonEmptyString(group.id)) return true;
+  if (!isNonEmptyString(group.name)) return true;
+  if (!isNonEmptyString(group.level)) return true;
+  if (!hasStrictNumericPosition(group.position)) return true;
+  if (typeof group.width !== "number" || !Number.isFinite(group.width)) return true;
+  if (typeof group.height !== "number" || !Number.isFinite(group.height)) return true;
+  if (!isNonEmptyString(group.labelColor) && isNonEmptyString(legacyColor)) return true;
+  return false;
+}
+
+function normalizeLegacyGroupStyleAnnotation(
+  group: GroupStyleAnnotation,
+  index: number,
+  nodeAnnotations: NodeAnnotation[]
+): { annotation: GroupStyleAnnotation; changed: boolean } {
+  const identity = resolveLegacyGroupIdentity(group, index);
+  const normalizedPosition = toPosition(group.position);
+  const normalizedWidth = toFiniteNumber(group.width);
+  const normalizedHeight = toFiniteNumber(group.height);
+  const hasAllBounds =
+    normalizedPosition !== undefined &&
+    normalizedWidth !== undefined &&
+    normalizedHeight !== undefined;
+  const derivedBounds = hasAllBounds
+    ? undefined
+    : deriveLegacyGroupBounds(identity.id, identity.name, identity.level, nodeAnnotations);
+  const { labelColor, legacyColor } = resolveLegacyGroupLabelColor(group);
+
+  if (!needsLegacyGroupStyleFix(group, legacyColor)) {
+    return { annotation: group, changed: false };
+  }
+
+  return {
+    annotation: {
+      ...group,
+      id: identity.id,
+      name: identity.name,
+      level: identity.level,
+      position: normalizedPosition ?? derivedBounds?.position ?? { x: 0, y: 0 },
+      width: normalizedWidth ?? derivedBounds?.width ?? LEGACY_DEFAULT_GROUP_WIDTH,
+      height: normalizedHeight ?? derivedBounds?.height ?? LEGACY_DEFAULT_GROUP_HEIGHT,
+      labelColor
+    },
+    changed: true
+  };
+}
+
 function migrateLegacyAnnotations(
   annotations: TopologyAnnotations
 ): { annotations: TopologyAnnotations; modified: boolean } {
@@ -1086,49 +1159,13 @@ function migrateLegacyAnnotations(
   });
 
   const groupStyleAnnotations = (annotations.groupStyleAnnotations ?? []).map((group, index) => {
-    const id = isNonEmptyString(group.id) ? group.id : `legacy-group-${index + 1}`;
-    const identity = parseLegacyGroupIdentity(id);
-    const name = isNonEmptyString(group.name) ? group.name : identity.name;
-    const level = isNonEmptyString(group.level) ? group.level : identity.level;
-
-    const normalizedPosition = toPosition(group.position);
-    const normalizedWidth = toFiniteNumber(group.width);
-    const normalizedHeight = toFiniteNumber(group.height);
-    const derivedBounds =
-      normalizedPosition && normalizedWidth !== undefined && normalizedHeight !== undefined
-        ? undefined
-        : deriveLegacyGroupBounds(id, name, level, nodeAnnotations);
-    const legacyColor = (group as Record<string, unknown>).color;
-    const labelColor =
-      (isNonEmptyString(group.labelColor) ? group.labelColor : undefined) ??
-      (isNonEmptyString(legacyColor) ? legacyColor : undefined);
-
-    const needsFix =
-      !isNonEmptyString(group.id) ||
-      !isNonEmptyString(group.name) ||
-      !isNonEmptyString(group.level) ||
-      !hasStrictNumericPosition(group.position) ||
-      typeof group.width !== "number" ||
-      !Number.isFinite(group.width) ||
-      typeof group.height !== "number" ||
-      !Number.isFinite(group.height) ||
-      (!isNonEmptyString(group.labelColor) && isNonEmptyString(legacyColor));
-
-    if (!needsFix) {
-      return group;
+    const normalizedGroup = normalizeLegacyGroupStyleAnnotation(group, index, nodeAnnotations);
+    if (!normalizedGroup.changed) {
+      return normalizedGroup.annotation;
     }
 
     modified = true;
-    return {
-      ...group,
-      id,
-      name,
-      level,
-      position: normalizedPosition ?? derivedBounds?.position ?? { x: 0, y: 0 },
-      width: normalizedWidth ?? derivedBounds?.width ?? LEGACY_DEFAULT_GROUP_WIDTH,
-      height: normalizedHeight ?? derivedBounds?.height ?? LEGACY_DEFAULT_GROUP_HEIGHT,
-      labelColor
-    };
+    return normalizedGroup.annotation;
   });
 
   if (!modified) {

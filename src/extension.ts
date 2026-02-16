@@ -565,8 +565,7 @@ export async function activate(context: vscode.ExtensionContext) {
   });
   const updateActivityBadgeProxy = async () => {
     try {
-      const runningLabs = await newRunningProvider.getChildren();
-      const runningLabCount = Array.isArray(runningLabs) ? runningLabs.length : 0;
+      const runningLabCount = await newRunningProvider.getRootChildrenCount();
       activityBadgeProxyView.badge =
         runningLabCount > 0
           ? {

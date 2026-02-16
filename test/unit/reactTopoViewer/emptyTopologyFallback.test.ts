@@ -2,9 +2,9 @@
 import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
-import * as YAML from "yaml";
 
 import { expect } from "chai";
+import * as YAML from "yaml";
 
 import { TopologyHostCore } from "../../../src/reactTopoViewer/shared/host/TopologyHostCore";
 import { NodeFsAdapter } from "../../../src/reactTopoViewer/shared/io/NodeFsAdapter";

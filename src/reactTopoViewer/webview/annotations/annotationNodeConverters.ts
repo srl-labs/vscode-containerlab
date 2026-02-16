@@ -24,6 +24,12 @@ import type {
 } from "../components/canvas/types";
 
 import { DEFAULT_LINE_LENGTH } from "./constants";
+import {
+  isNonEmptyString,
+  normalizePosition,
+  parseLegacyGroupIdentity,
+  toFiniteNumber
+} from "./valueParsers";
 
 // ============================================================================
 // Constants
@@ -47,39 +53,6 @@ const LINE_PADDING = 20;
 const DEFAULT_SHAPE_Z_INDEX = -1;
 const DEFAULT_GROUP_WIDTH = 200;
 const DEFAULT_GROUP_HEIGHT = 150;
-
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
-function toFiniteNumber(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim().length > 0) {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return undefined;
-}
-
-function normalizePosition(
-  value: unknown,
-  fallback: { x: number; y: number } = { x: 0, y: 0 }
-): { x: number; y: number } {
-  if (!value || typeof value !== "object") return { ...fallback };
-  const rec = value as Record<string, unknown>;
-  const x = toFiniteNumber(rec.x);
-  const y = toFiniteNumber(rec.y);
-  if (x === undefined || y === undefined) return { ...fallback };
-  return { x, y };
-}
-
-function parseLegacyGroupIdentity(groupId: string): { name: string; level: string } {
-  const idx = groupId.lastIndexOf(":");
-  if (idx > 0 && idx < groupId.length - 1) {
-    return { name: groupId.slice(0, idx), level: groupId.slice(idx + 1) };
-  }
-  return { name: groupId, level: "1" };
-}
 
 // ============================================================================
 // Helper Functions

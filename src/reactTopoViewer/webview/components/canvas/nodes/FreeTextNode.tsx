@@ -37,13 +37,28 @@ function buildWrapperStyle(rotation: number, selected: boolean): React.CSSProper
   };
 }
 
+interface TextStyleOptions {
+  fontSize: number;
+  fontColor: string;
+  backgroundColor?: string;
+  fontWeight: React.CSSProperties["fontWeight"];
+  fontStyle: React.CSSProperties["fontStyle"];
+  textDecoration: React.CSSProperties["textDecoration"];
+  textAlign: React.CSSProperties["textAlign"];
+  fontFamily: string;
+  roundedBackground: boolean;
+}
+
+function hasFixedHeight(height: unknown): boolean {
+  return typeof height === "number" && Number.isFinite(height);
+}
+
 /** Build text style for free text content */
 function getTextLayoutStyle(
   data: FreeTextNodeData,
   isMediaOnly: boolean
 ): Pick<React.CSSProperties, "height" | "overflow"> {
-  const hasFixedHeight = typeof data.height === "number" && Number.isFinite(data.height);
-  if (!hasFixedHeight) {
+  if (!hasFixedHeight(data.height)) {
     return { height: "auto", overflow: "visible" };
   }
   if (isMediaOnly) {
@@ -56,39 +71,64 @@ function isStandaloneMarkdownImage(value: string): boolean {
   return /^\s*!\[[^\]]*\]\([^)]+\)\s*$/u.test(value);
 }
 
-function buildTextStyle(data: FreeTextNodeData, isMediaOnly: boolean): React.CSSProperties {
-  const {
-    fontSize = 14,
-    fontColor = "#333",
-    backgroundColor,
-    fontWeight = "normal",
-    fontStyle = "normal",
-    textDecoration = "none",
-    textAlign = "left",
-    fontFamily = "inherit",
-    roundedBackground = true
-  } = data;
-  const hasFixedHeight = typeof data.height === "number" && Number.isFinite(data.height);
-  const layoutStyle = getTextLayoutStyle(data, isMediaOnly);
-  let padding: React.CSSProperties["padding"] = "4px";
+function resolveTextStyleOptions(data: FreeTextNodeData): TextStyleOptions {
+  return {
+    fontSize: data.fontSize ?? 14,
+    fontColor: data.fontColor ?? "#333",
+    backgroundColor: data.backgroundColor,
+    fontWeight: data.fontWeight ?? "normal",
+    fontStyle: data.fontStyle ?? "normal",
+    textDecoration: data.textDecoration ?? "none",
+    textAlign: data.textAlign ?? "left",
+    fontFamily: data.fontFamily ?? "inherit",
+    roundedBackground: data.roundedBackground ?? true
+  };
+}
+
+function getTextPadding(
+  backgroundColor: string | undefined,
+  isMediaOnly: boolean,
+  hasFixedContentHeight: boolean
+): string {
+  if (isMediaOnly && hasFixedContentHeight) {
+    return "0";
+  }
   if (backgroundColor) {
-    padding = "4px 8px";
+    return "4px 8px";
   }
-  if (isMediaOnly && hasFixedHeight) {
-    padding = 0;
+  return "4px";
+}
+
+function getTextBorderRadius(
+  roundedBackground: boolean,
+  backgroundColor: string | undefined
+): number {
+  if (!roundedBackground || !backgroundColor) {
+    return 0;
   }
+  return 4;
+}
+
+function buildTextStyle(data: FreeTextNodeData, isMediaOnly: boolean): React.CSSProperties {
+  const styleOptions = resolveTextStyleOptions(data);
+  const layoutStyle = getTextLayoutStyle(data, isMediaOnly);
+  const fixedHeight = hasFixedHeight(data.height);
+  const padding = getTextPadding(styleOptions.backgroundColor, isMediaOnly, fixedHeight);
 
   return {
-    fontSize: `${fontSize}px`,
-    color: fontColor,
-    fontWeight,
-    fontStyle,
-    textDecoration,
-    textAlign,
-    fontFamily,
-    backgroundColor: backgroundColor || undefined,
+    fontSize: `${styleOptions.fontSize}px`,
+    color: styleOptions.fontColor,
+    fontWeight: styleOptions.fontWeight,
+    fontStyle: styleOptions.fontStyle,
+    textDecoration: styleOptions.textDecoration,
+    textAlign: styleOptions.textAlign,
+    fontFamily: styleOptions.fontFamily,
+    backgroundColor: styleOptions.backgroundColor || undefined,
     padding,
-    borderRadius: roundedBackground && backgroundColor ? 4 : undefined,
+    borderRadius: getTextBorderRadius(
+      styleOptions.roundedBackground,
+      styleOptions.backgroundColor
+    ),
     width: "100%",
     height: layoutStyle.height,
     outline: "none",

@@ -14,13 +14,19 @@ import type {
   TopologyAnnotations
 } from "../../shared/types/topology";
 import type { TopoNode, TopoEdge } from "../../shared/types/graph";
+import {
+  annotationsToNodes,
+  applyGroupMembershipToNodes,
+  isNonEmptyString,
+  parseEndpointLabelOffset,
+  parseLegacyGroupIdentity,
+  pruneEdgeAnnotations,
+  toFiniteNumber,
+  toPosition
+} from "../annotations";
 import { useGraphStore } from "../stores/graphStore";
 import { useTopoViewerStore } from "../stores/topoViewerStore";
 import { useCanvasStore } from "../stores/canvasStore";
-import { applyGroupMembershipToNodes } from "../annotations/groupMembership";
-import { annotationsToNodes } from "../annotations/annotationNodeConverters";
-import { pruneEdgeAnnotations } from "../annotations/edgeAnnotations";
-import { parseEndpointLabelOffset } from "../annotations/endpointLabelOffset";
 import { applyForceLayout, hasPresetPositions } from "../components/canvas/layout";
 import { snapToGrid } from "../utils/grid";
 
@@ -41,36 +47,6 @@ const DEFAULT_GROUP_HEIGHT = 200;
 const LEGACY_DEFAULT_MEDIA_TEXT_WIDTH = 120;
 const LEGACY_MEDIA_TEXT_HEIGHT_RATIO = 0.62;
 const LEGACY_MIN_MEDIA_TEXT_HEIGHT = 48;
-
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
-function toFiniteNumber(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim().length > 0) {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return undefined;
-}
-
-function toPosition(value: unknown): { x: number; y: number } | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const rec = value as Record<string, unknown>;
-  const x = toFiniteNumber(rec.x);
-  const y = toFiniteNumber(rec.y);
-  if (x === undefined || y === undefined) return undefined;
-  return { x, y };
-}
-
-function parseLegacyGroupIdentity(groupId: string): { name: string; level: string } {
-  const idx = groupId.lastIndexOf(":");
-  if (idx > 0 && idx < groupId.length - 1) {
-    return { name: groupId.slice(0, idx), level: groupId.slice(idx + 1) };
-  }
-  return { name: groupId, level: "1" };
-}
 
 function isStandaloneMarkdownImage(value: unknown): boolean {
   if (!isNonEmptyString(value)) return false;
@@ -182,39 +158,85 @@ function normalizeFreeShapeAnnotations(annotations: FreeShapeAnnotation[]): Free
   });
 }
 
+function resolveGroupIdentity(
+  group: GroupStyleAnnotation,
+  index: number
+): { id: string; name: string; level: string } {
+  const id = isNonEmptyString(group.id) ? group.id : `legacy-group-${index + 1}`;
+  const identity = parseLegacyGroupIdentity(id);
+  const name = isNonEmptyString(group.name) ? group.name : identity.name;
+  const level = isNonEmptyString(group.level) ? group.level : identity.level;
+  return { id, name, level };
+}
+
+function resolveGroupBounds(
+  group: GroupStyleAnnotation,
+  identity: { id: string; name: string; level: string },
+  nodeAnnotations: NodeAnnotation[]
+): { position: { x: number; y: number }; width: number; height: number } {
+  const normalizedPosition = toPosition(group.position);
+  const normalizedWidth = toFiniteNumber(group.width);
+  const normalizedHeight = toFiniteNumber(group.height);
+
+  if (
+    normalizedPosition !== undefined &&
+    normalizedWidth !== undefined &&
+    normalizedHeight !== undefined
+  ) {
+    return {
+      position: normalizedPosition,
+      width: normalizedWidth,
+      height: normalizedHeight
+    };
+  }
+
+  const derivedBounds = deriveLegacyGroupBounds(
+    identity.id,
+    identity.name,
+    identity.level,
+    nodeAnnotations
+  );
+
+  return {
+    position: normalizedPosition ?? derivedBounds?.position ?? { x: 0, y: 0 },
+    width: normalizedWidth ?? derivedBounds?.width ?? DEFAULT_GROUP_WIDTH,
+    height: normalizedHeight ?? derivedBounds?.height ?? DEFAULT_GROUP_HEIGHT
+  };
+}
+
+function resolveGroupLabelColor(group: GroupStyleAnnotation): string | undefined {
+  if (isNonEmptyString(group.labelColor)) {
+    return group.labelColor;
+  }
+  const legacyColor = (group as Record<string, unknown>).color;
+  return isNonEmptyString(legacyColor) ? legacyColor : undefined;
+}
+
+function normalizeGroupStyleAnnotation(
+  group: GroupStyleAnnotation,
+  index: number,
+  nodeAnnotations: NodeAnnotation[]
+): GroupStyleAnnotation {
+  const identity = resolveGroupIdentity(group, index);
+  const bounds = resolveGroupBounds(group, identity, nodeAnnotations);
+
+  return {
+    ...group,
+    id: identity.id,
+    name: identity.name,
+    level: identity.level,
+    position: bounds.position,
+    width: bounds.width,
+    height: bounds.height,
+    labelColor: resolveGroupLabelColor(group)
+  };
+}
+
 function normalizeGroupStyleAnnotations(
   groups: GroupStyleAnnotation[],
   nodeAnnotations: NodeAnnotation[]
 ): GroupStyleAnnotation[] {
-  return groups.map((group, index) => {
-    const id = isNonEmptyString(group.id) ? group.id : `legacy-group-${index + 1}`;
-    const identity = parseLegacyGroupIdentity(id);
-    const name = isNonEmptyString(group.name) ? group.name : identity.name;
-    const level = isNonEmptyString(group.level) ? group.level : identity.level;
-
-    const normalizedPosition = toPosition(group.position);
-    const normalizedWidth = toFiniteNumber(group.width);
-    const normalizedHeight = toFiniteNumber(group.height);
-    const derivedBounds =
-      normalizedPosition && normalizedWidth !== undefined && normalizedHeight !== undefined
-        ? undefined
-        : deriveLegacyGroupBounds(id, name, level, nodeAnnotations);
-
-    const legacyColor = (group as Record<string, unknown>).color;
-
-    return {
-      ...group,
-      id,
-      name,
-      level,
-      position: normalizedPosition ?? derivedBounds?.position ?? { x: 0, y: 0 },
-      width: normalizedWidth ?? derivedBounds?.width ?? DEFAULT_GROUP_WIDTH,
-      height: normalizedHeight ?? derivedBounds?.height ?? DEFAULT_GROUP_HEIGHT,
-      labelColor:
-        (isNonEmptyString(group.labelColor) ? group.labelColor : undefined) ??
-        (isNonEmptyString(legacyColor) ? legacyColor : undefined)
-    };
-  });
+  return groups.map((group, index) => normalizeGroupStyleAnnotation(group, index, nodeAnnotations));
 }
 
 function syncUndoRedo(snapshot: TopologySnapshot): void {
