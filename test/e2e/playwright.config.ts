@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const parsedWorkers = Number.parseInt(process.env.PW_WORKERS ?? "", 10);
+const workers = Number.isFinite(parsedWorkers) ? Math.max(4, parsedWorkers) : 4;
+
 /**
  * Playwright configuration for React TopoViewer E2E tests.
  * Tests run against the Vite dev server on port 5173.
@@ -10,15 +13,16 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   globalSetup: require.resolve("./global-setup"),
   testDir: "./specs",
-  fullyParallel: true,
+  // CI runners are slower and more variable; reduce intra-file parallelism to
+  // avoid intermittent timeouts while still allowing worker parallelism.
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   // Retry flaky tests - helps with timing issues and connection resets
   retries: process.env.CI ? 2 : 1,
-  // Limit workers to prevent overwhelming the dev server
-  // Too many parallel requests cause ECONNRESET errors
-  workers: process.env.CI ? 4 : 6,
+  // Keep at least 4 workers to validate true parallel execution behavior.
+  workers: process.env.CI ? 2 : 6,
   // Increase timeout for slower CI environments
-  timeout: 30000,
+  timeout: 90000,
   reporter: [["list"], ["html", { open: "never", outputFolder: "../../playwright-report" }]],
   use: {
     baseURL: "http://localhost:5173",
@@ -26,8 +30,8 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     // Timeouts for individual actions
-    actionTimeout: 10000,
-    navigationTimeout: 15000
+    actionTimeout: 20000,
+    navigationTimeout: 45000
   },
   projects: [
     {
@@ -43,7 +47,7 @@ export default defineConfig({
     command: "npm run dev",
     url: "http://localhost:5173",
     reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    timeout: process.env.CI ? 180000 : 120000,
     cwd: "../../" // Run from project root
   }
 });

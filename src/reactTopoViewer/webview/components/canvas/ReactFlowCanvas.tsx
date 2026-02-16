@@ -1,9 +1,4 @@
-/**
- * ReactFlowCanvas - Main React Flow canvas component for topology visualization
- *
- * This is now a fully controlled component - nodes/edges come from the graph store.
- * No internal state duplication.
- */
+// Main React Flow canvas component.
 import React, {
   useRef,
   useImperativeHandle,
@@ -13,6 +8,7 @@ import React, {
   useEffect,
   useState
 } from "react";
+import { flushSync } from "react-dom";
 import {
   Background,
   BackgroundVariant,
@@ -42,10 +38,10 @@ import {
   useLinkCreation,
   useSourceNodePosition
 } from "../../hooks/canvas";
-import { DEFAULT_GRID_LINE_WIDTH } from "../../hooks/ui";
 import { useCanvasStore, useFitViewRequestId } from "../../stores/canvasStore";
 import { useGraphActions } from "../../stores/graphStore";
 import { useIsLocked, useMode, useTopoViewerActions } from "../../stores/topoViewerStore";
+import { invertHexColor, resolveComputedColor } from "../../utils/color";
 import { ContextMenu } from "../context-menu/ContextMenu";
 
 import { AnnotationModeIndicator, HelperLines, LinkCreationIndicator } from "./CanvasOverlays";
@@ -64,6 +60,7 @@ import type {
 
 const GRID_SIZE = 20;
 const QUADRATIC_GRID_SIZE = 40;
+const DEFAULT_GRID_LINE_WIDTH = 0.5;
 
 /** Hook for wrapped node click handling */
 function handleAltDelete(
@@ -109,6 +106,36 @@ function handleLinkCreationClick(
   return true;
 }
 
+function handleAnnotationEditClick(
+  event: React.MouseEvent,
+  node: { id: string; type?: string },
+  clearContextForAnnotationEdit: () => void,
+  annotationHandlers?: AnnotationHandlers
+): boolean {
+  if (!annotationHandlers) return false;
+
+  if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers.onEditFreeText) {
+    event.stopPropagation();
+    clearContextForAnnotationEdit();
+    annotationHandlers.onEditFreeText(node.id);
+    return true;
+  }
+  if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers.onEditFreeShape) {
+    event.stopPropagation();
+    clearContextForAnnotationEdit();
+    annotationHandlers.onEditFreeShape(node.id);
+    return true;
+  }
+  if (node.type === GROUP_NODE_TYPE && annotationHandlers.onEditGroup) {
+    event.stopPropagation();
+    clearContextForAnnotationEdit();
+    annotationHandlers.onEditGroup(node.id);
+    return true;
+  }
+
+  return false;
+}
+
 function useWrappedNodeClick(
   linkSourceNode: string | null,
   completeLinkCreation: (nodeId: string) => void,
@@ -116,6 +143,7 @@ function useWrappedNodeClick(
   mode: "view" | "edit",
   isLocked: boolean,
   handleDeleteNode: (nodeId: string) => void,
+  clearContextForAnnotationEdit: () => void,
   annotationHandlers?: AnnotationHandlers
 ) {
   return useCallback(
@@ -123,6 +151,14 @@ function useWrappedNodeClick(
       if (handleAltDelete(event, node, mode, isLocked, handleDeleteNode, annotationHandlers))
         return;
       if (handleLinkCreationClick(event, node, linkSourceNode, completeLinkCreation)) return;
+      if (
+        handleAnnotationEditClick(event, node, clearContextForAnnotationEdit, annotationHandlers)
+      ) {
+        // Still flow through to the base handler to ensure shared behavior
+        // like closing context menus stays consistent for annotation nodes.
+        onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
+        return;
+      }
       onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
     },
     [
@@ -132,6 +168,7 @@ function useWrappedNodeClick(
       mode,
       isLocked,
       handleDeleteNode,
+      clearContextForAnnotationEdit,
       annotationHandlers
     ]
   );
@@ -180,17 +217,23 @@ const LARGE_GRAPH_EDGE_THRESHOLD = 900;
 // ============================================================================
 
 /** Hook for render configuration based on graph size and zoom level */
-function useRenderConfig(nodeCount: number, edgeCount: number, linkLabelMode: EdgeLabelMode) {
+function useRenderConfig(
+  nodeCount: number,
+  edgeCount: number,
+  linkLabelMode: EdgeLabelMode,
+  disableZoomTracking = false
+) {
   const isLargeGraph =
     nodeCount >= LARGE_GRAPH_NODE_THRESHOLD || edgeCount >= LARGE_GRAPH_EDGE_THRESHOLD;
 
   const isLowDetail = useStore(
     useCallback(
       (store) => {
+        if (disableZoomTracking) return false;
         const zoom = store.transform[2];
         return isLargeGraph && zoom <= LOW_DETAIL_ZOOM_THRESHOLD;
       },
-      [isLargeGraph]
+      [isLargeGraph, disableZoomTracking]
     ),
     (left, right) => left === right
   );
@@ -256,50 +299,6 @@ function useDragHandlers(
   );
 
   return { handleNodeDragStart, handleNodeDrag, handleNodeDragStop };
-}
-
-/** Hook for link and delete handlers combined */
-function useLinkAndDeleteHandlers(
-  selectNode: (id: string | null) => void,
-  selectEdge: (id: string | null) => void,
-  closeContextMenu: () => void,
-  onNodeDelete?: (nodeId: string) => void,
-  onEdgeDelete?: (edgeId: string) => void,
-  onEdgeCreated?: (
-    sourceId: string,
-    targetId: string,
-    edgeData: {
-      id: string;
-      source: string;
-      target: string;
-      sourceEndpoint: string;
-      targetEndpoint: string;
-    }
-  ) => void
-) {
-  const {
-    linkSourceNode,
-    startLinkCreation,
-    completeLinkCreation,
-    cancelLinkCreation,
-    linkCreationSeed
-  } = useLinkCreation(onEdgeCreated);
-  const { handleDeleteNode, handleDeleteEdge } = useDeleteHandlers(
-    selectNode,
-    selectEdge,
-    closeContextMenu,
-    onNodeDelete,
-    onEdgeDelete
-  );
-  return {
-    linkSourceNode,
-    startLinkCreation,
-    completeLinkCreation,
-    cancelLinkCreation,
-    linkCreationSeed,
-    handleDeleteNode,
-    handleDeleteEdge
-  };
 }
 
 /** Hook to wrap onInit with additional callback */
@@ -447,15 +446,30 @@ function useGeoWheelZoom(
 
     const handleWheel = (event: WheelEvent) => {
       if (!isGeoLayout || !isGeoEdit) return;
+
+      const mapCanvas = map.getCanvas();
+      if (event.target instanceof Element && mapCanvas.contains(event.target)) {
+        // Let native MapLibre scroll-zoom handle direct map-canvas wheel events.
+        return;
+      }
+
       event.preventDefault();
-
-      const rect = container.getBoundingClientRect();
-      const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top];
-
-      const around = map.unproject(point);
-      const zoomDelta = -event.deltaY * 0.002;
-      const nextZoom = map.getZoom() + zoomDelta;
-      map.zoomTo(nextZoom, { duration: 0, around });
+      mapCanvas.dispatchEvent(
+        new WheelEvent("wheel", {
+          bubbles: true,
+          cancelable: true,
+          deltaX: event.deltaX,
+          deltaY: event.deltaY,
+          deltaZ: event.deltaZ,
+          deltaMode: event.deltaMode,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          ctrlKey: event.ctrlKey,
+          shiftKey: event.shiftKey,
+          altKey: event.altKey,
+          metaKey: event.metaKey
+        })
+      );
     };
 
     container.addEventListener("wheel", handleWheel, { passive: false });
@@ -520,13 +534,14 @@ function getCanvasInteractionConfig(params: {
 } {
   const { mode, isLocked, isGeoLayout, isGeoEdit, isInAddMode } = params;
   const allowPanOnDrag = !isInAddMode && !isGeoLayout;
-  const allowSelectionOnDrag = !isInAddMode && (!isGeoLayout || isGeoEdit);
+  const allowSelectionOnDrag = !isInAddMode && !isGeoLayout;
   const nodesDraggable = !isLocked && (!isGeoLayout || isGeoEdit);
   const nodesConnectable = mode === "edit" && !isLocked;
   const reactFlowStyle: React.CSSProperties | undefined = isGeoLayout
     ? {
         background: "transparent",
-        pointerEvents: isGeoEdit ? "auto" : "none",
+        // Let MapLibre receive pane drags in geo layout; node/edge elements stay interactive.
+        pointerEvents: "none",
         position: "absolute",
         top: 0,
         left: 0,
@@ -560,8 +575,10 @@ function renderGeoMapLayer(
 function renderBackgroundLayer(params: {
   gridLineWidth: number;
   gridStyle: "dotted" | "quadratic";
+  effectiveGridColor: string;
+  gridBgColor: string | null;
 }): React.ReactElement {
-  const { gridLineWidth, gridStyle } = params;
+  const { gridLineWidth, gridStyle, effectiveGridColor, gridBgColor } = params;
   const isQuadraticGrid = gridStyle === "quadratic";
   return (
     <Background
@@ -569,7 +586,8 @@ function renderBackgroundLayer(params: {
       gap={isQuadraticGrid ? QUADRATIC_GRID_SIZE : GRID_SIZE}
       size={isQuadraticGrid ? undefined : gridLineWidth}
       lineWidth={isQuadraticGrid ? gridLineWidth : undefined}
-      color="#555"
+      color={effectiveGridColor}
+      style={gridBgColor ? { backgroundColor: gridBgColor } : undefined}
     />
   );
 }
@@ -582,14 +600,8 @@ function renderLinkCreationLine(params: {
   sourcePosition: { x: number; y: number } | null;
   linkCreationSeed: number | null | undefined;
 }): React.ReactElement {
-  const {
-    linkSourceNode,
-    linkTargetNodeId,
-    nodes,
-    edges,
-    sourcePosition,
-    linkCreationSeed
-  } = params;
+  const { linkSourceNode, linkTargetNodeId, nodes, edges, sourcePosition, linkCreationSeed } =
+    params;
   return (
     <LinkCreationLine
       linkSourceNodeId={linkSourceNode}
@@ -624,6 +636,8 @@ function buildCanvasOverlays(params: {
   addModeMessage?: string | null;
   gridLineWidth: number;
   gridStyle: "dotted" | "quadratic";
+  effectiveGridColor: string;
+  gridBgColor: string | null;
 }): {
   geoMapLayer: React.ReactNode;
   backgroundLayer: React.ReactNode;
@@ -644,7 +658,9 @@ function buildCanvasOverlays(params: {
     isInAddMode,
     addModeMessage,
     gridLineWidth,
-    gridStyle
+    gridStyle,
+    effectiveGridColor,
+    gridBgColor
   } = params;
 
   const canShowGeoMap = isGeoLayout;
@@ -655,7 +671,7 @@ function buildCanvasOverlays(params: {
 
   const geoMapLayer = canShowGeoMap ? renderGeoMapLayer(geoContainerRef) : null;
   const backgroundLayer = canShowBackground
-    ? renderBackgroundLayer({ gridLineWidth, gridStyle })
+    ? renderBackgroundLayer({ gridLineWidth, gridStyle, effectiveGridColor, gridBgColor })
     : null;
   const linkCreationLine = canShowLinkCreation
     ? renderLinkCreationLine({
@@ -667,9 +683,7 @@ function buildCanvasOverlays(params: {
         linkCreationSeed
       })
     : null;
-  const linkIndicator = canShowLinkIndicator
-    ? renderLinkIndicator(linkSourceNode as string)
-    : null;
+  const linkIndicator = canShowLinkIndicator ? renderLinkIndicator(linkSourceNode as string) : null;
   const annotationIndicator = canShowAnnotationIndicator
     ? renderAnnotationIndicator(addModeMessage as string)
     : null;
@@ -691,14 +705,18 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     {
       nodes: propNodes,
       edges: propEdges,
+      isContextPanelOpen = false,
       layout = "preset",
       isGeoLayout = false,
       gridLineWidth = DEFAULT_GRID_LINE_WIDTH,
       gridStyle = "dotted",
+      gridColor = null,
+      gridBgColor = null,
       annotationMode,
       annotationHandlers,
       onNodeDelete,
       onEdgeDelete,
+      onPaneClick,
       linkLabelMode = "show-all",
       onInit: onInitProp,
       onEdgeCreated,
@@ -710,7 +728,6 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onAddTextAtPosition,
       onAddGroupAtPosition,
       onAddShapeAtPosition,
-      onShowBulkLink,
       onDropCreateNode,
       onDropCreateNetwork,
       onLockedAction
@@ -719,8 +736,15 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
   ) => {
     const mode = useMode();
     const isLocked = useIsLocked();
-    const { selectNode, selectEdge, editNode, editNetwork, editEdge, editImpairment } =
-      useTopoViewerActions();
+    const {
+      selectNode,
+      selectEdge,
+      editNode,
+      editNetwork,
+      editEdge,
+      editImpairment,
+      editCustomTemplate
+    } = useTopoViewerActions();
 
     // Get setters from graph store - these update the single source of truth
     const { setNodes, setEdges, onNodesChange, onEdgesChange } = useGraphActions();
@@ -729,6 +753,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const fitViewRequestId = useFitViewRequestId();
     const lastFitViewRequestRef = useRef(0);
     const [isReactFlowReady, setIsReactFlowReady] = useState(false);
+    const suppressSelectionSyncUntilRef = useRef(0);
 
     const topoState = useMemo(() => ({ mode, isLocked }), [mode, isLocked]);
 
@@ -740,6 +765,47 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const allNodes = useMemo(() => (propNodes as Node[]) ?? [], [propNodes]);
     const allEdges = useMemo(() => (propEdges as Edge[]) ?? [], [propEdges]);
 
+    const handleEdgeCreatedWithContextPanel = useCallback(
+      (
+        sourceId: string,
+        targetId: string,
+        edgeData: {
+          id: string;
+          source: string;
+          target: string;
+          sourceEndpoint: string;
+          targetEndpoint: string;
+        }
+      ) => {
+        // React Flow may transiently select the target node/edge during connect.
+        // Suppress syncing that selection into the app store to avoid auto-opening the panel.
+        suppressSelectionSyncUntilRef.current = Date.now() + 250;
+
+        onEdgeCreated?.(sourceId, targetId, edgeData);
+
+        // If the panel is already open, switch directly to the link editor for the newly created link.
+        if (mode === "edit" && isContextPanelOpen) {
+          editEdge(edgeData.id);
+        }
+      },
+      [editEdge, isContextPanelOpen, mode, onEdgeCreated]
+    );
+
+    const {
+      linkSourceNode,
+      startLinkCreation,
+      completeLinkCreation,
+      cancelLinkCreation,
+      linkCreationSeed
+    } = useLinkCreation(handleEdgeCreatedWithContextPanel);
+    const linkSourceNodeRef = useRef<string | null>(null);
+    linkSourceNodeRef.current = linkSourceNode;
+    const shouldSuppressSelectionSync = useCallback(
+      () =>
+        Boolean(linkSourceNodeRef.current) || Date.now() < suppressSelectionSyncUntilRef.current,
+      []
+    );
+
     const isGeoEditable = isGeoLayout && !isLocked;
 
     const geoLayout = useGeoMapLayout({
@@ -748,6 +814,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       nodes: allNodes,
       setNodes,
       reactFlowInstanceRef,
+      canvasContainerRef,
       restoreOnExit: layout === "preset"
     });
     const isGeoEdit = isGeoEditable;
@@ -759,16 +826,14 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       if (isGeoLayout) return;
       lastFitViewRequestRef.current = fitViewRequestId;
       setTimeout(() => {
-        reactFlowInstanceRef.current
-          ?.fitView({ padding: 0.2, duration: 200 })
-          .catch(() => {
-            /* ignore */
-          });
+        reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 }).catch(() => {
+          /* ignore */
+        });
       }, 50);
     }, [fitViewRequestId, allNodes.length, isGeoLayout, isReactFlowReady]);
 
     // Refs for context menu (to avoid re-renders)
-    const { nodesRef } = useGraphRefs(allNodes, allEdges);
+    const { nodesRef, edgesRef } = useGraphRefs(allNodes, allEdges);
 
     const handlers = useCanvasHandlers({
       selectNode,
@@ -780,9 +845,11 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       isLocked,
       onNodesChangeBase: onNodesChange,
       onLockedAction,
+      onPaneClickExtra: onPaneClick,
+      shouldSuppressSelectionSync,
       nodes: allNodes,
       setNodes,
-      onEdgeCreated,
+      onEdgeCreated: handleEdgeCreatedWithContextPanel,
       groupMemberHandlers: {
         getGroupMembers: annotationHandlers?.getGroupMembers,
         onNodeDropped: annotationHandlers?.onNodeDropped
@@ -794,22 +861,14 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         getGeoUpdateForNode: geoLayout.getGeoUpdateForNode
       }
     });
+    const { closeContextMenu } = handlers;
 
-    const {
-      linkSourceNode,
-      startLinkCreation,
-      completeLinkCreation,
-      cancelLinkCreation,
-      linkCreationSeed,
-      handleDeleteNode,
-      handleDeleteEdge
-    } = useLinkAndDeleteHandlers(
+    const { handleDeleteNode, handleDeleteEdge } = useDeleteHandlers(
       selectNode,
       selectEdge,
-      handlers.closeContextMenu,
+      closeContextMenu,
       onNodeDelete,
-      onEdgeDelete,
-      onEdgeCreated
+      onEdgeDelete
     );
     const sourceNodePosition = useSourceNodePosition(linkSourceNode, allNodes);
     const { linkTargetNodeId, handleNodeMouseEnter, handleNodeMouseLeave } =
@@ -822,20 +881,30 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const { isLowDetail, edgeRenderConfig, nodeRenderConfig } = useRenderConfig(
       allNodes.length,
       allEdges.length,
-      linkLabelMode
+      linkLabelMode,
+      isGeoLayout
+    );
+    const isGeoInteracting = isGeoLayout && geoLayout.isInteracting;
+    const effectiveEdgeRenderConfig = useMemo(
+      () => ({
+        ...edgeRenderConfig,
+        suppressLabels: edgeRenderConfig.suppressLabels || isGeoLayout,
+        suppressHitArea: edgeRenderConfig.suppressHitArea || isGeoLayout
+      }),
+      [edgeRenderConfig, isGeoLayout]
     );
     const activeNodeTypes = useMemo(
-      () => (isLowDetail ? nodeTypesLite : nodeTypes),
-      [isLowDetail]
+      () => (isLowDetail && !isGeoLayout ? nodeTypesLite : nodeTypes),
+      [isLowDetail, isGeoLayout]
     );
     const activeEdgeTypes = useMemo(
-      () => (isLowDetail ? edgeTypesLite : edgeTypes),
-      [isLowDetail]
+      () => (isGeoLayout || isLowDetail ? edgeTypesLite : edgeTypes),
+      [isGeoLayout, isLowDetail]
     );
     useSyncCanvasStore({
       linkSourceNode,
       setLinkSourceNode,
-      edgeRenderConfig,
+      edgeRenderConfig: effectiveEdgeRenderConfig,
       setEdgeRenderConfig,
       nodeRenderConfig,
       setNodeRenderConfig,
@@ -854,7 +923,23 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       setNodes,
       setEdges
     );
-    useImperativeHandle(ref, () => refMethods, [refMethods]);
+    const fitCanvas = useCallback(() => {
+      if (isGeoLayout) {
+        geoLayout.fitToViewport();
+        return;
+      }
+      Promise.resolve(refMethods.fit()).catch(() => {
+        /* ignore */
+      });
+    }, [isGeoLayout, geoLayout, refMethods]);
+    const refHandle = useMemo(
+      () => ({
+        ...refMethods,
+        fit: fitCanvas
+      }),
+      [refMethods, fitCanvas]
+    );
+    useImperativeHandle(ref, () => refHandle, [refHandle]);
 
     const wrappedOnNodeClick = useWrappedNodeClick(
       linkSourceNode,
@@ -863,6 +948,17 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       mode,
       isLocked,
       handleDeleteNode,
+      () => {
+        // Switch the context panel from node/link editors to annotation editors.
+        // This is intentionally destructive to any in-progress node/link edits.
+        editNode(null);
+        editNetwork(null);
+        editEdge(null);
+        editImpairment(null);
+        editCustomTemplate(null);
+        selectNode(null);
+        selectEdge(null);
+      },
       annotationHandlers
     );
     const wrappedOnEdgeClick = useWrappedEdgeClick(
@@ -883,6 +979,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       showLinkInfo: selectEdge,
       showLinkImpairment: editImpairment,
       nodesRef,
+      edgesRef,
       linkSourceNode,
       startLinkCreation,
       cancelLinkCreation,
@@ -893,8 +990,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onAddText,
       onAddTextAtPosition,
       onAddShapes,
-      onAddShapeAtPosition,
-      onShowBulkLink
+      onAddShapeAtPosition
     });
 
     const {
@@ -1007,6 +1103,12 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       });
       return changed ? nextNodes : allNodes;
     }, [allNodes, nodesDraggable]);
+    const effectiveGridColor = useMemo(() => {
+      if (gridColor) return gridColor;
+      const bg = gridBgColor ?? resolveComputedColor("--vscode-editor-background", "#1e1e1e");
+      return invertHexColor(bg);
+    }, [gridColor, gridBgColor]);
+
     const overlays = buildCanvasOverlays({
       isGeoLayout,
       isLowDetail,
@@ -1020,17 +1122,43 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       isInAddMode,
       addModeMessage,
       gridLineWidth,
-      gridStyle
+      gridStyle,
+      effectiveGridColor,
+      gridBgColor
     });
     const contextMenuVisible = handlers.contextMenu.type !== null;
+
+    const handleBackdropContextMenu = useCallback(
+      (event: React.MouseEvent) => {
+        const { clientX, clientY } = event;
+        flushSync(() => {
+          closeContextMenu();
+        });
+        const target = document.elementFromPoint(clientX, clientY);
+        if (target) {
+          target.dispatchEvent(
+            new MouseEvent("contextmenu", {
+              bubbles: true,
+              cancelable: true,
+              clientX,
+              clientY,
+              button: 2,
+              buttons: 2
+            })
+          );
+        }
+      },
+      [closeContextMenu]
+    );
 
     return (
       <div
         ref={canvasContainerRef}
         style={canvasStyle}
-        className={`react-flow-canvas canvas-container${isGeoLayout ? " maplibre-active" : ""}`}
+        className={`react-flow-canvas canvas-container${isGeoLayout ? " maplibre-active" : ""}${isGeoInteracting ? " maplibre-moving" : ""}`}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
+        onContextMenu={(e) => e.preventDefault()}
       >
         {overlays.geoMapLayer}
         <ReactFlow
@@ -1062,7 +1190,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           defaultViewport={defaultViewport}
           minZoom={0.1}
           maxZoom={Infinity}
-          onlyRenderVisibleElements={!isLowDetail}
+          onlyRenderVisibleElements={!isLowDetail && !isGeoLayout}
           selectionMode={SelectionMode.Partial}
           selectNodesOnDrag={false}
           panOnDrag={allowPanOnDrag}
@@ -1088,7 +1216,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           isVisible={contextMenuVisible}
           position={handlers.contextMenu.position}
           items={contextMenuItems}
-          onClose={handlers.closeContextMenu}
+          onClose={closeContextMenu}
+          onBackdropContextMenu={handleBackdropContextMenu}
         />
 
         {/* Helper lines for node alignment during drag */}

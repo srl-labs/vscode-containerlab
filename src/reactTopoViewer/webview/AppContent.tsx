@@ -1,12 +1,14 @@
-/**
- * App content - UI composition for the React TopoViewer.
- */
+// App content — UI composition for the React TopoViewer.
+/* eslint-disable import-x/max-dependencies */
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
+import Box from "@mui/material/Box";
+import LinearProgress from "@mui/material/LinearProgress";
 
 import type { NetemState } from "../shared/parsing";
 import type { TopoEdge, TopoNode, TopologyEdgeData, TopologyHostCommand } from "../shared/types";
 
+import { MuiThemeProvider } from "./theme";
 import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
@@ -19,12 +21,14 @@ import {
 import type { ReactFlowCanvasRef } from "./components/canvas";
 import { ReactFlowCanvas } from "./components/canvas";
 import { Navbar } from "./components/navbar/Navbar";
-import {
-  EditorPanels,
-  ViewPanels,
-  PalettePanel,
-  type LinkImpairmentData
-} from "./components/panels";
+import { AboutModal, type LinkImpairmentData } from "./components/panels";
+import { ContextPanel } from "./components/panels/context-panel";
+import { LabSettingsModal } from "./components/panels/lab-settings/LabSettingsModal";
+import { ShortcutsModal } from "./components/panels/ShortcutsModal";
+import { SvgExportModal } from "./components/panels/SvgExportModal";
+import { BulkLinkModal } from "./components/panels/BulkLinkModal";
+import { GridSettingsPopover } from "./components/panels/GridSettingsPopover";
+import { FindNodePopover } from "./components/panels/FindNodePopover";
 import { ShortcutDisplay, ToastContainer } from "./components/ui";
 import { EasterEggRenderer, useEasterEgg } from "./easter-eggs";
 import {
@@ -39,7 +43,6 @@ import {
   useCustomNodeCommands,
   useGraphCreation,
   useIconReconciliation,
-  useNavbarCommands,
   useUndoRedoControls
 } from "./hooks/app";
 import {
@@ -66,6 +69,7 @@ import {
 } from "./utils/netemOverrides";
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;
+const DUMP_CSS_VARS = false;
 
 interface DeleteMenuHandlers {
   handleDeleteNode: (nodeId: string) => void;
@@ -160,7 +164,8 @@ function buildDeleteCommands(
 }
 
 function buildAnnotationSaveCommand(graphNodesForSave: TopoNode[]): TopologyHostCommand {
-  const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodesForSave);
+  const { freeTextAnnotations, freeShapeAnnotations, groups } =
+    nodesToAnnotations(graphNodesForSave);
   const memberships = collectNodeGroupMemberships(graphNodesForSave);
 
   return {
@@ -210,20 +215,44 @@ export const AppContent: React.FC<AppContentProps> = ({
   const isInteractionLocked = getInteractionLockState(state.isLocked, isProcessing);
   const interactionMode = getInteractionMode(state.mode, isProcessing);
 
+  React.useEffect(() => {
+    if (!DUMP_CSS_VARS) return;
+    const htmlStyle = document.querySelector("html")?.getAttribute("style");
+    if (!htmlStyle) return;
+    const vars: Record<string, string> = {};
+    for (const part of htmlStyle.split(";")) {
+      const trimmed = part.trim();
+      if (!trimmed.startsWith("--vscode-")) continue;
+      const colonIdx = trimmed.indexOf(":");
+      if (colonIdx === -1) continue;
+      vars[trimmed.slice(0, colonIdx).trim()] = trimmed.slice(colonIdx + 1).trim();
+    }
+    if (Object.keys(vars).length === 0) return;
+    const sorted = Object.fromEntries(
+      Object.entries(vars).sort(([a], [b]) => a.localeCompare(b))
+    );
+    window.vscode?.postMessage({ command: "dump-css-vars", vars: sorted });
+  }, []);
+
   const graphNodes = nodes as TopoNode[];
   const graphEdges = edges as TopoEdge[];
 
   const undoRedo = useUndoRedoControls(state.canUndo, state.canRedo);
-  const { isShaking: isLockShaking, trigger: triggerLockShake } = useShakeAnimation();
-
-  const { annotations, annotationMode, canvasAnnotationHandlers } = useAppAnnotations({
-    rfInstance,
-    onLockedAction: triggerLockShake
-  });
+  const { trigger: triggerLockShake } = useShakeAnimation();
 
   const { toasts, dismissToast, addToast } = useAppToasts({
     customNodeError: state.customNodeError,
     clearCustomNodeError: topoActions.clearCustomNodeError
+  });
+
+  const handleLockedAction = React.useCallback(() => {
+    triggerLockShake();
+    addToast("Lab is locked (read-only)", "error", 2000);
+  }, [triggerLockShake, addToast]);
+
+  const { annotations, annotationMode, canvasAnnotationHandlers } = useAppAnnotations({
+    rfInstance,
+    onLockedAction: handleLockedAction
   });
 
   const { filteredNodes, filteredEdges, selectionData, edgeAnnotationLookup } = useAppDerivedData({
@@ -250,7 +279,7 @@ export const AppContent: React.FC<AppContentProps> = ({
         annotation?.endpointLabelOffsetEnabled ??
         (annotation?.endpointLabelOffset !== undefined ? true : undefined);
       const enabled = annotationEnabled ?? state.endpointLabelOffsetEnabled;
-      const resolvedOffset = enabled ? annotationOffset ?? state.endpointLabelOffset : 0;
+      const resolvedOffset = enabled ? (annotationOffset ?? state.endpointLabelOffset) : 0;
 
       if (
         data.endpointLabelOffsetEnabled === enabled &&
@@ -275,7 +304,9 @@ export const AppContent: React.FC<AppContentProps> = ({
     state.endpointLabelOffsetEnabled
   ]);
 
-  const navbarCommands = useNavbarCommands();
+  const [paletteTabRequest, setPaletteTabRequest] = React.useState<{ tabId: string } | undefined>(
+    undefined
+  );
   const customNodeCommands = useCustomNodeCommands(
     state.customNodes,
     topoActions.editCustomTemplate
@@ -360,20 +391,16 @@ export const AppContent: React.FC<AppContentProps> = ({
   const {
     nodeEditorHandlers,
     linkEditorHandlers,
-    networkEditorHandlers,
-    customTemplateEditorData,
-    customTemplateHandlers
+    networkEditorHandlers
   } = useAppEditorBindings({
     selectionData,
     state: {
-      edgeAnnotations: state.edgeAnnotations,
-      editingCustomTemplate: state.editingCustomTemplate
+      edgeAnnotations: state.edgeAnnotations
     },
     actions: {
       editNode: topoActions.editNode,
       editEdge: topoActions.editEdge,
       editNetwork: topoActions.editNetwork,
-      editCustomTemplate: topoActions.editCustomTemplate,
       setEdgeAnnotations: topoActions.setEdgeAnnotations,
       refreshEditorData: topoActions.refreshEditorData
     },
@@ -384,7 +411,7 @@ export const AppContent: React.FC<AppContentProps> = ({
 
   const graphCreation = useGraphCreation({
     rfInstance,
-    onLockedAction: triggerLockShake,
+    onLockedAction: handleLockedAction,
     state: {
       mode: interactionMode,
       isLocked: isInteractionLocked,
@@ -402,7 +429,7 @@ export const AppContent: React.FC<AppContentProps> = ({
   const handleDropCreateNode = React.useCallback(
     (position: { x: number; y: number }, templateName: string) => {
       if (isInteractionLocked) {
-        triggerLockShake();
+        handleLockedAction();
         return;
       }
       // Find the template by name
@@ -411,18 +438,21 @@ export const AppContent: React.FC<AppContentProps> = ({
         graphCreation.createNodeAtPosition(position, template);
       }
     },
-    [isInteractionLocked, state.customNodes, graphCreation, triggerLockShake]
+    [isInteractionLocked, state.customNodes, graphCreation, handleLockedAction]
   );
 
   const handleDropCreateNetwork = React.useCallback(
     (position: { x: number; y: number }, networkType: string) => {
       if (isInteractionLocked) {
-        triggerLockShake();
+        handleLockedAction();
         return;
       }
-      graphCreation.createNetworkAtPosition(position, networkType as Parameters<typeof graphCreation.createNetworkAtPosition>[1]);
+      graphCreation.createNetworkAtPosition(
+        position,
+        networkType as Parameters<typeof graphCreation.createNetworkAtPosition>[1]
+      );
     },
-    [isInteractionLocked, graphCreation, triggerLockShake]
+    [isInteractionLocked, graphCreation, handleLockedAction]
   );
 
   useAppE2EExposure({
@@ -460,41 +490,61 @@ export const AppContent: React.FC<AppContentProps> = ({
 
   const shortcutDisplay = useShortcutDisplay();
   const panelVisibility = usePanelVisibility();
-  const { handleCloseBulkLink, handleCloseNodePalette, handleCloseLabSettings } =
-    panelVisibility;
+
+  const clearAllEditingState = React.useCallback(() => {
+    topoActions.editNode(null);
+    topoActions.editEdge(null);
+    topoActions.editImpairment(null);
+    topoActions.editNetwork(null);
+    topoActions.selectNode(null);
+    topoActions.selectEdge(null);
+    annotationUiActions.closeTextEditor();
+    annotationUiActions.closeShapeEditor();
+    annotationUiActions.closeGroupEditor();
+  }, [topoActions, annotationUiActions]);
+
+  const hasContextContent =
+    !!state.selectedNode ||
+    !!state.selectedEdge ||
+    !!state.editingNode ||
+    !!state.editingEdge ||
+    !!state.editingNetwork ||
+    !!state.editingImpairment ||
+    !!annotations.editingTextAnnotation ||
+    !!annotations.editingShapeAnnotation ||
+    !!annotations.editingGroup;
+
+  const handleEmptyCanvasClick = React.useCallback(() => {
+    // When dismissing any context (editors/info) via empty canvas click, close the context panel
+    // instead of falling back to the Nodes/Annotations palette view.
+    // Exception: if the user opened the panel manually, keep it open until they close it.
+    const shouldClosePanel =
+      panelVisibility.isContextPanelOpen &&
+      panelVisibility.contextPanelOpenReason !== "manual" &&
+      hasContextContent;
+
+    clearAllEditingState();
+
+    if (shouldClosePanel) {
+      panelVisibility.handleCloseContextPanel();
+    }
+  }, [clearAllEditingState, hasContextContent, panelVisibility]);
 
   const processingRef = React.useRef(false);
   React.useEffect(() => {
     if (isProcessing) {
       if (processingRef.current) return;
       processingRef.current = true;
-      topoActions.editNode(null);
-      topoActions.editEdge(null);
-      topoActions.editImpairment(null);
-      topoActions.editNetwork(null);
-      topoActions.editCustomTemplate(null);
-      topoActions.selectNode(null);
-      topoActions.selectEdge(null);
-      annotationUiActions.closeTextEditor();
-      annotationUiActions.closeShapeEditor();
-      annotationUiActions.closeGroupEditor();
+      clearAllEditingState();
       annotationUiActions.disableAddTextMode();
       annotationUiActions.disableAddShapeMode();
       annotationUiActions.clearAllSelections();
-      handleCloseBulkLink();
-      handleCloseNodePalette();
-      handleCloseLabSettings();
+      panelVisibility.handleCloseBulkLink();
+      panelVisibility.handleCloseLabSettings();
       return;
     }
     processingRef.current = false;
-  }, [
-    annotationUiActions,
-    handleCloseBulkLink,
-    handleCloseLabSettings,
-    handleCloseNodePalette,
-    isProcessing,
-    topoActions
-  ]);
+  }, [annotationUiActions, clearAllEditingState, isProcessing, panelVisibility]);
 
   const clipboardHandlers = useClipboardHandlers({
     annotations,
@@ -517,10 +567,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     const nodesById = new Map(currentNodes.map((node) => [node.id, node]));
     const edgesById = new Map(currentEdges.map((edge) => [edge.id, edge as TopoEdge]));
 
-    const { graphNodeIds, groupIds, textIds, shapeIds } = splitNodeIdsByType(
-      nodeIds,
-      nodesById
-    );
+    const { graphNodeIds, groupIds, textIds, shapeIds } = splitNodeIdsByType(nodeIds, nodesById);
 
     applyGraphDeletions(graphActions, menuHandlers, graphNodeIds, edgeIds);
 
@@ -539,10 +586,12 @@ export const AppContent: React.FC<AppContentProps> = ({
 
     if (commands.length === 0) return;
 
-    executeTopologyCommand({ command: "batch", payload: { commands } }, { applySnapshot: false })
-      .catch((err) => {
-        console.error("[TopoViewer] Failed to batch delete", err);
-      });
+    executeTopologyCommand(
+      { command: "batch", payload: { commands } },
+      { applySnapshot: false }
+    ).catch((err) => {
+      console.error("[TopoViewer] Failed to batch delete", err);
+    });
   }, [annotations, graphActions, menuHandlers, state.selectedNode, state.selectedEdge]);
 
   useAppKeyboardShortcuts({
@@ -574,11 +623,31 @@ export const AppContent: React.FC<AppContentProps> = ({
   // Track used custom icons and copy them to workspace .clab-icons/ folder
   useIconReconciliation(nodes);
 
+  // Auto-open context panel when selection/editing state changes
+  React.useEffect(() => {
+    if (hasContextContent && !isProcessing && !panelVisibility.isContextPanelOpen) {
+      panelVisibility.handleOpenContextPanel("auto");
+    }
+  }, [hasContextContent, isProcessing, panelVisibility]);
+
+  // close if palette wasn't open, else go back to palette
+  const handleContextPanelBack = React.useCallback(() => {
+    const shouldClose = panelVisibility.contextPanelOpenReason === "auto";
+    clearAllEditingState();
+    if (shouldClose) {
+      panelVisibility.handleCloseContextPanel();
+    }
+  }, [clearAllEditingState, panelVisibility]);
+
   const handleZoomToFit = React.useCallback(() => {
+    if (reactFlowRef.current) {
+      reactFlowRef.current.fit();
+      return;
+    }
     rfInstance?.fitView({ padding: 0.1 }).catch(() => {
       /* ignore */
     });
-  }, [rfInstance]);
+  }, [reactFlowRef, rfInstance]);
 
   const handleNetworkSave = React.useCallback(
     (data: Parameters<typeof networkEditorHandlers.handleSave>[0]) => {
@@ -599,186 +668,220 @@ export const AppContent: React.FC<AppContentProps> = ({
   );
 
   return (
-    <div className="topoviewer-app" data-testid="topoviewer-app">
-      <Navbar
-        onZoomToFit={handleZoomToFit}
-        onToggleLayout={navbarCommands.onLayoutToggle}
-        layout={layoutControls.layout}
-        onLayoutChange={layoutControls.setLayout}
-        gridLineWidth={layoutControls.gridLineWidth}
-        onGridLineWidthChange={layoutControls.setGridLineWidth}
-        gridStyle={layoutControls.gridStyle}
-        onGridStyleChange={layoutControls.setGridStyle}
-        onLabSettings={panelVisibility.handleShowLabSettings}
-        onToggleSplit={navbarCommands.onToggleSplit}
-        onFindNode={panelVisibility.handleShowFindNode}
-        onCaptureViewport={panelVisibility.handleShowSvgExport}
-        onShowShortcuts={panelVisibility.handleShowShortcuts}
-        onShowAbout={panelVisibility.handleShowAbout}
-        shortcutDisplayEnabled={shortcutDisplay.isEnabled}
-        onToggleShortcutDisplay={shortcutDisplay.toggle}
-        onOpenNodePalette={panelVisibility.handleShowNodePalette}
-        onLockedAction={triggerLockShake}
-        lockShakeActive={isLockShaking}
-        canUndo={undoRedo.canUndo}
-        canRedo={undoRedo.canRedo}
-        onUndo={undoRedo.undo}
-        onRedo={undoRedo.redo}
-        onLogoClick={easterEgg.handleLogoClick}
-        logoClickProgress={easterEgg.state.progress}
-        isPartyMode={easterEgg.state.isPartyMode}
-      />
-      <main className="topoviewer-main">
-        <ReactFlowCanvas
-          ref={reactFlowRef}
-          nodes={filteredNodes}
-          edges={renderedEdges}
+    <MuiThemeProvider>
+      <Box
+        data-testid="topoviewer-app"
+        display="flex"
+        flexDirection="column"
+        height="100%"
+        width="100%"
+        overflow="hidden"
+      >
+        <Navbar
+          onZoomToFit={handleZoomToFit}
           layout={layoutControls.layout}
-          isGeoLayout={layoutControls.isGeoLayout}
-          gridLineWidth={layoutControls.gridLineWidth}
-          gridStyle={layoutControls.gridStyle}
-          annotationMode={annotationMode}
-          annotationHandlers={canvasAnnotationHandlers}
-          linkLabelMode={state.linkLabelMode}
-          onInit={onInit}
-          onEdgeCreated={graphHandlers.handleEdgeCreated}
-          onShiftClickCreate={graphCreation.createNodeAtPosition}
-          onNodeDelete={graphHandlers.handleDeleteNode}
-          onEdgeDelete={graphHandlers.handleDeleteLink}
-          onOpenNodePalette={panelVisibility.handleShowNodePalette}
-          onAddGroup={annotations.handleAddGroup}
-          onAddText={annotations.handleAddText}
-          onAddShapes={annotations.handleAddShapes}
-          onAddTextAtPosition={annotations.createTextAtPosition}
-          onAddGroupAtPosition={annotations.createGroupAtPosition}
-          onAddShapeAtPosition={annotations.createShapeAtPosition}
+          onLayoutChange={layoutControls.setLayout}
+          onLabSettings={panelVisibility.handleShowLabSettings}
+          onToggleSplit={() => {
+            panelVisibility.handleOpenContextPanel("manual");
+            setPaletteTabRequest({ tabId: "yaml" });
+          }}
+          onFindNode={panelVisibility.handleOpenFindPopover}
+          onCaptureViewport={panelVisibility.handleShowSvgExport}
+          onShowShortcuts={panelVisibility.handleShowShortcuts}
+          onShowAbout={panelVisibility.handleShowAbout}
           onShowBulkLink={panelVisibility.handleShowBulkLink}
-          onDropCreateNode={handleDropCreateNode}
-          onDropCreateNetwork={handleDropCreateNetwork}
-          onLockedAction={triggerLockShake}
+          onShowGridSettings={panelVisibility.handleOpenGridPopover}
+          linkLabelMode={state.linkLabelMode}
+          onLinkLabelModeChange={topoActions.setLinkLabelMode}
+          shortcutDisplayEnabled={shortcutDisplay.isEnabled}
+          onToggleShortcutDisplay={shortcutDisplay.toggle}
+          canUndo={undoRedo.canUndo}
+          canRedo={undoRedo.canRedo}
+          onUndo={undoRedo.undo}
+          onRedo={undoRedo.redo}
+          onLogoClick={easterEgg.handleLogoClick}
+          logoClickProgress={easterEgg.state.progress}
+          isPartyMode={easterEgg.state.isPartyMode}
         />
-        <ViewPanels
-          nodeInfo={{
-            isVisible: !!state.selectedNode && state.mode === "view",
-            nodeData: selectionData.selectedNodeData,
-            onClose: menuHandlers.handleCloseNodePanel
-          }}
-          linkInfo={{
-            isVisible: !!state.selectedEdge && state.mode === "view",
-            linkData: selectionData.selectedLinkData,
-            onClose: menuHandlers.handleCloseLinkPanel
-          }}
-          linkImpairment={{
-            isVisible: !!state.editingImpairment,
-            linkData: selectionData.selectedLinkImpairmentData,
-            onError: handleLinkImpairmentError,
-            onApply: handleLinkImpairmentApply,
-            onSave: handleLinkImpairmentSave,
-            onClose: () => topoActions.editImpairment(null)
-          }}
-          shortcuts={{
-            isVisible: panelVisibility.showShortcutsPanel,
-            onClose: panelVisibility.handleCloseShortcuts
-          }}
-          about={{
-            isVisible: panelVisibility.showAboutPanel,
-            onClose: panelVisibility.handleCloseAbout
-          }}
-          findNode={{
-            isVisible: panelVisibility.showFindNodePanel,
-            onClose: panelVisibility.handleCloseFindNode,
-            rfInstance
-          }}
-          svgExport={{
-            isVisible: panelVisibility.showSvgExportPanel,
-            onClose: panelVisibility.handleCloseSvgExport,
-            textAnnotations: annotations.textAnnotations,
-            shapeAnnotations: annotations.shapeAnnotations,
-            groups: annotations.groups,
-            rfInstance,
-            customIcons: getCustomIconMap(state.customIcons)
-          }}
-        />
-        <EditorPanels
-          nodeEditor={{
-            isVisible: !!state.editingNode && !isProcessing,
-            nodeData: selectionData.editingNodeData,
-            inheritedProps: selectionData.editingNodeInheritedProps,
-            onClose: nodeEditorHandlers.handleClose,
-            onSave: nodeEditorHandlers.handleSave,
-            onApply: nodeEditorHandlers.handleApply
-          }}
-          networkEditor={{
-            isVisible: !!state.editingNetwork && !isProcessing,
-            nodeData: selectionData.editingNetworkData,
-            onClose: networkEditorHandlers.handleClose,
-            onSave: handleNetworkSave,
-            onApply: handleNetworkApply
-          }}
-          customTemplateEditor={{
-            isVisible: !!state.editingCustomTemplate && !isProcessing,
-            nodeData: customTemplateEditorData,
-            onClose: customTemplateHandlers.handleClose,
-            onSave: customTemplateHandlers.handleSave,
-            onApply: customTemplateHandlers.handleApply
-          }}
-          linkEditor={{
-            isVisible: !!state.editingEdge && !isProcessing,
-            linkData: selectionData.editingLinkData,
-            onClose: linkEditorHandlers.handleClose,
-            onSave: linkEditorHandlers.handleSave,
-            onApply: linkEditorHandlers.handleApply,
-            onAutoApplyOffset: linkEditorHandlers.handleAutoApplyOffset
-          }}
-          bulkLink={{
-            isVisible: panelVisibility.showBulkLinkPanel && !isProcessing,
-            mode: interactionMode,
-            isLocked: isInteractionLocked,
-            onClose: panelVisibility.handleCloseBulkLink
-          }}
-          freeTextEditor={{
-            isVisible: !!annotations.editingTextAnnotation && !isProcessing,
-            annotation: annotations.editingTextAnnotation,
-            onSave: annotations.saveTextAnnotation,
-            onClose: annotations.closeTextEditor,
-            onDelete: annotations.deleteTextAnnotation
-          }}
-          freeShapeEditor={{
-            isVisible: !!annotations.editingShapeAnnotation && !isProcessing,
-            annotation: annotations.editingShapeAnnotation,
-            onSave: annotations.saveShapeAnnotation,
-            onClose: annotations.closeShapeEditor,
-            onDelete: annotations.deleteShapeAnnotation
-          }}
-          groupEditor={{
-            isVisible: !!annotations.editingGroup && !isProcessing,
-            groupData: annotations.editingGroup,
-            onSave: annotations.saveGroup,
-            onClose: annotations.closeGroupEditor,
-            onDelete: annotations.deleteGroup,
-            onStyleChange: annotations.updateGroup
-          }}
-          labSettings={{
-            isVisible: panelVisibility.showLabSettingsPanel,
-            mode: state.mode,
-            isLocked: isInteractionLocked,
-            labSettings: state.labSettings ?? { name: state.labName },
-            onClose: panelVisibility.handleCloseLabSettings
-          }}
-        />
-        {state.mode === "edit" && !isProcessing && (
-          <PalettePanel
-            isVisible={panelVisibility.showNodePalettePanel}
-            onClose={panelVisibility.handleCloseNodePalette}
-            onEditCustomNode={customNodeCommands.onEditCustomNode}
-            onDeleteCustomNode={customNodeCommands.onDeleteCustomNode}
-            onSetDefaultCustomNode={customNodeCommands.onSetDefaultCustomNode}
+        {isProcessing && <LinearProgress />}
+        <Box sx={{ display: "flex", flexGrow: 1, overflow: "hidden", position: "relative" }}>
+          <ContextPanel
+            isOpen={panelVisibility.isContextPanelOpen}
+            side={panelVisibility.panelSide}
+            onOpen={panelVisibility.handleOpenContextPanel}
+            onClose={panelVisibility.handleCloseContextPanel}
+            onBack={handleContextPanelBack}
+            onToggleSide={panelVisibility.handleTogglePanelSide}
+            rfInstance={rfInstance}
+            palette={{
+              mode: state.mode,
+              requestedTab: paletteTabRequest,
+
+              onEditCustomNode: customNodeCommands.onEditCustomNode,
+              onDeleteCustomNode: customNodeCommands.onDeleteCustomNode,
+              onSetDefaultCustomNode: customNodeCommands.onSetDefaultCustomNode
+            }}
+            view={{
+              selectedNodeData: selectionData.selectedNodeData,
+              selectedLinkData: selectionData.selectedLinkData
+            }}
+            editor={{
+              editingNodeData: selectionData.editingNodeData,
+              editingNodeInheritedProps: selectionData.editingNodeInheritedProps,
+              nodeEditorHandlers: {
+                handleClose: nodeEditorHandlers.handleClose,
+                handleSave: nodeEditorHandlers.handleSave,
+                handleApply: nodeEditorHandlers.handleApply,
+                handleDelete: selectionData.editingNodeData
+                  ? () => graphHandlers.handleDeleteNode(selectionData.editingNodeData!.id)
+                  : undefined
+              },
+              editingLinkData: selectionData.editingLinkData,
+              linkEditorHandlers: {
+                handleClose: linkEditorHandlers.handleClose,
+                handleSave: linkEditorHandlers.handleSave,
+                handleApply: linkEditorHandlers.handleApply,
+                previewOffset: linkEditorHandlers.previewOffset,
+                revertOffset: linkEditorHandlers.revertOffset,
+                handleDelete: selectionData.editingLinkData
+                  ? () => graphHandlers.handleDeleteLink(selectionData.editingLinkData!.id)
+                  : undefined
+              },
+              editingNetworkData: selectionData.editingNetworkData,
+              networkEditorHandlers: {
+                handleClose: networkEditorHandlers.handleClose,
+                handleSave: handleNetworkSave,
+                handleApply: handleNetworkApply
+              },
+              linkImpairmentData: selectionData.selectedLinkImpairmentData,
+              linkImpairmentHandlers: {
+                onError: handleLinkImpairmentError,
+                onApply: handleLinkImpairmentApply,
+                onSave: handleLinkImpairmentSave,
+                onClose: () => topoActions.editImpairment(null)
+              },
+              editingTextAnnotation: annotations.editingTextAnnotation,
+              textAnnotationHandlers: {
+                onSave: annotations.saveTextAnnotation,
+                onClose: annotations.closeTextEditor,
+                onDelete: annotations.deleteTextAnnotation
+              },
+              editingShapeAnnotation: annotations.editingShapeAnnotation,
+              shapeAnnotationHandlers: {
+                onSave: annotations.saveShapeAnnotation,
+                onClose: annotations.closeShapeEditor,
+                onDelete: annotations.deleteShapeAnnotation
+              },
+              editingGroup: annotations.editingGroup,
+              groupHandlers: {
+                onSave: annotations.saveGroup,
+                onClose: annotations.closeGroupEditor,
+                onDelete: annotations.deleteGroup,
+                onStylePreview: annotations.updateGroup
+              }
+            }}
           />
-        )}
-        <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
-        <EasterEggRenderer easterEgg={easterEgg} />
-        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-      </main>
-    </div>
+          <Box
+            component="main"
+            sx={{
+              flexGrow: 1,
+              overflow: "hidden",
+              position: "relative"
+            }}
+          >
+            <ReactFlowCanvas
+              ref={reactFlowRef}
+              nodes={filteredNodes}
+              edges={renderedEdges}
+              isContextPanelOpen={panelVisibility.isContextPanelOpen}
+              onPaneClick={handleEmptyCanvasClick}
+              layout={layoutControls.layout}
+              isGeoLayout={layoutControls.isGeoLayout}
+              gridLineWidth={layoutControls.gridLineWidth}
+              gridStyle={layoutControls.gridStyle}
+              gridColor={layoutControls.gridColor}
+              gridBgColor={layoutControls.gridBgColor}
+              annotationMode={annotationMode}
+              annotationHandlers={canvasAnnotationHandlers}
+              linkLabelMode={state.linkLabelMode}
+              onInit={onInit}
+              onEdgeCreated={graphHandlers.handleEdgeCreated}
+              onShiftClickCreate={graphCreation.createNodeAtPosition}
+              onNodeDelete={graphHandlers.handleDeleteNode}
+              onEdgeDelete={graphHandlers.handleDeleteLink}
+              onOpenNodePalette={() => {
+                handleContextPanelBack();
+                panelVisibility.handleOpenContextPanel();
+              }}
+              onAddGroup={annotations.handleAddGroup}
+              onAddText={annotations.handleAddText}
+              onAddShapes={annotations.handleAddShapes}
+              onAddTextAtPosition={annotations.createTextAtPosition}
+              onAddGroupAtPosition={annotations.createGroupAtPosition}
+              onAddShapeAtPosition={annotations.createShapeAtPosition}
+              onDropCreateNode={handleDropCreateNode}
+              onDropCreateNetwork={handleDropCreateNetwork}
+              onLockedAction={handleLockedAction}
+            />
+            <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
+            <EasterEggRenderer easterEgg={easterEgg} />
+            <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+          </Box>
+        </Box>
+
+        {/* Modals */}
+        <LabSettingsModal
+          isOpen={panelVisibility.showLabSettingsModal}
+          onClose={panelVisibility.handleCloseLabSettings}
+          mode={state.mode}
+          isLocked={isInteractionLocked}
+          labSettings={state.labSettings ?? { name: state.labName }}
+        />
+        <ShortcutsModal
+          isOpen={panelVisibility.showShortcutsModal}
+          onClose={panelVisibility.handleCloseShortcuts}
+        />
+        <SvgExportModal
+          isOpen={panelVisibility.showSvgExportModal}
+          onClose={panelVisibility.handleCloseSvgExport}
+          textAnnotations={annotations.textAnnotations}
+          shapeAnnotations={annotations.shapeAnnotations}
+          groups={annotations.groups}
+          rfInstance={rfInstance}
+          customIcons={getCustomIconMap(state.customIcons)}
+        />
+        <BulkLinkModal
+          isOpen={panelVisibility.showBulkLinkModal && !isProcessing}
+          mode={interactionMode}
+          isLocked={isInteractionLocked}
+          onClose={panelVisibility.handleCloseBulkLink}
+        />
+        <AboutModal
+          isOpen={panelVisibility.showAboutPanel}
+          onClose={panelVisibility.handleCloseAbout}
+        />
+
+        {/* Popovers */}
+        <GridSettingsPopover
+          anchorPosition={panelVisibility.gridPopoverPosition}
+          onClose={panelVisibility.handleCloseGridPopover}
+          gridLineWidth={layoutControls.gridLineWidth}
+          onGridLineWidthChange={layoutControls.setGridLineWidth}
+          gridStyle={layoutControls.gridStyle}
+          onGridStyleChange={layoutControls.setGridStyle}
+          gridColor={layoutControls.gridColor}
+          onGridColorChange={layoutControls.setGridColor}
+          gridBgColor={layoutControls.gridBgColor}
+          onGridBgColorChange={layoutControls.setGridBgColor}
+          onResetColors={layoutControls.resetGridColors}
+        />
+        <FindNodePopover
+          anchorPosition={panelVisibility.findPopoverPosition}
+          onClose={panelVisibility.handleCloseFindPopover}
+          rfInstance={rfInstance}
+        />
+      </Box>
+    </MuiThemeProvider>
   );
 };

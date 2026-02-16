@@ -4,11 +4,7 @@ import type { Node, ReactFlowInstance } from "@xyflow/react";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import type { GroupNodeData } from "../../components/canvas/types";
 import type { AnnotationUIActions } from "../../stores/annotationUIStore";
-import {
-  saveAllNodeGroupMemberships,
-  saveAnnotationNodesFromGraph,
-  saveAnnotationNodesWithMemberships
-} from "../../services";
+import { saveAnnotationNodesFromGraph, saveAnnotationNodesWithMemberships } from "../../services";
 import { useGraphStore } from "../../stores/graphStore";
 import { collectNodeGroupMemberships } from "../../annotations/groupMembership";
 import {
@@ -21,15 +17,13 @@ import type { GroupEditorData } from "./groupTypes";
 import { calculateDefaultGroupPosition, calculateGroupBoundsFromNodes } from "./annotationHelpers";
 import { findParentGroupForBounds, generateGroupId } from "./groupUtils";
 import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
+import { readThemeColor } from "./themeColor";
 interface UseGroupAnnotationsParams {
   isLocked: boolean;
   onLockedAction: () => void;
   rfInstance: ReactFlowInstance | null;
   derived: UseDerivedAnnotationsReturn;
-  uiActions: Pick<
-    AnnotationUIActions,
-    "setEditingGroup" | "closeGroupEditor" | "removeFromGroupSelection"
-  >;
+  uiActions: Pick<AnnotationUIActions, "setEditingGroup" | "removeFromGroupSelection">;
 }
 
 export interface GroupAnnotationActions {
@@ -65,7 +59,7 @@ function getGroupDeletionContext(
   shapeIds: Set<string>;
 } {
   const group = groupsSnapshot.find((g) => g.id === id);
-  const parentId = group ? resolveGroupParentId(group.parentId, group.groupId) ?? null : null;
+  const parentId = group ? (resolveGroupParentId(group.parentId, group.groupId) ?? null) : null;
   const memberIds = derived.getGroupMembers(id);
   const childGroups = groupsSnapshot.filter(
     (g) => resolveGroupParentId(g.parentId, g.groupId) === id
@@ -128,17 +122,14 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
     void saveAnnotationNodesFromGraph();
   }, []);
 
-  const persistMemberships = useCallback(() => {
+  /** Persist annotations + memberships as a single host command (one undo step). */
+  const persistWithMemberships = useCallback(() => {
     const memberships = collectNodeGroupMemberships(useGraphStore.getState().nodes);
-    void saveAllNodeGroupMemberships(memberships);
+    void saveAnnotationNodesWithMemberships(memberships);
   }, []);
 
   const editGroup = useCallback(
     (id: string) => {
-      if (!canEditAnnotations) {
-        onLockedAction();
-        return;
-      }
       const group = derived.groups.find((g) => g.id === id);
       if (!group) return;
 
@@ -161,7 +152,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
         height: group.height ?? 150
       });
     },
-    [canEditAnnotations, onLockedAction, derived.groups, uiActions]
+    [derived.groups, uiActions]
   );
 
   const saveGroup = useCallback(
@@ -184,10 +175,9 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
         labelColor: data.style.labelColor,
         labelPosition: data.style.labelPosition
       });
-      uiActions.closeGroupEditor();
       persist();
     },
-    [derived, uiActions, persist]
+    [derived, persist]
   );
 
   const deleteGroup = useCallback(
@@ -245,7 +235,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       width,
       height,
       backgroundColor: "rgba(100, 100, 255, 0.1)",
-      borderColor: "#666",
+      borderColor: readThemeColor("--vscode-editor-foreground", "#666666"),
       borderWidth: 2,
       borderStyle: "dashed",
       borderRadius: 8,
@@ -260,9 +250,8 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       }
     }
 
-    persist();
-    persistMemberships();
-  }, [canEditAnnotations, onLockedAction, rfInstance, derived, persist, persistMemberships]);
+    persistWithMemberships();
+  }, [canEditAnnotations, onLockedAction, rfInstance, derived, persistWithMemberships]);
 
   const createGroupAtPosition = useCallback(
     (position: { x: number; y: number }) => {
@@ -301,7 +290,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
         width: bounds.width,
         height: bounds.height,
         backgroundColor: "rgba(100, 100, 255, 0.1)",
-        borderColor: "#666",
+        borderColor: readThemeColor("--vscode-editor-foreground", "#666666"),
         borderWidth: 2,
         borderStyle: "dashed",
         borderRadius: 8,
@@ -316,10 +305,9 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
         }
       }
 
-      persist();
-      persistMemberships();
+      persistWithMemberships();
     },
-    [canEditAnnotations, onLockedAction, rfInstance, derived, persist, persistMemberships]
+    [canEditAnnotations, onLockedAction, rfInstance, derived, persistWithMemberships]
   );
 
   const addGroup = useCallback(
@@ -331,10 +319,9 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
           derived.addNodeToGroup(memberId, group.id);
         }
       }
-      persist();
-      persistMemberships();
+      persistWithMemberships();
     },
-    [derived, persist, persistMemberships]
+    [derived, persistWithMemberships]
   );
 
   const updateGroupSize = useCallback(

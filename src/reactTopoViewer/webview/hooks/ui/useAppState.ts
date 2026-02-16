@@ -3,7 +3,11 @@
  * Manages layout controls and context menu handlers for React TopoViewer
  */
 import type React from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+
+import { saveViewerSettings } from "../../services/annotationSaveHelpers";
+import type { TopologyAnnotations } from "../../../shared/types/topology";
+import { useTopoViewerStore } from "../../stores/topoViewerStore";
 
 /**
  * Canvas ref interface for layout controls.
@@ -122,22 +126,76 @@ export function useLayoutControls(canvasRef: React.RefObject<CanvasRef | null>):
   setGridLineWidth: (width: number) => void;
   gridStyle: GridStyle;
   setGridStyle: (style: GridStyle) => void;
+  gridColor: string | null;
+  setGridColor: (color: string | null) => void;
+  gridBgColor: string | null;
+  setGridBgColor: (color: string | null) => void;
+  resetGridColors: () => void;
 } {
   const [layout, setLayoutState] = useState<LayoutOption>("preset");
   const [gridLineWidth, setGridLineWidthState] = useState<number>(() => getStoredGridLineWidth());
   const [gridStyle, setGridStyleState] = useState<GridStyle>(() => getStoredGridStyle());
 
+  const gridColor = useTopoViewerStore((s) => s.gridColor);
+  const gridBgColor = useTopoViewerStore((s) => s.gridBgColor);
+  const storeSetGridColor = useTopoViewerStore((s) => s.setGridColor);
+  const storeSetGridBgColor = useTopoViewerStore((s) => s.setGridBgColor);
+
+  const colorSaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const pendingColorSave = useRef<NonNullable<TopologyAnnotations["viewerSettings"]>>({});
+
+  const flushColorSave = useCallback(() => {
+    clearTimeout(colorSaveTimer.current);
+    const payload = pendingColorSave.current;
+    pendingColorSave.current = {};
+    if (Object.keys(payload).length > 0) {
+      void saveViewerSettings(payload);
+    }
+  }, []);
+
+  const debouncedColorSave = useCallback(
+    (patch: NonNullable<TopologyAnnotations["viewerSettings"]>) => {
+      Object.assign(pendingColorSave.current, patch);
+      clearTimeout(colorSaveTimer.current);
+      colorSaveTimer.current = setTimeout(flushColorSave, 300);
+    },
+    [flushColorSave]
+  );
+
   const setGridLineWidth = useCallback((width: number) => {
     const clamped = clampLineWidth(width);
     setGridLineWidthState(clamped);
     storeGridLineWidth(clamped);
-    // Grid overlay is now handled by ReactFlow's grid component
   }, []);
 
   const setGridStyle = useCallback((style: GridStyle) => {
     setGridStyleState(style);
     storeGridStyle(style);
   }, []);
+
+  const setGridColor = useCallback(
+    (color: string | null) => {
+      storeSetGridColor(color);
+      debouncedColorSave({ gridColor: color });
+    },
+    [storeSetGridColor, debouncedColorSave]
+  );
+
+  const setGridBgColor = useCallback(
+    (color: string | null) => {
+      storeSetGridBgColor(color);
+      debouncedColorSave({ gridBgColor: color });
+    },
+    [storeSetGridBgColor, debouncedColorSave]
+  );
+
+  const resetGridColors = useCallback(() => {
+    storeSetGridColor(null);
+    storeSetGridBgColor(null);
+    clearTimeout(colorSaveTimer.current);
+    pendingColorSave.current = {};
+    void saveViewerSettings({ gridColor: null, gridBgColor: null });
+  }, [storeSetGridColor, storeSetGridBgColor]);
 
   const setLayout = useCallback(
     (nextLayout: LayoutOption) => {
@@ -157,7 +215,12 @@ export function useLayoutControls(canvasRef: React.RefObject<CanvasRef | null>):
     gridLineWidth,
     setGridLineWidth,
     gridStyle,
-    setGridStyle
+    setGridStyle,
+    gridColor,
+    setGridColor,
+    gridBgColor,
+    setGridBgColor,
+    resetGridColors
   };
 }
 

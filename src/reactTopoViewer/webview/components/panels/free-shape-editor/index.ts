@@ -1,4 +1,4 @@
 /**
- * Free Shape Editor Panel exports
+ * Free Shape Editor exports
  */
-export { FreeShapeEditorPanel } from "./FreeShapeEditorPanel";
+export { FreeShapeFormContent } from "./FreeShapeFormContent";

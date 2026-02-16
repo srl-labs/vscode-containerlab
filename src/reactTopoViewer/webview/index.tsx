@@ -6,7 +6,7 @@ import { createRoot } from "react-dom/client";
 
 import { App } from "./App";
 import { log } from "./utils/logger";
-import "./styles/tailwind.css";
+import "./styles/global.css";
 import { subscribeToWebviewMessages } from "./messaging/webviewMessageBus";
 
 // Get the initial data from the window object (injected by extension)

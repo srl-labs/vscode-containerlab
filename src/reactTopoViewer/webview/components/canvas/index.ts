@@ -1,6 +1,4 @@
-/**
- * React Flow Canvas barrel export
- */
+// React Flow Canvas barrel export.
 export { ReactFlowCanvas } from "./ReactFlowCanvas";
 
 // Types
@@ -28,12 +26,7 @@ export { SELECTION_COLOR, DEFAULT_ICON_COLOR, ROLE_SVG_MAP } from "./types";
 
 // Layout utilities
 export type { LayoutName, LayoutOptions } from "./layout";
-export {
-  hasPresetPositions,
-  applyForceLayout,
-  applyLayout,
-  getLayoutOptions
-} from "./layout";
+export { hasPresetPositions, applyForceLayout, applyLayout, getLayoutOptions } from "./layout";
 
 // Node and edge types
 export { nodeTypes } from "./nodes";

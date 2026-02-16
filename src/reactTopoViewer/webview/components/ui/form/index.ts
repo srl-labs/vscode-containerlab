@@ -1,7 +1,4 @@
-/**
- * Shared form components
- */
-export { FormField } from "./FormField";
+// Shared form components.
 export { InputField } from "./InputField";
 export { SelectField, type SelectOption } from "./SelectField";
 export { CheckboxField } from "./CheckboxField";
@@ -11,12 +8,17 @@ export { KeyValueList } from "./KeyValueList";
 export { Section } from "./Section";
 export { FilterableDropdown, type FilterableDropdownOption } from "./FilterableDropdown";
 export { InheritanceBadge, ReadOnlyBadge } from "./Badge";
+export { IconPreview } from "./IconPreview";
+export { ReadOnlyCopyField } from "./ReadOnlyCopyField";
+export { PanelSectionHeader, PanelSection, PanelAddSection } from "./PanelSections";
+export { PanelEmptyState } from "./PanelEmptyState";
 export {
   Toggle,
-  ColorSwatch,
   NumberInput,
   TextInput,
   SelectInput,
   RangeSlider,
-  PREVIEW_GRID_BG
+  PREVIEW_GRID_BG_SX,
+  PreviewSurface,
+  DeleteActionButton
 } from "./FormComponents";

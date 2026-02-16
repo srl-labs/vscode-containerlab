@@ -1,5 +1,6 @@
 import React from "react";
 import { useStore } from "@xyflow/react";
+import Box from "@mui/material/Box";
 
 import type { HelperLinePositions } from "../../hooks/canvas/useHelperLines";
 
@@ -102,45 +103,33 @@ export const HelperLines: React.FC<HelperLinesProps> = React.memo(({ lines }) =>
 
 HelperLines.displayName = "HelperLines";
 
-export const AnnotationModeIndicator: React.FC<{ message: string }> = ({ message }) => (
-  <div
-    style={{
+const OverlayIndicator: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Box
+    sx={{
       position: "absolute",
       top: 10,
       left: "50%",
       transform: "translateX(-50%)",
-      background: "var(--vscode-editor-background, #1e1e1e)",
-      border: "1px solid var(--vscode-charts-green, #4ec9b0)",
-      borderRadius: 4,
-      padding: "6px 12px",
+      border: 1,
+      borderRadius: 1,
+      px: 1.5,
+      py: 0.75,
       fontSize: 12,
-      color: "var(--vscode-editor-foreground, #cccccc)",
       zIndex: 1000,
       pointerEvents: "none"
     }}
   >
-    {message}
-  </div>
+    {children}
+  </Box>
+);
+
+export const AnnotationModeIndicator: React.FC<{ message: string }> = ({ message }) => (
+  <OverlayIndicator>{message}</OverlayIndicator>
 );
 
 export const LinkCreationIndicator: React.FC<{ linkSourceNode: string }> = ({ linkSourceNode }) => (
-  <div
-    style={{
-      position: "absolute",
-      top: 10,
-      left: "50%",
-      transform: "translateX(-50%)",
-      background: "var(--vscode-editor-background, #1e1e1e)",
-      border: "1px solid var(--vscode-focusBorder, #007acc)",
-      borderRadius: 4,
-      padding: "6px 12px",
-      fontSize: 12,
-      color: "var(--vscode-editor-foreground, #cccccc)",
-      zIndex: 1000,
-      pointerEvents: "none"
-    }}
-  >
+  <OverlayIndicator>
     Creating link from <strong>{linkSourceNode}</strong> — Click on target node or press Escape to
     cancel
-  </div>
+  </OverlayIndicator>
 );

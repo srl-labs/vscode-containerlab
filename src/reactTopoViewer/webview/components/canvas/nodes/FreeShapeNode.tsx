@@ -1,12 +1,10 @@
-/**
- * FreeShapeNode - Custom React Flow node for free shape annotations
- * Supports rectangle, circle, and line shapes with resize and rotation handles
- */
+// Free shape annotation node (rectangle, circle, line).
 import React, { memo, useCallback } from "react";
 import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 
 import type { FreeShapeNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
+import { vscodePalette } from "../../../theme/vscodeTheme";
 import { DEFAULT_LINE_LENGTH } from "../../../annotations/constants";
 import { useIsLocked } from "../../../stores/topoViewerStore";
 import { useAnnotationHandlers } from "../../../stores/canvasStore";
@@ -313,7 +311,7 @@ function getLineStyleProps(data: FreeShapeNodeData): {
   lineArrowSize: number;
 } {
   return {
-    borderColor: data.borderColor ?? "#666",
+    borderColor: data.borderColor ?? vscodePalette.text.primary,
     borderWidth: data.borderWidth ?? 2,
     borderStyle: data.borderStyle ?? "solid",
     lineStartArrow: data.lineStartArrow ?? false,
@@ -402,7 +400,7 @@ function BoxNode({
     fillOpacity: data.fillOpacity ?? 0.2,
     borderWidth: data.borderWidth ?? 2,
     borderStyle: data.borderStyle ?? "solid",
-    borderColor: data.borderColor ?? "#666",
+    borderColor: data.borderColor ?? vscodePalette.text.primary,
     selected: isSelected
   };
 

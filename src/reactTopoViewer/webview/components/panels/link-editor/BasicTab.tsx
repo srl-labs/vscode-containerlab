@@ -1,9 +1,11 @@
-/**
- * BasicTab - Basic link configuration (endpoints)
- */
+// Basic link configuration tab.
 import React from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Slider from "@mui/material/Slider";
+import Button from "@mui/material/Button";
 
-import { FormField, ReadOnlyBadge, InputField } from "../../ui/form";
+import { ReadOnlyBadge, InputField, PanelSection } from "../../ui/form";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   ENDPOINT_LABEL_OFFSET_MIN,
@@ -12,17 +14,104 @@ import {
 
 import type { LinkTabProps } from "./types";
 
-export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOffset }) => {
-  const rawEndpointOffset =
-    typeof data.endpointLabelOffset === "number" ? data.endpointLabelOffset : Number.NaN;
-  const endpointOffsetValue = Number.isFinite(rawEndpointOffset)
-    ? rawEndpointOffset
-    : DEFAULT_ENDPOINT_LABEL_OFFSET;
-  const isDefaultOffset = endpointOffsetValue === DEFAULT_ENDPOINT_LABEL_OFFSET;
+interface EndpointInterfaceFieldProps {
+  isNetwork: boolean;
+  nodeName: string;
+  inputId: string;
+  endpoint: string | undefined;
+  onChange: (value: string) => void;
+}
 
-  const handleOffsetChange = (value: string) => {
-    const parsed = Number.parseFloat(value);
-    const nextOffset = Number.isFinite(parsed) ? parsed : 0;
+const EndpointInterfaceField: React.FC<EndpointInterfaceFieldProps> = ({
+  isNetwork,
+  nodeName,
+  inputId,
+  endpoint,
+  onChange
+}) => {
+  if (isNetwork) {
+    return (
+      <Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+          {nodeName} Interface
+        </Typography>
+        <ReadOnlyBadge>{nodeName || "Unknown"}</ReadOnlyBadge>
+      </Box>
+    );
+  }
+
+  return (
+    <InputField
+      id={inputId}
+      label={`${nodeName} Interface`}
+      required
+      value={endpoint ?? ""}
+      onChange={onChange}
+      placeholder="e.g., eth1, e1-1"
+    />
+  );
+};
+
+interface LabelOffsetSectionProps {
+  endpointOffsetValue: number;
+  onOffsetChange: (_event: Event, value: number | number[]) => void;
+  onOffsetReset: () => void;
+}
+
+const LabelOffsetSection: React.FC<LabelOffsetSectionProps> = ({
+  endpointOffsetValue,
+  onOffsetChange,
+  onOffsetReset
+}) => {
+  return (
+    <PanelSection
+      title="Label Offset"
+      bodySx={{ display: "flex", alignItems: "center", gap: 2, px: 2, py: 1 }}
+    >
+      <>
+        <Typography variant="body2" color="text.secondary">
+          {ENDPOINT_LABEL_OFFSET_MIN}
+        </Typography>
+        <Slider
+          id="link-endpoint-offset"
+          value={endpointOffsetValue}
+          min={ENDPOINT_LABEL_OFFSET_MIN}
+          max={ENDPOINT_LABEL_OFFSET_MAX}
+          step={1}
+          onChange={onOffsetChange}
+          valueLabelDisplay="auto"
+          sx={{ flex: 1 }}
+        />
+        <Typography variant="body2" color="text.secondary">
+          {ENDPOINT_LABEL_OFFSET_MAX}
+        </Typography>
+        <Button
+          size="small"
+          onClick={onOffsetReset}
+          title={`Reset to ${DEFAULT_ENDPOINT_LABEL_OFFSET}`}
+        >
+          Reset
+        </Button>
+      </>
+    </PanelSection>
+  );
+};
+
+function resolveEndpointOffsetValue(offset: unknown): number {
+  if (typeof offset === "number" && Number.isFinite(offset)) {
+    return offset;
+  }
+
+  return DEFAULT_ENDPOINT_LABEL_OFFSET;
+}
+
+export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onPreviewOffset }) => {
+  const sourceName = data.source ?? "Source";
+  const targetName = data.target ?? "Target";
+  const endpointOffsetValue = resolveEndpointOffsetValue(data.endpointLabelOffset);
+
+  const handleOffsetChange = (_event: Event, value: number | number[]) => {
+    const nextOffset = typeof value === "number" ? value : value[0];
     const nextData = {
       ...data,
       endpointLabelOffset: nextOffset,
@@ -32,7 +121,7 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
       endpointLabelOffset: nextOffset,
       endpointLabelOffsetEnabled: true
     });
-    onAutoApplyOffset?.(nextData);
+    onPreviewOffset?.(nextData);
   };
 
   const handleOffsetReset = () => {
@@ -45,94 +134,61 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
       endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
       endpointLabelOffsetEnabled: true
     });
-    onAutoApplyOffset?.(nextData);
+    onPreviewOffset?.(nextData);
   };
 
   return (
-    <div className="space-y-3">
-      {/* Source Endpoint Section */}
-      <div className="border-b pb-3 mb-3" style={{ borderColor: "var(--vscode-panel-border)" }}>
-        <div className="section-header">Source Endpoint</div>
-        <FormField label="Node">
-          <ReadOnlyBadge>{data.source || "Unknown"}</ReadOnlyBadge>
-        </FormField>
-        {data.sourceIsNetwork ? (
-          <FormField label="Interface">
-            <ReadOnlyBadge>{data.source || "Unknown"}</ReadOnlyBadge>
-          </FormField>
-        ) : (
-          <FormField label="Interface" required>
-            <InputField
-              id="link-source-interface"
-              value={data.sourceEndpoint || ""}
-              onChange={(value: string) => onChange({ sourceEndpoint: value })}
-              placeholder="e.g., eth1, e1-1"
-            />
-          </FormField>
-        )}
-      </div>
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      <PanelSection title="Endpoints" withTopDivider={false}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+          <EndpointInterfaceField
+            isNetwork={Boolean(data.sourceIsNetwork)}
+            nodeName={sourceName}
+            inputId="link-source-interface"
+            endpoint={data.sourceEndpoint}
+            onChange={(value) => onChange({ sourceEndpoint: value })}
+          />
+          <EndpointInterfaceField
+            isNetwork={Boolean(data.targetIsNetwork)}
+            nodeName={targetName}
+            inputId="link-target-interface"
+            endpoint={data.targetEndpoint}
+            onChange={(value) => onChange({ targetEndpoint: value })}
+          />
+        </Box>
 
-      {/* Target Endpoint Section */}
-      <div>
-        <div className="section-header">Target Endpoint</div>
-        <FormField label="Node">
-          <ReadOnlyBadge>{data.target || "Unknown"}</ReadOnlyBadge>
-        </FormField>
-        {data.targetIsNetwork ? (
-          <FormField label="Interface">
-            <ReadOnlyBadge>{data.target || "Unknown"}</ReadOnlyBadge>
-          </FormField>
-        ) : (
-          <FormField label="Interface" required>
-            <InputField
-              id="link-target-interface"
-              value={data.targetEndpoint || ""}
-              onChange={(value: string) => onChange({ targetEndpoint: value })}
-              placeholder="e.g., eth1, e1-1"
-            />
-          </FormField>
-        )}
-      </div>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+          <InputField
+            id="link-source-mac"
+            label={`${sourceName} MAC`}
+            value={data.sourceMac ?? ""}
+            onChange={(value) => onChange({ sourceMac: value })}
+            placeholder="e.g., 02:42:ac:11:00:01"
+          />
+          <InputField
+            id="link-target-mac"
+            label={`${targetName} MAC`}
+            value={data.targetMac ?? ""}
+            onChange={(value) => onChange({ targetMac: value })}
+            placeholder="e.g., 02:42:ac:11:00:02"
+          />
+        </Box>
 
-      <div className="border-t pt-3 mt-4" style={{ borderColor: "var(--vscode-panel-border)" }}>
-        <div className="section-header">Label Offset</div>
-        <div className="form-group">
-          <div className="px-2">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="field-label">Value</span>
-              <input
-                id="link-endpoint-offset"
-                type="range"
-                min={ENDPOINT_LABEL_OFFSET_MIN}
-                max={ENDPOINT_LABEL_OFFSET_MAX}
-                step="1"
-                value={endpointOffsetValue}
-                onChange={(evt) => handleOffsetChange(evt.target.value)}
-                className="grid-line-slider m-0 flex-1 text-[var(--vscode-font-size)]"
-              />
-              <input
-                type="text"
-                value={endpointOffsetValue.toFixed(0)}
-                readOnly
-                aria-label="Offset value"
-                className="input-field w-12 text-center text-[var(--vscode-font-size)]"
-              />
-              <div className="w-20">
-                {!isDefaultOffset ? (
-                  <button
-                    type="button"
-                    className="btn btn-small btn-secondary w-full whitespace-nowrap"
-                    onClick={handleOffsetReset}
-                    title={`Reset to ${DEFAULT_ENDPOINT_LABEL_OFFSET}`}
-                  >
-                    Reset
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+        <InputField
+          id="link-mtu"
+          label="MTU"
+          value={data.mtu?.toString() || ""}
+          onChange={(value) => onChange({ mtu: value ? parseInt(value, 10) : undefined })}
+          placeholder="e.g., 1500"
+          type="number"
+        />
+      </PanelSection>
+
+      <LabelOffsetSection
+        endpointOffsetValue={endpointOffsetValue}
+        onOffsetChange={handleOffsetChange}
+        onOffsetReset={handleOffsetReset}
+      />
+    </Box>
   );
 };

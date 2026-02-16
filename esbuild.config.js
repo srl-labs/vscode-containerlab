@@ -37,21 +37,6 @@ async function copyFonts() {
   const fontDir = path.join(__dirname, "dist/webfonts");
   await fs.promises.mkdir(fontDir, { recursive: true });
 
-  const fontSources = [
-    "node_modules/@fortawesome/fontawesome-free/webfonts/fa-solid-900.woff2",
-    "node_modules/@fortawesome/fontawesome-free/webfonts/fa-brands-400.woff2",
-    "node_modules/@fortawesome/fontawesome-free/webfonts/fa-regular-400.woff2",
-    "node_modules/@fortawesome/fontawesome-free/webfonts/fa-v4compatibility.woff2"
-  ];
-
-  for (const src of fontSources) {
-    const srcPath = path.join(__dirname, src);
-    const destPath = path.join(fontDir, path.basename(src));
-    if (fs.existsSync(srcPath)) {
-      await fs.promises.copyFile(srcPath, destPath);
-    }
-  }
-
   // Copy wireshark SVG
   const wiresharkSrc = path.join(
     __dirname,
@@ -59,6 +44,15 @@ async function copyFonts() {
   );
   if (fs.existsSync(wiresharkSrc)) {
     await fs.promises.copyFile(wiresharkSrc, path.join(fontDir, "wireshark_bold.svg"));
+  }
+
+  // Monaco codicon font (used by Monaco UI widgets)
+  const codiconSrc = path.join(
+    __dirname,
+    "node_modules/monaco-editor/min/vs/base/browser/ui/codicons/codicon/codicon.ttf"
+  );
+  if (fs.existsSync(codiconSrc)) {
+    await fs.promises.copyFile(codiconSrc, path.join(fontDir, "codicon.ttf"));
   }
 }
 
@@ -70,11 +64,11 @@ async function copyMapLibreWorker() {
   await fs.promises.copyFile(srcPath, destPath);
 }
 
-// Build CSS with PostCSS (Tailwind v4 requires proper postcss processing)
+// Build CSS with PostCSS
 async function buildCss() {
   console.log("Building CSS with PostCSS...");
   execSync(
-    "npx postcss src/reactTopoViewer/webview/styles/tailwind.css -o dist/reactTopoViewerStyles.css",
+    "npx postcss src/reactTopoViewer/webview/styles/global.css -o dist/reactTopoViewerStyles.css",
     { stdio: "inherit" }
   );
 
@@ -82,16 +76,16 @@ async function buildCss() {
   const cssPath = path.join(__dirname, "dist/reactTopoViewerStyles.css");
   let css = await fs.promises.readFile(cssPath, "utf8");
 
-  // Replace all node_modules font paths with relative webfonts/ paths
-  css = css.replace(
-    /url\([^)]*node_modules\/@fortawesome\/fontawesome-free\/webfonts\/([^)]+)\)/g,
-    "url(webfonts/$1)"
-  );
-
-  // Also handle maplibre-gl font references if any
+  // Handle maplibre-gl font references if any
   css = css.replace(
     /url\([^)]*node_modules\/maplibre-gl\/[^)]*\/([^/)]+\.(woff2?|ttf|eot))\)/g,
     "url(webfonts/$1)"
+  );
+
+  // Monaco codicon font reference (relative to editor.main.css)
+  css = css.replace(
+    /url\((\"|')?\.\.\/base\/browser\/ui\/codicons\/codicon\/codicon\.ttf(\")?\)/g,
+    "url(webfonts/codicon.ttf)"
   );
 
   await fs.promises.writeFile(cssPath, css);
@@ -145,8 +139,29 @@ async function build() {
     }
   });
 
+  // Build Monaco workers for webview (separate files for CSP-friendly worker-src)
+  const monacoWorkersBuild = esbuild.build({
+    ...commonOptions,
+    entryPoints: {
+      "monaco-editor-worker": "node_modules/monaco-editor/esm/vs/editor/editor.worker.js",
+      "monaco-json-worker": "node_modules/monaco-editor/esm/vs/language/json/json.worker.js"
+    },
+    platform: "browser",
+    format: "iife",
+    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    outdir: "dist",
+    plugins: [ignoreCssPlugin]
+  });
+
   // Run all builds in parallel
-  await Promise.all([extensionBuild, webviewBuild, copyFonts(), copyMapLibreWorker(), buildCss()]);
+  await Promise.all([
+    extensionBuild,
+    webviewBuild,
+    monacoWorkersBuild,
+    copyFonts(),
+    copyMapLibreWorker(),
+    buildCss()
+  ]);
 
   console.log("Build complete!");
 
@@ -182,7 +197,20 @@ async function build() {
       }
     });
 
-    await Promise.all([extCtx.watch(), webCtx.watch()]);
+    const monacoWorkersCtx = await esbuild.context({
+      ...commonOptions,
+      entryPoints: {
+        "monaco-editor-worker": "node_modules/monaco-editor/esm/vs/editor/editor.worker.js",
+        "monaco-json-worker": "node_modules/monaco-editor/esm/vs/language/json/json.worker.js"
+      },
+      platform: "browser",
+      format: "iife",
+      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      outdir: "dist",
+      plugins: [ignoreCssPlugin]
+    });
+
+    await Promise.all([extCtx.watch(), webCtx.watch(), monacoWorkersCtx.watch()]);
 
     // Watch CSS files and rebuild
     const cssWatcher = watch("src/reactTopoViewer/webview/styles/**/*.css", {

@@ -1,7 +1,4 @@
-/**
- * Generic form state hook for editor panels
- * Provides formData, updateField, hasChanges, and resetInitialData
- */
+// Generic form state hook for editor panels.
 import type React from "react";
 import { useState, useEffect, useCallback } from "react";
 
@@ -17,6 +14,7 @@ interface UseGenericFormStateReturn<T> {
   updateField: <K extends keyof T>(field: K, value: T[K]) => void;
   hasChanges: boolean;
   resetInitialData: () => void;
+  discardChanges: () => void;
   isNew: boolean;
   setFormData: React.Dispatch<React.SetStateAction<T | null>>;
 }
@@ -51,10 +49,26 @@ export function useGenericFormState<T extends { id: string }>(
     if (formData) setInitialData(JSON.stringify(formData));
   }, [formData]);
 
+  const discardChanges = useCallback(() => {
+    if (initialData) {
+      const restored = JSON.parse(initialData) as T;
+      const transformed = transformData ? transformData(restored) : { ...restored };
+      setFormData(transformed);
+    }
+  }, [initialData, transformData]);
+
   const hasChanges = formData && initialData ? JSON.stringify(formData) !== initialData : false;
   const isNew = getIsNew ? getIsNew(data) : false;
 
-  return { formData, updateField, hasChanges, resetInitialData, isNew, setFormData };
+  return {
+    formData,
+    updateField,
+    hasChanges,
+    resetInitialData,
+    discardChanges,
+    isNew,
+    setFormData
+  };
 }
 
 interface UseEditorHandlersOptions<T> {
@@ -63,6 +77,7 @@ interface UseEditorHandlersOptions<T> {
   onClose: () => void;
   onDelete?: (id: string) => void;
   resetInitialData: () => void;
+  discardChanges?: () => void;
   /** Validation function - if returns false, save is blocked */
   canSave?: (data: T) => boolean;
 }
@@ -71,6 +86,7 @@ interface UseEditorHandlersReturn {
   handleApply: () => void;
   handleSaveAndClose: () => void;
   handleDelete: () => void;
+  handleDiscard: () => void;
 }
 
 /**
@@ -79,7 +95,8 @@ interface UseEditorHandlersReturn {
 export function useEditorHandlers<T extends { id: string }>(
   options: UseEditorHandlersOptions<T>
 ): UseEditorHandlersReturn {
-  const { formData, onSave, onClose, onDelete, resetInitialData, canSave } = options;
+  const { formData, onSave, onClose, onDelete, resetInitialData, discardChanges, canSave } =
+    options;
 
   const handleApply = useCallback(() => {
     if (formData && (!canSave || canSave(formData))) {
@@ -102,5 +119,9 @@ export function useEditorHandlers<T extends { id: string }>(
     }
   }, [formData, onDelete, onClose]);
 
-  return { handleApply, handleSaveAndClose, handleDelete };
+  const handleDiscard = useCallback(() => {
+    discardChanges?.();
+  }, [discardChanges]);
+
+  return { handleApply, handleSaveAndClose, handleDelete, handleDiscard };
 }

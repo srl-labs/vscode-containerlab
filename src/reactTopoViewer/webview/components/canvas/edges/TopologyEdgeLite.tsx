@@ -57,7 +57,14 @@ const TopologyEdgeLiteComponent: React.FC<EdgeProps> = ({
 };
 
 function areTopologyEdgeLitePropsEqual(prev: EdgeProps, next: EdgeProps): boolean {
-  return prev.selected === next.selected && prev.data === next.data;
+  return (
+    prev.selected === next.selected &&
+    prev.data === next.data &&
+    prev.sourceX === next.sourceX &&
+    prev.sourceY === next.sourceY &&
+    prev.targetX === next.targetX &&
+    prev.targetY === next.targetY
+  );
 }
 
 export const TopologyEdgeLite = memo(TopologyEdgeLiteComponent, areTopologyEdgeLitePropsEqual);

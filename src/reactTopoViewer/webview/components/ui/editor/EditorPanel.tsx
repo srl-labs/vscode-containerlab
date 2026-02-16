@@ -1,81 +1,134 @@
-/**
- * EditorPanel - Panel with tabs and Apply/OK footer
- * Built on top of BasePanel
- */
-import type { ReactNode } from "react";
+// Shared editor panel shell (tabbed or children mode).
 import React from "react";
+import Box from "@mui/material/Box";
 
-import { BasePanel } from "./BasePanel";
+import { useFooterControlsRef } from "../../../hooks/ui/useFooterControlsRef";
+import type { FooterControlsRef } from "../../../hooks/ui/useFooterControlsRef";
+import { FIELDSET_RESET_STYLE } from "../../panels/context-panel/ContextPanelScrollArea";
+
 import type { TabDefinition } from "./TabNavigation";
 import { TabNavigation } from "./TabNavigation";
 
-interface EditorPanelProps {
-  title: string;
-  isVisible: boolean;
-  onClose: () => void;
-  onApply: () => void;
-  onSave: () => void;
-  children: ReactNode;
-  width?: number;
-  height?: number;
-  initialPosition?: { x: number; y: number };
-  tabs?: TabDefinition[];
-  activeTab?: string;
-  onTabChange?: (tabId: string) => void;
-  storageKey?: string;
-  /** When true, highlights the Apply button to indicate unsaved changes */
-  hasChanges?: boolean;
-  /** Enable diagonal resizing (default: true) */
-  resizable?: boolean;
-  /** Minimum width when resizing */
-  minWidth?: number;
-  /** Minimum height when resizing */
-  minHeight?: number;
-  /** Test ID for E2E testing */
-  testId?: string;
+export interface TabConfig<TProps extends object = Record<string, unknown>> {
+  id: string;
+  label: string;
+  hidden?: boolean;
+  /** The component to render for this tab. */
+  component: React.ComponentType<TProps>;
 }
 
-export const EditorPanel: React.FC<EditorPanelProps> = ({
-  title,
-  isVisible,
-  onClose,
-  onApply,
-  onSave,
-  children,
-  width = 400,
-  height,
-  initialPosition, // undefined = center the panel
+export interface EditorPanelFooterConfig {
+  onFooterRef?: (ref: FooterControlsRef | null) => void;
+  hasChanges: boolean;
+  onApply: () => void;
+  onSave: () => void;
+  onDiscard: () => void;
+}
+
+export interface EditorPanelProps<TProps extends object = Record<string, unknown>> {
+  // Tabbed mode
+  tabs?: Array<TabConfig<TProps>>;
+  activeTab?: string;
+  onTabChange?: (tabId: string) => void;
+  /** Props passed to the active tab component */
+  tabProps?: TProps;
+  // Non-tabbed mode
+  children?: React.ReactNode;
+  // Common
+  readOnly?: boolean;
+  footer?: EditorPanelFooterConfig;
+}
+
+interface FooterControlConfig {
+  isEnabled: boolean;
+  onApply: () => void;
+  onSave: () => void;
+  hasChanges: boolean;
+  onDiscard?: () => void;
+}
+
+function resolveFooterControlConfig(footer?: EditorPanelFooterConfig): FooterControlConfig {
+  if (!footer) {
+    return {
+      isEnabled: false,
+      onApply: () => {},
+      onSave: () => {},
+      hasChanges: false,
+      onDiscard: undefined
+    };
+  }
+
+  return {
+    isEnabled: true,
+    onApply: footer.onApply,
+    onSave: footer.onSave,
+    hasChanges: footer.hasChanges,
+    onDiscard: footer.onDiscard
+  };
+}
+
+function renderTabbedMode<TProps extends object>(
+  tabs: Array<TabConfig<TProps>>,
+  activeTab: string,
+  onTabChange: (tabId: string) => void,
+  tabProps: TProps,
+  readOnly: boolean
+): React.ReactElement {
+  const tabDefs: TabDefinition[] = tabs.filter((tab) => !tab.hidden).map(({ id, label }) => ({ id, label }));
+  const activeConfig = tabs.find((tab) => tab.id === activeTab);
+  const ActiveComponent = activeConfig?.component;
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <TabNavigation tabs={tabDefs} activeTab={activeTab} onTabChange={onTabChange} />
+      <Box sx={{ flex: 1, overflow: "auto" }}>
+        <fieldset disabled={readOnly} style={FIELDSET_RESET_STYLE}>
+          {ActiveComponent ? <ActiveComponent {...tabProps} /> : null}
+        </fieldset>
+      </Box>
+    </Box>
+  );
+}
+
+function renderChildrenMode(children: React.ReactNode, readOnly: boolean): React.ReactElement {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <Box sx={{ flex: 1, overflow: "auto" }}>
+        <fieldset disabled={readOnly} style={FIELDSET_RESET_STYLE}>
+          {children}
+        </fieldset>
+      </Box>
+    </Box>
+  );
+}
+
+export function EditorPanel<TProps extends object = Record<string, unknown>>({
   tabs,
   activeTab,
   onTabChange,
-  storageKey,
-  hasChanges = false,
-  resizable = true,
-  minWidth,
-  minHeight,
-  testId
-}) => (
-  <BasePanel
-    title={title}
-    isVisible={isVisible}
-    onClose={onClose}
-    width={width}
-    height={height}
-    initialPosition={initialPosition}
-    storageKey={storageKey}
-    onSecondaryClick={onApply}
-    onPrimaryClick={onSave}
-    secondaryLabel="Apply"
-    primaryLabel="OK"
-    hasChanges={hasChanges}
-    resizable={resizable}
-    minWidth={minWidth}
-    minHeight={minHeight}
-    testId={testId}
-  >
-    {tabs && activeTab && onTabChange && (
-      <TabNavigation tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} />
-    )}
-    {children}
-  </BasePanel>
-);
+  tabProps,
+  children,
+  readOnly = false,
+  footer
+}: EditorPanelProps<TProps>): React.ReactElement {
+  const footerConfig = resolveFooterControlConfig(footer);
+
+  // Wire up footer ref if provided
+  useFooterControlsRef(
+    footer?.onFooterRef,
+    footerConfig.isEnabled,
+    footerConfig.onApply,
+    footerConfig.onSave,
+    footerConfig.hasChanges,
+    footerConfig.onDiscard
+  );
+
+  // Tabbed mode
+  if (tabs && activeTab && onTabChange) {
+    const resolvedTabProps = (tabProps ?? {}) as TProps;
+    return renderTabbedMode(tabs, activeTab, onTabChange, resolvedTabProps, readOnly);
+  }
+
+  // Children mode (non-tabbed)
+  return renderChildrenMode(children, readOnly);
+}

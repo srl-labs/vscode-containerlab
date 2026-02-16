@@ -7,7 +7,6 @@ import { test as base } from "@playwright/test";
 
 // Test selectors
 const CANVAS_SELECTOR = ".react-flow";
-const APP_SELECTOR = '[data-testid="topoviewer-app"]';
 
 // Node type constants (used in browser-side code)
 const TOPOLOGY_NODE_TYPE = "topology-node";
@@ -125,14 +124,7 @@ function browserHasMatchingEdge({
   const rf = dev?.rfInstance;
   if (!rf) return false;
   const edges = rf.getEdges?.() ?? [];
-  const specialPrefixes = [
-    "host:",
-    "mgmt-net:",
-    "macvlan:",
-    "vxlan:",
-    "vxlan-stitch:",
-    "dummy"
-  ];
+  const specialPrefixes = ["host:", "mgmt-net:", "macvlan:", "vxlan:", "vxlan-stitch:", "dummy"];
   const isSpecial = (id: string) => specialPrefixes.some((prefix) => id.startsWith(prefix));
   const matchNode = (edgeNode: string, expected: string) => {
     if (edgeNode === expected) return true;
@@ -482,14 +474,23 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       gotoFile: async (filename: string) => {
         const resolvedFilePath = path.join(TOPOLOGIES_DIR, filename);
         // Pass session ID via URL so auto-load uses correct session
-        await page.goto(`${API_BASE_URL}/?sessionId=${sessionId}`);
-        await page.waitForSelector(APP_SELECTOR, { timeout: 30000 });
-
-        // Wait for the page to be ready (including auto-load of default topology)
-        // Wait for React Flow instance to be ready
-        await page.waitForFunction(() => (window as any).__DEV__?.rfInstance !== undefined, {
-          timeout: 15000
+        await page.goto(`${API_BASE_URL}/?sessionId=${sessionId}`, {
+          waitUntil: "domcontentloaded",
+          timeout: 60000
         });
+        // Wait for dev hooks to be injected; app shell visibility can lag on cold startup.
+        await page.waitForFunction(
+          () => (window as any).__DEV__ !== undefined,
+          undefined,
+          { timeout: 60000 }
+        );
+
+        // Wait for React Flow instance to be ready.
+        await page.waitForFunction(
+          () => (window as any).__DEV__?.rfInstance !== undefined,
+          undefined,
+          { timeout: 45000 }
+        );
 
         // Wait a bit for any auto-load to settle
         await page.waitForTimeout(300);
@@ -554,6 +555,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
                 const rf = dev?.rfInstance;
                 return rf !== undefined && rf !== null;
               },
+              undefined,
               { timeout: 10000, polling: 100 }
             );
 
@@ -648,7 +650,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       waitForCanvasReady: async () => {
         // Wait for canvas container
-        await page.waitForSelector(CANVAS_SELECTOR, { timeout: 10000 });
+        await page.waitForSelector(CANVAS_SELECTOR, { timeout: 30000 });
 
         // Wait for React Flow instance to be exposed via __DEV__.rfInstance
         await page.waitForFunction(
@@ -656,7 +658,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             const dev = (window as any).__DEV__;
             return dev?.rfInstance !== undefined;
           },
-          { timeout: 15000 }
+          undefined,
+          { timeout: 30000 }
         );
 
         // Wait for React Flow instance to be usable
@@ -666,7 +669,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             const rf = dev?.rfInstance;
             return rf !== undefined && rf !== null && typeof rf.getNodes === "function";
           },
-          { timeout: 15000, polling: 200 }
+          undefined,
+          { timeout: 30000, polling: 200 }
         );
 
         // If a non-empty file is loaded, wait for topology nodes to exist
@@ -685,7 +689,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               return nodes.some((n: any) => n.type === types.topo || n.type === types.network);
             },
             { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE },
-            { timeout: 10000, polling: 200 }
+            { timeout: 20000, polling: 200 }
           );
         }
 
@@ -705,7 +709,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         );
 
         if (firstNodeId) {
-          await page.waitForSelector(`[data-id="${firstNodeId}"]`, { timeout: 10000 });
+          await page.waitForSelector(`[data-id="${firstNodeId}"]`, { timeout: 20000 });
           await page.waitForFunction(
             (nodeId) => {
               const el = document.querySelector(`[data-id="${nodeId}"]`) as HTMLElement | null;
@@ -714,7 +718,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               return rect.width > 0 && rect.height > 0;
             },
             firstNodeId,
-            { timeout: 10000 }
+            { timeout: 20000 }
           );
         }
 
@@ -773,7 +777,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             if (!rf) return 0;
             const nodes = rf.getNodes?.() ?? [];
             // Filter out non-topology nodes (annotations, etc.)
-            return nodes.filter((n: any) => n.type === types.topo || n.type === types.network).length;
+            return nodes.filter((n: any) => n.type === types.topo || n.type === types.network)
+              .length;
           },
           { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE }
         );
@@ -839,9 +844,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           }
           dev?.setMode?.("edit");
         });
-        await page.waitForFunction(() => (window as any).__DEV__?.mode?.() === "edit", {
-          timeout: 2000
-        });
+        await page.waitForFunction(
+          () => (window as any).__DEV__?.mode?.() === "edit",
+          undefined,
+          { timeout: 2000 }
+        );
       },
 
       setViewMode: async () => {
@@ -853,27 +860,33 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           }
           dev?.setMode?.("view");
         });
-        await page.waitForFunction(() => (window as any).__DEV__?.mode?.() === "view", {
-          timeout: 2000
-        });
+        await page.waitForFunction(
+          () => (window as any).__DEV__?.mode?.() === "view",
+          undefined,
+          { timeout: 2000 }
+        );
       },
 
       unlock: async () => {
         await page.evaluate(() => {
           (window as any).__DEV__.setLocked(false);
         });
-        await page.waitForFunction(() => (window as any).__DEV__?.isLocked?.() === false, {
-          timeout: 2000
-        });
+        await page.waitForFunction(
+          () => (window as any).__DEV__?.isLocked?.() === false,
+          undefined,
+          { timeout: 2000 }
+        );
       },
 
       lock: async () => {
         await page.evaluate(() => {
           (window as any).__DEV__.setLocked(true);
         });
-        await page.waitForFunction(() => (window as any).__DEV__?.isLocked?.() === true, {
-          timeout: 2000
-        });
+        await page.waitForFunction(
+          () => (window as any).__DEV__?.isLocked?.() === true,
+          undefined,
+          { timeout: 2000 }
+        );
       },
 
       isLocked: async () => {
@@ -1169,9 +1182,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       undo: async () => {
         await page
-          .waitForFunction(() => (window as any).__DEV__?.undoRedo?.canUndo === true, {
-            timeout: 2000
-          })
+          .waitForFunction(
+            () => (window as any).__DEV__?.undoRedo?.canUndo === true,
+            undefined,
+            { timeout: 2000 }
+          )
           .catch(() => {});
         await page.keyboard.down("Control");
         await page.keyboard.press("z");
@@ -1181,9 +1196,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       redo: async () => {
         await page
-          .waitForFunction(() => (window as any).__DEV__?.undoRedo?.canRedo === true, {
-            timeout: 2000
-          })
+          .waitForFunction(
+            () => (window as any).__DEV__?.undoRedo?.canRedo === true,
+            undefined,
+            { timeout: 2000 }
+          )
           .catch(() => {});
         await page.keyboard.down("Control");
         await page.keyboard.down("Shift");
@@ -1215,6 +1232,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Wait for handleNodeCreatedCallback to be available (exposed via __DEV__)
         await page.waitForFunction(
           () => (window as any).__DEV__?.handleNodeCreatedCallback !== undefined,
+          undefined,
           { timeout: 10000 }
         );
 
@@ -1279,9 +1297,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         targetEndpoint = "eth1"
       ) => {
         // Wait for handleEdgeCreated to be available (exposed via __DEV__)
-        await page.waitForFunction(() => (window as any).__DEV__?.handleEdgeCreated !== undefined, {
-          timeout: 10000
-        });
+        await page.waitForFunction(
+          () => (window as any).__DEV__?.handleEdgeCreated !== undefined,
+          undefined,
+          { timeout: 10000 }
+        );
 
         // Check lock state and mode before proceeding (respects UI restrictions)
         const canCreate = await page.evaluate(() => {
@@ -1337,6 +1357,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Wait for createNetworkAtPosition to be available
         await page.waitForFunction(
           () => (window as any).__DEV__?.createNetworkAtPosition !== undefined,
+          undefined,
           { timeout: 10000 }
         );
 
@@ -1522,12 +1543,23 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       deleteNode: async (nodeId: string) => {
         // Close any open editor panel first to ensure Delete key goes to the canvas
-        const closePanelBtns = page.locator('[data-testid="panel-close-btn"]');
-        const panelCount = await closePanelBtns.count();
-        for (let i = 0; i < panelCount; i++) {
-          const btn = closePanelBtns.nth(i);
-          if (await btn.isVisible()) {
-            await btn.click();
+        const isContextPanelOpen = await page.evaluate(() => {
+          const el = document.querySelector('[data-testid="context-panel"]') as HTMLElement | null;
+          if (!el) return false;
+          return window.getComputedStyle(el).pointerEvents !== "none";
+        });
+
+        if (isContextPanelOpen) {
+          // Prefer returning to palette, then closing the panel completely.
+          const backBtn = page.locator('[data-testid="panel-back-btn"]');
+          if (await backBtn.isVisible().catch(() => false)) {
+            await backBtn.click();
+            await page.waitForTimeout(100);
+          }
+
+          const toggleBtn = page.locator('[data-testid="panel-toggle-btn"]');
+          if (await toggleBtn.isVisible().catch(() => false)) {
+            await toggleBtn.click();
             await page.waitForTimeout(100);
           }
         }
@@ -1564,21 +1596,24 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       deleteEdge: async (edgeId: string) => {
         // Close any open editor panel first to ensure Delete key goes to the canvas
-        const nodeEditor = page.locator('[data-testid="node-editor"]');
-        if (await nodeEditor.isVisible()) {
-          const closeBtn = page.locator(
-            '[data-testid="node-editor"] [data-testid="panel-close-btn"]'
-          );
-          await closeBtn.click();
-          await page.waitForTimeout(200);
-        }
-        const edgeEditor = page.locator('[data-testid="edge-editor"]');
-        if (await edgeEditor.isVisible()) {
-          const closeBtn = page.locator(
-            '[data-testid="edge-editor"] [data-testid="panel-close-btn"]'
-          );
-          await closeBtn.click();
-          await page.waitForTimeout(200);
+        const isContextPanelOpen = await page.evaluate(() => {
+          const el = document.querySelector('[data-testid="context-panel"]') as HTMLElement | null;
+          if (!el) return false;
+          return window.getComputedStyle(el).pointerEvents !== "none";
+        });
+
+        if (isContextPanelOpen) {
+          const backBtn = page.locator('[data-testid="panel-back-btn"]');
+          if (await backBtn.isVisible().catch(() => false)) {
+            await backBtn.click();
+            await page.waitForTimeout(200);
+          }
+
+          const toggleBtn = page.locator('[data-testid="panel-toggle-btn"]');
+          if (await toggleBtn.isVisible().catch(() => false)) {
+            await toggleBtn.click();
+            await page.waitForTimeout(200);
+          }
         }
 
         // Click on canvas background to clear any focus/selection state

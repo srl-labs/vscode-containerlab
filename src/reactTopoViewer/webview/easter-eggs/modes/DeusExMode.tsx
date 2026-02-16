@@ -6,6 +6,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Box from "@mui/material/Box";
 
 import { lerpColor, useNodeGlow } from "../shared";
 import type { RGBColor, BaseModeProps } from "../shared";
@@ -103,10 +104,17 @@ const DeusExCanvas: React.FC<{
   if (!isActive) return null;
 
   return (
-    <canvas
+    <Box
+      component="canvas"
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-[99998]"
-      style={{ width: "100%", height: "100%" }}
+      sx={{
+        position: "fixed",
+        inset: 0,
+        pointerEvents: "none",
+        zIndex: 99998,
+        width: "100%",
+        height: "100%"
+      }}
     />
   );
 };
@@ -258,13 +266,31 @@ export const DeusExMode: React.FC<BaseModeProps> = ({
     <>
       <DeusExCanvas isActive={isActive} getRotationAngle={getRotationAngle} />
 
-      <div className="fixed inset-0 pointer-events-none z-[99999] flex items-end justify-center pb-8 gap-4">
-        <button
+      <Box
+        sx={{
+          position: "fixed",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 99999,
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          pb: 4,
+          gap: 2
+        }}
+      >
+        <Box
+          component="button"
           onClick={handleSwitch}
-          className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
-            visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
-          style={{
+          sx={{
+            px: 3,
+            py: 1.25,
+            borderRadius: "9999px",
+            pointerEvents: "auto",
+            transition: "all 0.5s",
+            ...(visible
+              ? { opacity: 1, transform: "translateY(0)" }
+              : { opacity: 0, transform: "translateY(16px)" }),
             background:
               "linear-gradient(135deg, rgba(113, 121, 126, 0.4) 0%, rgba(70, 75, 80, 0.4) 100%)",
             border: "2px solid rgba(192, 192, 192, 0.5)",
@@ -279,13 +305,19 @@ export const DeusExMode: React.FC<BaseModeProps> = ({
           title={`Current: ${modeName}`}
         >
           Switch
-        </button>
-        <button
+        </Box>
+        <Box
+          component="button"
           onClick={handleClose}
-          className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
-            visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
-          style={{
+          sx={{
+            px: 3,
+            py: 1.25,
+            borderRadius: "9999px",
+            pointerEvents: "auto",
+            transition: "all 0.5s",
+            ...(visible
+              ? { opacity: 1, transform: "translateY(0)" }
+              : { opacity: 0, transform: "translateY(16px)" }),
             background:
               "linear-gradient(135deg, rgba(192, 192, 192, 0.7) 0%, rgba(113, 121, 126, 0.7) 100%)",
             border: "2px solid rgba(220, 220, 225, 0.5)",
@@ -299,8 +331,8 @@ export const DeusExMode: React.FC<BaseModeProps> = ({
           }}
         >
           Shutdown
-        </button>
-      </div>
+        </Box>
+      </Box>
     </>
   );
 };

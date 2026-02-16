@@ -23,9 +23,9 @@ const EDGE_OPACITY_SELECTED = 1;
 
 // Label style constants
 const LABEL_FONT_SIZE = "10px";
-const LABEL_BG_COLOR = "rgba(202, 203, 204, 0.5)";
-const LABEL_TEXT_COLOR = "rgba(0, 0, 0, 0.7)";
-const LABEL_OUTLINE_COLOR = "rgba(255, 255, 255, 0.7)";
+const LABEL_BG_COLOR = "var(--topoviewer-edge-label-background)";
+const LABEL_TEXT_COLOR = "var(--topoviewer-edge-label-foreground)";
+const LABEL_OUTLINE_COLOR = "var(--topoviewer-edge-label-outline)";
 const LABEL_PADDING = "0px 2px";
 // Bezier curve constants for parallel edges
 const CONTROL_POINT_STEP_SIZE = 40; // Spacing between parallel edges (more curvy for label space)

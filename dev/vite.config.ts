@@ -27,14 +27,17 @@ export default defineConfig({
     dedupe: ["react", "react-dom"]
   },
   optimizeDeps: {
-    include: ["react", "react-dom", "cytoscape"]
+    // Keep this list limited to real, direct deps. A missing entry here can cause
+    // CI-only startup issues (e.g. "Failed to resolve dependency ...").
+    include: ["react", "react-dom"]
   },
   css: {
     postcss: path.resolve(__dirname, "../postcss.config.js")
   },
   server: {
     port: 5173,
-    open: true
+    // Don't attempt to open a browser in CI.
+    open: !process.env.CI
   },
   build: {
     outDir: path.resolve(__dirname, "../dist-dev")

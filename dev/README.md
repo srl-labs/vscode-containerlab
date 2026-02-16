@@ -16,7 +16,7 @@ This opens `http://localhost:5173` in your browser with the React TopoViewer run
 - **VS Code Theme Simulation**: CSS variables simulate the VS Code dark/light themes
 - **Mock VS Code API**: All `postMessage` calls are logged to browser console
 - **Sample Topology Data**: Pre-loaded spine-leaf topology for testing
-- **Split View Monaco Editor**: Edit YAML and annotations with manual Save buttons (● indicates unsaved changes)
+- **Monaco Source Editor in Palette**: Edit YAML and annotations from the TopoViewer Palette tabs (live apply)
 
 ## Settings Panel
 

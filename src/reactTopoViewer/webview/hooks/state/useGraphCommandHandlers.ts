@@ -23,7 +23,10 @@ import {
   saveNetworkNodesFromGraph,
   executeTopologyCommand
 } from "../../services";
-import { isAnnotationNodeType, nodesToAnnotations } from "../../annotations/annotationNodeConverters";
+import {
+  isAnnotationNodeType,
+  nodesToAnnotations
+} from "../../annotations/annotationNodeConverters";
 import { toLinkSaveData } from "../../services/linkSaveData";
 import {
   BRIDGE_NETWORK_TYPES,
@@ -174,7 +177,11 @@ export function useGraphHandlersWithContext(
   const handleEdgeCreated = React.useCallback(
     (_sourceId: string, _targetId: string, edgeData: EdgeCreatedData) => {
       const nodes = getNodes();
-      const detection = detectSpecialLinkType(nodes as TopoNode[], edgeData.source, edgeData.target);
+      const detection = detectSpecialLinkType(
+        nodes as TopoNode[],
+        edgeData.source,
+        edgeData.target
+      );
       const edgeExtraData: Record<string, unknown> = {};
       if (detection) {
         edgeExtraData.extType = detection.linkType;
@@ -250,58 +257,61 @@ export function useGraphHandlersWithContext(
     [addNode]
   );
 
-  const handleBatchPaste = React.useCallback((payload: { nodes: TopoNode[]; edges: TopoEdge[] }) => {
-    const { nodes: pastedNodes, edges: pastedEdges } = payload;
-    if (pastedNodes.length === 0 && pastedEdges.length === 0) return;
+  const handleBatchPaste = React.useCallback(
+    (payload: { nodes: TopoNode[]; edges: TopoEdge[] }) => {
+      const { nodes: pastedNodes, edges: pastedEdges } = payload;
+      if (pastedNodes.length === 0 && pastedEdges.length === 0) return;
 
-    const commands: TopologyHostCommand[] = [];
+      const commands: TopologyHostCommand[] = [];
 
-    for (const node of pastedNodes) {
-      if (isAnnotationNodeType(node.type)) continue;
-      if (isSpecialNetworkNode(node) && !isBridgeNetworkNode(node)) continue;
-      commands.push({ command: "addNode", payload: toNodeSaveData(node) });
-    }
+      for (const node of pastedNodes) {
+        if (isAnnotationNodeType(node.type)) continue;
+        if (isSpecialNetworkNode(node) && !isBridgeNetworkNode(node)) continue;
+        commands.push({ command: "addNode", payload: toNodeSaveData(node) });
+      }
 
-    for (const edge of pastedEdges) {
-      commands.push({ command: "addLink", payload: toLinkSaveData(edge) });
-    }
+      for (const edge of pastedEdges) {
+        commands.push({ command: "addLink", payload: toLinkSaveData(edge) });
+      }
 
-    const graphNodes = useGraphStore.getState().nodes;
-    const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodes);
-    const networkNodeAnnotations = buildNetworkNodeAnnotations(graphNodes);
-    const shouldSaveAnnotations =
-      freeTextAnnotations.length > 0 ||
-      freeShapeAnnotations.length > 0 ||
-      groups.length > 0 ||
-      networkNodeAnnotations.length > 0;
+      const graphNodes = useGraphStore.getState().nodes;
+      const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodes);
+      const networkNodeAnnotations = buildNetworkNodeAnnotations(graphNodes);
+      const shouldSaveAnnotations =
+        freeTextAnnotations.length > 0 ||
+        freeShapeAnnotations.length > 0 ||
+        groups.length > 0 ||
+        networkNodeAnnotations.length > 0;
 
-    if (shouldSaveAnnotations) {
-      commands.push({
-        command: "setAnnotations",
-        payload: {
-          freeTextAnnotations,
-          freeShapeAnnotations,
-          groupStyleAnnotations: groups,
-          networkNodeAnnotations
-        }
-      });
-    }
+      if (shouldSaveAnnotations) {
+        commands.push({
+          command: "setAnnotations",
+          payload: {
+            freeTextAnnotations,
+            freeShapeAnnotations,
+            groupStyleAnnotations: groups,
+            networkNodeAnnotations
+          }
+        });
+      }
 
-    if (commands.length === 0) return;
-    void executeTopologyCommand(
-      { command: "batch", payload: { commands } },
-      { applySnapshot: false }
-    );
-  }, [
-    buildNetworkNodeAnnotations,
-    executeTopologyCommand,
-    isAnnotationNodeType,
-    isBridgeNetworkNode,
-    isSpecialNetworkNode,
-    nodesToAnnotations,
-    toLinkSaveData,
-    toNodeSaveData
-  ]);
+      if (commands.length === 0) return;
+      void executeTopologyCommand(
+        { command: "batch", payload: { commands } },
+        { applySnapshot: false }
+      );
+    },
+    [
+      buildNetworkNodeAnnotations,
+      executeTopologyCommand,
+      isAnnotationNodeType,
+      isBridgeNetworkNode,
+      isSpecialNetworkNode,
+      nodesToAnnotations,
+      toLinkSaveData,
+      toNodeSaveData
+    ]
+  );
 
   const handleDeleteNode = React.useCallback(
     (nodeId: string) => {

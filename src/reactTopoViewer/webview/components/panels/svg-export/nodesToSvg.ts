@@ -1,7 +1,4 @@
-/**
- * Node to SVG conversion utilities for export
- * Renders topology and network nodes matching canvas appearance
- */
+// Node-to-SVG conversion for export.
 import type { Node } from "@xyflow/react";
 
 import type { NodeType } from "../../../icons/SvgGenerator";
@@ -88,10 +85,7 @@ function extractSvgContent(svgString: string, targetSize: number): string {
   );
 
   // Replace class="st2" for filled elements
-  inner = inner.replace(
-    /class="st2"/g,
-    'fill="#FFFFFF" stroke="#FFFFFF" stroke-width="4"'
-  );
+  inner = inner.replace(/class="st2"/g, 'fill="#FFFFFF" stroke="#FFFFFF" stroke-width="4"');
 
   return `<g transform="scale(${scale.toFixed(4)})">${inner}</g>`;
 }
@@ -104,11 +98,7 @@ function extractSvgContent(svgString: string, targetSize: number): string {
  * Build SVG for node label with background and text shadow
  * Positioned below the icon
  */
-export function buildNodeLabelSvg(
-  label: string,
-  iconCenterX: number,
-  iconBottomY: number
-): string {
+export function buildNodeLabelSvg(label: string, iconCenterX: number, iconBottomY: number): string {
   if (!label) return "";
 
   // Estimate text width (rough approximation)
@@ -156,10 +146,7 @@ export function buildNodeLabelSvg(
 /**
  * Render a topology node (router, switch, etc.) to SVG
  */
-export function topologyNodeToSvg(
-  node: Node,
-  customIconMap?: CustomIconMap
-): string {
+export function topologyNodeToSvg(node: Node, customIconMap?: CustomIconMap): string {
   const data = node.data as TopologyNodeData;
   const x = node.position.x;
   const y = node.position.y;
@@ -260,11 +247,9 @@ export function renderNodesToSvg(
   customIconMap?: CustomIconMap,
   annotationNodeTypes?: Set<string>
 ): string {
-  const skipTypes = annotationNodeTypes ?? new Set([
-    "free-text-annotation",
-    "free-shape-annotation",
-    "group-annotation"
-  ]);
+  const skipTypes =
+    annotationNodeTypes ??
+    new Set(["free-text-annotation", "free-shape-annotation", "group-annotation"]);
 
   let svg = "";
 

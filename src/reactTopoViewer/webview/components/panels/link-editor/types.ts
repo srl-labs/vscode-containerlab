@@ -22,5 +22,6 @@ export type LinkEditorData = _LinkEditorData;
 export interface LinkTabProps {
   data: LinkEditorData;
   onChange: (updates: Partial<LinkEditorData>) => void;
-  onAutoApplyOffset?: (data: LinkEditorData) => void;
+  /** Live-preview offset changes on the canvas */
+  onPreviewOffset?: (data: LinkEditorData) => void;
 }

@@ -119,7 +119,7 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     backgroundSize: "cover",
     backgroundPosition: "center",
     backgroundRepeat: "no-repeat",
-    backgroundColor: "#E8E8E8",
+    backgroundColor: "var(--topoviewer-network-node-background)",
     borderRadius: 4,
     ...getOutlineStyle()
   };

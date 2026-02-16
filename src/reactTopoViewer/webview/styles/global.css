@@ -1,0 +1,43 @@
+/* =============================================================================
+ * Global CSS Entry Point for React TopoViewer
+ * ============================================================================= */
+
+/* Third-party CSS imports */
+/* Use explicit paths so Madge can resolve these imports (lint:circular). */
+@import "../../../../node_modules/maplibre-gl/dist/maplibre-gl.css";
+@import "../../../../node_modules/@xyflow/react/dist/style.css";
+@import "../../../../node_modules/monaco-editor/min/vs/editor/editor.main.css";
+
+/* Webview reset:
+ * VS Code webviews default to a non-zero body margin and allow document scrolling.
+ * The TopoViewer app is a full-viewport canvas UI and should never scroll at the
+ * document level (only internal panels may scroll).
+ */
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* In GeoMap mode, empty-canvas drag should reach MapLibre for panning. */
+.react-flow-canvas.maplibre-active .react-flow__pane {
+  pointer-events: none;
+}
+
+/* During active map motion, promote key layers to help compositor smoothness. */
+.react-flow-canvas.maplibre-moving .react-flow__viewport,
+.react-flow-canvas.maplibre-moving .react-flow__edges,
+.react-flow-canvas.maplibre-moving .react-flow__nodes,
+.react-flow-canvas.maplibre-moving #react-topoviewer-geo-map .maplibregl-canvas {
+  will-change: transform;
+}

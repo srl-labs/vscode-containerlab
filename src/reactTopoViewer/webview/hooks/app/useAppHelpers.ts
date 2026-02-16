@@ -20,6 +20,7 @@ import {
   sendCommandToExtension
 } from "../../messaging/extensionMessaging";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
+import { useTopoViewerStore } from "../../stores/topoViewerStore";
 
 /**
  * Custom node template UI commands interface
@@ -290,4 +291,12 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
       };
     }
   }, [selectNode, selectEdge, rfInstance]); // Include rfInstance in dependencies
+
+  // Dummy links toggle E2E exposure
+  const toggleDummyLinks = useTopoViewerStore((state) => state.toggleDummyLinks);
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && window.__DEV__) {
+      window.__DEV__.toggleDummyLinks = toggleDummyLinks;
+    }
+  }, [toggleDummyLinks]);
 }

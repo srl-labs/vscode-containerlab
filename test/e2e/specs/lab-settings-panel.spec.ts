@@ -1,50 +1,28 @@
-import type { Page } from "@playwright/test";
-
 import { test, expect } from "../fixtures/topoviewer";
 
 const SIMPLE_FILE = "simple.clab.yml";
 
-// Test selectors
-const SEL_LAB_SETTINGS_PANEL = '[data-testid="lab-settings"]';
+// Test selectors for the new MUI Dialog-based lab settings
 const SEL_LAB_SETTINGS_BTN = '[data-testid="navbar-lab-settings"]';
-const SEL_PANEL_TITLE = '[data-testid="panel-title"]';
-const SEL_PANEL_CLOSE_BTN = '[data-testid="panel-close-btn"]';
-const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
-const SEL_PANEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
+const SEL_LAB_SETTINGS_MODAL = '[data-testid="lab-settings-modal"]';
+const SEL_LAB_SETTINGS_CLOSE_BTN = '[data-testid="lab-settings-close-btn"]';
+const SEL_LAB_SETTINGS_TAB_BASIC = '[data-testid="lab-settings-tab-basic"]';
+const SEL_LAB_SETTINGS_TAB_MGMT = '[data-testid="lab-settings-tab-mgmt"]';
+const SEL_LAB_SETTINGS_SAVE_BTN = '[data-testid="lab-settings-save-btn"]';
+
+const LABEL_CONTAINER_NAME_PREFIX = "Container Name Prefix";
+
+const ATTR_ARIA_SELECTED = "aria-selected";
+const ARIA_TRUE = "true";
+const ARIA_FALSE = "false";
 
 /**
- * Helper to reliably open lab settings panel via navbar button
- */
-async function openLabSettingsPanel(page: Page): Promise<void> {
-  const labSettingsBtn = page.locator(SEL_LAB_SETTINGS_BTN);
-  await expect(labSettingsBtn).toBeVisible();
-  await labSettingsBtn.click();
-  await page.waitForTimeout(300);
-
-  const panel = page.locator(SEL_LAB_SETTINGS_PANEL);
-  await expect(panel).toBeVisible({ timeout: 2000 });
-}
-
-/**
- * Helper to close lab settings panel
- */
-async function closeLabSettingsPanel(page: Page): Promise<void> {
-  const closeBtn = page.locator(`${SEL_LAB_SETTINGS_PANEL} ${SEL_PANEL_CLOSE_BTN}`);
-  await closeBtn.click();
-  await page.waitForTimeout(300);
-}
-
-/**
- * Lab Settings Panel E2E Tests
+ * Lab Settings Modal E2E Tests (MUI Dialog version)
  *
- * Tests the lab settings panel functionality including:
- * - Opening via navbar button
- * - Tab navigation (Basic/Management)
- * - Panel close behavior
- * - Field read-only states based on mode/lock
- * - Save functionality and YAML persistence
+ * In the new MUI design, lab settings are shown in a Dialog (modal)
+ * with tabs for Basic and Management settings.
  */
-test.describe("Lab Settings Panel", () => {
+test.describe("Lab Settings Modal", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(SIMPLE_FILE);
@@ -53,359 +31,238 @@ test.describe("Lab Settings Panel", () => {
     await topoViewerPage.unlock();
   });
 
-  test("opens lab settings panel via navbar button", async ({ page }) => {
-    const labSettingsBtn = page.locator(SEL_LAB_SETTINGS_BTN);
-    await expect(labSettingsBtn).toBeVisible();
+  async function openModal(page: any) {
+    await page.locator(SEL_LAB_SETTINGS_BTN).click();
+    await page.waitForTimeout(300);
+    const modal = page.locator(SEL_LAB_SETTINGS_MODAL);
+    await expect(modal).toBeVisible();
+    return modal;
+  }
 
-    await labSettingsBtn.click();
+  function formControlByLabel(modal: any, labelText: string) {
+    return modal.locator(`.MuiFormControl-root:has(label:has-text("${labelText}"))`).first();
+  }
+
+  function muiSelectTriggerByLabel(modal: any, labelText: string) {
+    // Prefer MUI Select's internal trigger element; fall back to ARIA roles.
+    const formControl = formControlByLabel(modal, labelText);
+    return formControl
+      .locator("[role=\"combobox\"],[role=\"button\"],.MuiSelect-select,[aria-haspopup=\"listbox\"]")
+      .first();
+  }
+
+  async function expectMuiSelectDisabled(modal: any, labelText: string) {
+    const trigger = muiSelectTriggerByLabel(modal, labelText);
+    await expect
+      .poll(async () => {
+        const ariaDisabled = await trigger.getAttribute("aria-disabled");
+        const tabIndex = await trigger.getAttribute("tabindex");
+        const cls = (await trigger.getAttribute("class")) ?? "";
+        return ariaDisabled === "true" || tabIndex === "-1" || cls.includes("Mui-disabled");
+      })
+      .toBe(true);
+  }
+
+  async function chooseOption(page: any, optionText: string | RegExp) {
+    // MUI Select renders a listbox with role=option; some builds expose menuitem instead.
+    const opt = page.getByRole("option", { name: optionText });
+    if ((await opt.count()) > 0) return opt.first().click();
+    return page.getByRole("menuitem", { name: optionText }).first().click();
+  }
+
+  test("opens lab settings modal via navbar button", async ({ page }) => {
+    await page.locator(SEL_LAB_SETTINGS_BTN).click();
     await page.waitForTimeout(300);
 
-    // Panel should appear
-    const panel = page.locator(SEL_LAB_SETTINGS_PANEL);
-    await expect(panel).toBeVisible();
+    const modal = page.locator(SEL_LAB_SETTINGS_MODAL);
+    await expect(modal).toBeVisible();
   });
 
-  test("lab settings panel has correct title", async ({ page }) => {
-    await openLabSettingsPanel(page);
+  test("lab settings modal has correct title", async ({ page }) => {
+    await page.locator(SEL_LAB_SETTINGS_BTN).click();
+    await page.waitForTimeout(300);
 
-    const title = page.locator(`${SEL_LAB_SETTINGS_PANEL} ${SEL_PANEL_TITLE}`);
-    await expect(title).toBeVisible();
-    await expect(title).toHaveText("Lab Settings");
+    // DialogTitle contains "Lab Settings"
+    const modal = page.locator(SEL_LAB_SETTINGS_MODAL);
+    await expect(modal.locator("h2")).toHaveText("Lab Settings");
   });
 
-  test("lab settings panel shows current lab name", async ({ page }) => {
-    await openLabSettingsPanel(page);
+  test("lab settings modal has Basic and Management tabs", async ({ page }) => {
+    await page.locator(SEL_LAB_SETTINGS_BTN).click();
+    await page.waitForTimeout(300);
 
-    // Find the lab name input field
-    const labNameInput = page.locator(`${SEL_LAB_SETTINGS_PANEL} input[type="text"]`).first();
+    const basicTab = page.locator(SEL_LAB_SETTINGS_TAB_BASIC);
+    const mgmtTab = page.locator(SEL_LAB_SETTINGS_TAB_MGMT);
+    await expect(basicTab).toBeVisible();
+    await expect(mgmtTab).toBeVisible();
+  });
+
+  test("Basic tab is selected by default", async ({ page }) => {
+    await page.locator(SEL_LAB_SETTINGS_BTN).click();
+    await page.waitForTimeout(300);
+
+    const basicTab = page.locator(SEL_LAB_SETTINGS_TAB_BASIC);
+    await expect(basicTab).toHaveAttribute(ATTR_ARIA_SELECTED, ARIA_TRUE);
+  });
+
+  test("can switch to Management tab", async ({ page }) => {
+    await page.locator(SEL_LAB_SETTINGS_BTN).click();
+    await page.waitForTimeout(300);
+
+    const mgmtTab = page.locator(SEL_LAB_SETTINGS_TAB_MGMT);
+    await mgmtTab.click();
+    await page.waitForTimeout(200);
+
+    await expect(mgmtTab).toHaveAttribute(ATTR_ARIA_SELECTED, ARIA_TRUE);
+    const basicTab = page.locator(SEL_LAB_SETTINGS_TAB_BASIC);
+    await expect(basicTab).toHaveAttribute(ATTR_ARIA_SELECTED, ARIA_FALSE);
+  });
+
+  test("shows current lab name in Basic tab", async ({ page }) => {
+    const modal = await openModal(page);
+
+    const labNameInput = modal.getByRole("textbox", { name: "Lab Name" });
     await expect(labNameInput).toBeVisible();
 
-    // Should have value "simple" from simple.clab.yml
     const value = await labNameInput.inputValue();
     expect(value).toBe("simple");
   });
 
-  test("lab settings panel has Basic tab", async ({ page }) => {
-    await openLabSettingsPanel(page);
-
-    // Basic tab should exist
-    const basicTab = page.locator(`${SEL_LAB_SETTINGS_PANEL} .panel-tab-button:has-text("Basic")`);
-    await expect(basicTab).toBeVisible();
-  });
-
-  test("lab settings panel has Management tab", async ({ page }) => {
-    await openLabSettingsPanel(page);
-
-    // Management tab should exist
-    const mgmtTab = page.locator(
-      `${SEL_LAB_SETTINGS_PANEL} .panel-tab-button:has-text("Management")`
-    );
-    await expect(mgmtTab).toBeVisible();
-  });
-
-  test("Basic tab is active by default", async ({ page }) => {
-    await openLabSettingsPanel(page);
-
-    // Basic tab should have active class
-    const basicTab = page.locator(`${SEL_LAB_SETTINGS_PANEL} .panel-tab-button:has-text("Basic")`);
-    await expect(basicTab).toHaveClass(/tab-active/);
-  });
-
-  test("can switch to Management tab", async ({ page }) => {
-    await openLabSettingsPanel(page);
-
-    // Click Management tab
-    const mgmtTab = page.locator(
-      `${SEL_LAB_SETTINGS_PANEL} .panel-tab-button:has-text("Management")`
-    );
-    await mgmtTab.click();
-    await page.waitForTimeout(200);
-
-    // Management tab should now be active
-    await expect(mgmtTab).toHaveClass(/tab-active/);
-
-    // Basic tab should no longer be active
-    const basicTab = page.locator(`${SEL_LAB_SETTINGS_PANEL} .panel-tab-button:has-text("Basic")`);
-    await expect(basicTab).not.toHaveClass(/tab-active/);
-  });
-
   test("can change lab name in Basic tab", async ({ page }) => {
-    await openLabSettingsPanel(page);
+    const modal = await openModal(page);
+    const labNameInput = modal.getByRole("textbox", { name: "Lab Name" });
 
-    // Find the lab name input field
-    const labNameInput = page.locator(`${SEL_LAB_SETTINGS_PANEL} input[type="text"]`).first();
-
-    // Clear and type new name
     await labNameInput.clear();
     await labNameInput.fill("test-lab");
-    await page.waitForTimeout(100);
-
-    // Value should be updated
-    const value = await labNameInput.inputValue();
-    expect(value).toBe("test-lab");
+    await expect(labNameInput).toHaveValue("test-lab");
   });
 
-  test("Save button exists in lab settings panel", async ({ page }) => {
-    await openLabSettingsPanel(page);
+  test("Apply button exists in edit mode", async ({ page }) => {
+    await openModal(page);
 
-    // Save button should exist (primary button)
-    const saveBtn = page.locator(`${SEL_LAB_SETTINGS_PANEL} ${SEL_PANEL_OK_BTN}`);
+    const saveBtn = page.locator(SEL_LAB_SETTINGS_SAVE_BTN);
     await expect(saveBtn).toBeVisible();
-    await expect(saveBtn).toHaveText("Save");
-  });
-
-  test("Close button exists in lab settings panel", async ({ page }) => {
-    await openLabSettingsPanel(page);
-
-    // Close button should exist (secondary button in footer)
-    const closeBtn = page.locator(`${SEL_LAB_SETTINGS_PANEL} ${SEL_PANEL_APPLY_BTN}`);
-    await expect(closeBtn).toBeVisible();
-    await expect(closeBtn).toHaveText("Close");
+    await expect(saveBtn).toHaveText("Apply");
   });
 
   test("save button persists lab name to YAML", async ({ page, topoViewerPage }) => {
-    await openLabSettingsPanel(page);
+    const modal = await openModal(page);
 
-    // Change lab name
-    const labNameInput = page.locator(`${SEL_LAB_SETTINGS_PANEL} input[type="text"]`).first();
+    const labNameInput = modal.getByRole("textbox", { name: "Lab Name" });
     await labNameInput.clear();
     await labNameInput.fill("updated-lab");
 
-    // Click Save button
-    const saveBtn = page.locator(`${SEL_LAB_SETTINGS_PANEL} ${SEL_PANEL_OK_BTN}`);
-    await saveBtn.click();
+    await page.locator(SEL_LAB_SETTINGS_SAVE_BTN).click();
     await page.waitForTimeout(500);
 
-    // Panel should close after save
-    const panel = page.locator(SEL_LAB_SETTINGS_PANEL);
-    await expect(panel).not.toBeVisible();
+    // Modal should close after save
+    await expect(modal).not.toBeVisible({ timeout: 3000 });
 
     // Verify YAML was updated
     const yaml = await topoViewerPage.getYamlFromFile(SIMPLE_FILE);
     expect(yaml).toContain("name: updated-lab");
   });
 
-  test("lab settings panel closes with close button in header", async ({ page }) => {
-    await openLabSettingsPanel(page);
+  test("closes lab settings modal with close button", async ({ page }) => {
+    const modal = await openModal(page);
 
-    const panel = page.locator(SEL_LAB_SETTINGS_PANEL);
-    await expect(panel).toBeVisible();
-
-    // Click X button in header
-    const closeBtn = page.locator(`${SEL_LAB_SETTINGS_PANEL} ${SEL_PANEL_CLOSE_BTN}`);
-    await closeBtn.click();
+    await page.locator(SEL_LAB_SETTINGS_CLOSE_BTN).click();
     await page.waitForTimeout(300);
 
-    // Panel should be hidden
-    await expect(panel).not.toBeVisible();
+    await expect(modal).not.toBeVisible();
   });
 
-  test("lab settings panel closes with Close button in footer", async ({ page }) => {
-    await openLabSettingsPanel(page);
+  test("closes lab settings modal with Escape key", async ({ page }) => {
+    const modal = await openModal(page);
 
-    const panel = page.locator(SEL_LAB_SETTINGS_PANEL);
-    await expect(panel).toBeVisible();
-
-    // Click Close button in footer (Apply button)
-    const closeBtn = page.locator(`${SEL_LAB_SETTINGS_PANEL} ${SEL_PANEL_APPLY_BTN}`);
-    await closeBtn.click();
-    await page.waitForTimeout(300);
-
-    // Panel should be hidden
-    await expect(panel).not.toBeVisible();
-  });
-
-  test("lab settings panel closes with Escape key", async ({ page }) => {
-    await openLabSettingsPanel(page);
-
-    const panel = page.locator(SEL_LAB_SETTINGS_PANEL);
-    await expect(panel).toBeVisible();
-
-    // Press Escape key
     await page.keyboard.press("Escape");
     await page.waitForTimeout(300);
 
-    // Panel should be hidden
-    await expect(panel).not.toBeVisible();
+    await expect(modal).not.toBeVisible();
   });
 
-  test("lab settings fields are read-only when canvas is locked", async ({
-    page,
-    topoViewerPage
-  }) => {
-    // Lock the canvas
+  test("Save button is hidden when canvas is locked", async ({ page, topoViewerPage }) => {
     await topoViewerPage.lock();
 
-    await openLabSettingsPanel(page);
+    const modal = await openModal(page);
 
-    // Lab name input should be disabled
-    const labNameInput = page.locator(`${SEL_LAB_SETTINGS_PANEL} input[type="text"]`).first();
-    await expect(labNameInput).toBeDisabled();
+    const saveBtn = page.locator(SEL_LAB_SETTINGS_SAVE_BTN);
+    await expect(saveBtn).not.toBeVisible();
 
-    // Prefix select should be disabled
-    const prefixSelect = page.locator(`${SEL_LAB_SETTINGS_PANEL} select`).first();
-    await expect(prefixSelect).toBeDisabled();
+    await expect(modal.getByRole("textbox", { name: "Lab Name" })).toBeDisabled();
+    await expectMuiSelectDisabled(modal, LABEL_CONTAINER_NAME_PREFIX);
   });
 
-  test("lab settings fields are read-only in view mode", async ({ page, topoViewerPage }) => {
-    // Switch to view mode
+  test("Save button is hidden in view mode", async ({ page, topoViewerPage }) => {
     await topoViewerPage.setViewMode();
 
-    await openLabSettingsPanel(page);
+    const modal = await openModal(page);
 
-    // Lab name input should be disabled
-    const labNameInput = page.locator(`${SEL_LAB_SETTINGS_PANEL} input[type="text"]`).first();
-    await expect(labNameInput).toBeDisabled();
+    const saveBtn = page.locator(SEL_LAB_SETTINGS_SAVE_BTN);
+    await expect(saveBtn).not.toBeVisible();
 
-    // Prefix select should be disabled
-    const prefixSelect = page.locator(`${SEL_LAB_SETTINGS_PANEL} select`).first();
-    await expect(prefixSelect).toBeDisabled();
-  });
-
-  test("footer buttons are hidden when in view mode", async ({ page, topoViewerPage }) => {
-    // Switch to view mode
-    await topoViewerPage.setViewMode();
-
-    await openLabSettingsPanel(page);
-
-    // Footer should not be visible in view mode
-    const footer = page.locator(`${SEL_LAB_SETTINGS_PANEL} .panel-footer`);
-    await expect(footer).not.toBeVisible();
-  });
-
-  test("footer buttons are hidden when canvas is locked", async ({ page, topoViewerPage }) => {
-    // Lock the canvas
-    await topoViewerPage.lock();
-
-    await openLabSettingsPanel(page);
-
-    // Footer should not be visible when locked
-    const footer = page.locator(`${SEL_LAB_SETTINGS_PANEL} .panel-footer`);
-    await expect(footer).not.toBeVisible();
+    await expect(modal.getByRole("textbox", { name: "Lab Name" })).toBeDisabled();
+    await expectMuiSelectDisabled(modal, LABEL_CONTAINER_NAME_PREFIX);
   });
 
   test("can change prefix type to custom and enter custom prefix", async ({ page }) => {
-    await openLabSettingsPanel(page);
+    const modal = await openModal(page);
 
-    // Find prefix select
-    const prefixSelect = page.locator(`${SEL_LAB_SETTINGS_PANEL} select`).first();
-    await prefixSelect.selectOption("custom");
-    await page.waitForTimeout(200);
+    const prefixSelect = muiSelectTriggerByLabel(modal, LABEL_CONTAINER_NAME_PREFIX);
+    await prefixSelect.click();
+    await chooseOption(page, /^Custom$/);
 
-    // Custom prefix input should appear
-    const customPrefixInput = page.locator(
-      `${SEL_LAB_SETTINGS_PANEL} input[placeholder="Enter custom prefix"]`
-    );
-    await expect(customPrefixInput).toBeVisible();
-
-    // Enter custom prefix
-    await customPrefixInput.fill("myprefix");
-    await page.waitForTimeout(100);
-
-    // Value should be set
-    const value = await customPrefixInput.inputValue();
-    expect(value).toBe("myprefix");
+    const customPrefix = modal.getByRole("textbox", { name: "Custom Prefix" });
+    await expect(customPrefix).toBeVisible();
+    await customPrefix.fill("myprefix");
+    await expect(customPrefix).toHaveValue("myprefix");
   });
 
   test("custom prefix input is hidden when prefix type is not custom", async ({ page }) => {
-    await openLabSettingsPanel(page);
+    const modal = await openModal(page);
 
-    // Find prefix select and select "default"
-    const prefixSelect = page.locator(`${SEL_LAB_SETTINGS_PANEL} select`).first();
-    await prefixSelect.selectOption("default");
-    await page.waitForTimeout(200);
+    const prefixSelect = muiSelectTriggerByLabel(modal, LABEL_CONTAINER_NAME_PREFIX);
+    await prefixSelect.click();
+    // Option label is "Default (clab)"
+    await chooseOption(page, /Default/i);
 
-    // Custom prefix input should NOT be visible
-    const customPrefixInput = page.locator(
-      `${SEL_LAB_SETTINGS_PANEL} input[placeholder="Enter custom prefix"]`
-    );
-    await expect(customPrefixInput).not.toBeVisible();
+    await expect(modal.getByRole("textbox", { name: "Custom Prefix" })).not.toBeVisible();
   });
 
   test("Management tab shows network name field", async ({ page }) => {
-    await openLabSettingsPanel(page);
+    const modal = await openModal(page);
 
-    // Switch to Management tab
-    const mgmtTab = page.locator(
-      `${SEL_LAB_SETTINGS_PANEL} .panel-tab-button:has-text("Management")`
-    );
-    await mgmtTab.click();
+    await modal.locator(SEL_LAB_SETTINGS_TAB_MGMT).click();
     await page.waitForTimeout(200);
 
-    // Network name field should exist (look for label text)
-    const networkNameLabel = page.locator(
-      `${SEL_LAB_SETTINGS_PANEL} label:has-text("Network Name")`
-    );
-    await expect(networkNameLabel).toBeVisible();
+    await expect(modal.getByRole("textbox", { name: "Network Name" })).toBeVisible();
   });
 
-  test("Management tab shows IPv4 configuration fields", async ({ page }) => {
-    await openLabSettingsPanel(page);
+  test("Management tab shows IPv4 and IPv6 subnet selectors", async ({ page }) => {
+    const modal = await openModal(page);
 
-    // Switch to Management tab
-    const mgmtTab = page.locator(
-      `${SEL_LAB_SETTINGS_PANEL} .panel-tab-button:has-text("Management")`
-    );
-    await mgmtTab.click();
+    await modal.locator(SEL_LAB_SETTINGS_TAB_MGMT).click();
     await page.waitForTimeout(200);
 
-    // Look for IPv4 related labels
-    const ipv4Label = page.locator(`${SEL_LAB_SETTINGS_PANEL} label:has-text("IPv4")`).first();
-    await expect(ipv4Label).toBeVisible();
+    await expect(muiSelectTriggerByLabel(modal, "IPv4 Subnet")).toBeVisible();
+    await expect(muiSelectTriggerByLabel(modal, "IPv6 Subnet")).toBeVisible();
   });
 
-  test("Management tab shows IPv6 configuration fields", async ({ page }) => {
-    await openLabSettingsPanel(page);
-
-    // Switch to Management tab
-    const mgmtTab = page.locator(
-      `${SEL_LAB_SETTINGS_PANEL} .panel-tab-button:has-text("Management")`
-    );
-    await mgmtTab.click();
-    await page.waitForTimeout(200);
-
-    // Look for IPv6 related labels
-    const ipv6Label = page.locator(`${SEL_LAB_SETTINGS_PANEL} label:has-text("IPv6")`).first();
-    await expect(ipv6Label).toBeVisible();
-  });
-
-  test("reopening panel after closing preserves data", async ({ page }) => {
-    await openLabSettingsPanel(page);
-
-    // Verify initial name
-    const labNameInput = page.locator(`${SEL_LAB_SETTINGS_PANEL} input[type="text"]`).first();
+  test("reopening modal preserves original data", async ({ page }) => {
+    const modal = await openModal(page);
+    const labNameInput = modal.getByRole("textbox", { name: "Lab Name" });
     const initialValue = await labNameInput.inputValue();
     expect(initialValue).toBe("simple");
 
-    // Close panel
-    await closeLabSettingsPanel(page);
+    // Close and reopen
+    await page.locator(SEL_LAB_SETTINGS_CLOSE_BTN).click();
+    await page.waitForTimeout(300);
 
-    // Reopen panel
-    await openLabSettingsPanel(page);
+    await page.locator(SEL_LAB_SETTINGS_BTN).click();
+    await page.waitForTimeout(300);
 
-    // Name should still be 'simple'
-    const labNameInputAfter = page.locator(`${SEL_LAB_SETTINGS_PANEL} input[type="text"]`).first();
+    const labNameInputAfter = page.locator(SEL_LAB_SETTINGS_MODAL).locator("input").first();
     const valueAfter = await labNameInputAfter.inputValue();
     expect(valueAfter).toBe("simple");
-  });
-
-  test("toggling navbar button opens and closes panel", async ({ page }) => {
-    const labSettingsBtn = page.locator(SEL_LAB_SETTINGS_BTN);
-    const panel = page.locator(SEL_LAB_SETTINGS_PANEL);
-
-    // First click - open
-    await labSettingsBtn.click();
-    await page.waitForTimeout(300);
-    await expect(panel).toBeVisible();
-
-    // Second click - close
-    await labSettingsBtn.click();
-    await page.waitForTimeout(300);
-    await expect(panel).not.toBeVisible();
-
-    // Third click - open again
-    await labSettingsBtn.click();
-    await page.waitForTimeout(300);
-    await expect(panel).toBeVisible();
   });
 });

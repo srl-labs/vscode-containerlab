@@ -55,10 +55,7 @@ interface NodeExtraData {
  * Generate a unique node name based on template or default
  * Uses getUniqueId to match legacy behavior (srl → srl1, srl2, etc.)
  */
-function generateNodeName(
-  baseName: string,
-  usedIds: Set<string>
-): string {
+function generateNodeName(baseName: string, usedIds: Set<string>): string {
   return getUniqueId(baseName, usedIds);
 }
 

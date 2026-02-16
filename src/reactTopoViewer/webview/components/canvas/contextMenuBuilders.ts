@@ -1,22 +1,38 @@
-/**
- * Context menu item builders for ReactFlowCanvas
- */
-import type React from "react";
+// Context menu item builders for ReactFlowCanvas.
+import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
+import {
+  Add as AddIcon,
+  Article as ArticleIcon,
+  Category as CategoryIcon,
+  CircleOutlined as CircleOutlinedIcon,
+  Close as CloseIcon,
+  CropSquare as CropSquareIcon,
+  Dashboard as DashboardIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  Info as InfoIcon,
+  Lan as LanIcon,
+  Layers as LayersIcon,
+  Link as LinkIcon,
+  Remove as RemoveIcon,
+  Terminal as TerminalIcon,
+  TextFields as TextFieldsIcon,
+  Tune as TuneIcon
+} from "@mui/icons-material";
 
+import type { ContextMenuItem } from "../context-menu/ContextMenu";
+import { WiresharkIcon } from "../context-menu/WiresharkIcon";
+import { getViewportCenter } from "../../utils/viewportUtils";
+import { sendCommandToExtension } from "../../messaging/extensionMessaging";
 import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
-import { sendCommandToExtension } from "../../messaging/extensionMessaging";
-import { getViewportCenter } from "../../utils/viewportUtils";
-import type { ContextMenuItem } from "../context-menu/ContextMenu";
 
 import type { ReactFlowCanvasProps } from "./types";
 
-const ICON_PEN = "fas fa-pen";
-const ICON_TRASH = "fas fa-trash";
 const DIVIDER_ID = "divider-1";
 
 interface MenuBuilderContext {
@@ -51,6 +67,11 @@ interface MenuBuilderContext {
 
 interface EdgeMenuBuilderContext {
   targetId: string;
+  sourceNode?: string;
+  targetNode?: string;
+  sourceEndpoint?: string;
+  targetEndpoint?: string;
+  extraData?: Record<string, unknown>;
   isEditMode: boolean;
   isLocked: boolean;
   closeContextMenu: () => void;
@@ -68,7 +89,6 @@ type PaneMenuActions = Pick<
   | "onAddTextAtPosition"
   | "onAddShapes"
   | "onAddShapeAtPosition"
-  | "onShowBulkLink"
 >;
 
 interface PaneMenuBuilderContext extends PaneMenuActions {
@@ -86,93 +106,111 @@ interface PaneMenuBuilderContext extends PaneMenuActions {
  * Build context menu for free text annotations
  */
 function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isLocked, closeContextMenu, editFreeText, deleteFreeText } = ctx;
+  const { targetId, isEditMode, isLocked, closeContextMenu, editFreeText, deleteFreeText } = ctx;
 
-  return [
+  const items: ContextMenuItem[] = [
     {
       id: "edit-text",
       label: "Edit Text",
-      icon: ICON_PEN,
+      icon: React.createElement(EditIcon, { fontSize: "small" }),
       disabled: isLocked,
       onClick: () => {
         editFreeText?.(targetId);
         closeContextMenu();
       }
-    },
-    { id: DIVIDER_ID, label: "", divider: true },
-    {
-      id: "delete-text",
-      label: "Delete Text",
-      icon: ICON_TRASH,
-      disabled: isLocked,
-      onClick: () => {
-        deleteFreeText?.(targetId);
-        closeContextMenu();
-      }
     }
   ];
+  if (isEditMode) {
+    items.push(
+      { id: DIVIDER_ID, label: "", divider: true },
+      {
+        id: "delete-text",
+        label: "Delete Text",
+        icon: React.createElement(DeleteIcon, { fontSize: "small" }),
+        disabled: isLocked,
+        danger: true,
+        onClick: () => {
+          deleteFreeText?.(targetId);
+          closeContextMenu();
+        }
+      }
+    );
+  }
+  return items;
 }
 
 /**
  * Build context menu for free shape annotations
  */
 function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isLocked, closeContextMenu, editFreeShape, deleteFreeShape } = ctx;
+  const { targetId, isEditMode, isLocked, closeContextMenu, editFreeShape, deleteFreeShape } = ctx;
 
-  return [
+  const items: ContextMenuItem[] = [
     {
       id: "edit-shape",
       label: "Edit Shape",
-      icon: ICON_PEN,
+      icon: React.createElement(EditIcon, { fontSize: "small" }),
       disabled: isLocked,
       onClick: () => {
         editFreeShape?.(targetId);
         closeContextMenu();
       }
-    },
-    { id: DIVIDER_ID, label: "", divider: true },
-    {
-      id: "delete-shape",
-      label: "Delete Shape",
-      icon: ICON_TRASH,
-      disabled: isLocked,
-      onClick: () => {
-        deleteFreeShape?.(targetId);
-        closeContextMenu();
-      }
     }
   ];
+  if (isEditMode) {
+    items.push(
+      { id: DIVIDER_ID, label: "", divider: true },
+      {
+        id: "delete-shape",
+        label: "Delete Shape",
+        icon: React.createElement(DeleteIcon, { fontSize: "small" }),
+        disabled: isLocked,
+        danger: true,
+        onClick: () => {
+          deleteFreeShape?.(targetId);
+          closeContextMenu();
+        }
+      }
+    );
+  }
+  return items;
 }
 
 /**
  * Build context menu for group annotations
  */
 function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isLocked, closeContextMenu, editGroup, deleteGroup } = ctx;
+  const { targetId, isEditMode, isLocked, closeContextMenu, editGroup, deleteGroup } = ctx;
 
-  return [
+  const items: ContextMenuItem[] = [
     {
       id: "edit-group",
       label: "Edit Group",
-      icon: ICON_PEN,
+      icon: React.createElement(EditIcon, { fontSize: "small" }),
       disabled: isLocked,
       onClick: () => {
         editGroup?.(targetId);
         closeContextMenu();
       }
-    },
-    { id: DIVIDER_ID, label: "", divider: true },
-    {
-      id: "delete-group",
-      label: "Delete Group",
-      icon: ICON_TRASH,
-      disabled: isLocked,
-      onClick: () => {
-        deleteGroup?.(targetId);
-        closeContextMenu();
-      }
     }
   ];
+  if (isEditMode) {
+    items.push(
+      { id: DIVIDER_ID, label: "", divider: true },
+      {
+        id: "delete-group",
+        label: "Delete Group",
+        icon: React.createElement(DeleteIcon, { fontSize: "small" }),
+        disabled: isLocked,
+        danger: true,
+        onClick: () => {
+          deleteGroup?.(targetId);
+          closeContextMenu();
+        }
+      }
+    );
+  }
+  return items;
 }
 
 function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
@@ -181,7 +219,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "ssh-node",
       label: "SSH",
-      icon: "fas fa-terminal",
+      icon: React.createElement(TerminalIcon, { fontSize: "small" }),
       onClick: () => {
         sendCommandToExtension("clab-node-connect-ssh", { nodeName: targetId });
         closeContextMenu();
@@ -190,7 +228,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "shell-node",
       label: "Shell",
-      icon: "fas fa-terminal",
+      icon: React.createElement(TerminalIcon, { fontSize: "small" }),
       onClick: () => {
         sendCommandToExtension("clab-node-attach-shell", { nodeName: targetId });
         closeContextMenu();
@@ -199,7 +237,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "logs-node",
       label: "Logs",
-      icon: "fas fa-clipboard-list",
+      icon: React.createElement(ArticleIcon, { fontSize: "small" }),
       onClick: () => {
         sendCommandToExtension("clab-node-view-logs", { nodeName: targetId });
         closeContextMenu();
@@ -209,7 +247,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "info-node",
       label: "Info",
-      icon: "fas fa-circle-info",
+      icon: React.createElement(InfoIcon, { fontSize: "small" }),
       onClick: () => {
         showNodeInfo?.(targetId);
         closeContextMenu();
@@ -236,10 +274,6 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     cancelLinkCreation
   } = ctx;
 
-  if (isEditMode && isLocked) {
-    return [];
-  }
-
   // Handle annotation nodes with specific menus
   if (targetNodeType === FREE_TEXT_NODE_TYPE) {
     return buildFreeTextContextMenu(ctx);
@@ -263,7 +297,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     items.push({
       id: "cancel-link",
       label: "Cancel Link Creation",
-      icon: "fas fa-xmark",
+      icon: React.createElement(CloseIcon, { fontSize: "small" }),
       onClick: () => {
         cancelLinkCreation?.();
         closeContextMenu();
@@ -272,10 +306,27 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     items.push({ id: "divider-link", label: "", divider: true });
   }
 
+  // Show "Create Link" if not already in link creation mode
+  if (!linkSourceNode) {
+    items.push({
+      id: "create-link",
+      label: "Create Link",
+      icon: React.createElement(LinkIcon, { fontSize: "small" }),
+      disabled: !isEditMode || isLocked,
+      onClick: () => {
+        startLinkCreation?.(targetId);
+        closeContextMenu();
+      }
+    });
+  }
+
+  items.push({ id: "divider-edit", label: "", divider: true });
   items.push({
     id: "edit-node",
-    label: isNetworkNode ? "Edit NetworkNode" : "Edit Node",
-    icon: isNetworkNode ? "fas fa-network-wired" : ICON_PEN,
+    label: isNetworkNode ? "Edit Network" : "Edit Node",
+    icon: isNetworkNode
+      ? React.createElement(LanIcon, { fontSize: "small" })
+      : React.createElement(EditIcon, { fontSize: "small" }),
     disabled: !isEditMode || isLocked,
     onClick: () => {
       if (isNetworkNode) {
@@ -288,26 +339,13 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     }
   });
 
-  // Show "Create Link" if not already in link creation mode
-  if (!linkSourceNode) {
-    items.push({
-      id: "create-link",
-      label: "Create Link",
-      icon: "fas fa-link",
-      disabled: !isEditMode || isLocked,
-      onClick: () => {
-        startLinkCreation?.(targetId);
-        closeContextMenu();
-      }
-    });
-  }
-
   items.push({ id: DIVIDER_ID, label: "", divider: true });
   items.push({
     id: "delete-node",
     label: "Delete Node",
-    icon: ICON_TRASH,
+    icon: React.createElement(DeleteIcon, { fontSize: "small" }),
     disabled: !isEditMode || isLocked,
+    danger: true,
     onClick: () => handleDeleteNode(targetId)
   });
 
@@ -320,6 +358,11 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
 export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuItem[] {
   const {
     targetId,
+    sourceNode,
+    targetNode,
+    sourceEndpoint,
+    targetEndpoint,
+    extraData,
     isEditMode,
     isLocked,
     closeContextMenu,
@@ -328,57 +371,89 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
     showLinkInfo,
     showLinkImpairment
   } = ctx;
+
+  // Build capture items for each endpoint
+  const captureItems: ContextMenuItem[] = [];
+  const srcName = (extraData?.clabSourceLongName as string) ?? sourceNode;
+  const dstName = (extraData?.clabTargetLongName as string) ?? targetNode;
+  if (srcName && sourceEndpoint) {
+    captureItems.push({
+      id: "capture-source",
+      label: `${srcName} - ${sourceEndpoint}`,
+      icon: React.createElement(WiresharkIcon, { fontSize: "small" }),
+      onClick: () => {
+        sendCommandToExtension("clab-interface-capture", {
+          nodeName: srcName,
+          interfaceName: sourceEndpoint
+        });
+        closeContextMenu();
+      }
+    });
+  }
+  if (dstName && targetEndpoint) {
+    captureItems.push({
+      id: "capture-target",
+      label: `${dstName} - ${targetEndpoint}`,
+      icon: React.createElement(WiresharkIcon, { fontSize: "small" }),
+      onClick: () => {
+        sendCommandToExtension("clab-interface-capture", {
+          nodeName: dstName,
+          interfaceName: targetEndpoint
+        });
+        closeContextMenu();
+      }
+    });
+  }
+
   const impairmentItem: ContextMenuItem = {
     id: "impair-edge",
-    label: "Link impairments",
-    icon: "fas fa-sliders",
+    label: "Link Impairments",
+    icon: React.createElement(TuneIcon, { fontSize: "small" }),
     onClick: () => {
       showLinkImpairment?.(targetId);
       closeContextMenu();
     }
   };
+  const linkInfoItem: ContextMenuItem = {
+    id: "info-edge",
+    label: "Info",
+    icon: React.createElement(InfoIcon, { fontSize: "small" }),
+    onClick: () => {
+      showLinkInfo?.(targetId);
+      closeContextMenu();
+    }
+  };
   if (!isEditMode) {
     return [
+      ...captureItems,
+      ...(captureItems.length > 0 ? [{ id: "divider-capture", label: "", divider: true }] : []),
       impairmentItem,
-      {
-        id: "info-edge",
-        label: "Link Info",
-        icon: "fas fa-circle-info",
-        onClick: () => {
-          showLinkInfo?.(targetId);
-          closeContextMenu();
-        }
-      }
+      { id: "divider-info", label: "", divider: true },
+      linkInfoItem
     ];
-  }
-  if (isLocked) {
-    return [impairmentItem];
   }
   return [
     {
       id: "edit-edge",
       label: "Edit Link",
-      icon: ICON_PEN,
+      icon: React.createElement(EditIcon, { fontSize: "small" }),
       disabled: !isEditMode || isLocked,
       onClick: () => {
         editEdge(targetId);
         closeContextMenu();
       }
     },
-    impairmentItem,
     { id: DIVIDER_ID, label: "", divider: true },
     {
       id: "delete-edge",
       label: "Delete Link",
-      icon: ICON_TRASH,
+      icon: React.createElement(DeleteIcon, { fontSize: "small" }),
       disabled: !isEditMode || isLocked,
+      danger: true,
       onClick: () => handleDeleteEdge(targetId)
     }
   ];
 }
-
-// Fit view options constant
-const FIT_VIEW_OPTIONS = { padding: 0.2 };
 
 /**
  * Build pane context menu items
@@ -396,44 +471,47 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     onAddTextAtPosition,
     onAddShapes,
     onAddShapeAtPosition,
-    onShowBulkLink,
     menuPosition
   } = ctx;
-  const items: ContextMenuItem[] = [
-    {
-      id: "add-node",
-      label: "Add Node",
-      icon: "fas fa-plus",
-      disabled: !isEditMode || isLocked,
-      onClick: () => {
-        if (onAddDefaultNode && menuPosition && reactFlowInstance.current) {
-          const flowPosition = reactFlowInstance.current.screenToFlowPosition(menuPosition);
-          onAddDefaultNode(flowPosition);
+  const items: ContextMenuItem[] = [];
+
+  // Add Node is only available in edit mode (not when deployed)
+  if (isEditMode) {
+    items.push(
+      {
+        id: "add-node",
+        label: "Add Node",
+        icon: React.createElement(AddIcon, { fontSize: "small" }),
+        disabled: isLocked,
+        onClick: () => {
+          if (onAddDefaultNode && menuPosition && reactFlowInstance.current) {
+            const flowPosition = reactFlowInstance.current.screenToFlowPosition(menuPosition);
+            onAddDefaultNode(flowPosition);
+          }
+          closeContextMenu();
         }
-        closeContextMenu();
-      }
-    },
-    {
-      id: "open-node-palette",
-      label: "Open Palette",
-      icon: "fas fa-th",
-      disabled: !isEditMode || isLocked,
-      onClick: () => {
-        onOpenNodePalette?.();
-        closeContextMenu();
-      }
-    }
-  ];
+      },
+      { id: "divider-additions", label: "", divider: true }
+    );
+  }
 
   const editorItems: ContextMenuItem[] = [];
-  const isDisabled = !isEditMode || isLocked;
+
+  const getFlowPosition = () => {
+    const instance = reactFlowInstance.current;
+    if (!instance) return null;
+    if (menuPosition) {
+      return instance.screenToFlowPosition(menuPosition);
+    }
+    return getViewportCenter(instance);
+  };
 
   if (onAddGroup) {
     editorItems.push({
       id: "add-group",
       label: "Add Group",
-      icon: "fas fa-layer-group",
-      disabled: isDisabled,
+      icon: React.createElement(LayersIcon, { fontSize: "small" }),
+      disabled: isLocked,
       onClick: () => {
         onAddGroup();
         closeContextMenu();
@@ -444,8 +522,8 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     editorItems.push({
       id: "add-text",
       label: "Add Text",
-      icon: "fas fa-font",
-      disabled: isDisabled,
+      icon: React.createElement(TextFieldsIcon, { fontSize: "small" }),
+      disabled: isLocked,
       onClick: () => {
         const flowPosition = getFlowPosition();
         if (onAddTextAtPosition && flowPosition) {
@@ -457,27 +535,19 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
       }
     });
   }
-  const getFlowPosition = () => {
-    const instance = reactFlowInstance.current;
-    if (!instance) return null;
-    if (menuPosition) {
-      return instance.screenToFlowPosition(menuPosition);
-    }
-    return getViewportCenter(instance);
-  };
 
   if (onAddShapes || onAddShapeAtPosition) {
     editorItems.push({
       id: "add-shape",
       label: "Add Shape",
-      icon: "fas fa-shapes",
-      disabled: isDisabled,
+      icon: React.createElement(CategoryIcon, { fontSize: "small" }),
+      disabled: isLocked,
       children: [
         {
           id: "add-shape-rectangle",
           label: "Rectangle",
-          icon: "fas fa-square",
-          disabled: isDisabled,
+          icon: React.createElement(CropSquareIcon, { fontSize: "small" }),
+          disabled: isLocked,
           onClick: () => {
             const flowPosition = getFlowPosition();
             if (onAddShapeAtPosition && flowPosition) {
@@ -491,8 +561,8 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
         {
           id: "add-shape-circle",
           label: "Circle",
-          icon: "fas fa-circle",
-          disabled: isDisabled,
+          icon: React.createElement(CircleOutlinedIcon, { fontSize: "small" }),
+          disabled: isLocked,
           onClick: () => {
             const flowPosition = getFlowPosition();
             if (onAddShapeAtPosition && flowPosition) {
@@ -506,8 +576,8 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
         {
           id: "add-shape-line",
           label: "Line",
-          icon: "fas fa-minus",
-          disabled: isDisabled,
+          icon: React.createElement(RemoveIcon, { fontSize: "small" }),
+          disabled: isLocked,
           onClick: () => {
             const flowPosition = getFlowPosition();
             if (onAddShapeAtPosition && flowPosition) {
@@ -521,37 +591,23 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
       ]
     });
   }
-  if (onShowBulkLink) {
-    editorItems.push({
-      id: "bulk-link",
-      label: "Bulk Link Devices",
-      icon: "fas fa-link",
-      disabled: isDisabled,
-      onClick: () => {
-        onShowBulkLink();
-        closeContextMenu();
-      }
-    });
-  }
-
   if (editorItems.length > 0) {
-    items.push({ id: "divider-additions", label: "", divider: true }, ...editorItems);
+    items.push(...editorItems);
   }
 
-  items.push(
-    { id: DIVIDER_ID, label: "", divider: true },
-    {
-      id: "fit-view",
-      label: "Fit View",
-      icon: "fas fa-expand",
-      onClick: () => {
-        reactFlowInstance.current?.fitView(FIT_VIEW_OPTIONS).catch(() => {
-          /* ignore */
-        });
-        closeContextMenu();
-      }
+  const paletteItem: ContextMenuItem = {
+    id: "open-node-palette",
+    label: "Open Palette",
+    icon: React.createElement(DashboardIcon, { fontSize: "small" }),
+    onClick: () => {
+      onOpenNodePalette?.();
+      closeContextMenu();
     }
-  );
+  };
+  if (items.length > 0) {
+    items.push({ id: "divider-palette", label: "", divider: true });
+  }
+  items.push(paletteItem);
 
   return items;
 }

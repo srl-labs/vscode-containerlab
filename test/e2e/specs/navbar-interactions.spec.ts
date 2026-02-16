@@ -1,22 +1,19 @@
 import { test, expect } from "../fixtures/topoviewer";
 
-// Test selectors
-const SEL_NAVBAR_UNDO = '[data-testid="navbar-undo"]';
-const SEL_NAVBAR_REDO = '[data-testid="navbar-redo"]';
-const SEL_NAVBAR_LAYOUT = '[data-testid="navbar-layout"]';
-const SEL_NAVBAR_MENU = ".navbar-menu";
-const SEL_NAVBAR_LINK_LABELS = '[data-testid="navbar-link-labels"]';
-const SEL_NAVBAR_GRID = '[data-testid="navbar-grid"]';
+const ATTR_DATA_TESTID = "data-testid";
 
 /**
- * Navbar Interactions E2E Tests
+ * Navbar Interactions E2E Tests (MUI version)
  *
  * Tests the navbar button functionality including:
+ * - Button visibility
  * - Undo/Redo buttons
  * - Fit to viewport
- * - Layout dropdown
- * - Link labels dropdown
- * - Various panel toggles
+ * - Layout dropdown (MUI Menu)
+ * - Link labels dropdown (MUI Menu)
+ * - Grid settings (MUI Popover)
+ * - Shortcuts/About modals (MUI Dialog)
+ * - Shortcut display toggle
  */
 test.describe("Navbar Interactions", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
@@ -55,8 +52,8 @@ test.describe("Navbar Interactions", () => {
       await topoViewerPage.setEditMode();
       await topoViewerPage.unlock();
 
-      const undoBtn = page.locator(SEL_NAVBAR_UNDO);
-      const redoBtn = page.locator(SEL_NAVBAR_REDO);
+      const undoBtn = page.locator('[data-testid="navbar-undo"]');
+      const redoBtn = page.locator('[data-testid="navbar-redo"]');
 
       // Both should be visible in edit mode
       await expect(undoBtn).toBeVisible();
@@ -98,160 +95,127 @@ test.describe("Navbar Interactions", () => {
       page,
       topoViewerPage
     }) => {
-      const layoutBtn = page.locator(SEL_NAVBAR_LAYOUT);
+      const layoutBtn = page.locator('[data-testid="navbar-layout"]');
       await layoutBtn.click();
       await page.waitForTimeout(200);
 
-      // Menu should appear
-      const layoutMenu = page.locator(SEL_NAVBAR_MENU);
-      await expect(layoutMenu).toBeVisible();
-
-      // Check for layout options (Preset, Force-Directed, GeoMap)
-      const menuOptions = page.locator(".navbar-menu-option");
-      const count = await menuOptions.count();
-      expect(count).toBe(3);
+      // MUI Menu should appear with all 3 layout options
+      await expect(page.locator('[data-testid="navbar-layout-preset"]')).toBeVisible();
+      await expect(page.locator('[data-testid="navbar-layout-force"]')).toBeVisible();
+      await expect(page.locator('[data-testid="navbar-layout-geo"]')).toBeVisible();
 
       // Click elsewhere to close
-      const canvasCenter = await topoViewerPage.getCanvasCenter();
-      await page.mouse.click(canvasCenter.x, canvasCenter.y);
+      await page.keyboard.press("Escape");
       await page.waitForTimeout(200);
 
-      await expect(layoutMenu).not.toBeVisible();
+      await expect(page.locator('[data-testid="navbar-layout-preset"]')).not.toBeVisible();
     });
   });
 
   test.describe("Link Labels Dropdown", () => {
-    test("link labels dropdown has Show Labels, No Labels, and Show Dummy Links options", async ({
+    test("link labels dropdown has Show All, On Select, and Hide options", async ({
       page
     }) => {
-      const linkLabelsBtn = page.locator(SEL_NAVBAR_LINK_LABELS);
+      const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
       await linkLabelsBtn.click();
       await page.waitForTimeout(200);
 
-      const linkMenu = page.locator(SEL_NAVBAR_MENU);
-      await expect(linkMenu).toBeVisible();
-
-      // Verify all expected options are present
-      await expect(page.locator('.navbar-menu-option:has-text("Show Labels")')).toBeVisible();
-      await expect(page.locator('.navbar-menu-option:has-text("No Labels")')).toBeVisible();
-      await expect(page.locator('.navbar-menu-option:has-text("Show Dummy Links")')).toBeVisible();
+      // Verify all expected MUI menu items are present
+      await expect(page.locator('[data-testid="navbar-link-label-show-all"]')).toBeVisible();
+      await expect(page.locator('[data-testid="navbar-link-label-on-select"]')).toBeVisible();
+      await expect(page.locator('[data-testid="navbar-link-label-hide"]')).toBeVisible();
     });
   });
 
-  test.describe("Grid Settings Dropdown", () => {
-    test("grid dropdown has slider and reset button", async ({ page }) => {
-      const gridBtn = page.locator(SEL_NAVBAR_GRID);
+  test.describe("Grid Settings Popover", () => {
+    test("grid popover opens with slider and style toggles", async ({ page }) => {
+      const gridBtn = page.locator('[data-testid="navbar-grid"]');
       await gridBtn.click();
       await page.waitForTimeout(200);
 
-      const gridMenu = page.locator(".navbar-menu.grid-menu");
-      await expect(gridMenu).toBeVisible();
+      // MUI Popover should appear
+      const gridPopover = page.locator('[data-testid="grid-settings-popover"]');
+      await expect(gridPopover).toBeVisible();
 
-      // Verify slider and reset button
-      await expect(page.locator(".grid-line-slider")).toBeVisible();
-      const resetButtons = page.locator(".grid-reset-button");
-      await expect(resetButtons).toHaveCount(2);
-      await expect(resetButtons.first()).toBeVisible();
-      await expect(resetButtons.nth(1)).toBeVisible();
+      // Verify slider exists (MUI Slider)
+      const slider = gridPopover.locator(".MuiSlider-root");
+      await expect(slider).toBeVisible();
+
+      // Verify toggle buttons exist (Dotted/Quadratic)
+      const toggleGroup = gridPopover.locator(".MuiToggleButtonGroup-root");
+      await expect(toggleGroup).toBeVisible();
     });
   });
 
   test.describe("Panel Toggles", () => {
-    test("shortcuts and about buttons open their respective panels", async ({ page }) => {
-      // Test shortcuts panel
+    test("shortcuts and about buttons open their respective modals", async ({ page }) => {
+      // Test shortcuts modal
       const shortcutsBtn = page.locator('[data-testid="navbar-shortcuts"]');
       await shortcutsBtn.click();
       await page.waitForTimeout(300);
 
-      const shortcutsPanel = page.locator('.panel-title:has-text("Shortcuts")');
-      await expect(shortcutsPanel).toBeVisible();
+      const shortcutsModal = page.locator('[data-testid="shortcuts-modal"]');
+      await expect(shortcutsModal).toBeVisible();
 
-      // Close shortcuts (click elsewhere or press Escape)
+      // Close shortcuts (press Escape)
       await page.keyboard.press("Escape");
       await page.waitForTimeout(200);
+      await expect(shortcutsModal).not.toBeVisible();
 
-      // Test about panel
+      // Test about modal
       const aboutBtn = page.locator('[data-testid="navbar-about"]');
       await aboutBtn.click();
       await page.waitForTimeout(300);
 
-      const aboutPanel = page.locator('.panel-title:has-text("About")');
-      await expect(aboutPanel).toBeVisible();
+      const aboutModal = page.locator('[data-testid="about-modal"]');
+      await expect(aboutModal).toBeVisible();
     });
   });
 
   test.describe("Shortcut Display Toggle", () => {
-    test("clicking shortcut display toggles its active state", async ({ page }) => {
+    test("clicking shortcut display toggles the icon", async ({ page }) => {
       const shortcutDisplayBtn = page.locator('[data-testid="navbar-shortcut-display"]');
       await expect(shortcutDisplayBtn).toBeVisible();
+
+      // Get initial icon (VisibilityOff when disabled)
+      const initialIcon = await shortcutDisplayBtn.locator("svg").getAttribute(ATTR_DATA_TESTID);
 
       // Click to toggle
       await shortcutDisplayBtn.click();
       await page.waitForTimeout(200);
 
-      // Check if it has active class or changed state
-      // The button should toggle between active and inactive states
-      const hasActiveClass = await shortcutDisplayBtn.evaluate((el) =>
-        el.classList.contains("active")
-      );
+      // Icon should have changed (VisibilityOff <-> Visibility)
+      const toggledIcon = await shortcutDisplayBtn.locator("svg").getAttribute(ATTR_DATA_TESTID);
 
       // Toggle back
       await shortcutDisplayBtn.click();
       await page.waitForTimeout(200);
 
-      const hasActiveClassAfter = await shortcutDisplayBtn.evaluate((el) =>
-        el.classList.contains("active")
-      );
+      const restoredIcon = await shortcutDisplayBtn.locator("svg").getAttribute(ATTR_DATA_TESTID);
 
-      // State should have changed
-      expect(hasActiveClass).not.toBe(hasActiveClassAfter);
+      // State should have toggled and been restored
+      expect(initialIcon).toBe(restoredIcon);
+      expect(initialIcon).not.toBe(toggledIcon);
     });
 
     test("shortcut display shows keypresses when enabled", async ({ page, topoViewerPage }) => {
       const shortcutDisplayBtn = page.locator('[data-testid="navbar-shortcut-display"]');
+      await expect(shortcutDisplayBtn).toBeVisible();
 
-      // Enable shortcut display
+      // Enable shortcut display.
       await shortcutDisplayBtn.click();
       await page.waitForTimeout(200);
 
-      // Verify button is active
-      await expect(shortcutDisplayBtn).toHaveClass(/active/);
-
-      // Click on canvas to ensure focus is not on input
+      // Click on canvas so the keydown isn't targeted at an input.
       const canvasCenter = await topoViewerPage.getCanvasCenter();
       await page.mouse.click(canvasCenter.x, canvasCenter.y);
       await page.waitForTimeout(100);
 
-      // Press a key
       await page.keyboard.press("a");
-      await page.waitForTimeout(100);
 
-      // Shortcut display should show the key (may have multiple items including "Left Click" from mouse)
-      const keyDisplay = page.locator('.shortcut-display-item:has-text("A")');
-      await expect(keyDisplay).toBeVisible();
-    });
-  });
-
-  test.describe("Mode Badge Display", () => {
-    test("navbar shows correct mode badge for viewer and editor modes", async ({
-      page,
-      topoViewerPage
-    }) => {
-      // Test view mode
-      await topoViewerPage.setViewMode();
-      await page.waitForTimeout(200);
-
-      const viewerBadge = page.locator(".mode-badge.viewer");
-      await expect(viewerBadge).toBeVisible();
-      await expect(viewerBadge).toHaveText("viewer");
-
-      // Test edit mode
-      await topoViewerPage.setEditMode();
-      await page.waitForTimeout(200);
-
-      const editorBadge = page.locator(".mode-badge.editor");
-      await expect(editorBadge).toBeVisible();
-      await expect(editorBadge).toHaveText("editor");
+      // Key display should show "A" (uppercase).
+      const keyDisplay = page.locator(".shortcut-display-item").filter({ hasText: /^A$/ });
+      await expect(keyDisplay).toBeVisible({ timeout: 3000 });
     });
   });
 });

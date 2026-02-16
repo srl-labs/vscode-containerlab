@@ -6,7 +6,7 @@
  * - edge-stats-update: Update edge extraData (packet stats)
  */
 import { useEffect } from "react";
-import type { Edge } from "@xyflow/react";
+import type { Edge, Node } from "@xyflow/react";
 
 import type { NetemState } from "../../../shared/parsing";
 import type { TopologySnapshot } from "../../../shared/types/messages";
@@ -38,9 +38,28 @@ interface EdgeStatsUpdateMessage {
   };
 }
 
+interface NodeDataUpdateMessage {
+  type: "node-data-updated";
+  data?: {
+    nodeUpdates?: Array<{
+      containerLongName: string;
+      containerShortName: string;
+      state: string;
+      status?: string;
+      mgmtIpv4Address?: string;
+      mgmtIpv6Address?: string;
+    }>;
+  };
+}
+
+type NodeRuntimeUpdateEntry = NonNullable<
+  NonNullable<NodeDataUpdateMessage["data"]>["nodeUpdates"]
+>[number];
+
 type ExtensionMessage =
   | { type: "topology-host:snapshot"; snapshot?: TopologySnapshot }
   | EdgeStatsUpdateMessage
+  | NodeDataUpdateMessage
   | { type: string };
 
 // ============================================================================
@@ -149,6 +168,126 @@ function handleEdgeStatsUpdateMessage(msg: EdgeStatsUpdateMessage): void {
   setEdges((current) => current.map((edge) => applyEdgeStatsToEdge(edge, updateMap)));
 }
 
+function handleNodeDataUpdateMessage(msg: NodeDataUpdateMessage): void {
+  const updates = msg.data?.nodeUpdates;
+  if (!updates || updates.length === 0) return;
+
+  const { byLongName, byShortName } = buildNodeRuntimeLookup(updates);
+
+  if (byLongName.size === 0 && byShortName.size === 0) {
+    return;
+  }
+
+  const { setNodes } = useGraphStore.getState();
+  setNodes((currentNodes) =>
+    currentNodes.map((node) => applyNodeRuntimeUpdate(node, byLongName, byShortName))
+  );
+}
+
+function buildNodeRuntimeLookup(updates: NodeRuntimeUpdateEntry[]): {
+  byLongName: Map<string, NodeRuntimeUpdateEntry>;
+  byShortName: Map<string, NodeRuntimeUpdateEntry>;
+} {
+  const byLongName = new Map<string, NodeRuntimeUpdateEntry>();
+  const byShortName = new Map<string, NodeRuntimeUpdateEntry>();
+
+  for (const update of updates) {
+    const longName = update.containerLongName?.trim();
+    const shortName = update.containerShortName?.trim();
+    if (longName) byLongName.set(longName, update);
+    if (shortName) byShortName.set(shortName, update);
+  }
+
+  return { byLongName, byShortName };
+}
+
+function resolveNodeRuntimeUpdate(
+  nodeId: string,
+  nodeData: Record<string, unknown>,
+  extraData: Record<string, unknown>,
+  byLongName: Map<string, NodeRuntimeUpdateEntry>,
+  byShortName: Map<string, NodeRuntimeUpdateEntry>
+): NodeRuntimeUpdateEntry | undefined {
+  const longNameCandidate = [nodeData.longname, extraData.longname].find(
+    (value): value is string => typeof value === "string" && value.trim().length > 0
+  );
+
+  if (longNameCandidate) {
+    const byLong = byLongName.get(longNameCandidate);
+    if (byLong) return byLong;
+  }
+
+  return byShortName.get(nodeId) ?? byShortName.get((nodeData.label as string) ?? "");
+}
+
+function hasNodeRuntimeDataChanged(
+  nodeData: Record<string, unknown>,
+  extraData: Record<string, unknown>,
+  update: NodeRuntimeUpdateEntry
+): boolean {
+  const nextState = update.state ?? "";
+  const nextStatus = update.status ?? "";
+  const nextIpv4 = update.mgmtIpv4Address ?? "";
+  const nextIpv6 = update.mgmtIpv6Address ?? "";
+
+  return (
+    ((nodeData.state as string | undefined) ?? "") !== nextState ||
+    ((extraData.state as string | undefined) ?? "") !== nextState ||
+    ((extraData.status as string | undefined) ?? "") !== nextStatus ||
+    ((nodeData.mgmtIpv4Address as string | undefined) ?? "") !== nextIpv4 ||
+    ((nodeData.mgmtIpv6Address as string | undefined) ?? "") !== nextIpv6
+  );
+}
+
+function applyNodeRuntimeUpdate(
+  node: Node,
+  byLongName: Map<string, NodeRuntimeUpdateEntry>,
+  byShortName: Map<string, NodeRuntimeUpdateEntry>
+): Node {
+  if (node.type !== "topology-node") {
+    return node;
+  }
+
+  const nodeData = (node.data ?? {}) as Record<string, unknown>;
+  const extraData = (nodeData.extraData ?? {}) as Record<string, unknown>;
+  const matchedUpdate = resolveNodeRuntimeUpdate(
+    node.id,
+    nodeData,
+    extraData,
+    byLongName,
+    byShortName
+  );
+  if (!matchedUpdate) {
+    return node;
+  }
+
+  if (!hasNodeRuntimeDataChanged(nodeData, extraData, matchedUpdate)) {
+    return node;
+  }
+
+  const nextState = matchedUpdate.state ?? "";
+  const nextStatus = matchedUpdate.status ?? "";
+  const nextIpv4 = matchedUpdate.mgmtIpv4Address ?? "";
+  const nextIpv6 = matchedUpdate.mgmtIpv6Address ?? "";
+
+  return {
+    ...node,
+    data: {
+      ...nodeData,
+      state: nextState,
+      mgmtIpv4Address: nextIpv4,
+      mgmtIpv6Address: nextIpv6,
+      extraData: {
+        ...extraData,
+        state: nextState,
+        status: nextStatus,
+        mgmtIpv4Address: nextIpv4,
+        mgmtIpv6Address: nextIpv6
+      }
+    }
+  };
+}
+
 // ============================================================================
 // Hook
 // ============================================================================
@@ -169,6 +308,9 @@ export function useGraphMessageSubscription(): void {
           break;
         case "edge-stats-update":
           handleEdgeStatsUpdateMessage(message as EdgeStatsUpdateMessage);
+          break;
+        case "node-data-updated":
+          handleNodeDataUpdateMessage(message as NodeDataUpdateMessage);
           break;
       }
     };

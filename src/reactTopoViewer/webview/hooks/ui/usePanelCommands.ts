@@ -1,7 +1,10 @@
 /**
  * usePanelCommands - Hooks providing deployment callbacks and panel visibility management.
  *
- * Merged from usePanelVisibility.ts - manages panel visibility for shortcuts, about, find node, SVG export, lab settings, and bulk link.
+ * Simplified for the new UI model:
+ * - ContextPanel (left drawer) with auto-open on selection
+ * - MUI Dialogs for modals (LabSettings, Shortcuts, SvgExport, BulkLink, About)
+ * - MUI Popovers for Grid and Find (anchor-based)
  */
 import { useCallback, useState } from "react";
 
@@ -29,112 +32,160 @@ export function useDeploymentCommands(): DeploymentCommands {
 }
 
 // ============================================================================
-// Panel Visibility Management (merged from usePanelVisibility.ts)
+// Panel Visibility Management
 // ============================================================================
 
 export interface PanelVisibility {
-  showShortcutsPanel: boolean;
+  // Context panel (left drawer)
+  isContextPanelOpen: boolean;
+  /** Why the panel is open. Used to decide how pane-click should behave. */
+  contextPanelOpenReason: "manual" | "auto" | null;
+  /** Which side the context panel is on. */
+  panelSide: "left" | "right";
+  /**
+   * Open the ContextPanel.
+   * Note: this is also used directly as an `onClick` handler, so it may receive a mouse event;
+   * non-string inputs are treated as a manual open.
+   */
+  handleOpenContextPanel: (reason?: "manual" | "auto" | unknown) => void;
+  handleCloseContextPanel: () => void;
+  handleToggleContextPanel: () => void;
+  handleTogglePanelSide: () => void;
+
+  // Modals
+  showLabSettingsModal: boolean;
+  showShortcutsModal: boolean;
+  showSvgExportModal: boolean;
+  showBulkLinkModal: boolean;
   showAboutPanel: boolean;
-  showFindNodePanel: boolean;
-  showSvgExportPanel: boolean;
-  showLabSettingsPanel: boolean;
-  showBulkLinkPanel: boolean;
-  showNodePalettePanel: boolean;
-  handleShowShortcuts: () => void;
-  handleShowAbout: () => void;
-  handleShowFindNode: () => void;
-  handleShowSvgExport: () => void;
   handleShowLabSettings: () => void;
+  handleShowShortcuts: () => void;
+  handleShowSvgExport: () => void;
   handleShowBulkLink: () => void;
-  handleShowNodePalette: () => void;
-  handleCloseShortcuts: () => void;
-  handleCloseAbout: () => void;
-  handleCloseFindNode: () => void;
-  handleCloseSvgExport: () => void;
+  handleShowAbout: () => void;
   handleCloseLabSettings: () => void;
+  handleCloseShortcuts: () => void;
+  handleCloseSvgExport: () => void;
   handleCloseBulkLink: () => void;
-  handleCloseNodePalette: () => void;
+  handleCloseAbout: () => void;
+
+  // Popovers (position based)
+  gridPopoverPosition: { top: number; left: number } | null;
+  findPopoverPosition: { top: number; left: number } | null;
+  handleOpenGridPopover: (position: { top: number; left: number }) => void;
+  handleCloseGridPopover: () => void;
+  handleOpenFindPopover: (position: { top: number; left: number }) => void;
+  handleCloseFindPopover: () => void;
 }
 
-/** Hook for info panels (shortcuts/about) with mutual exclusivity */
-function useInfoPanels() {
-  const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);
+const PANEL_SIDE_KEY = "contextPanelSide";
+
+function useContextPanel() {
+  const [isContextPanelOpen, setIsContextPanelOpen] = useState(true);
+  const [contextPanelOpenReason, setContextPanelOpenReason] = useState<"manual" | "auto" | null>(
+    "manual"
+  );
+  const [panelSide, setPanelSide] = useState<"left" | "right">(() => {
+    try {
+      const stored = window.localStorage.getItem(PANEL_SIDE_KEY);
+      if (stored === "left" || stored === "right") return stored;
+    } catch {
+      /* ignore */
+    }
+    return "right";
+  });
+
+  return {
+    isContextPanelOpen,
+    contextPanelOpenReason,
+    panelSide,
+    handleOpenContextPanel: useCallback((reason?: unknown) => {
+      // React passes the click event as the first arg when used as an onClick handler.
+      const normalizedReason: "manual" | "auto" = reason === "auto" ? "auto" : "manual";
+      setIsContextPanelOpen(true);
+      setContextPanelOpenReason(normalizedReason);
+    }, []),
+    handleCloseContextPanel: useCallback(() => {
+      setIsContextPanelOpen(false);
+      setContextPanelOpenReason(null);
+    }, []),
+    handleToggleContextPanel: useCallback(() => {
+      setIsContextPanelOpen((prev) => {
+        const next = !prev;
+        setContextPanelOpenReason(next ? "manual" : null);
+        return next;
+      });
+    }, []),
+    handleTogglePanelSide: useCallback(() => {
+      setPanelSide((prev) => {
+        const next = prev === "left" ? "right" : "left";
+        try {
+          window.localStorage.setItem(PANEL_SIDE_KEY, next);
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+    }, [])
+  };
+}
+
+function useModals() {
+  const [showLabSettingsModal, setShowLabSettingsModal] = useState(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [showSvgExportModal, setShowSvgExportModal] = useState(false);
+  const [showBulkLinkModal, setShowBulkLinkModal] = useState(false);
   const [showAboutPanel, setShowAboutPanel] = useState(false);
 
-  const handleShowShortcuts = useCallback(() => {
-    setShowAboutPanel(false);
-    setShowShortcutsPanel((prev) => !prev);
-  }, []);
-
-  const handleShowAbout = useCallback(() => {
-    setShowShortcutsPanel(false);
-    setShowAboutPanel((prev) => !prev);
-  }, []);
-
-  const handleCloseShortcuts = useCallback(() => setShowShortcutsPanel(false), []);
-  const handleCloseAbout = useCallback(() => setShowAboutPanel(false), []);
-
   return {
-    showShortcutsPanel,
+    showLabSettingsModal,
+    showShortcutsModal,
+    showSvgExportModal,
+    showBulkLinkModal,
     showAboutPanel,
-    handleShowShortcuts,
-    handleShowAbout,
-    handleCloseShortcuts,
-    handleCloseAbout
+    handleShowLabSettings: useCallback(() => setShowLabSettingsModal(true), []),
+    handleShowShortcuts: useCallback(() => setShowShortcutsModal(true), []),
+    handleShowSvgExport: useCallback(() => setShowSvgExportModal(true), []),
+    handleShowBulkLink: useCallback(() => setShowBulkLinkModal(true), []),
+    handleShowAbout: useCallback(() => setShowAboutPanel((prev) => !prev), []),
+    handleCloseLabSettings: useCallback(() => setShowLabSettingsModal(false), []),
+    handleCloseShortcuts: useCallback(() => setShowShortcutsModal(false), []),
+    handleCloseSvgExport: useCallback(() => setShowSvgExportModal(false), []),
+    handleCloseBulkLink: useCallback(() => setShowBulkLinkModal(false), []),
+    handleCloseAbout: useCallback(() => setShowAboutPanel(false), [])
   };
 }
 
-/** Hook for utility panels (find node, SVG export, lab settings) */
-function useUtilityPanels() {
-  const [showFindNodePanel, setShowFindNodePanel] = useState(false);
-  const [showSvgExportPanel, setShowSvgExportPanel] = useState(false);
-  const [showLabSettingsPanel, setShowLabSettingsPanel] = useState(false);
-
-  const handleShowFindNode = useCallback(() => setShowFindNodePanel((prev) => !prev), []);
-  const handleShowSvgExport = useCallback(() => setShowSvgExportPanel((prev) => !prev), []);
-  const handleShowLabSettings = useCallback(() => setShowLabSettingsPanel((prev) => !prev), []);
-
-  const handleCloseFindNode = useCallback(() => setShowFindNodePanel(false), []);
-  const handleCloseSvgExport = useCallback(() => setShowSvgExportPanel(false), []);
-  const handleCloseLabSettings = useCallback(() => setShowLabSettingsPanel(false), []);
+function usePopovers() {
+  const [gridPopoverPosition, setGridPopoverPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const [findPopoverPosition, setFindPopoverPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
   return {
-    showFindNodePanel,
-    showSvgExportPanel,
-    showLabSettingsPanel,
-    handleShowFindNode,
-    handleShowSvgExport,
-    handleShowLabSettings,
-    handleCloseFindNode,
-    handleCloseSvgExport,
-    handleCloseLabSettings
-  };
-}
-
-function useEditorPanels() {
-  const [showBulkLinkPanel, setShowBulkLinkPanel] = useState(false);
-  const [showNodePalettePanel, setShowNodePalettePanel] = useState(false);
-
-  const handleShowBulkLink = useCallback(() => setShowBulkLinkPanel(true), []);
-  const handleCloseBulkLink = useCallback(() => setShowBulkLinkPanel(false), []);
-
-  const handleShowNodePalette = useCallback(() => setShowNodePalettePanel((prev) => !prev), []);
-  const handleCloseNodePalette = useCallback(() => setShowNodePalettePanel(false), []);
-
-  return {
-    showBulkLinkPanel,
-    handleShowBulkLink,
-    handleCloseBulkLink,
-    showNodePalettePanel,
-    handleShowNodePalette,
-    handleCloseNodePalette
+    gridPopoverPosition,
+    findPopoverPosition,
+    handleOpenGridPopover: useCallback(
+      (position: { top: number; left: number }) => setGridPopoverPosition(position),
+      []
+    ),
+    handleCloseGridPopover: useCallback(() => setGridPopoverPosition(null), []),
+    handleOpenFindPopover: useCallback(
+      (position: { top: number; left: number }) => setFindPopoverPosition(position),
+      []
+    ),
+    handleCloseFindPopover: useCallback(() => setFindPopoverPosition(null), [])
   };
 }
 
 export function usePanelVisibility(): PanelVisibility {
-  const info = useInfoPanels();
-  const utility = useUtilityPanels();
-  const editor = useEditorPanels();
+  const contextPanel = useContextPanel();
+  const modals = useModals();
+  const popovers = usePopovers();
 
-  return { ...info, ...utility, ...editor };
+  return { ...contextPanel, ...modals, ...popovers };
 }

@@ -28,9 +28,8 @@ test.describe("Canvas Interactions", () => {
     let selectedIds = await topoViewerPage.getSelectedNodeIds();
     expect(selectedIds.length).toBe(1);
 
-    // Click on empty canvas area
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-    await page.mouse.click(canvasCenter.x + 300, canvasCenter.y + 300);
+    // Click on empty canvas area (far from center where nodes are)
+    await topoViewerPage.clearSelection();
     await page.waitForTimeout(200);
 
     selectedIds = await topoViewerPage.getSelectedNodeIds();
@@ -62,8 +61,6 @@ test.describe("Canvas Interactions", () => {
   test("mode switching works correctly", async ({ topoViewerPage }) => {
     // Start in edit mode
     await topoViewerPage.setEditMode();
-
-    // Create node should work in edit mode (tested elsewhere)
 
     // Switch to view mode
     await topoViewerPage.setViewMode();

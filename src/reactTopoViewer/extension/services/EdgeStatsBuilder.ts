@@ -20,6 +20,15 @@ export interface EdgeStatsBuilderContext {
   topology: ClabTopology["topology"] | undefined;
 }
 
+export interface NodeRuntimeUpdate {
+  containerLongName: string;
+  containerShortName: string;
+  state: string;
+  status?: string;
+  mgmtIpv4Address?: string;
+  mgmtIpv6Address?: string;
+}
+
 /**
  * Build edge stats updates from cached edges and fresh labs data.
  */
@@ -38,6 +47,39 @@ export function buildEdgeStatsUpdates(
     const update = buildSingleEdgeUpdate(edge, labs, context);
     if (update) {
       updates.push(update);
+    }
+  }
+
+  return updates;
+}
+
+/**
+ * Build node runtime updates from fresh lab/container data.
+ */
+export function buildNodeRuntimeUpdates(
+  labs: Record<string, ClabLabTreeNode> | undefined,
+  currentLabName: string
+): NodeRuntimeUpdate[] {
+  if (!labs) {
+    return [];
+  }
+
+  const updates: NodeRuntimeUpdate[] = [];
+  const labValues = Object.values(labs).filter((lab) => lab.name === currentLabName);
+  if (labValues.length === 0) {
+    return [];
+  }
+
+  for (const lab of labValues) {
+    for (const container of lab.containers ?? []) {
+      updates.push({
+        containerLongName: container.name,
+        containerShortName: container.name_short,
+        state: container.state ?? "",
+        status: container.status,
+        mgmtIpv4Address: container.IPv4Address ?? "",
+        mgmtIpv6Address: container.IPv6Address ?? ""
+      });
     }
   }
 

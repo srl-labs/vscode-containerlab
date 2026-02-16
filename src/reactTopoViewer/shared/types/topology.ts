@@ -232,6 +232,8 @@ export interface TopologyAnnotations {
   viewerSettings?: {
     gridLineWidth?: number;
     endpointLabelOffset?: number;
+    gridColor?: string | null;
+    gridBgColor?: string | null;
   };
   [key: string]: unknown;
 }

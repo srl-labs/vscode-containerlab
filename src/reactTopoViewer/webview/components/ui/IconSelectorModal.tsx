@@ -1,8 +1,18 @@
-/**
- * IconSelectorModal - Modal for selecting and customizing node icons
- * Built on top of BasePanel. Supports both built-in and custom icons.
- */
+// Icon selector modal.
 import React, { useCallback, useState, useEffect, useMemo, useRef } from "react";
+import { Close as CloseIcon, Replay as ResetIcon } from "@mui/icons-material";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogContent,
+  Divider,
+  IconButton as MuiIconButton,
+  Tab,
+  Tabs,
+  Tooltip,
+  Typography
+} from "@mui/material";
 
 import type { NodeType } from "../../icons/SvgGenerator";
 import { generateEncodedSVG } from "../../icons/SvgGenerator";
@@ -11,7 +21,8 @@ import { useCustomIcons } from "../../stores/topoViewerStore";
 import { postCommand } from "../../messaging/extensionMessaging";
 import { isBuiltInIcon } from "../../../shared/types/icons";
 
-import { BasePanel } from "./editor/BasePanel";
+import { DialogCancelSaveActions, DialogTitleWithClose } from "./dialog/DialogChrome";
+import { ColorField, IconPreview, InputField } from "./form";
 
 const AVAILABLE_ICONS: NodeType[] = [
   "pe",
@@ -51,6 +62,22 @@ const DEFAULT_COLOR = "#1a73e8";
 const MAX_RADIUS = 40;
 const COLOR_DEBOUNCE_MS = 50;
 
+const IconsGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Box
+    sx={{
+      display: "grid",
+      gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+      gap: 0.5,
+      borderRadius: 0.5,
+      border: 1,
+      borderColor: "divider",
+      p: 1
+    }}
+  >
+    {children}
+  </Box>
+);
+
 /**
  * Get icon source - for built-in icons applies color, for custom icons returns as-is
  */
@@ -88,9 +115,6 @@ interface UseIconSelectorStateReturn {
   setColor: (color: string) => void;
   radius: number;
   setRadius: (radius: number) => void;
-  useColor: boolean;
-  setUseColor: (useColor: boolean) => void;
-  displayColor: string;
   resultColor: string | null;
 }
 
@@ -106,19 +130,16 @@ function useIconSelectorState(
   const [icon, setIcon] = useState(initialIcon);
   const [color, setColor] = useState(initialColor || DEFAULT_COLOR);
   const [radius, setRadius] = useState(initialCornerRadius);
-  const [useColor, setUseColor] = useState(!!initialColor);
 
   useEffect(() => {
     if (isOpen) {
       setIcon(initialIcon);
       setColor(initialColor || DEFAULT_COLOR);
       setRadius(initialCornerRadius);
-      setUseColor(!!initialColor);
     }
   }, [isOpen, initialIcon, initialColor, initialCornerRadius]);
 
-  const displayColor = useColor ? color : DEFAULT_COLOR;
-  const resultColor = useColor && color !== DEFAULT_COLOR ? color : null;
+  const resultColor = color !== DEFAULT_COLOR ? color : null;
 
   return {
     icon,
@@ -127,9 +148,6 @@ function useIconSelectorState(
     setColor,
     radius,
     setRadius,
-    useColor,
-    setUseColor,
-    displayColor,
     resultColor
   };
 }
@@ -165,103 +183,97 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
   source
 }) {
   return (
-    <div className="relative group">
-      <button
+    <Box sx={{ position: "relative", minWidth: 0, "&:hover .icon-delete-btn": { opacity: 1 } }}>
+      <Box
+        component="button"
         type="button"
-        className={`flex w-full flex-col items-center gap-0.5 rounded-sm p-1.5 transition-colors ${
-          isSelected
-            ? "bg-[var(--vscode-list-activeSelectionBackground)]"
-            : "hover:bg-[var(--vscode-list-hoverBackground)]"
-        }`}
         onClick={onClick}
+        aria-pressed={isSelected}
         title={(ICON_LABELS[icon] || icon) + (source ? " (" + source + ")" : "")}
+        sx={{
+          display: "flex",
+          width: "100%",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 0.25,
+          borderRadius: 0.5,
+          p: 0.75,
+          overflow: "hidden",
+          transition: (theme) => theme.transitions.create("backgroundColor", { duration: 150 }),
+          border: "none",
+          cursor: "pointer",
+          color: "inherit",
+          backgroundColor: isSelected ? "action.selected" : "transparent",
+          outline: isSelected ? "2px solid" : "none",
+          outlineColor: "primary.main",
+          outlineOffset: 1,
+          "&:hover": {
+            backgroundColor: isSelected ? "action.selected" : "action.hover"
+          }
+        }}
       >
-        <img
-          src={iconSrc}
-          alt={icon}
-          className="rounded-sm"
-          style={{ width: 36, height: 36, borderRadius: `${(cornerRadius / 48) * 36}px` }}
-        />
-        <span className="max-w-full truncate text-[10px] text-[var(--vscode-foreground)]">
+        <IconPreview src={iconSrc} alt={icon} size={36} cornerRadius={cornerRadius} />
+        <Box
+          component="span"
+          sx={{
+            maxWidth: "100%",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontSize: "10px"
+          }}
+        >
           {ICON_LABELS[icon] || icon}
-        </span>
-      </button>
+        </Box>
+      </Box>
       {/* Delete button for global custom icons */}
       {isCustom && source === "global" && onDelete && (
-        <button
-          type="button"
+        <MuiIconButton
+          size="small"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
-          className="absolute -top-1 -right-1 w-4 h-4 bg-[var(--vscode-errorForeground)] text-white rounded-sm text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
           title={`Delete ${icon}`}
+          sx={{
+            position: "absolute",
+            top: -4,
+            right: -4,
+            width: 16,
+            height: 16,
+            bgcolor: "error.main",
+            color: "white",
+            opacity: 0,
+            "&:hover": { bgcolor: "error.dark" }
+          }}
+          className="icon-delete-btn"
         >
-          x
-        </button>
+          <CloseIcon sx={{ fontSize: 12 }} />
+        </MuiIconButton>
       )}
-    </div>
+    </Box>
   );
 });
 
-const ColorPicker: React.FC<{
-  color: string;
-  enabled: boolean;
-  onColorChange: (c: string) => void;
-  onToggle: (e: boolean) => void;
-}> = ({ color, enabled, onColorChange, onToggle }) => (
-  <div className="space-y-1">
-    <label className="field-label">Icon Color</label>
-    <div className="flex items-center gap-2">
-      <input
-        type="checkbox"
-        checked={enabled}
-        onChange={(e) => onToggle(e.target.checked)}
-        className="h-4 w-4"
-      />
-      <input
-        type="color"
-        value={color}
-        onChange={(e) => {
-          onColorChange(e.target.value);
-          onToggle(true);
-        }}
-        className="h-7 w-12 cursor-pointer rounded-sm border border-[var(--vscode-panel-border)] p-0.5"
-        disabled={!enabled}
-      />
-      <input
-        type="text"
-        value={enabled ? color : ""}
-        onChange={(e) => {
-          if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) {
-            onColorChange(e.target.value);
-            onToggle(true);
-          }
-        }}
-        className="input-field flex-1 text-xs"
-        placeholder={DEFAULT_COLOR}
-        maxLength={7}
-        disabled={!enabled}
-      />
-    </div>
-  </div>
-);
-
-const RadiusSlider: React.FC<{ value: number; onChange: (v: number) => void }> = ({
+const RadiusField: React.FC<{ value: number; onChange: (v: number) => void }> = ({
   value,
   onChange
 }) => (
-  <div className="space-y-1">
-    <label className="field-label">Corner Radius: {value}px</label>
-    <input
-      type="range"
-      min={0}
-      max={MAX_RADIUS}
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="h-2 w-full cursor-pointer appearance-none rounded-sm bg-[var(--vscode-input-background)]"
-    />
-  </div>
+  <InputField
+    id="icon-corner-radius"
+    label="Corner Radius"
+    type="number"
+    value={String(value)}
+    onChange={(v) => {
+      const n = parseInt(v, 10);
+      if (!isNaN(n)) onChange(Math.max(0, Math.min(MAX_RADIUS, n)));
+      else if (v === "") onChange(0);
+    }}
+    min={0}
+    max={MAX_RADIUS}
+    step={1}
+    suffix="px"
+  />
 );
 
 export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
@@ -281,16 +293,13 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
     setColor,
     radius,
     setRadius,
-    useColor,
-    setUseColor,
-    displayColor,
     resultColor
   } = useIconSelectorState(isOpen, initialIcon, initialColor, initialCornerRadius);
 
   useEscapeKey(isOpen, onClose);
 
   // Debounce color for icon grid to reduce SVG regeneration during color picker drag
-  const debouncedGridColor = useDebouncedValue(displayColor, COLOR_DEBOUNCE_MS);
+  const debouncedGridColor = useDebouncedValue(color, COLOR_DEBOUNCE_MS);
 
   // Check if current icon is a custom icon
   const currentCustomIcon = useMemo(() => {
@@ -336,111 +345,142 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
     if (currentCustomIcon) {
       return currentCustomIcon.dataUri;
     }
-    return getIconSrc(icon, displayColor);
-  }, [icon, displayColor, currentCustomIcon]);
+    return getIconSrc(icon, color);
+  }, [icon, color, currentCustomIcon]);
+
+  const [iconTab, setIconTab] = useState<"built-in" | "custom">("built-in");
 
   return (
-    <BasePanel
-      title="Select Icon"
-      isVisible={isOpen}
-      onClose={onClose}
-      storageKey="icon-selector"
-      backdrop={true}
-      width={400}
-      onSecondaryClick={onClose}
-      onPrimaryClick={handleSave}
-      secondaryLabel="Cancel"
-      primaryLabel="Apply"
-    >
-      {/* Built-in Icons Grid */}
-      <div className="space-y-1 mb-3">
-        <label className="field-label">Built-in Icons</label>
-        <div className="grid grid-cols-7 gap-1 rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-2">
-          {AVAILABLE_ICONS.map((i) => (
-            <IconButton
-              key={i}
-              icon={i}
-              isSelected={icon === i}
-              iconSrc={iconSources[i]}
-              cornerRadius={radius}
-              onClick={iconClickHandlers.current[i]}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Custom Icons Section */}
-      <div className="space-y-1 mb-3">
-        <div className="flex items-center justify-between">
-          <label className="field-label">Custom Icons</label>
-          <button
-            type="button"
-            onClick={handleUploadIcon}
-            className="text-xs px-2 py-0.5 rounded-sm bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)]"
-            title="Add custom icon"
+    <Dialog open={isOpen} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitleWithClose title="Edit Icons" onClose={onClose} />
+      <DialogContent dividers sx={{ p: 0 }}>
+        <Box sx={{ display: "flex", flexDirection: "column" }}>
+          {/* Icon tabs */}
+          <Tabs
+            value={iconTab}
+            onChange={(_e, v) => setIconTab(v)}
+            variant="fullWidth"
           >
-            + Add
-          </button>
-        </div>
-        {customIcons.length > 0 ? (
-          <div className="grid grid-cols-7 gap-1 rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-2">
-            {customIcons.map((ci) => (
-              <IconButton
-                key={ci.name}
-                icon={ci.name}
-                isSelected={icon === ci.name}
-                iconSrc={ci.dataUri}
-                cornerRadius={radius}
-                onClick={iconClickHandlers.current[ci.name]}
-                onDelete={() => handleDeleteIcon(ci.name)}
-                isCustom={true}
-                source={ci.source}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-xs text-[var(--vscode-descriptionForeground)] italic p-2 text-center border border-dashed border-[var(--vscode-panel-border)] rounded-sm">
-            No custom icons. Click &quot;+ Add&quot; to upload.
-          </div>
-        )}
-      </div>
+            <Tab value="built-in" label="Built-in" />
+            <Tab value="custom" label="Custom" />
+          </Tabs>
+          <Divider />
 
-      {/* Color, Radius, and Preview */}
-      <div className="grid grid-cols-[1fr_auto] gap-3">
-        <div className="space-y-3">
-          {/* Only show color picker for built-in icons */}
-          {isBuiltInIcon(icon) ? (
-            <ColorPicker
-              color={color}
-              enabled={useColor}
-              onColorChange={setColor}
-              onToggle={setUseColor}
-            />
-          ) : (
-            <div className="text-xs text-[var(--vscode-descriptionForeground)] italic">
-              Custom icons use their original colors
-            </div>
+          {/* Built-in Icons tab content */}
+          {iconTab === "built-in" && (
+            <Box sx={{ p: 2 }}>
+              <IconsGrid>
+                {AVAILABLE_ICONS.map((i) => (
+                  <IconButton
+                    key={i}
+                    icon={i}
+                    isSelected={icon === i}
+                    iconSrc={iconSources[i]}
+                    cornerRadius={radius}
+                    onClick={iconClickHandlers.current[i]}
+                  />
+                ))}
+              </IconsGrid>
+            </Box>
           )}
-          <RadiusSlider value={radius} onChange={setRadius} />
-        </div>
-        <PreviewCustom iconSrc={previewIconSrc} radius={radius} />
-      </div>
-    </BasePanel>
+
+          {/* Custom Icons tab content */}
+          {iconTab === "custom" && (
+            <Box sx={{ p: 2 }}>
+              {customIcons.length > 0 ? (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                  <IconsGrid>
+                    {customIcons.map((ci) => (
+                      <IconButton
+                        key={ci.name}
+                        icon={ci.name}
+                        isSelected={icon === ci.name}
+                        iconSrc={ci.dataUri}
+                        cornerRadius={radius}
+                        onClick={iconClickHandlers.current[ci.name]}
+                        onDelete={() => handleDeleteIcon(ci.name)}
+                        isCustom={true}
+                        source={ci.source}
+                      />
+                    ))}
+                  </IconsGrid>
+                  <Button
+                    fullWidth
+                    size="small"
+                    onClick={handleUploadIcon}
+                  >
+                    + Add Icon
+                  </Button>
+                </Box>
+              ) : (
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5, py: 2 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontStyle: "italic" }}
+                  >
+                    No custom icons uploaded yet.
+                  </Typography>
+                  <Button
+                    fullWidth
+                    size="small"
+                    onClick={handleUploadIcon}
+                  >
+                    + Add Icon
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )}
+
+          {/* Appearance section */}
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="subtitle2">Appearance</Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+            <Tooltip
+              title={!isBuiltInIcon(icon) ? "Color cannot be modified for custom icons" : ""}
+              placement="top"
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                <Box sx={{ flex: 1 }}>
+                  <ColorField
+                    label="Icon Color"
+                    value={color}
+                    onChange={(v) => setColor(v)}
+                    disabled={!isBuiltInIcon(icon)}
+                  />
+                </Box>
+                <Tooltip title="Reset to default color" placement="top">
+                  <span>
+                    <MuiIconButton
+                      size="small"
+                      onClick={() => setColor(DEFAULT_COLOR)}
+                      disabled={!isBuiltInIcon(icon) || color === DEFAULT_COLOR}
+                    >
+                      <ResetIcon fontSize="small" />
+                    </MuiIconButton>
+                  </span>
+                </Tooltip>
+              </Box>
+            </Tooltip>
+            <RadiusField value={radius} onChange={setRadius} />
+          </Box>
+
+          {/* Preview section */}
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="subtitle2">Preview</Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ p: 2, display: "flex", justifyContent: "center" }}>
+            <IconPreview src={previewIconSrc} alt="Preview" size={56} cornerRadius={radius} />
+          </Box>
+        </Box>
+      </DialogContent>
+      <DialogCancelSaveActions onCancel={onClose} onSave={handleSave} />
+    </Dialog>
   );
 };
-
-/**
- * Preview component that accepts direct icon source
- */
-const PreviewCustom: React.FC<{ iconSrc: string; radius: number }> = ({ iconSrc, radius }) => (
-  <div className="space-y-1">
-    <label className="field-label">Preview</label>
-    <div className="flex items-center justify-center rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-3">
-      <img
-        src={iconSrc}
-        alt="Preview"
-        style={{ width: 56, height: 56, borderRadius: `${(radius / 48) * 56}px` }}
-      />
-    </div>
-  </div>
-);

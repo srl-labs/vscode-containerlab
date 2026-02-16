@@ -1,5 +1,4 @@
 /**
- * Group Editor Panel exports
+ * Group Editor exports
  */
-export { GroupEditorPanel } from "./GroupEditorPanel";
 export { GroupFormContent } from "./GroupFormContent";

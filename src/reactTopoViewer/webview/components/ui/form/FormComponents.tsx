@@ -1,10 +1,16 @@
-/**
- * Shared form components for annotation editors
- * Used by FreeShape, FreeText, and Group editors
- */
+// Shared form components for annotation editors.
 import React from "react";
-
-import { normalizeHexColor } from "../../../utils/color";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import type { SxProps, Theme } from "@mui/material/styles";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import Typography from "@mui/material/Typography";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import FormControl from "@mui/material/FormControl";
+import Slider from "@mui/material/Slider";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 /**
  * Toggle pill button
@@ -13,47 +19,23 @@ export const Toggle: React.FC<{
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
-}> = ({ active, onClick, children }) => (
-  <button
-    type="button"
+  sx?: SxProps<Theme>;
+}> = ({ active, onClick, children, sx }) => (
+  <Button
+    variant={active ? "contained" : "outlined"}
+    size="small"
     onClick={onClick}
-    className={`px-3 py-1.5 text-[11px] font-medium rounded-sm transition-all duration-150 ${
-      active
-        ? "bg-[var(--accent)] text-white shadow-sm"
-        : "bg-white/5 text-[var(--vscode-foreground)] hover:bg-white/10 border border-white/10"
-    }`}
+    sx={{
+      fontWeight: (theme) => theme.typography.fontWeightMedium,
+      minWidth: 0,
+      px: 1.5,
+      py: 0.5,
+      ...(sx as object)
+    }}
   >
     {children}
-  </button>
+  </Button>
 );
-
-/**
- * Color swatch input with label
- */
-export const ColorSwatch: React.FC<{
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  disabled?: boolean;
-}> = ({ label, value, onChange, disabled }) => {
-  const inputValue = normalizeHexColor(value);
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="field-label">{label}</span>
-      <div
-        className={`relative w-[30px] h-[30px] rounded-sm overflow-hidden border border-white/10 hover:border-white/20 transition-colors ${disabled ? "opacity-40" : ""}`}
-      >
-        <input
-          type="color"
-          value={inputValue}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer border-0"
-        />
-      </div>
-    </div>
-  );
-};
 
 /**
  * Number input with label and optional unit
@@ -67,25 +49,32 @@ export const NumberInput: React.FC<{
   step?: number;
   unit?: string;
 }> = ({ label, value, onChange, min = 0, max = 999, step = 1, unit }) => (
-  <div className="flex flex-col gap-0.5">
-    <span className="field-label">{label}</span>
-    <div className="relative">
-      <input
-        type="number"
-        className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs text-center hover:border-white/20 transition-colors"
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-        min={min}
-        max={max}
-        step={step}
-      />
-      {unit && (
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--vscode-descriptionForeground)] pointer-events-none">
-          {unit}
-        </span>
-      )}
-    </div>
-  </div>
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+    <Typography variant="caption" color="text.secondary">
+      {label}
+    </Typography>
+    <TextField
+      type="number"
+      size="small"
+      value={value}
+      onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+      slotProps={{
+        htmlInput: { min, max, step, style: { textAlign: "center" } },
+        input: unit
+          ? {
+              endAdornment: (
+                <InputAdornment position="end">
+                  <Typography variant="caption" color="text.secondary">
+                    {unit}
+                  </Typography>
+                </InputAdornment>
+              )
+            }
+          : undefined
+      }}
+      sx={{ "& .MuiInputBase-input": { py: 0.75, px: 1 } }}
+    />
+  </Box>
 );
 
 /**
@@ -97,16 +86,18 @@ export const TextInput: React.FC<{
   onChange: (v: string) => void;
   placeholder?: string;
 }> = ({ label, value, onChange, placeholder }) => (
-  <div className="flex flex-col gap-0.5">
-    <span className="field-label">{label}</span>
-    <input
-      type="text"
-      className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs hover:border-white/20 transition-colors"
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+    <Typography variant="caption" color="text.secondary">
+      {label}
+    </Typography>
+    <TextField
+      size="small"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
+      sx={{ "& .MuiInputBase-input": { py: 0.75, px: 1 } }}
     />
-  </div>
+  </Box>
 );
 
 /**
@@ -118,20 +109,24 @@ export const SelectInput: React.FC<{
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
 }> = ({ label, value, onChange, options }) => (
-  <div className="flex flex-col gap-0.5">
-    <span className="field-label">{label}</span>
-    <select
-      className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs cursor-pointer hover:border-white/20 transition-colors"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  </div>
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+    <Typography variant="caption" color="text.secondary">
+      {label}
+    </Typography>
+    <FormControl size="small">
+      <Select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        sx={{ "& .MuiSelect-select": { py: 0.75, px: 1 } }}
+      >
+        {options.map((opt) => (
+          <MenuItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </Box>
 );
 
 /**
@@ -145,29 +140,77 @@ export const RangeSlider: React.FC<{
   max?: number;
   unit?: string;
 }> = ({ label, value, onChange, min = 0, max = 100, unit = "%" }) => (
-  <div className="flex flex-col gap-0.5 flex-1 min-w-[120px]">
-    <div className="flex justify-between">
-      <span className="field-label">{label}</span>
-      <span className="field-label">
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, flex: 1, minWidth: 120 }}>
+    <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+      <Typography variant="caption" color="text.secondary">
+        {label}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
         {value}
         {unit}
-      </span>
-    </div>
-    <div className="flex items-center h-[30px]">
-      <input
-        type="range"
+      </Typography>
+    </Box>
+    <Box sx={{ display: "flex", alignItems: "center", height: 30, px: 0.5 }}>
+      <Slider
+        size="small"
         min={min}
         max={max}
         value={value}
-        onChange={(e) => onChange(parseInt(e.target.value))}
-        className="w-full h-2 bg-white/10 rounded-sm appearance-none cursor-pointer"
+        onChange={(_e, v) => onChange(v as number)}
       />
-    </div>
-  </div>
+    </Box>
+  </Box>
 );
 
 /**
- * Grid pattern background for previews
+ * Grid pattern background for previews (sx-compatible style object)
  */
-export const PREVIEW_GRID_BG =
-  "bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cdefs%3E%3Cpattern%20id%3D%22grid%22%20width%3D%2220%22%20height%3D%2220%22%20patternUnits%3D%22userSpaceOnUse%22%3E%3Cpath%20d%3D%22M%200%200%20L%2020%200%2020%2020%22%20fill%3D%22none%22%20stroke%3D%22rgba(255%2C255%2C255%2C0.03)%22%20stroke-width%3D%221%22%2F%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23grid)%22%2F%3E%3C%2Fsvg%3E')]";
+export const PREVIEW_GRID_BG_SX = {
+  backgroundImage:
+    "url('data:image/svg+xml,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cdefs%3E%3Cpattern%20id%3D%22grid%22%20width%3D%2220%22%20height%3D%2220%22%20patternUnits%3D%22userSpaceOnUse%22%3E%3Cpath%20d%3D%22M%200%200%20L%2020%200%2020%2020%22%20fill%3D%22none%22%20stroke%3D%22rgba(255%2C255%2C255%2C0.03)%22%20stroke-width%3D%221%22%2F%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23grid)%22%2F%3E%3C%2Fsvg%3E')"
+};
+
+/**
+ * Preview surface used by annotation editors.
+ * Renders a bordered panel with a subtle grid background.
+ */
+export const PreviewSurface: React.FC<{
+  minHeight?: number;
+  padding?: number;
+  gridOpacity?: number;
+  children: React.ReactNode;
+}> = ({ minHeight = 80, padding = 3, gridOpacity = 0.5, children }) => (
+  <Box
+    sx={{
+      position: "relative",
+      p: padding,
+      borderRadius: 0.5,
+      border: 1,
+      minHeight,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden"
+    }}
+  >
+    <Box sx={{ position: "absolute", inset: 0, opacity: gridOpacity, ...PREVIEW_GRID_BG_SX }} />
+    {children}
+  </Box>
+);
+
+export const DeleteActionButton: React.FC<{
+  onClick: () => void;
+  label?: string;
+  alignSelf?: string;
+}> = ({ onClick, label = "Delete", alignSelf = "flex-start" }) => (
+  <Button
+    variant="text"
+    color="error"
+    size="small"
+    startIcon={<DeleteIcon />}
+    onClick={onClick}
+    sx={{ alignSelf }}
+  >
+    {label}
+  </Button>
+);

@@ -1,9 +1,4 @@
-/**
- * topoViewerStore - Zustand store for TopoViewer UI state
- *
- * This store handles UI state, selections, editing state, and settings.
- * Graph data (nodes/edges) is managed separately in graphStore.
- */
+// Zustand store for TopoViewer UI state.
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/shallow";
 
@@ -16,6 +11,8 @@ import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   clampEndpointLabelOffset
 } from "../annotations/endpointLabelOffset";
+
+import { useAnnotationUIStore } from "./annotationUIStore";
 
 // ============================================================================
 // Types
@@ -30,6 +27,12 @@ export interface TopoViewerState {
   mode: "edit" | "view";
   deploymentState: DeploymentState;
   labSettings?: LabSettings;
+  yamlFileName: string;
+  annotationsFileName: string;
+  /** Raw YAML content from host snapshot (used by Monaco source editors). */
+  yamlContent: string;
+  /** Raw annotations JSON content from host snapshot (used by Monaco source editors). */
+  annotationsContent: string;
   selectedNode: string | null;
   selectedEdge: string | null;
   editingImpairment: string | null;
@@ -41,6 +44,8 @@ export interface TopoViewerState {
   showDummyLinks: boolean;
   endpointLabelOffsetEnabled: boolean;
   endpointLabelOffset: number;
+  gridColor: string | null;
+  gridBgColor: string | null;
   edgeAnnotations: EdgeAnnotation[];
   canUndo: boolean;
   canRedo: boolean;
@@ -75,6 +80,8 @@ export interface TopoViewerActions {
   toggleDummyLinks: () => void;
   toggleEndpointLabelOffset: () => void;
   setEndpointLabelOffset: (value: number) => void;
+  setGridColor: (color: string | null) => void;
+  setGridBgColor: (color: string | null) => void;
 
   // Edge annotations
   setEdgeAnnotations: (annotations: EdgeAnnotation[]) => void;
@@ -112,6 +119,10 @@ const initialState: TopoViewerState = {
   mode: "edit",
   deploymentState: "unknown",
   labSettings: undefined,
+  yamlFileName: "topology.clab.yml",
+  annotationsFileName: "topology.clab.yml.annotations.json",
+  yamlContent: "",
+  annotationsContent: "{}\n",
   selectedNode: null,
   selectedEdge: null,
   editingImpairment: null,
@@ -123,6 +134,8 @@ const initialState: TopoViewerState = {
   showDummyLinks: true,
   endpointLabelOffsetEnabled: true,
   endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
+  gridColor: null,
+  gridBgColor: null,
   edgeAnnotations: [],
   canUndo: false,
   canRedo: false,
@@ -155,7 +168,7 @@ export function parseInitialData(data: unknown): Partial<TopoViewerState> {
 // Store Creation
 // ============================================================================
 
-export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) => ({
+export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, get) => ({
   ...initialState,
 
   // Selection (mutually exclusive)
@@ -212,9 +225,23 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) =>
     });
   },
 
-  // Mode and state
+  // Mode and state — clear selection & editing so stale tabs disappear
   setMode: (mode) => {
-    set({ mode });
+    set({
+      mode,
+      selectedNode: null,
+      selectedEdge: null,
+      editingNode: null,
+      editingEdge: null,
+      editingNetwork: null,
+      editingImpairment: null,
+      editingCustomTemplate: null
+    });
+    // Also clear annotation editing state (separate store)
+    const annotationUI = useAnnotationUIStore.getState();
+    if (annotationUI.editingTextAnnotation) annotationUI.setEditingTextAnnotation(null);
+    if (annotationUI.editingShapeAnnotation) annotationUI.setEditingShapeAnnotation(null);
+    if (annotationUI.editingGroup) annotationUI.closeGroupEditor();
   },
 
   setDeploymentState: (deploymentState) => {
@@ -243,6 +270,14 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) =>
       ? clampEndpointLabelOffset(value)
       : DEFAULT_ENDPOINT_LABEL_OFFSET;
     set({ endpointLabelOffset: next });
+  },
+
+  setGridColor: (color) => {
+    set({ gridColor: color });
+  },
+
+  setGridBgColor: (color) => {
+    set({ gridBgColor: color });
   },
 
   // Edge annotations
@@ -324,14 +359,30 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) =>
     set((state) => ({
       selectedEdge: state.selectedEdge === edgeId ? null : state.selectedEdge,
       editingEdge: state.editingEdge === edgeId ? null : state.editingEdge,
-      editingImpairment:
-        state.editingImpairment === edgeId ? null : state.editingImpairment
+      editingImpairment: state.editingImpairment === edgeId ? null : state.editingImpairment
     }));
   },
 
-  // Initial data
+  // Initial data — if mode changes, clear selection & editing so stale tabs disappear
   setInitialData: (data) => {
-    set(data);
+    if (data.mode && data.mode !== get().mode) {
+      set({
+        ...data,
+        selectedNode: null,
+        selectedEdge: null,
+        editingNode: null,
+        editingEdge: null,
+        editingNetwork: null,
+        editingImpairment: null,
+        editingCustomTemplate: null
+      });
+      const annotationUI = useAnnotationUIStore.getState();
+      if (annotationUI.editingTextAnnotation) annotationUI.setEditingTextAnnotation(null);
+      if (annotationUI.editingShapeAnnotation) annotationUI.setEditingShapeAnnotation(null);
+      if (annotationUI.editingGroup) annotationUI.closeGroupEditor();
+    } else {
+      set(data);
+    }
   }
 }));
 
@@ -361,8 +412,7 @@ export const useEditingNode = () => useTopoViewerStore((state) => state.editingN
 export const useEditingEdge = () => useTopoViewerStore((state) => state.editingEdge);
 
 /** Get editing impairment edge */
-export const useEditingImpairment = () =>
-  useTopoViewerStore((state) => state.editingImpairment);
+export const useEditingImpairment = () => useTopoViewerStore((state) => state.editingImpairment);
 
 /** Get lock state */
 export const useIsLocked = () =>
@@ -377,6 +427,9 @@ export const useShowDummyLinks = () => useTopoViewerStore((state) => state.showD
 /** Get endpoint label offset */
 export const useEndpointLabelOffset = () =>
   useTopoViewerStore((state) => state.endpointLabelOffset);
+
+export const useGridColor = () => useTopoViewerStore((state) => state.gridColor);
+export const useGridBgColor = () => useTopoViewerStore((state) => state.gridBgColor);
 
 /** Get processing state */
 export const useIsProcessing = () => useTopoViewerStore((state) => state.isProcessing);
@@ -401,6 +454,10 @@ export const useTopoViewerState = () =>
       mode: state.mode,
       deploymentState: state.deploymentState,
       labSettings: state.labSettings,
+      yamlFileName: state.yamlFileName,
+      annotationsFileName: state.annotationsFileName,
+      yamlContent: state.yamlContent,
+      annotationsContent: state.annotationsContent,
       canUndo: state.canUndo,
       canRedo: state.canRedo,
       selectedNode: state.selectedNode,

@@ -51,6 +51,33 @@ export function applyAlphaToColor(color: string, alpha: number): string {
   return color;
 }
 
+/**
+ * Parse a CSS color string (hex or rgb/rgba) and return perceived luminance.
+ * Returns a number 0..1 where 0 = black, 1 = white, or null if unparseable.
+ */
+export function parseLuminance(color: string): number | null {
+  let r = 0;
+  let g = 0;
+  let b = 0;
+
+  const hexMatch = /^#([0-9a-f]{3,8})$/i.exec(color.trim());
+  if (hexMatch) {
+    let hex = hexMatch[1];
+    if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    r = parseInt(hex.slice(0, 2), 16);
+    g = parseInt(hex.slice(2, 4), 16);
+    b = parseInt(hex.slice(4, 6), 16);
+  } else {
+    const rgbMatch = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(color);
+    if (!rgbMatch) return null;
+    r = parseInt(rgbMatch[1], 10);
+    g = parseInt(rgbMatch[2], 10);
+    b = parseInt(rgbMatch[3], 10);
+  }
+
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
 export function normalizeHexColor(value: string | undefined, fallback = "#000000"): string {
   if (!value) return fallback;
   const trimmed = value.trim();
@@ -65,6 +92,31 @@ export function normalizeHexColor(value: string | undefined, fallback = "#000000
   const rgb = parseRgb(trimmed);
   if (rgb) return rgb.hex;
   return fallback;
+}
+
+export function resolveComputedColor(cssVar: string, fallback: string): string {
+  try {
+    const raw = window.getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+    if (!raw) return fallback;
+    if (/^#[0-9a-f]{3,8}$/i.test(raw)) return normalizeHexColor(raw, fallback);
+    const rgb = parseRgb(raw);
+    if (rgb) return rgb.hex;
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function invertHexColor(hex: string, fallback = "#ffffff", strength = 0.5): string {
+  const normalized = normalizeHexColor(hex, "");
+  if (!normalized) return fallback;
+  const sr = parseInt(normalized.slice(1, 3), 16);
+  const sg = parseInt(normalized.slice(3, 5), 16);
+  const sb = parseInt(normalized.slice(5, 7), 16);
+  const r = Math.round(sr + (255 - 2 * sr) * strength);
+  const g = Math.round(sg + (255 - 2 * sg) * strength);
+  const b = Math.round(sb + (255 - 2 * sb) * strength);
+  return "#" + toHexByte(r) + toHexByte(g) + toHexByte(b);
 }
 
 export function normalizeShapeAnnotationColors(

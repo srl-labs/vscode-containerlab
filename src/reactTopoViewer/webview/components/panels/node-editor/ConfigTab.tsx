@@ -1,90 +1,127 @@
-/**
- * Configuration Tab for Node Editor
- */
+// Configuration tab for node editor.
 import React from "react";
+import Box from "@mui/material/Box";
 
-import { FormField, InputField, CheckboxField, DynamicList, KeyValueList } from "../../ui/form";
+import {
+  InputField,
+  SelectField,
+  DynamicList,
+  KeyValueList,
+  PanelAddSection,
+  PanelSection
+} from "../../ui/form";
 
 import type { TabProps } from "./types";
 
-/** Helper to check if a property is inherited */
-const isInherited = (prop: string, inheritedProps: string[] = []) => inheritedProps.includes(prop);
+type StartupConfigMode = "default" | "enforce" | "suppress";
 
-const StartupConfigSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
-  <>
-    <FormField label="Startup Config" inherited={isInherited("startup-config", inheritedProps)}>
-      <InputField
-        id="node-startup-config"
-        value={data.startupConfig || ""}
-        onChange={(value) => onChange({ startupConfig: value })}
-        placeholder="Path to config file"
-      />
-    </FormField>
-    <CheckboxField
-      id="node-enforce-startup-config"
-      label="Enforce startup config"
-      checked={data.enforceStartupConfig || false}
-      onChange={(checked) => onChange({ enforceStartupConfig: checked })}
-    />
-    <CheckboxField
-      id="node-suppress-startup-config"
-      label="Suppress startup config"
-      checked={data.suppressStartupConfig || false}
-      onChange={(checked) => onChange({ suppressStartupConfig: checked })}
-    />
-    <FormField label="License File" inherited={isInherited("license", inheritedProps)}>
-      <InputField
-        id="node-license"
-        value={data.license || ""}
-        onChange={(value) => onChange({ license: value })}
-        placeholder="Path to license file"
-      />
-    </FormField>
-  </>
-);
+const STARTUP_CONFIG_MODE_OPTIONS = [
+  { value: "default", label: "Default" },
+  { value: "enforce", label: "Enforce startup config" },
+  { value: "suppress", label: "Suppress startup config" }
+];
 
-const BindsAndEnvSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
-  <>
-    <FormField label="Bind Mounts" inherited={isInherited("binds", inheritedProps)}>
-      <DynamicList
-        items={data.binds || []}
-        onChange={(items) => onChange({ binds: items })}
-        placeholder="host:container[:options]"
-        addLabel="Add Bind"
-      />
-    </FormField>
-    <FormField label="Environment Variables" inherited={isInherited("env", inheritedProps)}>
-      <KeyValueList
-        items={data.env || {}}
-        onChange={(items) => onChange({ env: items })}
-        keyPlaceholder="Variable"
-        valuePlaceholder="Value"
-        addLabel="Add Variable"
-      />
-    </FormField>
-    <FormField label="Environment Files" inherited={isInherited("env-files", inheritedProps)}>
-      <DynamicList
-        items={data.envFiles || []}
-        onChange={(items) => onChange({ envFiles: items })}
-        placeholder="Path to env file"
-        addLabel="Add Env File"
-      />
-    </FormField>
-    <FormField label="Labels" inherited={isInherited("labels", inheritedProps)}>
-      <KeyValueList
-        items={data.labels || {}}
-        onChange={(items) => onChange({ labels: items })}
-        keyPlaceholder="Label"
-        valuePlaceholder="Value"
-        addLabel="Add Label"
-      />
-    </FormField>
-  </>
-);
+function getStartupConfigMode(data: {
+  enforceStartupConfig?: boolean;
+  suppressStartupConfig?: boolean;
+}): StartupConfigMode {
+  if (data.enforceStartupConfig) return "enforce";
+  if (data.suppressStartupConfig) return "suppress";
+  return "default";
+}
 
-export const ConfigTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
-  <div className="space-y-3">
-    <StartupConfigSection data={data} onChange={onChange} inheritedProps={inheritedProps} />
-    <BindsAndEnvSection data={data} onChange={onChange} inheritedProps={inheritedProps} />
-  </div>
-);
+export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
+  const mode = getStartupConfigMode(data);
+
+  const handleModeChange = (newMode: StartupConfigMode) => {
+    onChange({
+      enforceStartupConfig: newMode === "enforce",
+      suppressStartupConfig: newMode === "suppress"
+    });
+  };
+
+  const handleAddBind = () => {
+    onChange({ binds: [...(data.binds || []), ""] });
+  };
+
+  const handleAddEnvVar = () => {
+    onChange({ env: { ...(data.env || {}), "": "" } });
+  };
+
+  const handleAddEnvFile = () => {
+    onChange({ envFiles: [...(data.envFiles || []), ""] });
+  };
+
+  const handleAddLabel = () => {
+    onChange({ labels: { ...(data.labels || {}), "": "" } });
+  };
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      <PanelSection title="Startup Configuration" withTopDivider={false}>
+        <InputField
+          id="node-startup-config"
+          label="Startup configuration Path"
+          value={data.startupConfig || ""}
+          onChange={(value) => onChange({ startupConfig: value })}
+          placeholder="Path to startup configuration file"
+        />
+        <SelectField
+          id="node-startup-config-mode"
+          label="Startup configuration mode"
+          value={mode}
+          onChange={(value) => handleModeChange(value as StartupConfigMode)}
+          options={STARTUP_CONFIG_MODE_OPTIONS}
+        />
+      </PanelSection>
+
+      <PanelSection title="License">
+        <InputField
+          id="node-license"
+          label="License File"
+          value={data.license || ""}
+          onChange={(value) => onChange({ license: value })}
+          placeholder="Path to license file"
+        />
+      </PanelSection>
+
+      <PanelAddSection title="Bind Mounts" onAdd={handleAddBind}>
+        <DynamicList
+          items={data.binds || []}
+          onChange={(items) => onChange({ binds: items })}
+          placeholder="host:container[:options]"
+          hideAddButton
+        />
+      </PanelAddSection>
+
+      <PanelAddSection title="Environment Variables" onAdd={handleAddEnvVar}>
+        <KeyValueList
+          items={data.env || {}}
+          onChange={(items) => onChange({ env: items })}
+          keyPlaceholder="Variable"
+          valuePlaceholder="Value"
+          hideAddButton
+        />
+      </PanelAddSection>
+
+      <PanelAddSection title="Environment Files" onAdd={handleAddEnvFile}>
+        <DynamicList
+          items={data.envFiles || []}
+          onChange={(items) => onChange({ envFiles: items })}
+          placeholder="Path to env file"
+          hideAddButton
+        />
+      </PanelAddSection>
+
+      <PanelAddSection title="Labels" onAdd={handleAddLabel}>
+        <KeyValueList
+          items={data.labels || {}}
+          onChange={(items) => onChange({ labels: items })}
+          keyPlaceholder="Label"
+          valuePlaceholder="Value"
+          hideAddButton
+        />
+      </PanelAddSection>
+    </Box>
+  );
+};

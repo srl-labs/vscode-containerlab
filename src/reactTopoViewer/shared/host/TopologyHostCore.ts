@@ -1,9 +1,6 @@
-/**
- * TopologyHostCore - Host-side authoritative topology model.
- *
- * Runs in Node environments (VS Code extension host / dev server).
- * Owns YAML + annotations persistence, revisioning, and undo/redo history.
- */
+// TopologyHostCore — host-side authoritative topology model.
+// Runs in Node (VS Code extension host / dev server).
+// Owns YAML + annotations persistence, revisioning, and undo/redo history.
 
 import * as YAML from "yaml";
 
@@ -255,23 +252,50 @@ export class TopologyHostCore implements TopologyHost {
   > = {
     addNode: (cmd) => this.handleNodeCommand(cmd as Parameters<typeof this.handleNodeCommand>[0]),
     editNode: (cmd) => this.handleNodeCommand(cmd as Parameters<typeof this.handleNodeCommand>[0]),
-    deleteNode: (cmd) => this.handleNodeCommand(cmd as Parameters<typeof this.handleNodeCommand>[0]),
+    deleteNode: (cmd) =>
+      this.handleNodeCommand(cmd as Parameters<typeof this.handleNodeCommand>[0]),
     addLink: (cmd) => this.handleLinkCommand(cmd as Parameters<typeof this.handleLinkCommand>[0]),
     editLink: (cmd) => this.handleLinkCommand(cmd as Parameters<typeof this.handleLinkCommand>[0]),
-    deleteLink: (cmd) => this.handleLinkCommand(cmd as Parameters<typeof this.handleLinkCommand>[0]),
-    savePositions: (cmd) => this.handleSaveCommand(cmd as Parameters<typeof this.handleSaveCommand>[0]),
-    savePositionsAndAnnotations: (cmd) => this.handleSaveCommand(cmd as Parameters<typeof this.handleSaveCommand>[0]),
-    setAnnotations: (cmd) => this.handleAnnotationSettingsCommand(cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]),
+    deleteLink: (cmd) =>
+      this.handleLinkCommand(cmd as Parameters<typeof this.handleLinkCommand>[0]),
+    setYamlContent: (cmd) =>
+      this.handleSourceContentCommand(
+        cmd as Extract<TopologyHostCommand, { command: "setYamlContent" }>
+      ),
+    setAnnotationsContent: (cmd) =>
+      this.handleSourceContentCommand(
+        cmd as Extract<TopologyHostCommand, { command: "setAnnotationsContent" }>
+      ),
+    savePositions: (cmd) =>
+      this.handleSaveCommand(cmd as Parameters<typeof this.handleSaveCommand>[0]),
+    savePositionsAndAnnotations: (cmd) =>
+      this.handleSaveCommand(cmd as Parameters<typeof this.handleSaveCommand>[0]),
+    setAnnotations: (cmd) =>
+      this.handleAnnotationSettingsCommand(
+        cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]
+      ),
     setAnnotationsWithMemberships: (cmd) =>
       this.handleAnnotationSettingsCommand(
         cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]
       ),
-    batch: (cmd) => this.handleBatchCommand(cmd as Extract<TopologyHostCommand, { command: "batch" }>),
-    setEdgeAnnotations: (cmd) => this.handleAnnotationSettingsCommand(cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]),
-    setViewerSettings: (cmd) => this.handleAnnotationSettingsCommand(cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]),
-    setNodeGroupMembership: (cmd) => this.handleNodeGroupMemberships(cmd as Parameters<typeof this.handleNodeGroupMemberships>[0]),
-    setNodeGroupMemberships: (cmd) => this.handleNodeGroupMemberships(cmd as Parameters<typeof this.handleNodeGroupMemberships>[0]),
-    setLabSettings: (cmd) => this.applyLabSettings((cmd as Extract<TopologyHostCommand, { command: "setLabSettings" }>).payload),
+    batch: (cmd) =>
+      this.handleBatchCommand(cmd as Extract<TopologyHostCommand, { command: "batch" }>),
+    setEdgeAnnotations: (cmd) =>
+      this.handleAnnotationSettingsCommand(
+        cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]
+      ),
+    setViewerSettings: (cmd) =>
+      this.handleAnnotationSettingsCommand(
+        cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]
+      ),
+    setNodeGroupMembership: (cmd) =>
+      this.handleNodeGroupMemberships(cmd as Parameters<typeof this.handleNodeGroupMemberships>[0]),
+    setNodeGroupMemberships: (cmd) =>
+      this.handleNodeGroupMemberships(cmd as Parameters<typeof this.handleNodeGroupMemberships>[0]),
+    setLabSettings: (cmd) =>
+      this.applyLabSettings(
+        (cmd as Extract<TopologyHostCommand, { command: "setLabSettings" }>).payload
+      ),
     // undo/redo are handled specially before executeCommand is called; these should never be reached
     undo: () => Promise.reject(new Error("undo handled before executeCommand")),
     redo: () => Promise.reject(new Error("redo handled before executeCommand"))
@@ -318,7 +342,10 @@ export class TopologyHostCore implements TopologyHost {
   }
 
   private async handleSaveCommand(
-    command: Extract<TopologyHostCommand, { command: "savePositions" | "savePositionsAndAnnotations" }>
+    command: Extract<
+      TopologyHostCommand,
+      { command: "savePositions" | "savePositionsAndAnnotations" }
+    >
   ): Promise<void> {
     if (command.command === "savePositions") {
       await this.topologyIO.savePositions(command.payload);
@@ -328,6 +355,34 @@ export class TopologyHostCore implements TopologyHost {
         await this.mergeAnnotations(command.payload.annotations);
       }
     }
+  }
+
+  private async handleSourceContentCommand(
+    command: Extract<TopologyHostCommand, { command: "setYamlContent" | "setAnnotationsContent" }>
+  ): Promise<void> {
+    if (command.command === "setYamlContent") {
+      const content = command.payload?.content ?? "";
+      const doc = YAML.parseDocument(content);
+      if (doc.errors.length > 0) {
+        const details = doc.errors.map((e) => e.message).join("\n");
+        throw new Error(details || "Invalid YAML");
+      }
+      await this.transactionalFs.writeFile(this.yamlFilePath, content);
+      await this.reloadFromDisk();
+      return;
+    }
+
+    const raw = command.payload?.content ?? "";
+    const content = raw.trim().length === 0 ? "{}\n" : raw;
+    try {
+      JSON.parse(content);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Invalid annotations JSON: ${msg}`);
+    }
+    const annotationsPath = this.annotationsIO.getAnnotationsFilePath(this.yamlFilePath);
+    await this.transactionalFs.writeFile(annotationsPath, content);
+    await this.reloadFromDisk();
   }
 
   private async handleBatchCommand(
@@ -399,7 +454,10 @@ export class TopologyHostCore implements TopologyHost {
   }
 
   private async handleNodeGroupMemberships(
-    command: Extract<TopologyHostCommand, { command: "setNodeGroupMembership" | "setNodeGroupMemberships" }>
+    command: Extract<
+      TopologyHostCommand,
+      { command: "setNodeGroupMembership" | "setNodeGroupMemberships" }
+    >
   ): Promise<void> {
     if (command.command === "setNodeGroupMembership") {
       await this.applyNodeGroupMembership(command.payload.nodeId, command.payload.groupId);
@@ -532,11 +590,26 @@ export class TopologyHostCore implements TopologyHost {
   // Snapshot building
   // ---------------------------------------------------------------------------
 
+  private async readAnnotationsContent(): Promise<string | null> {
+    const annotationsPath = this.annotationsIO.getAnnotationsFilePath(this.yamlFilePath);
+    try {
+      const exists = await this.baseFs.exists(annotationsPath);
+      if (exists) {
+        return await this.baseFs.readFile(annotationsPath);
+      }
+    } catch {
+      // fall through
+    }
+    return null;
+  }
+
   private async buildSnapshot(): Promise<TopologySnapshot> {
     const yamlContent = await this.baseFs.readFile(this.yamlFilePath);
     const yamlDoc = YAML.parseDocument(yamlContent);
     const parsed = yamlDoc.toJS() as ClabTopology;
     this.currentClabTopology = parsed;
+
+    const annotationsContent = await this.readAnnotationsContent();
 
     let annotations = await this.annotationsIO.loadAnnotations(this.yamlFilePath, true);
     const annotationsUpdated = await this.reconcileAnnotationsForRenamedNodes(parsed);
@@ -564,11 +637,20 @@ export class TopologyHostCore implements TopologyHost {
     const normalizedAnnotations = normalizeAnnotations(annotations);
     const labSettings = extractLabSettings(yamlDoc);
 
+    const yamlFileName = this.baseFs.basename(this.yamlFilePath);
+    const annotationsFileName = this.baseFs.basename(
+      this.annotationsIO.getAnnotationsFilePath(this.yamlFilePath)
+    );
+
     return {
       revision: this.revision,
       nodes: topology.nodes,
       edges: topology.edges,
       annotations: normalizedAnnotations,
+      yamlFileName,
+      annotationsFileName,
+      yamlContent,
+      annotationsContent: annotationsContent ?? JSON.stringify(createEmptyAnnotations(), null, 2),
       labName: labName ?? "",
       mode: this.mode,
       deploymentState: this.deploymentState,
@@ -677,16 +759,7 @@ export class TopologyHostCore implements TopologyHost {
 
   private async captureHistoryEntry(): Promise<HistoryEntry> {
     const yamlContent = await this.baseFs.readFile(this.yamlFilePath);
-    const annotationsPath = this.annotationsIO.getAnnotationsFilePath(this.yamlFilePath);
-    let annotationsContent: string | null = null;
-    try {
-      const exists = await this.baseFs.exists(annotationsPath);
-      if (exists) {
-        annotationsContent = await this.baseFs.readFile(annotationsPath);
-      }
-    } catch {
-      annotationsContent = null;
-    }
+    const annotationsContent = await this.readAnnotationsContent();
     return { yamlContent, annotationsContent };
   }
 
@@ -733,10 +806,15 @@ function isRenameEditCommand(command: TopologyHostCommand): boolean {
 }
 
 function shouldSkipHistory(command: TopologyHostCommand): boolean {
-  if (command.command !== "savePositions" && command.command !== "savePositionsAndAnnotations") {
-    return false;
+  if (
+    command.command === "savePositions" ||
+    command.command === "savePositionsAndAnnotations" ||
+    command.command === "setYamlContent" ||
+    command.command === "setAnnotationsContent"
+  ) {
+    return (command as unknown as { skipHistory?: boolean }).skipHistory === true;
   }
-  return command.skipHistory === true;
+  return false;
 }
 
 function getIdPrefix(id: string): string {

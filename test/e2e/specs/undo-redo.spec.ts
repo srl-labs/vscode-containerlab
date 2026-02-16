@@ -1,8 +1,53 @@
+import type { Page } from "@playwright/test";
+
 import { test, expect } from "../fixtures/topoviewer";
 import { shiftClick, drag } from "../helpers/react-flow-helpers";
 
 // Test file names for file-based tests
 const SPINE_LEAF_FILE = "spine-leaf.clab.yml";
+
+async function getEmptyPanePoints(
+  page: Page,
+  topoViewerPage: any,
+  count: number
+): Promise<Array<{ x: number; y: number }>> {
+  const canvas = topoViewerPage.getCanvas();
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("Canvas bounding box unavailable");
+
+  const points = await page.evaluate(
+    ({ canvasBox, maxPoints }) => {
+      const results: Array<{ x: number; y: number }> = [];
+      const minX = canvasBox.x + 80;
+      const maxX = canvasBox.x + Math.max(120, canvasBox.width * 0.65);
+      const minY = canvasBox.y + 80;
+      const maxY = canvasBox.y + canvasBox.height - 80;
+      const cols = 7;
+      const rows = 5;
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const x = minX + ((maxX - minX) * col) / (cols - 1);
+          const y = minY + ((maxY - minY) * row) / (rows - 1);
+          const el = document.elementFromPoint(x, y) as HTMLElement | null;
+          if (!el) continue;
+          if (!el.closest(".react-flow__pane")) continue;
+          if (el.closest(".react-flow__node")) continue;
+          results.push({ x, y });
+          if (results.length >= maxPoints) return results;
+        }
+      }
+      return results;
+    },
+    { canvasBox: box, maxPoints: count }
+  );
+
+  if (points.length < count) {
+    throw new Error(`Unable to find ${count} empty pane point(s), found ${points.length}`);
+  }
+
+  return points;
+}
 
 test.describe("Undo and Redo", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
@@ -16,12 +61,10 @@ test.describe("Undo and Redo", () => {
 
   test("undoes and redoes node creation", async ({ page, topoViewerPage }) => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
+    const [point] = await getEmptyPanePoints(page, topoViewerPage, 1);
 
-    // Create a node at offset position (avoid hitting existing nodes)
-    const clickX = canvasCenter.x + 200;
-    const clickY = canvasCenter.y + 150;
-    await shiftClick(page, clickX, clickY);
+    // Create a node on empty pane area.
+    await shiftClick(page, point.x, point.y);
 
     // Wait for node to be created using polling assertion
     await expect
@@ -83,10 +126,10 @@ test.describe("Undo and Redo", () => {
 
   test("multiple undos and redos work in sequence", async ({ page, topoViewerPage }) => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
+    const points = await getEmptyPanePoints(page, topoViewerPage, 2);
 
-    // Create first node - use offset to avoid existing nodes at center
-    await shiftClick(page, canvasCenter.x + 200, canvasCenter.y + 100);
+    // Create first node on empty pane area.
+    await shiftClick(page, points[0].x, points[0].y);
     await expect
       .poll(() => topoViewerPage.getNodeCount(), {
         timeout: 5000,
@@ -98,8 +141,8 @@ test.describe("Undo and Redo", () => {
     await page.keyboard.press("Escape");
     await page.waitForTimeout(200);
 
-    // Create second node - use different position to avoid overlap
-    await shiftClick(page, canvasCenter.x - 200, canvasCenter.y + 100);
+    // Create second node at different empty position.
+    await shiftClick(page, points[1].x, points[1].y);
     await expect
       .poll(() => topoViewerPage.getNodeCount(), {
         timeout: 5000,
@@ -138,10 +181,10 @@ test.describe("Undo and Redo", () => {
 
   test("new action clears redo stack", async ({ page, topoViewerPage }) => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
+    const points = await getEmptyPanePoints(page, topoViewerPage, 2);
 
-    // Create a node (use offset to avoid existing nodes)
-    await shiftClick(page, canvasCenter.x + 200, canvasCenter.y + 100);
+    // Create a node on empty pane area.
+    await shiftClick(page, points[0].x, points[0].y);
     await expect
       .poll(() => topoViewerPage.getNodeCount(), {
         timeout: 5000,
@@ -159,8 +202,8 @@ test.describe("Undo and Redo", () => {
     // Wait before creating another node
     await page.waitForTimeout(200);
 
-    // Create a different node (new action) - use different position
-    await shiftClick(page, canvasCenter.x + 200, canvasCenter.y + 200);
+    // Create a different node (new action) at different empty position.
+    await shiftClick(page, points[1].x, points[1].y);
     await expect
       .poll(() => topoViewerPage.getNodeCount(), {
         timeout: 5000,

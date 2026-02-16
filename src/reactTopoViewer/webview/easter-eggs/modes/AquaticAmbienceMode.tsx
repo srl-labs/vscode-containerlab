@@ -6,9 +6,10 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Box from "@mui/material/Box";
 
 import { useAquaticAmbienceAudio } from "../audio";
-import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, useNodeGlow, MuteButton } from "../shared";
+import { BTN_VISIBLE_SX, BTN_HIDDEN_SX, BTN_BLUR, useNodeGlow, MuteButton } from "../shared";
 import type { RGBColor, BaseModeProps } from "../shared";
 
 /** Underwater color palette */
@@ -126,10 +127,17 @@ const AquaticCanvas: React.FC<{
   if (!isActive) return null;
 
   return (
-    <canvas
+    <Box
+      component="canvas"
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-[99998]"
-      style={{ width: "100%", height: "100%" }}
+      sx={{
+        position: "fixed",
+        inset: 0,
+        pointerEvents: "none",
+        zIndex: 99998,
+        width: "100%",
+        height: "100%"
+      }}
     />
   );
 };
@@ -389,13 +397,29 @@ export const AquaticAmbienceMode: React.FC<BaseModeProps> = ({
         getCurrentSection={audio.getCurrentSection}
       />
 
-      <div className="fixed inset-0 pointer-events-none z-[99999] flex items-end justify-center pb-8 gap-4">
-        <button
+      <Box
+        sx={{
+          position: "fixed",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 99999,
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          pb: 4,
+          gap: 2
+        }}
+      >
+        <Box
+          component="button"
           onClick={handleSwitch}
-          className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
-            visible ? BTN_VISIBLE : BTN_HIDDEN
-          }`}
-          style={{
+          sx={{
+            px: 3,
+            py: 1.25,
+            borderRadius: "9999px",
+            pointerEvents: "auto",
+            transition: "all 0.5s",
+            ...(visible ? BTN_VISIBLE_SX : BTN_HIDDEN_SX),
             background:
               "linear-gradient(135deg, rgba(135, 206, 235, 0.6) 0%, rgba(0, 180, 200, 0.6) 100%)",
             border: "2px solid rgba(255, 255, 255, 0.5)",
@@ -410,7 +434,7 @@ export const AquaticAmbienceMode: React.FC<BaseModeProps> = ({
           title={`Current: ${modeName}`}
         >
           Switch
-        </button>
+        </Box>
         <MuteButton
           isMuted={audio.isMuted}
           onToggle={audio.toggleMute}
@@ -418,12 +442,16 @@ export const AquaticAmbienceMode: React.FC<BaseModeProps> = ({
           unmutedBackground="linear-gradient(135deg, rgba(0, 180, 200, 0.8) 0%, rgba(135, 206, 235, 0.8) 100%)"
           unmutedShadow="0 0 20px rgba(0, 180, 200, 0.5), inset 0 0 20px rgba(135, 206, 235, 0.1)"
         />
-        <button
+        <Box
+          component="button"
           onClick={handleClose}
-          className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
-            visible ? BTN_VISIBLE : BTN_HIDDEN
-          }`}
-          style={{
+          sx={{
+            px: 3,
+            py: 1.25,
+            borderRadius: "9999px",
+            pointerEvents: "auto",
+            transition: "all 0.5s",
+            ...(visible ? BTN_VISIBLE_SX : BTN_HIDDEN_SX),
             background:
               "linear-gradient(135deg, rgba(0, 128, 128, 0.8) 0%, rgba(30, 80, 140, 0.8) 100%)",
             border: "2px solid rgba(0, 180, 200, 0.5)",
@@ -437,8 +465,8 @@ export const AquaticAmbienceMode: React.FC<BaseModeProps> = ({
           }}
         >
           Surface
-        </button>
-      </div>
+        </Box>
+      </Box>
     </>
   );
 };

@@ -1,7 +1,8 @@
-/**
- * TabNavigation - Scrollable tab strip with arrow buttons
- */
-import React, { useRef, useState, useCallback, useEffect } from "react";
+// Tab strip with divider.
+import React from "react";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import Divider from "@mui/material/Divider";
 
 export interface TabDefinition {
   id: string;
@@ -13,90 +14,29 @@ interface TabNavigationProps {
   tabs: TabDefinition[];
   activeTab: string;
   onTabChange: (tabId: string) => void;
-  showArrows?: boolean;
 }
 
-export const TabNavigation: React.FC<TabNavigationProps> = ({
-  tabs,
-  activeTab,
-  onTabChange,
-  showArrows = true
-}) => {
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+export const TabNavigation: React.FC<TabNavigationProps> = ({ tabs, activeTab, onTabChange }) => {
+  const visibleTabs = tabs.filter((t) => !t.hidden);
 
-  const updateScrollButtons = useCallback(() => {
-    if (!viewportRef.current) return;
-    const { scrollLeft, scrollWidth, clientWidth } = viewportRef.current;
-    setCanScrollLeft(scrollLeft > 0);
-    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
-  }, []);
-
-  // Update scroll buttons on mount, when tabs change, and on scroll
-  useEffect(() => {
-    updateScrollButtons();
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-    viewport.addEventListener("scroll", updateScrollButtons);
-    // Also listen for resize events
-    const resizeObserver = new ResizeObserver(updateScrollButtons);
-    resizeObserver.observe(viewport);
-    return () => {
-      viewport.removeEventListener("scroll", updateScrollButtons);
-      resizeObserver.disconnect();
-    };
-  }, [updateScrollButtons, tabs]); // Re-run when tabs change
-
-  const scroll = (direction: "left" | "right") => {
-    if (!viewportRef.current) return;
-    const scrollAmount = 100;
-    viewportRef.current.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
-      behavior: "smooth"
-    });
+  const handleChange = (_event: React.SyntheticEvent, newValue: string) => {
+    onTabChange(newValue);
   };
 
-  const visibleTabs = tabs.filter((t) => !t.hidden);
-  const tabButtons = visibleTabs.map((tab) => (
-    <button
-      key={tab.id}
-      className={`panel-tab-button ${activeTab === tab.id ? "tab-active" : ""}`}
-      onClick={() => onTabChange(tab.id)}
-      data-tab={tab.id}
-      data-testid={`panel-tab-${tab.id}`}
-    >
-      {tab.label}
-    </button>
-  ));
-
-  if (!showArrows) {
-    return <div className="panel-tabs">{tabButtons}</div>;
-  }
-
   return (
-    <div className="panel-tabs panel-tabs--with-arrows">
-      <button
-        className="tab-scroll-btn"
-        onClick={() => scroll("left")}
-        disabled={!canScrollLeft}
-        aria-label="Scroll tabs left"
-        title="Scroll left"
-      >
-        <i className="fas fa-chevron-left"></i>
-      </button>
-      <div className="tab-scroll-viewport" ref={viewportRef}>
-        <div className="tab-strip">{tabButtons}</div>
-      </div>
-      <button
-        className="tab-scroll-btn"
-        onClick={() => scroll("right")}
-        disabled={!canScrollRight}
-        aria-label="Scroll tabs right"
-        title="Scroll right"
-      >
-        <i className="fas fa-chevron-right"></i>
-      </button>
-    </div>
+    <>
+      <Tabs value={activeTab} onChange={handleChange} variant="scrollable" scrollButtons="auto">
+        {visibleTabs.map((tab) => (
+          <Tab
+            key={tab.id}
+            value={tab.id}
+            label={tab.label}
+            data-tab={tab.id}
+            data-testid={`panel-tab-${tab.id}`}
+          />
+        ))}
+      </Tabs>
+      <Divider />
+    </>
   );
 };

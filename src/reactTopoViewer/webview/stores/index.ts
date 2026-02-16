@@ -13,7 +13,11 @@ export {
   useTopoViewerActions,
   useTopoViewerState
 } from "./topoViewerStore";
-export { useAnnotationUIStore, useAnnotationUIActions, useAnnotationUIState } from "./annotationUIStore";
+export {
+  useAnnotationUIStore,
+  useAnnotationUIActions,
+  useAnnotationUIState
+} from "./annotationUIStore";
 export { useCanvasStore, buildEdgeInfo, useEdgeInfo } from "./canvasStore";
 
 // Essential types (import other types directly from sub-modules)

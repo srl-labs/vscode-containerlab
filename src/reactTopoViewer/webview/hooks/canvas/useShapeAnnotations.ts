@@ -2,11 +2,12 @@ import { useCallback, useMemo, useRef } from "react";
 
 import type { FreeShapeAnnotation } from "../../../shared/types/topology";
 import type { AnnotationUIActions, AnnotationUIState } from "../../stores/annotationUIStore";
-import { saveAnnotationNodesFromGraph } from "../../services";
-import { log } from "../../utils/logger";
+import * as annotationServices from "../../services";
+import * as logger from "../../utils/logger";
 
 import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
 import { findDeepestGroupAtPosition } from "./groupUtils";
+import { readThemeColor } from "./themeColor";
 interface UseShapeAnnotationsParams {
   isLocked: boolean;
   onLockedAction: () => void;
@@ -17,7 +18,6 @@ interface UseShapeAnnotationsParams {
     | "setAddShapeMode"
     | "disableAddShapeMode"
     | "setEditingShapeAnnotation"
-    | "closeShapeEditor"
     | "removeFromShapeSelection"
   >;
 }
@@ -42,7 +42,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
   const pendingRotationRef = useRef<string | null>(null);
 
   const persist = useCallback(() => {
-    void saveAnnotationNodesFromGraph();
+    void annotationServices.saveAnnotationNodesFromGraph();
   }, []);
 
   const handleAddShapes = useCallback(
@@ -73,9 +73,11 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
         position,
         endPosition: { x: position.x + 120, y: position.y + 60 },
         rotation: 0,
-        fillColor: lastShapeStyleRef.current.fillColor ?? "rgba(255, 255, 255, 0.1)",
+        fillColor: lastShapeStyleRef.current.fillColor ?? "rgba(127, 127, 127, 0.16)",
         fillOpacity: lastShapeStyleRef.current.fillOpacity ?? 0.2,
-        borderColor: lastShapeStyleRef.current.borderColor ?? "#ffffff",
+        borderColor:
+          lastShapeStyleRef.current.borderColor ??
+          readThemeColor("--vscode-editor-foreground", "#666666"),
         borderWidth: lastShapeStyleRef.current.borderWidth ?? 1,
         borderStyle: lastShapeStyleRef.current.borderStyle ?? "solid",
         borderRadius: lastShapeStyleRef.current.borderRadius ?? 4,
@@ -94,23 +96,19 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
       const newAnnotation = buildShapeAnnotation(position, shapeType);
       derived.addShapeAnnotation(newAnnotation);
       persist();
-      log.info(`[FreeShape] Created annotation at (${position.x}, ${position.y})`);
+      logger.log.info(`[FreeShape] Created annotation at (${position.x}, ${position.y})`);
     },
     [canEditAnnotations, onLockedAction, buildShapeAnnotation, derived, persist]
   );
 
   const editShapeAnnotation = useCallback(
     (id: string) => {
-      if (!canEditAnnotations) {
-        onLockedAction();
-        return;
-      }
       const annotation = derived.shapeAnnotations.find((a) => a.id === id);
       if (annotation) {
         uiActions.setEditingShapeAnnotation(annotation);
       }
     },
-    [canEditAnnotations, onLockedAction, derived.shapeAnnotations, uiActions]
+    [derived.shapeAnnotations, uiActions]
   );
 
   const saveShapeAnnotation = useCallback(
@@ -133,10 +131,9 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
         rotation: annotation.rotation
       };
 
-      uiActions.closeShapeEditor();
       persist();
     },
-    [derived, uiActions, persist]
+    [derived, persist]
   );
 
   const deleteShapeAnnotation = useCallback(
@@ -178,7 +175,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
       const newAnnotation = buildShapeAnnotation(position, uiState.pendingShapeType);
       uiActions.setEditingShapeAnnotation(newAnnotation);
       uiActions.disableAddShapeMode();
-      log.info(`[FreeShape] Creating annotation at (${position.x}, ${position.y})`);
+      logger.log.info(`[FreeShape] Creating annotation at (${position.x}, ${position.y})`);
     },
     [uiState.isAddShapeMode, uiState.pendingShapeType, buildShapeAnnotation, uiActions]
   );

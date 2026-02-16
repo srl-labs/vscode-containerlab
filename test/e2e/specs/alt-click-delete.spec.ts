@@ -289,10 +289,21 @@ test.describe("Alt+Click Delete", () => {
 
       if (shapeAnnotation.shapeType === "line") {
         const lineElement = page.locator(`[data-id="${shapeAnnotation.id}"] .free-shape-line line`);
-        await altClickElement(page, lineElement);
+        if ((await lineElement.count()) > 0) {
+          await altClickElement(page, lineElement.first());
+        } else {
+          await altClick(page, shapeBox!.x + shapeBox!.width / 2, shapeBox!.y + shapeBox!.height / 2);
+        }
       } else {
-        // Alt+Click on the shape center
-        await altClick(page, shapeBox!.x + shapeBox!.width / 2, shapeBox!.y + shapeBox!.height / 2);
+        // Prefer direct element dispatch for overlay shapes (more reliable than coordinates).
+        const shapeElement = page.locator(
+          `[data-id="${shapeAnnotation.id}"] .free-shape-${shapeAnnotation.shapeType}`
+        );
+        if ((await shapeElement.count()) > 0) {
+          await altClickElement(page, shapeElement.first());
+        } else {
+          await altClick(page, shapeBox!.x + shapeBox!.width / 2, shapeBox!.y + shapeBox!.height / 2);
+        }
       }
 
       // Shape should be deleted - verify in file

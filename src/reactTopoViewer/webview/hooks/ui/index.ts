@@ -1,46 +1,39 @@
-/**
- * UI hooks barrel - exports all UI-related hooks
- * Consolidated from: commands/, panels/, interactions/ sub-directories
- */
+// UI hooks barrel.
 
-// ============================================================================
 // Commands
-// ============================================================================
-export {
-  useDeploymentCommands,
-  usePanelVisibility
-} from "./usePanelCommands";
+export { useDeploymentCommands, usePanelVisibility } from "./usePanelCommands";
 export type { DeploymentCommands, PanelVisibility } from "./usePanelCommands";
 
-// ============================================================================
-// Panel Visibility & Drag
-// ============================================================================
-export {
-  usePanelDrag,
-  useShakeAnimation
-} from "./usePanelDrag";
-export type { Position, UsePanelDragOptions, UsePanelDragReturn } from "./usePanelDrag";
+// Context Panel Content
+export { useContextPanelContent } from "./useContextPanelContent";
+export type { PanelView, PanelViewKind } from "./useContextPanelContent";
 
-// ============================================================================
+// Panel Tab Visibility
+export { usePanelTabVisibility } from "./usePanelTabVisibility";
+export type { PanelTabVisibility } from "./usePanelTabVisibility";
+
+// Footer Refs
+export { useFooterControlsRef } from "./useFooterControlsRef";
+export type { FooterControlsRef } from "./useFooterControlsRef";
+
+// Editor Button Handlers
+export { useApplySaveHandlers } from "./useApplySaveHandlers";
+
+// Shake Animation
+export { useShakeAnimation } from "./useShakeAnimation";
+
 // Keyboard & Shortcuts
-// ============================================================================
 export { useKeyboardShortcuts } from "./useKeyboardShortcuts";
 export { useShortcutDisplay } from "./useShortcutDisplay";
 
-// ============================================================================
 // App Handlers
-// ============================================================================
 export { useAppHandlers } from "./useAppHandlers";
 
-// ============================================================================
 // Click, Escape, Hover
-// ============================================================================
 export { useClickOutside, useEscapeKey, useDelayedHover } from "./useDomInteractions";
 export type { UseDelayedHoverReturn } from "./useDomInteractions";
 
-// ============================================================================
 // Dropdown Hooks
-// ============================================================================
 export {
   useDropdown,
   useDropdownState,
@@ -59,9 +52,7 @@ export type {
   UseFilterableDropdownReturn
 } from "./useFilterableDropdown";
 
-// ============================================================================
-// App State (Layout & Context Menu)
-// ============================================================================
+// App State
 export {
   useLayoutControls,
   useContextMenuHandlers,

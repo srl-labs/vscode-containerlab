@@ -146,6 +146,9 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
       `Interface inspection complete: ${containerNode.name} - found ${newInterfaces.length} interfaces`
     );
 
+    // Update runtime state immediately (event stream gives us the fresh state).
+    containerNode.state = newState;
+
     // Replace the entire interface list
     containerNode.interfaces = newInterfaces;
 
@@ -205,7 +208,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     const viewer = getCurrentTopoViewer();
     if (viewer?.currentPanel && viewer.isViewMode) {
       try {
-        await viewer.refreshLinkStatesFromInspect(this.labsSnapshot);
+        const labsForViewer = this.getLabsSnapshotForViewer();
+        await viewer.refreshLinkStatesFromInspect(labsForViewer);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error(
@@ -213,6 +217,20 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         );
       }
     }
+  }
+
+  /**
+   * Build a fresh labs snapshot from the current tree cache.
+   * This avoids stale references from older discover snapshots.
+   */
+  private getLabsSnapshotForViewer(): Record<string, c.ClabLabTreeNode> | undefined {
+    if (this.treeItems.length === 0) {
+      return this.labsSnapshot;
+    }
+    return this.treeItems.reduce<Record<string, c.ClabLabTreeNode>>((acc, lab) => {
+      acc[lab.labPath.absolute] = lab;
+      return acc;
+    }, {});
   }
 
   getTreeItem(element: RunningTreeNode): vscode.TreeItem {
@@ -672,7 +690,31 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
       changed = true;
     }
 
+    if (!this.areObjectValuesEqual(target.stats, source.stats)) {
+      target.stats = source.stats ? { ...source.stats } : undefined;
+      changed = true;
+    }
+
+    if (!this.areObjectValuesEqual(target.netemState, source.netemState)) {
+      target.netemState = source.netemState ? { ...source.netemState } : undefined;
+      changed = true;
+    }
+
     return changed;
+  }
+
+  private areObjectValuesEqual<T extends object>(a: T | undefined, b: T | undefined): boolean {
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    const aRecord = a as Record<string, unknown>;
+    const bRecord = b as Record<string, unknown>;
+    const keys = new Set([...Object.keys(aRecord), ...Object.keys(bRecord)]);
+    for (const key of keys) {
+      if (aRecord[key] !== bRecord[key]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private iconsEqual(a: IconPath, b: IconPath): boolean {

@@ -65,6 +65,8 @@ export const ContainerlabLogo: React.FC<ContainerlabLogoProps> = ({
     <svg
       viewBox="240.742 -24.784 81.8 87.413"
       xmlns="http://www.w3.org/2000/svg"
+      width={36}
+      height={36}
       className={`containerlab-logo-svg ${shakeClass} ${className || ""}`}
       aria-label="Containerlab Logo"
     >

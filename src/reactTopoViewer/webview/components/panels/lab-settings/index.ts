@@ -1,5 +1,5 @@
 /**
- * Lab Settings Panel exports
+ * Lab Settings exports
  */
-export { LabSettingsPanel } from "./LabSettingsPanel";
+export { LabSettingsModal } from "./LabSettingsModal";
 export type { LabSettings, MgmtSettings } from "./types";

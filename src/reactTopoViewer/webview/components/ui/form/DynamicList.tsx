@@ -2,6 +2,8 @@
  * DynamicList - Array of string inputs with add/remove
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import TextField from "@mui/material/TextField";
 
 import { AddItemButton, DeleteItemButton } from "./ListButtons";
 
@@ -11,6 +13,7 @@ interface DynamicListProps {
   placeholder?: string;
   addLabel?: string;
   disabled?: boolean;
+  hideAddButton?: boolean;
 }
 
 export const DynamicList: React.FC<DynamicListProps> = ({
@@ -18,7 +21,8 @@ export const DynamicList: React.FC<DynamicListProps> = ({
   onChange,
   placeholder,
   addLabel = "Add",
-  disabled
+  disabled,
+  hideAddButton
 }) => {
   const handleAdd = () => {
     onChange([...items, ""]);
@@ -35,7 +39,7 @@ export const DynamicList: React.FC<DynamicListProps> = ({
   };
 
   return (
-    <div className="space-y-2">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
       {items.map((item, index) => (
         <DynamicListItem
           key={index}
@@ -46,8 +50,8 @@ export const DynamicList: React.FC<DynamicListProps> = ({
           disabled={disabled}
         />
       ))}
-      <AddItemButton onAdd={handleAdd} label={addLabel} disabled={disabled} />
-    </div>
+      {!hideAddButton && <AddItemButton onAdd={handleAdd} label={addLabel} disabled={disabled} />}
+    </Box>
   );
 };
 
@@ -69,15 +73,15 @@ const DynamicListItem: React.FC<DynamicListItemProps> = ({
   placeholder,
   disabled
 }) => (
-  <div className="flex gap-2">
-    <input
-      type="text"
+  <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+    <TextField
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="input-field flex-1"
       placeholder={placeholder}
       disabled={disabled}
+      size="small"
+      fullWidth
     />
     <DeleteItemButton onRemove={onRemove} disabled={disabled} />
-  </div>
+  </Box>
 );

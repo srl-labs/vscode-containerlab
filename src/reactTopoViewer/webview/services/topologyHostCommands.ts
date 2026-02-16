@@ -39,6 +39,15 @@ async function handleHostResponse(
     });
   };
 
+  const syncSource = (snapshot: TopologySnapshot) => {
+    useTopoViewerStore.getState().setInitialData({
+      yamlFileName: snapshot.yamlFileName,
+      annotationsFileName: snapshot.annotationsFileName,
+      yamlContent: snapshot.yamlContent,
+      annotationsContent: snapshot.annotationsContent
+    });
+  };
+
   const applySnapshotAndNotify = (snapshot: TopologySnapshot) => {
     applySnapshotToStores(snapshot);
     notifyDevHostUpdate();
@@ -48,15 +57,27 @@ async function handleHostResponse(
     setHostRevision(revision);
     if (snapshot) {
       syncUndoRedo(snapshot);
+      // Even when applySnapshot=false (quiet updates), keep source editors in sync.
+      syncSource(snapshot);
     }
     notifyDevHostUpdate();
   };
 
   switch (response.type) {
     case HOST_ACK:
-      return handleAckResponse(response, applySnapshot, applySnapshotAndNotify, setRevisionAndNotify);
+      return handleAckResponse(
+        response,
+        applySnapshot,
+        applySnapshotAndNotify,
+        setRevisionAndNotify
+      );
     case HOST_REJECT:
-      return handleRejectResponse(response, applySnapshot, applySnapshotAndNotify, setRevisionAndNotify);
+      return handleRejectResponse(
+        response,
+        applySnapshot,
+        applySnapshotAndNotify,
+        setRevisionAndNotify
+      );
     case "topology-host:error":
       throw new Error(response.error);
     default:

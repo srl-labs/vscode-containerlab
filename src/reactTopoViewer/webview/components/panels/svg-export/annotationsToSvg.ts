@@ -1,7 +1,4 @@
-/**
- * Utilities for converting annotations to SVG elements for export.
- * Used by SvgExportPanel to composite annotations into exported SVG.
- */
+// Annotation-to-SVG conversion for export.
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
@@ -141,7 +138,6 @@ function calculateLabelPosition(
   return positions[labelPosition] ?? positions["top-left"];
 }
 
-
 /**
  * Build SVG for group label (no background - matches GroupNode.tsx).
  * Uses MODEL coordinates - the parent transform handles scaling.
@@ -200,12 +196,7 @@ function groupToSvgString(group: GroupStyleAnnotation): string {
       labelFontSize
     );
     // Use #666 as default label color (matches DEFAULT_LABEL_COLOR in GroupNode.tsx)
-    svg += buildGroupLabelSvg(
-      group.name,
-      labelPos,
-      group.labelColor ?? "#666",
-      labelFontSize
-    );
+    svg += buildGroupLabelSvg(group.name, labelPos, group.labelColor ?? "#666", labelFontSize);
   }
 
   svg += `</g>`;

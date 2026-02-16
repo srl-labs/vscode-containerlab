@@ -7,6 +7,7 @@ import { log } from "../../utils/logger";
 
 import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
 import { findDeepestGroupAtPosition } from "./groupUtils";
+import { readThemeColor } from "./themeColor";
 interface UseTextAnnotationsParams {
   isLocked: boolean;
   onLockedAction: () => void;
@@ -14,11 +15,7 @@ interface UseTextAnnotationsParams {
   uiState: Pick<AnnotationUIState, "isAddTextMode" | "selectedTextIds">;
   uiActions: Pick<
     AnnotationUIActions,
-    | "setAddTextMode"
-    | "disableAddTextMode"
-    | "setEditingTextAnnotation"
-    | "closeTextEditor"
-    | "removeFromTextSelection"
+    "setAddTextMode" | "disableAddTextMode" | "setEditingTextAnnotation" | "removeFromTextSelection"
   >;
 }
 
@@ -49,7 +46,9 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
         text: "",
         position,
         fontSize: lastTextStyleRef.current.fontSize ?? 14,
-        fontColor: lastTextStyleRef.current.fontColor ?? "#ffffff",
+        fontColor:
+          lastTextStyleRef.current.fontColor ??
+          readThemeColor("--vscode-editor-foreground", "#333333"),
         backgroundColor: lastTextStyleRef.current.backgroundColor,
         fontWeight: lastTextStyleRef.current.fontWeight ?? "normal",
         fontStyle: lastTextStyleRef.current.fontStyle ?? "normal",
@@ -93,16 +92,12 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
 
   const editTextAnnotation = useCallback(
     (id: string) => {
-      if (!canEditAnnotations) {
-        onLockedAction();
-        return;
-      }
       const annotation = derived.textAnnotations.find((a) => a.id === id);
       if (annotation) {
         uiActions.setEditingTextAnnotation(annotation);
       }
     },
-    [canEditAnnotations, onLockedAction, derived.textAnnotations, uiActions]
+    [derived.textAnnotations, uiActions]
   );
 
   const persist = useCallback(() => {
@@ -130,10 +125,9 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
         fontFamily: annotation.fontFamily
       };
 
-      uiActions.closeTextEditor();
       persist();
     },
-    [derived, uiActions, persist]
+    [derived, persist]
   );
 
   const deleteTextAnnotation = useCallback(

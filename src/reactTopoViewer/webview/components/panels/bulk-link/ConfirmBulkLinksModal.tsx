@@ -1,9 +1,14 @@
-/**
- * ConfirmBulkLinksModal - Confirmation dialog for bulk link creation
- */
+// Confirmation dialog for bulk link creation.
 import React from "react";
-
-import { BasePanel } from "../../ui/editor/BasePanel";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
 
 interface ConfirmBulkLinksModalProps {
   isOpen: boolean;
@@ -22,39 +27,44 @@ export const ConfirmBulkLinksModal: React.FC<ConfirmBulkLinksModalProps> = ({
   onCancel,
   onConfirm
 }) => (
-  <BasePanel
-    title="Bulk Link Creation"
-    isVisible={isOpen}
-    onClose={onCancel}
-    storageKey="bulk-link-confirm"
-    backdrop={true}
-    width={420}
-    zIndex={10000}
-    footer={false}
-  >
-    <div className="space-y-3">
-      <div className="rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2">
-        <div className="text-sm">
-          Create <span className="font-semibold">{count}</span> new link{count === 1 ? "" : "s"}?
-        </div>
-        <div className="mt-1 text-xs text-secondary">
-          <div>
+  <Dialog open={isOpen} onClose={onCancel} maxWidth="xs" fullWidth>
+    <DialogTitle
+      sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
+    >
+      Bulk Link Creation
+      <IconButton size="small" onClick={onCancel}>
+        <CloseIcon fontSize="small" />
+      </IconButton>
+    </DialogTitle>
+    <DialogContent dividers>
+      <Box
+        sx={{
+          p: 1,
+          borderRadius: 0.5,
+          border: 1
+        }}
+      >
+        <Typography variant="body2">
+          Create <strong>{count}</strong> new link{count === 1 ? "" : "s"}?
+        </Typography>
+        <Box sx={{ mt: 0.5 }}>
+          <Typography variant="caption" color="text.secondary">
             Source: <code className="select-text">{sourcePattern}</code>
-          </div>
-          <div>
+          </Typography>
+          <br />
+          <Typography variant="caption" color="text.secondary">
             Target: <code className="select-text">{targetPattern}</code>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2">
-        <button type="button" className="btn btn-secondary btn-small" onClick={onCancel}>
-          Cancel
-        </button>
-        <button type="button" className="btn btn-primary btn-small" onClick={onConfirm}>
-          Create Links
-        </button>
-      </div>
-    </div>
-  </BasePanel>
+          </Typography>
+        </Box>
+      </Box>
+    </DialogContent>
+    <DialogActions sx={{ px: 2, py: 1.5 }}>
+      <Button size="small" onClick={onCancel}>
+        Cancel
+      </Button>
+      <Button size="small" onClick={onConfirm}>
+        Create Links
+      </Button>
+    </DialogActions>
+  </Dialog>
 );

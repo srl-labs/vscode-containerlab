@@ -86,6 +86,8 @@ export interface DevModeInterface {
   selectNodesForClipboard?: (nodeIds: string[]) => void;
   /** Clear all node selections (for E2E testing) */
   clearNodeSelection?: () => void;
+  /** Toggle dummy links visibility (for E2E testing) */
+  toggleDummyLinks?: () => void;
 }
 
 /**

@@ -1,7 +1,4 @@
-/**
- * ReactFlow-native type definitions for the topology viewer.
- * These types replace ParsedElement with ReactFlow's Node/Edge types.
- */
+// ReactFlow type definitions for the topology viewer.
 import type { Node, Edge } from "@xyflow/react";
 
 import type { TextStyle, BoxStyle } from "./annotationStyles";
@@ -217,14 +214,7 @@ export type NodeCreatedHandler = (
 // Constants
 // ============================================================================
 
-/**
- * Selection color constant (VS Code focus border)
- */
-export const SELECTION_COLOR = "var(--vscode-focusBorder, #007ACC)";
-
-/**
- * Default node icon color
- */
+// Default node icon color
 export const DEFAULT_ICON_COLOR = "#005aff";
 
 /**

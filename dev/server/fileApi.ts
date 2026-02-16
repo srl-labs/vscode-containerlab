@@ -1,20 +1,4 @@
-/**
- * Vite API Middleware for File Operations (Simplified)
- *
- * Provides REST endpoints for file I/O and TopologyHost commands.
- * Topology parsing and persistence are handled by TopologyHostCore in Node.
- *
- * Endpoints:
- * - GET  /file/:path     - Read file content (text/plain)
- * - PUT  /file/:path     - Write file content
- * - HEAD /file/:path     - Check if file exists
- * - DELETE /file/:path   - Delete file
- * - GET  /files          - List available .clab.yml files
- * - POST /reset          - Reset session files to original state
- * - GET  /api/events     - SSE endpoint for live file change notifications
- * - POST /api/topology/snapshot - Get TopologyHost snapshot
- * - POST /api/topology/command  - Dispatch TopologyHost command
- */
+// Vite API middleware — REST endpoints for file I/O and TopologyHost commands.
 
 import type { Plugin } from "vite";
 import * as fs from "fs";
@@ -326,6 +310,20 @@ export function fileApiPlugin(): Plugin {
   return {
     name: "file-api",
     configureServer(server) {
+      // Ensure the working topologies directory exists by copying from originals
+      if (!fs.existsSync(TOPOLOGIES_DIR)) {
+        fs.mkdirSync(TOPOLOGIES_DIR, { recursive: true });
+        if (fs.existsSync(TOPOLOGIES_ORIGINAL_DIR)) {
+          for (const file of fs.readdirSync(TOPOLOGIES_ORIGINAL_DIR)) {
+            fs.copyFileSync(
+              path.join(TOPOLOGIES_ORIGINAL_DIR, file),
+              path.join(TOPOLOGIES_DIR, file)
+            );
+          }
+          console.log("[FileAPI] Created topologies/ from topologies-original/");
+        }
+      }
+
       // Start file watcher for disk changes (for dev mode without session)
       startFileWatcher(TOPOLOGIES_DIR);
 
@@ -414,7 +412,9 @@ export function fileApiPlugin(): Plugin {
               mode: payload.mode,
               deploymentState: payload.deploymentState
             });
-            const snapshot = payload.externalChange ? await host.onExternalChange() : await host.getSnapshot();
+            const snapshot = payload.externalChange
+              ? await host.onExternalChange()
+              : await host.getSnapshot();
 
             res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify({ snapshot }));

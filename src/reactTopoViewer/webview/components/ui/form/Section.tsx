@@ -1,7 +1,8 @@
-/**
- * Section - Bordered section with title and optional inheritance badge
- */
+// Bordered section with title and optional inheritance badge.
 import React from "react";
+import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
+import Typography from "@mui/material/Typography";
 
 import { InheritanceBadge } from "./Badge";
 
@@ -17,18 +18,17 @@ interface SectionProps {
 export const Section: React.FC<SectionProps> = ({
   title,
   children,
-  className = "",
   hasBorder = true,
   inherited
 }) => (
-  <div
-    className={`${hasBorder ? "border-b pb-3 mb-3" : ""} ${className}`}
-    style={hasBorder ? { borderColor: "var(--vscode-panel-border)" } : undefined}
-  >
-    <h3 className="section-header">
-      {title}
-      {inherited && <InheritanceBadge />}
-    </h3>
-    {children}
-  </div>
+  <>
+    <Box>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+        <Typography variant="overline">{title}</Typography>
+        {inherited && <InheritanceBadge />}
+      </Box>
+      {children}
+    </Box>
+    {hasBorder && <Divider sx={{ my: 1.5 }} />}
+  </>
 );

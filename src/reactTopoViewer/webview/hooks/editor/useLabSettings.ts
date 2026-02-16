@@ -38,6 +38,7 @@ export interface UseLabSettingsStateResult {
     add: () => void;
     remove: (index: number) => void;
     update: (index: number, field: "key" | "value", value: string) => void;
+    setAll: (options: DriverOption[]) => void;
   };
   handleSave: () => Promise<void>;
 }
@@ -260,7 +261,9 @@ export function useLabSettingsState(labSettings?: LabSettings): UseLabSettingsSt
         driverOptions: prev.driverOptions.map((opt, i) =>
           i === index ? { ...opt, [field]: value } : opt
         )
-      }))
+      })),
+    setAll: (options: DriverOption[]) =>
+      setMgmtState((prev) => ({ ...prev, driverOptions: options }))
   };
 
   const handleSave = useCallback(async () => {

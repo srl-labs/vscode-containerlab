@@ -1,6 +1,4 @@
-/**
- * Shared annotation handles for rotation and line resize
- */
+// Annotation handles for rotation and line resize.
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import { useReactFlow, useUpdateNodeInternals } from "@xyflow/react";
 
@@ -43,7 +41,6 @@ function getActiveLineDrag(nodeId: string, mode: "start" | "end"): LineHandleDra
 function setActiveLineDrag(state: LineHandleDragState | null): void {
   activeLineDrag = state;
 }
-
 
 // ============================================================================
 // Constants

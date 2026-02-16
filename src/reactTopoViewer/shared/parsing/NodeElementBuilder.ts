@@ -1,7 +1,4 @@
-/**
- * Node element builder for creating parsed node elements.
- * Pure functions - no VS Code dependencies.
- */
+// Node element builder — pure functions, no VS Code dependencies.
 
 import type {
   ClabNode,
@@ -277,8 +274,8 @@ function shouldSkipAliasBridgeNode(
 ): boolean {
   return Boolean(
     nodeAnn?.yamlNodeId &&
-      nodeAnn.yamlNodeId !== nodeName &&
-      (nodeObj?.kind === NODE_KIND_BRIDGE || nodeObj?.kind === NODE_KIND_OVS_BRIDGE)
+    nodeAnn.yamlNodeId !== nodeName &&
+    (nodeObj?.kind === NODE_KIND_BRIDGE || nodeObj?.kind === NODE_KIND_OVS_BRIDGE)
   );
 }
 
