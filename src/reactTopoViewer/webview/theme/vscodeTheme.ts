@@ -9,6 +9,16 @@ const EDITOR_WARNING_FOREGROUND = "var(--vscode-editorWarning-foreground)";
 const EDITOR_INFO_FOREGROUND = "var(--vscode-editorInfo-foreground)";
 const TESTING_ICON_PASSED = "var(--vscode-testing-iconPassed, var(--vscode-charts-green))";
 const FOCUS_BORDER = "var(--vscode-focusBorder)";
+const EXPLORER_FONT_FAMILY =
+  "var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif)";
+const EXPLORER_FONT_SIZE = "var(--vscode-font-size, 13px)";
+const EXPLORER_SCOPE_SELECTORS = [
+  "body[data-webview-kind='containerlab-explorer']",
+  ".containerlab-explorer-root"
+] as const;
+
+const explorerScopedSelector = (suffix: string) =>
+  EXPLORER_SCOPE_SELECTORS.map((selector) => `${selector}${suffix}`).join(", ");
 
 const buildPaletteColor = (main: string, contrastText: string) => ({
   main,
@@ -70,6 +80,29 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
       "*::-webkit-scrollbar-track": { background: "transparent" },
       "*::-webkit-scrollbar-thumb": { borderRadius: 4 },
       "*::-webkit-scrollbar-corner": { background: "transparent" },
+      [explorerScopedSelector("")]: {
+        fontFamily: EXPLORER_FONT_FAMILY
+      },
+      [explorerScopedSelector(" .MuiTypography-root")]: {
+        fontFamily: EXPLORER_FONT_FAMILY
+      },
+      [explorerScopedSelector(" .MuiInputBase-root")]: {
+        fontFamily: EXPLORER_FONT_FAMILY
+      },
+      [explorerScopedSelector(" .MuiInputBase-input")]: {
+        fontFamily: EXPLORER_FONT_FAMILY,
+        fontSize: EXPLORER_FONT_SIZE
+      },
+      [explorerScopedSelector(" .explorer-node-label")]: {
+        fontSize: EXPLORER_FONT_SIZE,
+        fontWeight: 400,
+        lineHeight: 1.2
+      },
+      [explorerScopedSelector(" .explorer-section-title")]: {
+        fontSize: EXPLORER_FONT_SIZE,
+        fontWeight: 500,
+        lineHeight: 1.2
+      },
       "@keyframes shortcutFade": {
         "0%": { opacity: 0, transform: "translateY(8px) scale(0.95)" },
         "15%": { opacity: 1, transform: "translateY(0) scale(1)" },

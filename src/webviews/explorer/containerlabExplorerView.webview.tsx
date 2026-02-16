@@ -978,7 +978,7 @@ function ExplorerNodeTextBlock({
               />
             )}
           </Box>
-          <Typography variant="body2" noWrap sx={{ fontWeight: node.primaryAction ? 600 : 500 }}>
+          <Typography className="explorer-node-label" variant="body2" noWrap>
             {node.label}
           </Typography>
           {inlineContainerStatus && (
@@ -1350,7 +1350,7 @@ function ExplorerSectionCard({
           onClick={() => onToggleSectionCollapsed(section.id)}
           sx={{ minWidth: 0, flex: 1, cursor: "pointer" }}
         >
-          <Typography variant="body2" noWrap sx={{ fontSize: "0.8rem", fontWeight: 600, lineHeight: 1.2 }}>
+          <Typography className="explorer-section-title" variant="body2" noWrap>
             {formatSectionTitle(section)}
           </Typography>
         </Box>
@@ -1674,6 +1674,7 @@ export function ContainerlabExplorerView() {
 
   return (
     <Box
+      className="containerlab-explorer-root"
       sx={{
         width: "100%",
         maxWidth: "100%",
