@@ -64,13 +64,6 @@ export class ClabLabTreeNode extends vscode.TreeItem {
       ? new vscode.ThemeIcon("star-full", new vscode.ThemeColor("charts.yellow"))
       : vscode.ThemeIcon.File;
 
-    // Add command to open TopoViewer on click
-    this.command = {
-      command: "containerlab.lab.graph.topoViewer",
-      title: "Open TopoViewer",
-      arguments: [this]
-    };
-
     // Set stable ID to help VS Code track this item across refreshes
     this.id = `lab:${labPath.absolute}`;
   }
@@ -225,11 +218,6 @@ export class ClabSshxLinkTreeNode extends vscode.TreeItem {
     this.contextValue = "containerlabSSHXLink";
     this.tooltip = link;
     this.iconPath = new vscode.ThemeIcon("link-external");
-    this.command = {
-      command: "containerlab.lab.sshx.copyLink",
-      title: "Copy SSHX link",
-      arguments: [link]
-    };
   }
 }
 
@@ -243,11 +231,6 @@ export class ClabGottyLinkTreeNode extends vscode.TreeItem {
     this.contextValue = "containerlabGottyLink";
     this.tooltip = link;
     this.iconPath = new vscode.ThemeIcon("browser");
-    this.command = {
-      command: "containerlab.lab.gotty.copyLink",
-      title: "Copy GoTTY link",
-      arguments: [link]
-    };
   }
 }
 

@@ -1057,19 +1057,9 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     if (sshxLink) {
       labNode.sshxNode = new c.ClabSshxLinkTreeNode(labNode.name!, sshxLink);
       labNode.description = `${relativePath} (Shared)`;
-      labNode.command = {
-        command: "containerlab.lab.sshx.copyLink",
-        title: "Copy SSHX link",
-        arguments: [sshxLink]
-      };
     } else if (gottyLink) {
       labNode.gottyNode = new c.ClabGottyLinkTreeNode(labNode.name!, gottyLink);
       labNode.description = `${relativePath} (Shared)`;
-      labNode.command = {
-        command: "containerlab.lab.gotty.copyLink",
-        title: "Copy GoTTY link",
-        arguments: [gottyLink]
-      };
     } else {
       labNode.description = relativePath;
     }

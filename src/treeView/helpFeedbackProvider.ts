@@ -5,6 +5,18 @@ interface HelpLink {
   url: string;
 }
 
+class HelpLinkTreeItem extends vscode.TreeItem {
+  public readonly link: string;
+
+  constructor(label: string, link: string) {
+    super(label, vscode.TreeItemCollapsibleState.None);
+    this.link = link;
+    this.tooltip = link;
+    this.contextValue = "containerlabHelpLink";
+    this.iconPath = new vscode.ThemeIcon("link-external");
+  }
+}
+
 export class HelpFeedbackProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
   private links: HelpLink[] = [
     { label: "Containerlab Documentation", url: "https://containerlab.dev/" },
@@ -32,15 +44,6 @@ export class HelpFeedbackProvider implements vscode.TreeDataProvider<vscode.Tree
   }
 
   getChildren(): vscode.ProviderResult<vscode.TreeItem[]> {
-    return this.links.map((link) => {
-      const item = new vscode.TreeItem(link.label, vscode.TreeItemCollapsibleState.None);
-      item.command = {
-        command: "containerlab.openLink",
-        title: "Open Link",
-        arguments: [link.url]
-      };
-      item.iconPath = new vscode.ThemeIcon("link-external");
-      return item;
-    });
+    return this.links.map((link) => new HelpLinkTreeItem(link.label, link.url));
   }
 }

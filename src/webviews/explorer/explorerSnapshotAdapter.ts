@@ -22,7 +22,6 @@ interface ExplorerTreeProvider {
 type ExplorerTreeItemLike = vscode.TreeItem & {
   id?: string;
   contextValue?: string;
-  command?: vscode.Command;
   state?: string;
   status?: string;
   link?: string;
@@ -295,24 +294,6 @@ function pushAction(
   );
 }
 
-function primaryActionFromTreeItem(
-  item: ExplorerTreeItemLike,
-  registry: ExplorerActionRegistry
-): ExplorerAction | undefined {
-  const command = item.command;
-  if (!command?.command) {
-    return undefined;
-  }
-
-  const args = Array.isArray(command.arguments) ? command.arguments : [];
-  return registry.createAction(
-    command.command,
-    commandLabel(command.command, command.title || undefined),
-    args,
-    DESTRUCTIVE_COMMANDS.has(command.command)
-  );
-}
-
 function getLinkArgument(item: ExplorerTreeItemLike): string | undefined {
   const link = item.link;
   if (typeof link === "string" && link.length > 0) {
@@ -490,6 +471,19 @@ function appendLinkActions(
   }
 }
 
+function appendHelpFeedbackActions(
+  actions: ExplorerAction[],
+  seen: Set<string>,
+  registry: ExplorerActionRegistry,
+  item: ExplorerTreeItemLike
+): void {
+  const linkArg = getLinkArgument(item);
+  if (!linkArg) {
+    return;
+  }
+  pushAction(actions, seen, registry, "containerlab.openLink", [linkArg], "Open Link");
+}
+
 function getNodeActions(
   sectionId: ExplorerSectionId,
   item: ExplorerTreeItemLike,
@@ -498,13 +492,13 @@ function getNodeActions(
 ): ExplorerAction[] {
   const actions: ExplorerAction[] = [];
   const seen = new Set<string>();
-  const primaryAction = primaryActionFromTreeItem(item, registry);
-  if (primaryAction) {
-    actions.push(primaryAction);
-    seen.add(`${primaryAction.commandId}:${primaryAction.label}`);
-  }
 
   const contextValue = item.contextValue;
+  if (sectionId === "helpFeedback") {
+    appendHelpFeedbackActions(actions, seen, registry, item);
+    return actions;
+  }
+
   if (isLabContext(contextValue)) {
     appendLabActions(actions, seen, registry, sectionId, item);
     return actions;
@@ -525,6 +519,26 @@ function getNodeActions(
   }
 
   return actions;
+}
+
+function resolvePrimaryAction(
+  contextValue: string | undefined,
+  nodeActions: ExplorerAction[]
+): ExplorerAction | undefined {
+  if (isLabContext(contextValue)) {
+    return nodeActions.find((action) => action.commandId === "containerlab.lab.graph.topoViewer");
+  }
+
+  if (
+    contextValue === "containerlabContainer" ||
+    contextValue === "containerlabInterfaceUp" ||
+    contextValue === "containerlabInterfaceDown" ||
+    isShareLinkNode(contextValue)
+  ) {
+    return undefined;
+  }
+
+  return nodeActions.length > 0 ? nodeActions[0] : undefined;
 }
 
 async function getProviderChildren(
@@ -592,7 +606,7 @@ async function buildNode(
   } else {
     shareAction = undefined;
   }
-  const primaryAction = nodeActions.length > 0 ? nodeActions[0] : undefined;
+  const primaryAction = resolvePrimaryAction(contextValue, nodeActions);
   const statusIndicator = isDeployedLab(contextValue)
     ? labStatusIndicatorFromChildren(children)
     : getStatusIndicator(item);
