@@ -335,6 +335,9 @@ let explorerUiState: ExplorerUiState = {};
 let explorerRefreshTimer: number | null = null;
 let explorerActionBindings = new Map<string, ExplorerActionInvocation>();
 const unhandledExplorerCommands = new Set<string>();
+const favoriteLabPaths = new Set<string>();
+const sshxShareLinksByLab = new Map<string, string>();
+const gottyShareLinksByLab = new Map<string, string>();
 
 function stripTopologySuffix(name: string): string {
   return name.replace(/\.clab\.(ya?ml)$/i, "");
@@ -410,6 +413,84 @@ function toPosixPath(pathValue: string): string {
   return pathValue.replace(/\\/g, "/");
 }
 
+function toFavoriteLabKey(pathValue: string): string {
+  return toPosixPath(normalizeTopologyRequestPath(pathValue));
+}
+
+function isFavoriteLabPath(pathValue: string | undefined): boolean {
+  if (!pathValue) {
+    return false;
+  }
+  return favoriteLabPaths.has(toFavoriteLabKey(pathValue));
+}
+
+function createDevShareLink(sessionType: "sshx" | "gotty", labPath: string): string {
+  const labKey = toFavoriteLabKey(labPath);
+  const labSlug = encodeURIComponent(stripTopologySuffix(safeFilename(labKey)));
+  if (sessionType === "sshx") {
+    return `https://sshx.dev/dev-${labSlug}`;
+  }
+  return `http://localhost:8080/?lab=${labSlug}`;
+}
+
+function getShareLinksForLab(
+  pathValue: string | undefined
+): { sshxLink?: string; gottyLink?: string } {
+  if (!pathValue) {
+    return {};
+  }
+  const labKey = toFavoriteLabKey(pathValue);
+  return {
+    sshxLink: sshxShareLinksByLab.get(labKey),
+    gottyLink: gottyShareLinksByLab.get(labKey)
+  };
+}
+
+function buildShareNodesForLab(pathValue: string | undefined): DevExplorerTreeItem[] {
+  if (!pathValue) {
+    return [];
+  }
+  const labKey = toFavoriteLabKey(pathValue);
+  const shareLinks = getShareLinksForLab(pathValue);
+  const nodes: DevExplorerTreeItem[] = [];
+
+  if (shareLinks.gottyLink) {
+    nodes.push({
+      id: `running-gotty-link:${labKey}`,
+      label: "Web Terminal",
+      tooltip: shareLinks.gottyLink,
+      contextValue: "containerlabGottyLink",
+      collapsibleState: TREE_ITEM_NONE,
+      link: shareLinks.gottyLink,
+      command: {
+        command: "containerlab.lab.gotty.copyLink",
+        title: "Copy GoTTY link",
+        arguments: [shareLinks.gottyLink]
+      },
+      children: []
+    });
+  }
+
+  if (shareLinks.sshxLink) {
+    nodes.push({
+      id: `running-sshx-link:${labKey}`,
+      label: "Shared Terminal",
+      tooltip: shareLinks.sshxLink,
+      contextValue: "containerlabSSHXLink",
+      collapsibleState: TREE_ITEM_NONE,
+      link: shareLinks.sshxLink,
+      command: {
+        command: "containerlab.lab.sshx.copyLink",
+        title: "Copy SSHX link",
+        arguments: [shareLinks.sshxLink]
+      },
+      children: []
+    });
+  }
+
+  return nodes;
+}
+
 function topologyRelativePath(pathValue: string): string {
   const normalized = toPosixPath(pathValue);
   const marker = "/topologies/";
@@ -465,6 +546,8 @@ function buildDevInterfaceTooltip(name: string, peer: string, mac: string): stri
 
 function createMockRunningLabItem(): DevExplorerTreeItem {
   const pathValue = "test/test.clab.yml";
+  const isFavorite = isFavoriteLabPath(pathValue);
+  const shareLinks = getShareLinksForLab(pathValue);
   const spineStatus = "Up 18 minutes";
   const leafStatus = "Up 11 minutes";
   const image = "ghcr.io/nokia/srlinux:latest";
@@ -550,26 +633,41 @@ function createMockRunningLabItem(): DevExplorerTreeItem {
       ]
     }
   ];
+  const shareNodes = buildShareNodesForLab(pathValue);
 
   const labItem: DevExplorerTreeItem = {
     id: "running-lab:dev-mock",
     label: "dev-mock-running-lab",
     description: pathValue,
     tooltip: pathValue,
-    contextValue: "containerlabLabDeployed",
+    contextValue: isFavorite ? "containerlabLabDeployedFavorite" : "containerlabLabDeployed",
     collapsibleState: TREE_ITEM_COLLAPSED,
     labPath: {
       absolute: pathValue,
       relative: pathValue
     },
-    children: containers
+    children: [...shareNodes, ...containers]
   };
 
-  labItem.command = {
-    command: "containerlab.lab.graph.topoViewer",
-    title: "Open TopoViewer",
-    arguments: [labItem]
-  };
+  if (shareLinks.sshxLink) {
+    labItem.command = {
+      command: "containerlab.lab.sshx.copyLink",
+      title: "Copy SSHX link",
+      arguments: [shareLinks.sshxLink]
+    };
+  } else if (shareLinks.gottyLink) {
+    labItem.command = {
+      command: "containerlab.lab.gotty.copyLink",
+      title: "Copy GoTTY link",
+      arguments: [shareLinks.gottyLink]
+    };
+  } else {
+    labItem.command = {
+      command: "containerlab.lab.graph.topoViewer",
+      title: "Open TopoViewer",
+      arguments: [labItem]
+    };
+  }
 
   return labItem;
 }
@@ -582,6 +680,9 @@ function buildRunningLabItems(filterText: string): DevExplorerTreeItem[] {
     const topoState = useTopoViewerStore.getState();
     const pathValue = currentFilePath ?? topoState.yamlFileName;
     const labName = stripTopologySuffix(topoState.labName || safeFilename(pathValue || "Current Lab"));
+    const labPath = pathValue || labName;
+    const isFavorite = isFavoriteLabPath(labPath);
+    const shareLinks = getShareLinksForLab(labPath);
 
     const edgeGroups = new Map<string, Array<{ peer: string; edgeId: string }>>();
     for (const edge of graphState.edges) {
@@ -641,25 +742,41 @@ function buildRunningLabItems(filterText: string): DevExplorerTreeItem[] {
         children: interfaces
       };
     });
+    const shareNodes = buildShareNodesForLab(labPath);
+    const labChildren = [...shareNodes, ...containers];
 
     const labItem: DevExplorerTreeItem = {
-      id: `running-lab:${pathValue || labName}`,
+      id: `running-lab:${labPath}`,
       label: labName,
       description: pathValue,
       tooltip: pathValue,
-      contextValue: "containerlabLabDeployed",
-      collapsibleState: containers.length > 0 ? TREE_ITEM_COLLAPSED : TREE_ITEM_NONE,
+      contextValue: isFavorite ? "containerlabLabDeployedFavorite" : "containerlabLabDeployed",
+      collapsibleState: labChildren.length > 0 ? TREE_ITEM_COLLAPSED : TREE_ITEM_NONE,
       labPath: {
-        absolute: pathValue || labName,
-        relative: pathValue || labName
+        absolute: labPath,
+        relative: labPath
       },
-      children: containers
+      children: labChildren
     };
-    labItem.command = {
-      command: "containerlab.lab.graph.topoViewer",
-      title: "Open TopoViewer",
-      arguments: [labItem]
-    };
+    if (shareLinks.sshxLink) {
+      labItem.command = {
+        command: "containerlab.lab.sshx.copyLink",
+        title: "Copy SSHX link",
+        arguments: [shareLinks.sshxLink]
+      };
+    } else if (shareLinks.gottyLink) {
+      labItem.command = {
+        command: "containerlab.lab.gotty.copyLink",
+        title: "Copy GoTTY link",
+        arguments: [shareLinks.gottyLink]
+      };
+    } else {
+      labItem.command = {
+        command: "containerlab.lab.graph.topoViewer",
+        title: "Open TopoViewer",
+        arguments: [labItem]
+      };
+    }
     items.push(labItem);
   }
 
@@ -711,7 +828,9 @@ async function buildLocalLabItems(filterText: string): Promise<DevExplorerTreeIt
       label: file.filename || safeFilename(file.path),
       description: file.path,
       tooltip: file.path,
-      contextValue: "containerlabLabUndeployed",
+      contextValue: isFavoriteLabPath(file.path)
+        ? "containerlabLabUndeployedFavorite"
+        : "containerlabLabUndeployed",
       collapsibleState: TREE_ITEM_NONE,
       labPath: {
         absolute: file.path,
@@ -834,6 +953,10 @@ async function setDeploymentStateAndRefresh(
 ): Promise<void> {
   stateManager.setDeploymentState(state);
   syncHostContext({ deploymentState: state });
+  if (state !== "deployed") {
+    sshxShareLinksByLab.clear();
+    gottyShareLinksByLab.clear();
+  }
   if (labPath) {
     await loadTopologyFile(labPath);
     return;
@@ -868,6 +991,46 @@ async function executeExplorerCommand(commandId: string, args: unknown[]): Promi
     case "containerlab.lab.copyPath": {
       if (labPath) {
         await copyTextToClipboard(labPath);
+      }
+      return;
+    }
+    case "containerlab.lab.toggleFavorite": {
+      if (!labPath) {
+        return;
+      }
+      const favoriteKey = toFavoriteLabKey(labPath);
+      if (favoriteLabPaths.has(favoriteKey)) {
+        favoriteLabPaths.delete(favoriteKey);
+      } else {
+        favoriteLabPaths.add(favoriteKey);
+      }
+      return;
+    }
+    case "containerlab.lab.sshx.attach":
+    case "containerlab.lab.sshx.reattach":
+    case "containerlab.lab.sshx.detach": {
+      if (!labPath) {
+        return;
+      }
+      const labKey = toFavoriteLabKey(labPath);
+      if (commandId.endsWith(".detach")) {
+        sshxShareLinksByLab.delete(labKey);
+      } else if (!sshxShareLinksByLab.has(labKey)) {
+        sshxShareLinksByLab.set(labKey, createDevShareLink("sshx", labPath));
+      }
+      return;
+    }
+    case "containerlab.lab.gotty.attach":
+    case "containerlab.lab.gotty.reattach":
+    case "containerlab.lab.gotty.detach": {
+      if (!labPath) {
+        return;
+      }
+      const labKey = toFavoriteLabKey(labPath);
+      if (commandId.endsWith(".detach")) {
+        gottyShareLinksByLab.delete(labKey);
+      } else if (!gottyShareLinksByLab.has(labKey)) {
+        gottyShareLinksByLab.set(labKey, createDevShareLink("gotty", labPath));
       }
       return;
     }

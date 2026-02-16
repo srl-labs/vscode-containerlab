@@ -29,6 +29,7 @@ export interface ExplorerNode {
   statusIndicator?: "green" | "red" | "yellow" | "blue" | "gray";
   statusDescription?: string;
   primaryAction?: ExplorerAction;
+  shareAction?: ExplorerAction;
   actions: ExplorerAction[];
   children: ExplorerNode[];
 }

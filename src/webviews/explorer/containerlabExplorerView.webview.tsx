@@ -27,6 +27,7 @@ import {
   Search as SearchIcon,
   SettingsEthernet as SettingsEthernetIcon,
   Source as SourceIcon,
+  Star as StarIcon,
   StarBorder as StarBorderIcon,
   Stop as StopIcon,
   Terminal as TerminalIcon,
@@ -503,6 +504,18 @@ function nodeKindFromContext(contextValue: string | undefined): ExplorerNodeKind
   return "other";
 }
 
+function isFavoriteLabNode(contextValue: string | undefined): boolean {
+  return (
+    typeof contextValue === "string" &&
+    contextValue.includes("containerlabLab") &&
+    contextValue.includes("Favorite")
+  );
+}
+
+function isSharedLabNode(node: ExplorerNode): boolean {
+  return Boolean(node.shareAction);
+}
+
 function actionIcon(action: ExplorerAction): SvgIconComponent {
   const command = action.commandId.toLowerCase();
   const commandIcon = ACTION_ICON_BY_COMMAND[command];
@@ -906,15 +919,35 @@ function usePrimaryActionHandler(
   );
 }
 
+function useShareActionHandler(
+  shareAction: ExplorerNode["shareAction"],
+  onInvokeAction: (action: ExplorerAction) => void
+) {
+  return useCallback(
+    (event: MouseEvent<HTMLElement>) => {
+      if (!shareAction) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      onInvokeAction(shareAction);
+    },
+    [shareAction, onInvokeAction]
+  );
+}
+
 interface ExplorerNodeTextBlockProps {
   node: ExplorerNode;
   hasEntryTooltip: boolean;
   leadingIcon: ReturnType<typeof nodeLeadingIcon>;
   showStatusDot: boolean;
+  showFavoriteIcon: boolean;
+  showSharedIcon: boolean;
   inlineContainerStatus: string | undefined;
   showSecondaryLine: boolean;
   secondaryText: string | undefined;
   handlePrimaryAction: (event: MouseEvent<HTMLElement>) => void;
+  handleShareAction: (event: MouseEvent<HTMLElement>) => void;
 }
 
 function ExplorerNodeTextBlock({
@@ -922,10 +955,13 @@ function ExplorerNodeTextBlock({
   hasEntryTooltip,
   leadingIcon,
   showStatusDot,
+  showFavoriteIcon,
+  showSharedIcon,
   inlineContainerStatus,
   showSecondaryLine,
   secondaryText,
-  handlePrimaryAction
+  handlePrimaryAction,
+  handleShareAction
 }: Readonly<ExplorerNodeTextBlockProps>) {
   return (
     <Box
@@ -981,6 +1017,27 @@ function ExplorerNodeTextBlock({
           <Typography className="explorer-node-label" variant="body2" noWrap>
             {node.label}
           </Typography>
+          {showFavoriteIcon && (
+            <StarIcon
+              fontSize="inherit"
+              className="explorer-node-inline-icon explorer-node-inline-icon-favorite"
+              aria-hidden="true"
+            />
+          )}
+          {showSharedIcon && (
+            <IconButton
+              size="small"
+              className="explorer-node-inline-icon-button"
+              onClick={handleShareAction}
+              aria-label={node.shareAction?.label ?? "Open shared session"}
+            >
+              <LinkIcon
+                fontSize="inherit"
+                className="explorer-node-inline-icon explorer-node-inline-icon-shared"
+                aria-hidden="true"
+              />
+            </IconButton>
+          )}
           {inlineContainerStatus && (
             <Typography variant="caption" color="text.secondary" noWrap>
               {inlineContainerStatus}
@@ -1065,6 +1122,8 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
   const inlineContainerStatus = isContainer ? secondaryText?.trim() : undefined;
   const showSecondaryLine = Boolean(secondaryText) && !isContainer && !isInterface;
   const showStatusDot = Boolean(node.statusIndicator) && !isInterface;
+  const showFavoriteIcon = isFavoriteLabNode(node.contextValue);
+  const showSharedIcon = isSharedLabNode(node);
   const {
     menuPosition,
     menuOpenToLeft,
@@ -1078,6 +1137,7 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
     hasContextMenuItems: contextMenuItems.length > 0
   });
   const handlePrimaryAction = usePrimaryActionHandler(node.primaryAction, onInvokeAction);
+  const handleShareAction = useShareActionHandler(node.shareAction, onInvokeAction);
 
   return (
     <Stack
@@ -1092,10 +1152,13 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
         hasEntryTooltip={hasEntryTooltip}
         leadingIcon={leadingIcon}
         showStatusDot={showStatusDot}
+        showFavoriteIcon={showFavoriteIcon}
+        showSharedIcon={showSharedIcon}
         inlineContainerStatus={inlineContainerStatus}
         showSecondaryLine={showSecondaryLine}
         secondaryText={secondaryText}
         handlePrimaryAction={handlePrimaryAction}
+        handleShareAction={handleShareAction}
       />
       <ExplorerNodeActions
         hasActions={hasActions}

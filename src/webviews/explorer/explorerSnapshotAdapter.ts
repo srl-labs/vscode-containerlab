@@ -28,6 +28,11 @@ type ExplorerTreeItemLike = vscode.TreeItem & {
   link?: string;
 };
 
+interface LabShareInfo {
+  kind: "sshx" | "gotty";
+  url: string;
+}
+
 export interface ExplorerSnapshotProviders {
   runningProvider: RunningLabTreeDataProvider;
   localProvider: LocalLabTreeDataProvider;
@@ -320,6 +325,34 @@ function getLinkArgument(item: ExplorerTreeItemLike): string | undefined {
   return undefined;
 }
 
+function isShareLinkNode(contextValue: string | undefined): boolean {
+  return contextValue === "containerlabSSHXLink" || contextValue === "containerlabGottyLink";
+}
+
+function getLabShareInfo(childrenItems: ExplorerTreeItemLike[]): LabShareInfo | undefined {
+  let sshxUrl: string | undefined;
+  let gottyUrl: string | undefined;
+
+  for (const child of childrenItems) {
+    const contextValue = child.contextValue;
+    if (contextValue === "containerlabSSHXLink") {
+      sshxUrl = getLinkArgument(child);
+      continue;
+    }
+    if (contextValue === "containerlabGottyLink") {
+      gottyUrl = getLinkArgument(child);
+    }
+  }
+
+  if (sshxUrl) {
+    return { kind: "sshx", url: sshxUrl };
+  }
+  if (gottyUrl) {
+    return { kind: "gotty", url: gottyUrl };
+  }
+  return undefined;
+}
+
 function appendLabActions(
   actions: ExplorerAction[],
   seen: Set<string>,
@@ -521,21 +554,48 @@ async function buildNode(
   registry: ExplorerActionRegistry,
   pathId: string
 ): Promise<ExplorerNode> {
-  const label = labelToText(item.label);
   const contextValue = item.contextValue;
+  const rawLabel = labelToText(item.label);
+  const label = isLabContext(contextValue) ? rawLabel.replace(/^🔗\s*/u, "") : rawLabel;
   const description = shouldHideNodeDescription(contextValue)
     ? undefined
     : descriptionToText(item.description);
   const tooltip = tooltipToText(item.tooltip);
-  const childrenItems = shouldResolveChildren(item)
+  const rawChildrenItems = shouldResolveChildren(item)
     ? await getProviderChildren(provider, item)
     : [];
+  const shareInfo = isLabContext(contextValue) ? getLabShareInfo(rawChildrenItems) : undefined;
+  const childrenItems = isLabContext(contextValue)
+    ? rawChildrenItems.filter((child) => !isShareLinkNode(child.contextValue))
+    : rawChildrenItems;
   const children = await Promise.all(
     childrenItems.map((child, index) =>
       buildNode(provider, child, sectionId, options, registry, `${pathId}/${index}`)
     )
   );
   const nodeActions = getNodeActions(sectionId, item, registry, options);
+  if (shareInfo) {
+    const copyCommandId =
+      shareInfo.kind === "sshx" ? "containerlab.lab.sshx.copyLink" : "containerlab.lab.gotty.copyLink";
+    const hasCopyAction = nodeActions.some((action) => action.commandId === copyCommandId);
+    if (!hasCopyAction) {
+      nodeActions.push(
+        registry.createAction(
+          copyCommandId,
+          commandLabel(copyCommandId),
+          [shareInfo.url],
+          DESTRUCTIVE_COMMANDS.has(copyCommandId)
+        )
+      );
+    }
+  }
+  let shareAction: ExplorerAction | undefined;
+  if (shareInfo) {
+    const label = shareInfo.kind === "sshx" ? "Open Shared Terminal" : "Open Web Terminal";
+    shareAction = registry.createAction("containerlab.openLink", label, [shareInfo.url]);
+  } else {
+    shareAction = undefined;
+  }
   const primaryAction = nodeActions.length > 0 ? nodeActions[0] : undefined;
   const statusIndicator = isDeployedLab(contextValue)
     ? labStatusIndicatorFromChildren(children)
@@ -550,6 +610,7 @@ async function buildNode(
     statusIndicator,
     statusDescription: description,
     primaryAction,
+    shareAction,
     actions: nodeActions,
     children
   };

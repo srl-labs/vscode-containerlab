@@ -98,6 +98,22 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
         fontWeight: 400,
         lineHeight: 1.2
       },
+      [explorerScopedSelector(" .explorer-node-inline-icon")]: {
+        fontSize: "13px",
+        flex: "0 0 auto"
+      },
+      [explorerScopedSelector(" .explorer-node-inline-icon-button")]: {
+        width: 16,
+        height: 16,
+        padding: 0,
+        color: "inherit"
+      },
+      [explorerScopedSelector(" .explorer-node-inline-icon-favorite")]: {
+        color: "var(--vscode-charts-yellow, var(--vscode-editorWarning-foreground))"
+      },
+      [explorerScopedSelector(" .explorer-node-inline-icon-shared")]: {
+        color: "var(--vscode-icon-foreground, var(--vscode-foreground))"
+      },
       [explorerScopedSelector(" .explorer-section-title")]: {
         fontSize: EXPLORER_FONT_SIZE,
         fontWeight: 500,
