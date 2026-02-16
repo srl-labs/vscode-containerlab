@@ -159,6 +159,86 @@ async function build() {
     }
   });
 
+  const welcomeWebviewBuild = esbuild.build({
+    ...commonOptions,
+    entryPoints: ["src/webviews/welcome/welcomePage.webview.tsx"],
+    platform: "browser",
+    format: "iife",
+    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    outfile: "dist/welcomePageWebview.js",
+    plugins: [ignoreCssPlugin],
+    jsx: "automatic",
+    loader: {
+      ".svg": "dataurl",
+      ".png": "dataurl",
+      ".jpg": "dataurl",
+      ".gif": "dataurl"
+    },
+    define: {
+      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
+    }
+  });
+
+  const inspectWebviewBuild = esbuild.build({
+    ...commonOptions,
+    entryPoints: ["src/webviews/inspect/inspect.webview.tsx"],
+    platform: "browser",
+    format: "iife",
+    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    outfile: "dist/inspectWebview.js",
+    plugins: [ignoreCssPlugin],
+    jsx: "automatic",
+    loader: {
+      ".svg": "dataurl",
+      ".png": "dataurl",
+      ".jpg": "dataurl",
+      ".gif": "dataurl"
+    },
+    define: {
+      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
+    }
+  });
+
+  const nodeImpairmentsWebviewBuild = esbuild.build({
+    ...commonOptions,
+    entryPoints: ["src/webviews/nodeImpairments/nodeImpairments.webview.tsx"],
+    platform: "browser",
+    format: "iife",
+    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    outfile: "dist/nodeImpairmentsWebview.js",
+    plugins: [ignoreCssPlugin],
+    jsx: "automatic",
+    loader: {
+      ".svg": "dataurl",
+      ".png": "dataurl",
+      ".jpg": "dataurl",
+      ".gif": "dataurl"
+    },
+    define: {
+      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
+    }
+  });
+
+  const wiresharkVncWebviewBuild = esbuild.build({
+    ...commonOptions,
+    entryPoints: ["src/webviews/wiresharkVnc/wiresharkVnc.webview.tsx"],
+    platform: "browser",
+    format: "iife",
+    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    outfile: "dist/wiresharkVncWebview.js",
+    plugins: [ignoreCssPlugin],
+    jsx: "automatic",
+    loader: {
+      ".svg": "dataurl",
+      ".png": "dataurl",
+      ".jpg": "dataurl",
+      ".gif": "dataurl"
+    },
+    define: {
+      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
+    }
+  });
+
   // Build Monaco workers for webview (separate files for CSP-friendly worker-src)
   const monacoWorkersBuild = esbuild.build({
     ...commonOptions,
@@ -178,6 +258,10 @@ async function build() {
     extensionBuild,
     webviewBuild,
     explorerWebviewBuild,
+    welcomeWebviewBuild,
+    inspectWebviewBuild,
+    nodeImpairmentsWebviewBuild,
+    wiresharkVncWebviewBuild,
     monacoWorkersBuild,
     copyFonts(),
     copyMapLibreWorker(),
@@ -235,6 +319,74 @@ async function build() {
       }
     });
 
+    const welcomeWebCtx = await esbuild.context({
+      ...commonOptions,
+      entryPoints: ["src/webviews/welcome/welcomePage.webview.tsx"],
+      platform: "browser",
+      format: "iife",
+      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      outfile: "dist/welcomePageWebview.js",
+      plugins: [ignoreCssPlugin],
+      jsx: "automatic",
+      loader: {
+        ".svg": "dataurl",
+        ".png": "dataurl",
+        ".jpg": "dataurl",
+        ".gif": "dataurl"
+      }
+    });
+
+    const inspectWebCtx = await esbuild.context({
+      ...commonOptions,
+      entryPoints: ["src/webviews/inspect/inspect.webview.tsx"],
+      platform: "browser",
+      format: "iife",
+      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      outfile: "dist/inspectWebview.js",
+      plugins: [ignoreCssPlugin],
+      jsx: "automatic",
+      loader: {
+        ".svg": "dataurl",
+        ".png": "dataurl",
+        ".jpg": "dataurl",
+        ".gif": "dataurl"
+      }
+    });
+
+    const nodeImpairmentsWebCtx = await esbuild.context({
+      ...commonOptions,
+      entryPoints: ["src/webviews/nodeImpairments/nodeImpairments.webview.tsx"],
+      platform: "browser",
+      format: "iife",
+      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      outfile: "dist/nodeImpairmentsWebview.js",
+      plugins: [ignoreCssPlugin],
+      jsx: "automatic",
+      loader: {
+        ".svg": "dataurl",
+        ".png": "dataurl",
+        ".jpg": "dataurl",
+        ".gif": "dataurl"
+      }
+    });
+
+    const wiresharkVncWebCtx = await esbuild.context({
+      ...commonOptions,
+      entryPoints: ["src/webviews/wiresharkVnc/wiresharkVnc.webview.tsx"],
+      platform: "browser",
+      format: "iife",
+      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      outfile: "dist/wiresharkVncWebview.js",
+      plugins: [ignoreCssPlugin],
+      jsx: "automatic",
+      loader: {
+        ".svg": "dataurl",
+        ".png": "dataurl",
+        ".jpg": "dataurl",
+        ".gif": "dataurl"
+      }
+    });
+
     const monacoWorkersCtx = await esbuild.context({
       ...commonOptions,
       entryPoints: {
@@ -252,6 +404,10 @@ async function build() {
       extCtx.watch(),
       webCtx.watch(),
       explorerWebCtx.watch(),
+      welcomeWebCtx.watch(),
+      inspectWebCtx.watch(),
+      nodeImpairmentsWebCtx.watch(),
+      wiresharkVncWebCtx.watch(),
       monacoWorkersCtx.watch()
     ]);
 

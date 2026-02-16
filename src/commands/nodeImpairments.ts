@@ -1,17 +1,10 @@
 import * as vscode from "vscode";
 
 import type { ClabContainerTreeNode } from "../treeView/common";
-import { getNodeImpairmentsHtml } from "../webview/nodeImpairmentsHtml";
 import { outputChannel, containerlabBinaryPath } from "../globals";
 import { runCommand } from "../utils/utils";
-
-type NetemFields = {
-  delay: string;
-  jitter: string;
-  loss: string;
-  rate: string;
-  corruption: string;
-};
+import { getNodeImpairmentsWebviewHtml } from "../webviews/nodeImpairments/nodeImpairmentsWebviewHtml";
+import type { NetemFields } from "../webviews/nodeImpairments/types";
 
 /**
  * Raw netem item from CLI JSON output
@@ -129,7 +122,7 @@ async function refreshNetemSettings(
   return netemMap;
 }
 
-function buildNetemArgs(fields: Record<string, string>): string[] {
+function buildNetemArgs(fields: NetemFields): string[] {
   const netemArgs: string[] = [];
   if (fields.delay) {
     netemArgs.push(`--delay ${fields.delay}`);
@@ -218,17 +211,25 @@ export async function manageNodeImpairments(
     "clabNodeImpairments",
     `Link Impairments: ${node.label}`,
     vscode.ViewColumn.One,
-    { enableScripts: true }
+    {
+      enableScripts: true,
+      localResourceRoots: [
+        vscode.Uri.joinPath(context.extensionUri, "dist"),
+        vscode.Uri.joinPath(context.extensionUri, "resources")
+      ]
+    }
   );
 
   const iconUri = vscode.Uri.joinPath(context.extensionUri, "resources", "containerlab.svg");
   panel.iconPath = iconUri;
 
-  panel.webview.html = getNodeImpairmentsHtml(
+  panel.webview.html = getNodeImpairmentsWebviewHtml(
     panel.webview,
-    node.name,
-    netemMap,
-    context.extensionUri
+    context.extensionUri,
+    {
+      nodeName: node.name,
+      interfacesData: netemMap
+    }
   );
 
   panel.webview.onDidReceiveMessage(

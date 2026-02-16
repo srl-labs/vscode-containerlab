@@ -36,8 +36,12 @@ function fromAcquire(): VsCodeApiLike | undefined {
     return undefined;
   }
 
-  const api = maybeAcquire();
-  return hasVsCodeApi(api) ? api : undefined;
+  try {
+    const api = maybeAcquire();
+    return hasVsCodeApi(api) ? api : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function fromWindow(): VsCodeApiLike | undefined {
@@ -68,7 +72,10 @@ function fromWindow(): VsCodeApiLike | undefined {
 
 export function getVSCodeApi(): VsCodeApiLike {
   if (!vscodeApi) {
-    vscodeApi = fromAcquire() ?? fromWindow();
+    // Prefer an already-acquired API instance if present.
+    // Some webviews bootstrap window.vscode up-front, and a second
+    // acquireVsCodeApi() call can throw.
+    vscodeApi = fromWindow() ?? fromAcquire();
   }
 
   if (!vscodeApi) {

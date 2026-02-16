@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
 
-import { getInspectHtml } from "../webview/inspectHtml";
 import type { ClabLabTreeNode } from "../treeView/common";
 import { outputChannel } from "../globals";
 import * as inspector from "../treeView/inspector";
+import { getInspectWebviewHtml } from "../webviews/inspect/inspectWebviewHtml";
+import type { InspectContainerData } from "../webviews/inspect/types";
 
 // Store the current panel and context for refresh functionality
 let currentPanel: vscode.WebviewPanel | undefined;
@@ -15,7 +16,7 @@ let currentContext:
     }
   | undefined;
 
-type InspectContainer = Record<string, unknown>;
+type InspectContainer = InspectContainerData;
 type InspectDataLegacy = { containers?: InspectContainer[] };
 type InspectDataGrouped = Record<string, InspectContainer[]>;
 type InspectData = InspectDataLegacy | InspectDataGrouped | null | undefined;
@@ -96,7 +97,7 @@ export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.Exten
         continue;
       }
       const containersList = containers as unknown as InspectContainer[];
-      const topoFile = containersList.length > 0 ? containersList[0]["topo-file"] : undefined;
+      const topoFile = containersList[0]?.["topo-file"];
       if ((node.name && labName === node.name) || topoFile === node.labPath.absolute) {
         filtered[labName] = containersList;
         break;
@@ -124,7 +125,9 @@ export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.Exten
 interface WebviewMessage {
   command: string;
   containerName?: string;
-  port?: number;
+  containerId?: string;
+  port?: number | string;
+  protocol?: string;
 }
 
 // showInspectWebview now sets up message handling
@@ -135,12 +138,18 @@ function showInspectWebview(
 ) {
   if (currentPanel) {
     currentPanel.title = title;
-    currentPanel.webview.html = getInspectHtml(currentPanel.webview, containers, extensionUri);
+    currentPanel.webview.html = getInspectWebviewHtml(currentPanel.webview, extensionUri, {
+      containers
+    });
     return;
   }
 
   const panel = vscode.window.createWebviewPanel("clabInspect", title, vscode.ViewColumn.One, {
-    enableScripts: true
+    enableScripts: true,
+    localResourceRoots: [
+      vscode.Uri.joinPath(extensionUri, "dist"),
+      vscode.Uri.joinPath(extensionUri, "resources")
+    ]
   });
 
   const iconUri = vscode.Uri.joinPath(extensionUri, "resources", "containerlab.svg");
@@ -168,12 +177,20 @@ function showInspectWebview(
           break;
 
         case "openPort": {
+          const port =
+            typeof message.port === "number" || typeof message.port === "string"
+              ? String(message.port)
+              : "";
+          if (!port) {
+            break;
+          }
+
           outputChannel.appendLine(
-            `[Inspect Command]: Open port requested - ${message.containerName}:${message.port}`
+            `[Inspect Command]: Open port requested - ${message.containerName || ""}:${port}`
           );
-          const url = `http://localhost:${message.port}`;
-          vscode.env.openExternal(vscode.Uri.parse(url));
-          vscode.window.showInformationMessage(`Opening port ${message.port} in browser`);
+          const url = `http://localhost:${port}`;
+          void vscode.env.openExternal(vscode.Uri.parse(url));
+          void vscode.window.showInformationMessage(`Opening port ${port} in browser`);
           break;
         }
       }
@@ -190,7 +207,5 @@ function showInspectWebview(
     }
   });
 
-  // The getInspectHtml function should work correctly as long as each container object
-  // in the `containers` array has `lab_name` or `labPath`.
-  panel.webview.html = getInspectHtml(panel.webview, containers, extensionUri);
+  panel.webview.html = getInspectWebviewHtml(panel.webview, extensionUri, { containers });
 }
