@@ -44,7 +44,6 @@ export function execCommandInTerminal(
 /**
  * Execute a shell command in the extension's Output channel.
  * We *strip ANSI codes* from both stdout and stderr
- * We trigger a refresh after it finishes.
  *
  * @param command Command to execute in output.
  * @param show Whether to focus the output channel or not.
@@ -121,8 +120,6 @@ export async function execCommandInOutput(
 
   proc.on("close", (code) => {
     outputChannel.info(`Exited with code ${code}`);
-    // trigger a refresh after execution
-    vscode.commands.executeCommand("containerlab.refresh");
   });
 }
 
@@ -271,8 +268,6 @@ export class Command {
             outputChannel.show(true);
           }
         });
-
-      await vscode.commands.executeCommand("containerlab.refresh");
     } catch (err: unknown) {
       const command = cmd[1];
       const errMessage = err instanceof Error ? err.message : String(err);

@@ -186,10 +186,6 @@ export class ContainerlabExplorerViewProvider
     return this.filterText.length > 0;
   }
 
-  public requestRefresh(): void {
-    this.scheduleSnapshot(0);
-  }
-
   private async handleMessage(message: ExplorerOutgoingMessage): Promise<void> {
     if (!message || typeof message.command !== "string") {
       return;
@@ -215,18 +211,13 @@ export class ContainerlabExplorerViewProvider
 
     if (isPersistUiStateMessage(message)) {
       await this.persistUiState(message.state);
-      return;
-    }
-
-    if (message.command === "requestRefresh") {
-      this.scheduleSnapshot(0);
     }
   }
 
   private async executeAction(message: ExplorerInvokeActionMessage): Promise<void> {
     const binding = this.actionBindings.get(message.actionRef);
     if (!binding) {
-      const msg = "Action is no longer available. Refresh the explorer and try again.";
+      const msg = "Action is no longer available. Reopen the explorer and try again.";
       this.postError(msg);
       return;
     }

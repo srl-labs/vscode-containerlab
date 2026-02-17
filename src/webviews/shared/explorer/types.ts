@@ -89,10 +89,6 @@ export interface ExplorerInvokeActionMessage {
   actionRef: string;
 }
 
-export interface ExplorerRequestRefreshMessage {
-  command: "requestRefresh";
-}
-
 export interface ExplorerPersistUiStateMessage {
   command: "persistUiState";
   state: ExplorerUiState;
@@ -102,5 +98,4 @@ export type ExplorerOutgoingMessage =
   | ExplorerReadyMessage
   | ExplorerSetFilterMessage
   | ExplorerInvokeActionMessage
-  | ExplorerRequestRefreshMessage
   | ExplorerPersistUiStateMessage;

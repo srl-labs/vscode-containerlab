@@ -243,7 +243,7 @@ const ACTION_ICON_RULES: ReadonlyArray<CommandIconRule> = [
     icon: DeleteOutlineIcon
   },
   {
-    match: (command) => command.includes("refresh") || command.includes("redeploy"),
+    match: (command) => command.includes("redeploy"),
     icon: RefreshIcon
   },
   { match: (command) => command.includes("stop"), icon: StopIcon },
@@ -335,8 +335,7 @@ const ACTION_GROUP_RULES: ReadonlyArray<CommandActionGroupRule> = [
     match: (command) =>
       command.includes("filter") ||
       command.includes("hide") ||
-      command.includes("show") ||
-      command.includes("refresh"),
+      command.includes("show"),
     group: "view"
   }
 ];

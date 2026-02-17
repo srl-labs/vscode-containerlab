@@ -118,15 +118,6 @@ function showOutputChannel() {
   outputChannel.show(true);
 }
 
-async function refreshLabViews() {
-  await ins.update();
-  localLabsProvider.forceRefresh();
-  Promise.resolve(runningLabsProvider.refresh()).catch(() => {
-    /* ignore */
-  });
-  explorerViewProvider?.requestRefresh();
-}
-
 function manageImpairments(node: c.ClabContainerTreeNode) {
   return cmd.manageNodeImpairments(node, extensionContext);
 }
@@ -291,9 +282,6 @@ function registerCommands(context: vscode.ExtensionContext) {
   commands.forEach(([name, handler]) => {
     context.subscriptions.push(vscode.commands.registerCommand(name, handler));
   });
-  context.subscriptions.push(
-    vscode.commands.registerCommand("containerlab.refresh", refreshLabViews)
-  );
   context.subscriptions.push(
     vscode.commands.registerCommand("containerlab.viewLogs", showOutputChannel)
   );

@@ -29,7 +29,6 @@ export async function deleteLab(node: ClabLabTreeNode) {
       await extensionContext.globalState.update("favoriteLabs", Array.from(favoriteLabs));
     }
     vscode.window.showInformationMessage(`Deleted lab file ${node.label}`);
-    vscode.commands.executeCommand("containerlab.refresh");
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     vscode.window.showErrorMessage(`Failed to delete lab: ${msg}`);
