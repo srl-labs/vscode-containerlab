@@ -37,7 +37,8 @@ import {
 import type { CustomNodeTemplate } from "../../../../shared/types/editors";
 import { ROLE_SVG_MAP, DEFAULT_ICON_COLOR } from "../../../../shared/types/graph";
 import { generateEncodedSVG, type NodeType } from "../../../icons/SvgGenerator";
-import { useCustomNodes, useTopoViewerStore } from "../../../stores/topoViewerStore";
+import { useCustomIcons, useCustomNodes, useTopoViewerStore } from "../../../stores/topoViewerStore";
+import { buildCustomIconMap } from "../../../utils/iconUtils";
 import type { TabDefinition } from "../../ui/editor";
 import { TabNavigation } from "../../ui/editor/TabNavigation";
 import { IconPreview } from "../../ui/form";
@@ -85,8 +86,12 @@ function getRoleSvgType(role: string): NodeType {
   return "pe";
 }
 
-function getTemplateIconUrl(template: CustomNodeTemplate): string {
+function getTemplateIconUrl(template: CustomNodeTemplate, customIconMap: Map<string, string>): string {
   const role = template.icon || "pe";
+  const customDataUri = customIconMap.get(role);
+  if (customDataUri) {
+    return customDataUri;
+  }
   const color = template.iconColor || DEFAULT_ICON_COLOR;
   const svgType = getRoleSvgType(role);
   return generateEncodedSVG(svgType, color);
@@ -172,6 +177,7 @@ type AnnotationPayload = {
 
 interface DraggableNodeProps {
   template: CustomNodeTemplate;
+  customIconMap: Map<string, string>;
   isDefault?: boolean;
   onEdit?: (name: string) => void;
   onDelete?: (name: string) => void;
@@ -180,6 +186,7 @@ interface DraggableNodeProps {
 
 const DraggableNode: React.FC<DraggableNodeProps> = ({
   template,
+  customIconMap,
   isDefault,
   onEdit,
   onDelete,
@@ -199,7 +206,10 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
     [template.name]
   );
 
-  const iconUrl = useMemo(() => getTemplateIconUrl(template), [template]);
+  const iconUrl = useMemo(
+    () => getTemplateIconUrl(template, customIconMap),
+    [template, customIconMap]
+  );
 
   return (
     <PaletteDraggableCard onDragStart={onDragStart}>
@@ -351,6 +361,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   infoTabTitle
 }) => {
   const customNodes = useCustomNodes();
+  const customIcons = useCustomIcons();
   const defaultNode = useTopoViewerStore((state) => state.defaultNode);
   const yamlFileName = useTopoViewerStore((state) => state.yamlFileName);
   const annotationsFileName = useTopoViewerStore((state) => state.annotationsFileName);
@@ -436,6 +447,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
         (node.icon && node.icon.toLowerCase().includes(search))
     );
   }, [customNodes, filter]);
+  const customIconMap = useMemo(() => buildCustomIconMap(customIcons), [customIcons]);
 
   const filteredNetworks = useMemo(() => {
     if (!filter) return NETWORK_TYPE_DEFINITIONS;
@@ -594,6 +606,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
                   <DraggableNode
                     key={template.name}
                     template={template}
+                    customIconMap={customIconMap}
                     isDefault={template.name === defaultNode || template.setDefault}
                     onEdit={onEditCustomNode}
                     onDelete={onDeleteCustomNode}
