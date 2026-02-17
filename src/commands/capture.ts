@@ -5,6 +5,7 @@ import * as utils from "../utils";
 import type { ClabInterfaceTreeNode } from "../treeView/common";
 import { genPacketflixURI, getHostname, setSessionHostname } from "../utils/packetflix";
 import type { ImagePullPolicy } from "../utils/consts";
+import { getWiresharkVncWebviewHtml } from "../webviews/wiresharkVnc/wiresharkVncWebviewHtml";
 import {
   DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE,
   DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY,
@@ -305,6 +306,13 @@ export async function captureEdgesharkVNC(
   // let vscode port forward for us
   const localUri = vscode.Uri.parse(`http://localhost:${port}`);
   const externalUri = (await vscode.env.asExternalUri(localUri)).toString();
+  const extensionUri = vscode.extensions.getExtension("srl-labs.vscode-containerlab")?.extensionUri;
+  if (!extensionUri) {
+    void vscode.window.showErrorMessage(
+      "Unable to render Wireshark panel because extension resources are unavailable."
+    );
+    return;
+  }
 
   const panel = vscode.window.createWebviewPanel(
     "clabWiresharkVNC",
@@ -312,7 +320,11 @@ export async function captureEdgesharkVNC(
     vscode.ViewColumn.One,
     {
       enableScripts: true,
-      retainContextWhenHidden: keepOpenInBackground
+      retainContextWhenHidden: keepOpenInBackground,
+      localResourceRoots: [
+        vscode.Uri.joinPath(extensionUri, "dist"),
+        vscode.Uri.joinPath(extensionUri, "resources")
+      ]
     }
   );
 
@@ -345,7 +357,10 @@ export async function captureEdgesharkVNC(
     );
   }
 
-  panel.webview.html = buildWiresharkVncHtml(iframeUrl, Boolean(volumeMount));
+  panel.webview.html = getWiresharkVncWebviewHtml(panel.webview, extensionUri, {
+    iframeUrl,
+    showVolumeTip: Boolean(volumeMount)
+  });
 
   const readinessMonitor = createVncReadinessMonitor(panel, localUri.toString(), iframeUrl);
 
@@ -360,156 +375,6 @@ export async function captureEdgesharkVNC(
   });
 
   // Readiness checks are triggered by the webview via postMessage.
-}
-
-function buildWiresharkVncHtml(iframeUrl: string, showVolumeTip: boolean): string {
-  const volumeTip = showVolumeTip
-    ? '<div class="info">Tip: Save pcap files to /pcaps to persist them in the lab directory</div>'
-    : "";
-
-  return `
-    <!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-src https: http:; connect-src https: http:;" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Wireshark Capture</title>
-        <style>
-          html, body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            height: 100%;
-            width: 100%;
-            background: #1e1e1e;
-          }
-          iframe {
-            border: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            width: 100%;
-            height: 100%;
-          }
-          .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #ccc;
-            font-family: sans-serif;
-            text-align: center;
-          }
-          .info {
-            color: #999;
-            font-size: 0.9em;
-            margin-top: 10px;
-          }
-          .retry-info {
-            color: #888;
-            font-size: 0.85em;
-            margin-top: 15px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="loading" id="loading">
-          Loading Wireshark...
-          ${volumeTip}
-          <div class="retry-info" id="retry-info"></div>
-        </div>
-        <iframe id="vnc-frame" frameborder="0" width="100%" height="100%" style="display: none;"></iframe>
-        <script>
-          (function() {
-            const vscode = acquireVsCodeApi();
-            const iframe = document.getElementById('vnc-frame');
-            const loading = document.getElementById('loading');
-            const retryInfo = document.getElementById('retry-info');
-            let pendingRetry = false;
-            const fallbackUrl = ${JSON.stringify(iframeUrl)};
-            let latestUrl = fallbackUrl;
-
-            function appendCacheBuster(url) {
-              const separator = url.includes('?') ? '&' : '?';
-              return url + separator + 't=' + Date.now();
-            }
-
-            function loadVNC(url, forceReload) {
-              const nextUrl = url || latestUrl || fallbackUrl;
-              if (!nextUrl) {
-                return;
-              }
-
-              latestUrl = nextUrl;
-              const targetUrl = forceReload ? appendCacheBuster(nextUrl) : nextUrl;
-              loading.style.display = 'block';
-              iframe.style.display = 'none';
-              iframe.src = targetUrl;
-            }
-
-            iframe.onload = function() {
-              loading.style.display = 'none';
-              iframe.style.display = 'block';
-              retryInfo.textContent = '';
-              pendingRetry = false;
-            };
-
-            iframe.onerror = function() {
-              loading.style.display = 'block';
-              iframe.style.display = 'none';
-              retryInfo.textContent = 'Connection failed - retrying...';
-              if (!pendingRetry) {
-                pendingRetry = true;
-                vscode.postMessage({ type: 'retry-check' });
-              }
-            };
-
-            window.addEventListener('message', function(event) {
-              const message = event.data || {};
-              if (!message || !message.type) {
-                return;
-              }
-
-              switch (message.type) {
-                case 'vnc-progress': {
-                  pendingRetry = false;
-                  const attempt = typeof message.attempt === 'number' ? message.attempt : 0;
-                  const maxAttempts = typeof message.maxAttempts === 'number' ? message.maxAttempts : 0;
-                  if (attempt <= 1) {
-                    retryInfo.textContent = 'Waiting for VNC server...';
-                  } else if (maxAttempts > 0) {
-                    retryInfo.textContent = 'Waiting for VNC server... (attempt ' + attempt + '/' + maxAttempts + ')';
-                  } else {
-                    retryInfo.textContent = 'Waiting for VNC server... (attempt ' + attempt + ')';
-                  }
-                  break;
-                }
-                case 'vnc-ready': {
-                  pendingRetry = false;
-                  retryInfo.textContent = 'VNC server ready, loading...';
-                  loadVNC(message.url, false);
-                  break;
-                }
-                case 'vnc-timeout': {
-                  pendingRetry = false;
-                  retryInfo.textContent = 'Connection timeout - attempting to load anyway...';
-                  loadVNC(message.url, true);
-                  break;
-                }
-                default:
-                  break;
-              }
-            });
-
-            vscode.postMessage({ type: 'retry-check' });
-          })();
-        </script>
-      </body>
-    </html>
-  `;
 }
 
 type VncMonitorToken = { cancelled: boolean };

@@ -72,15 +72,16 @@ function registerUnsupportedViews(context: vscode.ExtensionContext) {
     html, body {
       margin: 0;
       padding: 0;
-      font-family: var(--vscode-font-family);
-      color: var(--vscode-foreground);
-      background: var(--vscode-editor-background);
+      font-family: sans-serif;
+      color: inherit;
+      background: transparent;
     }
     .wrap {
       padding: 12px;
     }
     a {
-      color: var(--vscode-textLink-foreground);
+      color: inherit;
+      text-decoration: underline;
     }
   </style>
 </head>
