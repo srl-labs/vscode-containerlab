@@ -94,6 +94,16 @@ function mergeNodeExtraData(data: NodeElementData): NodeSaveData["extraData"] {
       }
     }
   }
+
+  // New nodes carry the visual icon in data.role; persist it as topoViewerRole
+  // so host snapshots keep custom icons instead of falling back to defaults.
+  if (result.topoViewerRole === undefined) {
+    const role = data.role;
+    if (typeof role === "string" && role.trim().length > 0) {
+      result.topoViewerRole = role;
+    }
+  }
+
   return result;
 }
 

@@ -54,7 +54,6 @@ export interface ExplorerSnapshotBuildResult {
 }
 
 const COMMAND_LABELS: Record<string, string> = {
-  "containerlab.refresh": "Refresh",
   "containerlab.lab.openFile": "Edit Topology",
   "containerlab.editor.topoViewerEditor.open": "Edit Topology (TopoViewer)",
   "containerlab.lab.copyPath": "Copy File Path",

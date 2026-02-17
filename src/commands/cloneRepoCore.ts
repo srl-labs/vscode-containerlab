@@ -35,7 +35,6 @@ export async function cloneRepoFromUrl(repoUrl?: string) {
     const command = `git clone ${repoUrl} "${dest}"`;
     await runCommand(command, "Clone repository", outputChannel, false, false);
     vscode.window.showInformationMessage(`Repository cloned to ${dest}`);
-    vscode.commands.executeCommand("containerlab.refresh");
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     vscode.window.showErrorMessage(`Git clone failed: ${message}`);

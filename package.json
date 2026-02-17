@@ -68,11 +68,6 @@
     ],
     "commands": [
       {
-        "command": "containerlab.refresh",
-        "title": "Refresh Containerlab Explorer",
-        "icon": "$(refresh)"
-      },
-      {
         "command": "containerlab.lab.openFile",
         "title": "Edit topology",
         "icon": "$(pencil)"
@@ -452,13 +447,6 @@
       }
     ],
     "menus": {
-      "view/title": [
-        {
-          "command": "containerlab.refresh",
-          "when": "view == containerlabExplorerWebview",
-          "group": "navigation@8"
-        }
-      ],
       "editor/title": [
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",

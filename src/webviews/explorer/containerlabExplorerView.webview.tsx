@@ -243,7 +243,7 @@ const ACTION_ICON_RULES: ReadonlyArray<CommandIconRule> = [
     icon: DeleteOutlineIcon
   },
   {
-    match: (command) => command.includes("refresh") || command.includes("redeploy"),
+    match: (command) => command.includes("redeploy"),
     icon: RefreshIcon
   },
   { match: (command) => command.includes("stop"), icon: StopIcon },
@@ -335,8 +335,7 @@ const ACTION_GROUP_RULES: ReadonlyArray<CommandActionGroupRule> = [
     match: (command) =>
       command.includes("filter") ||
       command.includes("hide") ||
-      command.includes("show") ||
-      command.includes("refresh"),
+      command.includes("show"),
     group: "view"
   }
 ];
@@ -643,7 +642,7 @@ function actionGroupSection(groupId: ActionGroupId, nodeKind: ExplorerNodeKind):
 function withSectionDividers(
   groups: ExplorerActionGroup[],
   nodeKind: ExplorerNodeKind,
-  renderGroup: (group: ExplorerActionGroup) => ContextMenuItem
+  renderGroup: (group: ExplorerActionGroup) => ContextMenuItem[]
 ): ContextMenuItem[] {
   if (groups.length === 0) {
     return [];
@@ -653,10 +652,14 @@ function withSectionDividers(
   let previousSection: number | null = null;
   for (const group of groups) {
     const section = actionGroupSection(group.id, nodeKind);
+    const rendered = renderGroup(group);
+    if (rendered.length === 0) {
+      continue;
+    }
     if (items.length > 0 && previousSection !== null && section !== previousSection) {
       items.push({ id: `divider:${nodeKind}:${group.id}:${items.length}`, label: "", divider: true });
     }
-    items.push(renderGroup(group));
+    items.push(...rendered);
     previousSection = section;
   }
   return items;
@@ -784,6 +787,16 @@ function toGroupMenuItem(
   };
 }
 
+function toGroupMenuItems(
+  group: ExplorerActionGroup,
+  onInvokeAction: (action: ExplorerAction) => void
+): ContextMenuItem[] {
+  if (group.id === "lifecycle") {
+    return group.actions.map((action) => toContextMenuItem(action, onInvokeAction));
+  }
+  return [toGroupMenuItem(group, onInvokeAction)];
+}
+
 function buildInterfaceMenuItems(
   actions: ExplorerAction[],
   onInvokeAction: (action: ExplorerAction) => void
@@ -827,7 +840,7 @@ function buildNodeContextMenuItems(
 
   const groupedActions = groupActions(menuActions, nodeKind);
   return withSectionDividers(groupedActions, nodeKind, (group) =>
-    toGroupMenuItem(group, onInvokeAction)
+    toGroupMenuItems(group, onInvokeAction)
   );
 }
 

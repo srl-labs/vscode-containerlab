@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 
 import type { ClabLabTreeNode } from "../treeView/common";
-import { favoriteLabs, extensionContext } from "../globals";
+import { favoriteLabs, extensionContext, localLabsProvider } from "../globals";
 
 export async function toggleFavorite(node: ClabLabTreeNode) {
   if (!node?.labPath?.absolute) {
@@ -17,5 +17,5 @@ export async function toggleFavorite(node: ClabLabTreeNode) {
     await extensionContext.globalState.update("favoriteLabs", Array.from(favoriteLabs));
     vscode.window.showInformationMessage("Marked lab as favorite");
   }
-  vscode.commands.executeCommand("containerlab.refresh");
+  localLabsProvider.forceRefresh();
 }
