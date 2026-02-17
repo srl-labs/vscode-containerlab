@@ -8,7 +8,10 @@ import type { ReactTopoViewer } from "../reactTopoViewer";
 import { ReactTopoViewerProvider } from "../reactTopoViewer";
 import { getSelectedLabNode } from "../utils/utils";
 import * as ins from "../treeView/inspector";
-import { MSG_LAB_LIFECYCLE_STATUS } from "../reactTopoViewer/shared/messages/webview";
+import {
+  MSG_LAB_LIFECYCLE_LOG,
+  MSG_LAB_LIFECYCLE_STATUS
+} from "../reactTopoViewer/shared/messages/webview";
 
 import { ClabCommand } from "./clabCommand";
 
@@ -84,6 +87,7 @@ export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
 let currentTopoViewer: ReactTopoViewer | undefined;
 
 type LifecycleCommandType = "deploy" | "destroy" | "redeploy";
+type LifecycleCommandStream = "stdout" | "stderr";
 
 /**
  * Check if a lab is running by looking up its path in the inspector data.
@@ -201,6 +205,25 @@ async function postLifecycleStatus(
   }
 }
 
+async function postLifecycleLog(
+  commandType: LifecycleCommandType,
+  line: string,
+  stream: LifecycleCommandStream
+): Promise<void> {
+  if (!currentTopoViewer?.currentPanel || !line) {
+    return;
+  }
+
+  try {
+    await currentTopoViewer.currentPanel.webview.postMessage({
+      type: MSG_LAB_LIFECYCLE_LOG,
+      data: { commandType, line, stream }
+    });
+  } catch (err) {
+    console.error(`Failed to publish lifecycle log for ${commandType}:`, err);
+  }
+}
+
 /**
  * Notifies the current active topoviewer about successful command completion
  * This should ONLY be called after a containerlab command has successfully completed
@@ -230,4 +253,12 @@ export async function notifyCurrentTopoViewerOfCommandFailure(
 ): Promise<void> {
   const errorMessage = error instanceof Error ? error.message : String(error);
   await postLifecycleStatus(commandType, "error", errorMessage);
+}
+
+export async function notifyCurrentTopoViewerOfCommandLog(
+  commandType: LifecycleCommandType,
+  line: string,
+  stream: LifecycleCommandStream
+): Promise<void> {
+  await postLifecycleLog(commandType, line, stream);
 }

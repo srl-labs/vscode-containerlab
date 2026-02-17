@@ -20,7 +20,8 @@ export class ClabCommand extends cmd.Command {
     useTerminal?: boolean,
     terminalName?: string,
     onSuccess?: () => Promise<void>,
-    onFailure?: cmd.CommandFailureHandler
+    onFailure?: cmd.CommandFailureHandler,
+    onOutputLine?: cmd.OutputLineHandler
   ) {
     const binaryPath = containerlabBinaryPath || "containerlab";
     let options: cmd.CmdOptions;
@@ -28,7 +29,8 @@ export class ClabCommand extends cmd.Command {
       options = {
         command: binaryPath,
         useSpinner: false,
-        terminalName: terminalName || "Containerlab"
+        terminalName: terminalName || "Containerlab",
+        onOutputLine
       };
     } else {
       options = {
@@ -37,7 +39,8 @@ export class ClabCommand extends cmd.Command {
         spinnerMsg: spinnerMsg || {
           progressMsg: `Running ${action}...`,
           successMsg: `${action} completed successfully`
-        }
+        },
+        onOutputLine
       };
     }
     super(options);

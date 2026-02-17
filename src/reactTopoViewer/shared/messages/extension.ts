@@ -13,6 +13,8 @@ export const LIFECYCLE_COMMANDS = {
   REDEPLOY_LAB_CLEANUP: "redeployLabCleanup"
 } as const;
 
+export const MSG_CANCEL_LAB_LIFECYCLE = "cancelLabLifecycle" as const;
+
 const LIFECYCLE_COMMANDS_SET = new Set(Object.values(LIFECYCLE_COMMANDS));
 
 export type LifecycleCommand = (typeof LIFECYCLE_COMMANDS)[keyof typeof LIFECYCLE_COMMANDS];
@@ -89,4 +91,5 @@ export type ExtensionCommandType =
   | InterfaceCommand
   | CustomNodeCommand
   | IconCommand
-  | typeof MSG_TOGGLE_SPLIT_VIEW;
+  | typeof MSG_TOGGLE_SPLIT_VIEW
+  | typeof MSG_CANCEL_LAB_LIFECYCLE;
