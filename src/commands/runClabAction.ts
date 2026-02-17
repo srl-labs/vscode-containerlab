@@ -5,6 +5,7 @@ import { getSelectedLabNode } from "../utils/utils";
 
 import { ClabCommand } from "./clabCommand";
 import {
+  notifyCurrentTopoViewerOfCommandLog,
   notifyCurrentTopoViewerOfCommandFailure,
   notifyCurrentTopoViewerOfCommandSuccess
 } from "./graph";
@@ -16,6 +17,7 @@ export async function runClabAction(
 ): Promise<void> {
   node = await getSelectedLabNode(node);
   if (!node) {
+    await notifyCurrentTopoViewerOfCommandFailure(action, new Error("No lab node selected"));
     return;
   }
 
@@ -31,6 +33,9 @@ export async function runClabAction(
       },
       async (error) => {
         await notifyCurrentTopoViewerOfCommandFailure(action, error);
+      },
+      (line, stream) => {
+        void notifyCurrentTopoViewerOfCommandLog(action, line, stream);
       }
     );
     if (cleanup) {
@@ -51,6 +56,10 @@ export async function runClabAction(
         "Don't warn me again"
       );
       if (!selection) {
+        await notifyCurrentTopoViewerOfCommandFailure(
+          action,
+          new Error("Operation cancelled by user")
+        );
         return;
       }
       if (selection === "Don't warn me again") {

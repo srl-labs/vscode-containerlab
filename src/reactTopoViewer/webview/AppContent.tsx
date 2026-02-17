@@ -3,7 +3,6 @@
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 import Box from "@mui/material/Box";
-import LinearProgress from "@mui/material/LinearProgress";
 
 import { ContainerlabExplorerView } from "../../webviews/explorer/containerlabExplorerView.webview";
 import type { NetemState } from "../shared/parsing";
@@ -25,6 +24,7 @@ import { Navbar } from "./components/navbar/Navbar";
 import { AboutModal, type LinkImpairmentData } from "./components/panels";
 import { ContextPanel } from "./components/panels/context-panel";
 import { LabSettingsModal } from "./components/panels/lab-settings/LabSettingsModal";
+import { LifecycleProgressModal } from "./components/panels/LifecycleProgressModal";
 import { ShortcutsModal } from "./components/panels/ShortcutsModal";
 import { SvgExportModal } from "./components/panels/SvgExportModal";
 import { BulkLinkModal } from "./components/panels/BulkLinkModal";
@@ -62,6 +62,7 @@ import {
   useTopoViewerActions,
   useTopoViewerState
 } from "./stores";
+import { sendCancelLabLifecycle } from "./messaging/extensionMessaging";
 import { executeTopologyCommand, toLinkSaveData, getCustomIconMap } from "./services";
 import {
   PENDING_NETEM_KEY,
@@ -772,6 +773,14 @@ export const AppContent: React.FC<AppContentProps> = ({
     [networkEditorHandlers]
   );
 
+  const handleCloseLifecycleModal = React.useCallback(() => {
+    topoActions.closeLifecycleModal();
+  }, [topoActions]);
+
+  const handleCancelLifecycle = React.useCallback(() => {
+    sendCancelLabLifecycle();
+  }, []);
+
   return (
     <MuiThemeProvider>
       <Box
@@ -809,7 +818,6 @@ export const AppContent: React.FC<AppContentProps> = ({
           logoClickProgress={easterEgg.state.progress}
           isPartyMode={easterEgg.state.isPartyMode}
         />
-        {isProcessing && <LinearProgress />}
         <Box
           ref={layoutRef}
           sx={{ display: "flex", flexGrow: 1, overflow: "hidden", position: "relative" }}
@@ -975,6 +983,17 @@ export const AppContent: React.FC<AppContentProps> = ({
         </Box>
 
         {/* Modals */}
+        <LifecycleProgressModal
+          isOpen={state.lifecycleModalOpen}
+          isProcessing={isProcessing}
+          mode={state.processingMode}
+          status={state.lifecycleStatus}
+          statusMessage={state.lifecycleStatusMessage}
+          labName={state.labName}
+          logs={state.lifecycleLogs}
+          onClose={handleCloseLifecycleModal}
+          onCancel={handleCancelLifecycle}
+        />
         <LabSettingsModal
           isOpen={panelVisibility.showLabSettingsModal}
           onClose={panelVisibility.handleCloseLabSettings}

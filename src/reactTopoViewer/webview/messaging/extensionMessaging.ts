@@ -4,6 +4,7 @@
  * through the host command pipeline, not these messages.
  */
 import type { ExtensionCommandType } from "../../shared/messages/extension";
+import { MSG_CANCEL_LAB_LIFECYCLE } from "../../shared/messages/extension";
 import type { SaveCustomNodeData } from "../../shared/utilities/customNodeConversions";
 import { log } from "../utils/logger";
 
@@ -96,4 +97,11 @@ export const postCommand = sendCommandToExtension;
  */
 export function sendIconReconcile(usedIcons: string[]): void {
   sendCommandToExtension("icon-reconcile", { usedIcons });
+}
+
+/**
+ * Request cancellation of the currently running lab lifecycle command.
+ */
+export function sendCancelLabLifecycle(): void {
+  sendCommandToExtension(MSG_CANCEL_LAB_LIFECYCLE);
 }

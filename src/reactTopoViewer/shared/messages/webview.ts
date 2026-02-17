@@ -32,6 +32,7 @@ export const MSG_CUSTOM_NODE_ERROR = "custom-node-error";
 export const MSG_ICON_LIST_RESPONSE = "icon-list-response";
 
 export const MSG_LAB_LIFECYCLE_STATUS = "lab-lifecycle-status";
+export const MSG_LAB_LIFECYCLE_LOG = "lab-lifecycle-log";
 
 export type WebviewMessageType =
   | typeof MSG_TOPOLOGY_DATA
@@ -45,4 +46,5 @@ export type WebviewMessageType =
   | typeof MSG_CUSTOM_NODE_UPDATED
   | typeof MSG_CUSTOM_NODE_ERROR
   | typeof MSG_ICON_LIST_RESPONSE
-  | typeof MSG_LAB_LIFECYCLE_STATUS;
+  | typeof MSG_LAB_LIFECYCLE_STATUS
+  | typeof MSG_LAB_LIFECYCLE_LOG;

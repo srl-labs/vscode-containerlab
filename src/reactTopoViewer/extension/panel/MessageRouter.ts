@@ -20,7 +20,8 @@ import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../../shared/types/messages";
 import {
   MSG_CUSTOM_NODE_ERROR,
   MSG_CUSTOM_NODE_UPDATED,
-  MSG_ICON_LIST_RESPONSE
+  MSG_ICON_LIST_RESPONSE,
+  MSG_LAB_LIFECYCLE_STATUS
 } from "../../shared/messages/webview";
 import type {
   CustomNodeCommand,
@@ -34,9 +35,11 @@ import {
   isIconCommand,
   isInterfaceCommand,
   isLifecycleCommand,
+  MSG_CANCEL_LAB_LIFECYCLE,
   isNodeCommand,
   MSG_TOGGLE_SPLIT_VIEW
 } from "../../shared/messages/extension";
+import { cancelActiveCommand } from "../../../commands/command";
 
 type WebviewMessage = Record<string, unknown> & {
   type?: string;
@@ -274,6 +277,29 @@ export class MessageRouter {
     }
   }
 
+  private handleCancelLabLifecycle(panel: vscode.WebviewPanel): void {
+    const cancelled = cancelActiveCommand();
+    if (!cancelled) {
+      log.warn("[MessageRouter] No active lifecycle command to cancel");
+      panel.webview.postMessage({
+        type: MSG_LAB_LIFECYCLE_STATUS,
+        data: {
+          status: "error",
+          errorMessage: "No active lifecycle command to cancel."
+        }
+      });
+      return;
+    }
+    log.info("[MessageRouter] Lifecycle command cancellation requested");
+    panel.webview.postMessage({
+      type: MSG_LAB_LIFECYCLE_STATUS,
+      data: {
+        status: "error",
+        errorMessage: "Lifecycle command cancelled by user."
+      }
+    });
+  }
+
   private async handleCustomNodeCommand(
     command: CustomNodeCommand,
     message: WebviewMessage,
@@ -463,6 +489,11 @@ export class MessageRouter {
 
     if (isLifecycleCommand(command)) {
       await this.handleLifecycleCommand(command);
+      return true;
+    }
+
+    if (command === MSG_CANCEL_LAB_LIFECYCLE) {
+      this.handleCancelLabLifecycle(panel);
       return true;
     }
 

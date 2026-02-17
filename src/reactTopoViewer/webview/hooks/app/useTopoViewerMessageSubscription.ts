@@ -7,6 +7,7 @@
  * - custom-nodes-updated: Update customNodes
  * - custom-node-error: Show error
  * - icon-list-response: Update customIcons
+ * - lab-lifecycle-log: Append streaming deploy/destroy logs
  * - lab-lifecycle-status: Clear processing state
  * - fit-viewport: Fit graph to current viewport
  */
@@ -58,6 +59,20 @@ interface IconListResponseMessage {
 
 interface LabLifecycleStatusMessage {
   type: "lab-lifecycle-status";
+  data?: {
+    commandType?: "deploy" | "destroy" | "redeploy";
+    status?: "success" | "error";
+    errorMessage?: string;
+  };
+}
+
+interface LabLifecycleLogMessage {
+  type: "lab-lifecycle-log";
+  data?: {
+    commandType?: "deploy" | "destroy" | "redeploy";
+    line?: string;
+    stream?: "stdout" | "stderr";
+  };
 }
 
 interface FitViewportMessage {
@@ -70,6 +85,7 @@ type ExtensionMessage =
   | CustomNodesUpdatedMessage
   | CustomNodeErrorMessage
   | IconListResponseMessage
+  | LabLifecycleLogMessage
   | LabLifecycleStatusMessage
   | FitViewportMessage
   | { type: string; data?: Record<string, unknown> };
@@ -140,8 +156,30 @@ function handleIconListResponse(msg: IconListResponseMessage): void {
   }
 }
 
-function handleLabLifecycleStatus(): void {
-  const { setProcessing } = useTopoViewerStore.getState();
+function handleLabLifecycleLog(msg: LabLifecycleLogMessage): void {
+  const { appendLifecycleLog, isProcessing } = useTopoViewerStore.getState();
+  if (!isProcessing) {
+    return;
+  }
+  const line = msg.data?.line;
+  if (!line) {
+    return;
+  }
+  appendLifecycleLog(line, msg.data?.stream ?? "stdout");
+}
+
+function handleLabLifecycleStatus(msg: LabLifecycleStatusMessage): void {
+  const { appendLifecycleLog, setLifecycleStatus, setProcessing } = useTopoViewerStore.getState();
+  if (msg.data?.status === "error" && msg.data.errorMessage) {
+    appendLifecycleLog(`[error] ${msg.data.errorMessage}`, "stderr");
+    setLifecycleStatus("error", msg.data.errorMessage);
+  } else if (msg.data?.status === "error") {
+    setLifecycleStatus("error", "Lifecycle command failed.");
+  }
+  if (msg.data?.status === "success") {
+    appendLifecycleLog("Command completed successfully.", "stdout");
+    setLifecycleStatus("success");
+  }
   setProcessing(false);
 }
 
@@ -180,8 +218,11 @@ export function useTopoViewerMessageSubscription(): void {
         case "icon-list-response":
           handleIconListResponse(message as IconListResponseMessage);
           break;
+        case "lab-lifecycle-log":
+          handleLabLifecycleLog(message as LabLifecycleLogMessage);
+          break;
         case "lab-lifecycle-status":
-          handleLabLifecycleStatus();
+          handleLabLifecycleStatus(message as LabLifecycleStatusMessage);
           break;
         case "fit-viewport":
           handleFitViewport();

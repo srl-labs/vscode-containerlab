@@ -2,7 +2,7 @@
  * Base command classes and utilities
  */
 
-export { Command, execCommandInTerminal, execCommandInOutput } from "../command";
+export { Command, execCommandInTerminal, execCommandInOutput, cancelActiveCommand } from "../command";
 export type {
   SpinnerOptions,
   TerminalOptions,

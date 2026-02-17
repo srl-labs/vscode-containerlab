@@ -21,6 +21,13 @@ import { useAnnotationUIStore } from "./annotationUIStore";
 export type DeploymentState = "deployed" | "undeployed" | "unknown";
 export type LinkLabelMode = "show-all" | "on-select" | "hide";
 export type ProcessingMode = "deploy" | "destroy" | null;
+export type LifecycleLogStream = "stdout" | "stderr";
+export type LifecycleStatus = "running" | "success" | "error" | null;
+
+export interface LifecycleLogEntry {
+  line: string;
+  stream: LifecycleLogStream;
+}
 
 export interface TopoViewerState {
   labName: string;
@@ -55,6 +62,10 @@ export interface TopoViewerState {
   editingCustomTemplate: CustomTemplateEditorData | null;
   isProcessing: boolean;
   processingMode: ProcessingMode;
+  lifecycleModalOpen: boolean;
+  lifecycleStatus: LifecycleStatus;
+  lifecycleStatusMessage: string | null;
+  lifecycleLogs: LifecycleLogEntry[];
   editorDataVersion: number;
   customNodeError: string | null;
 }
@@ -96,6 +107,10 @@ export interface TopoViewerActions {
 
   // Processing state
   setProcessing: (isProcessing: boolean, mode?: "deploy" | "destroy") => void;
+  setLifecycleStatus: (status: LifecycleStatus, message?: string | null) => void;
+  appendLifecycleLog: (line: string, stream?: LifecycleLogStream) => void;
+  clearLifecycleLogs: () => void;
+  closeLifecycleModal: () => void;
 
   // Data refresh
   refreshEditorData: () => void;
@@ -145,9 +160,15 @@ const initialState: TopoViewerState = {
   editingCustomTemplate: null,
   isProcessing: false,
   processingMode: null,
+  lifecycleModalOpen: false,
+  lifecycleStatus: null,
+  lifecycleStatusMessage: null,
+  lifecycleLogs: [],
   editorDataVersion: 0,
   customNodeError: null
 };
+
+const MAX_LIFECYCLE_LOG_LINES = 500;
 
 // ============================================================================
 // Helper Functions
@@ -323,11 +344,14 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
   setProcessing: (isProcessing, mode) => {
     set((state) => {
       const next: Partial<TopoViewerState> = {
-        isProcessing,
-        processingMode: mode ?? null
+        isProcessing
       };
 
       if (isProcessing) {
+        next.processingMode = mode ?? null;
+        next.lifecycleModalOpen = true;
+        next.lifecycleStatus = "running";
+        next.lifecycleStatusMessage = null;
         next.editingNode = null;
         next.editingEdge = null;
         next.editingImpairment = null;
@@ -335,9 +359,46 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
         next.editingCustomTemplate = null;
         next.selectedNode = null;
         next.selectedEdge = null;
+        next.lifecycleLogs = [];
+      } else if (mode) {
+        next.processingMode = mode;
       }
 
       return { ...state, ...next };
+    });
+  },
+
+  setLifecycleStatus: (lifecycleStatus, lifecycleStatusMessage = null) => {
+    set({ lifecycleStatus, lifecycleStatusMessage });
+  },
+
+  appendLifecycleLog: (line, stream = "stdout") => {
+    set((state) => {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) {
+        return state;
+      }
+
+      const nextLogs = [...state.lifecycleLogs, { line: trimmedLine, stream }];
+      if (nextLogs.length > MAX_LIFECYCLE_LOG_LINES) {
+        nextLogs.splice(0, nextLogs.length - MAX_LIFECYCLE_LOG_LINES);
+      }
+
+      return { lifecycleLogs: nextLogs };
+    });
+  },
+
+  clearLifecycleLogs: () => {
+    set({ lifecycleLogs: [] });
+  },
+
+  closeLifecycleModal: () => {
+    set({
+      lifecycleModalOpen: false,
+      lifecycleStatus: null,
+      lifecycleStatusMessage: null,
+      lifecycleLogs: [],
+      processingMode: null
     });
   },
 
@@ -478,6 +539,10 @@ export const useTopoViewerState = () =>
       editingCustomTemplate: state.editingCustomTemplate,
       isProcessing: state.isProcessing,
       processingMode: state.processingMode,
+      lifecycleModalOpen: state.lifecycleModalOpen,
+      lifecycleStatus: state.lifecycleStatus,
+      lifecycleStatusMessage: state.lifecycleStatusMessage,
+      lifecycleLogs: state.lifecycleLogs,
       editorDataVersion: state.editorDataVersion,
       customNodeError: state.customNodeError
     }),
@@ -509,6 +574,10 @@ export const useTopoViewerActions = () =>
       setCustomNodeError: state.setCustomNodeError,
       clearCustomNodeError: state.clearCustomNodeError,
       setProcessing: state.setProcessing,
+      setLifecycleStatus: state.setLifecycleStatus,
+      appendLifecycleLog: state.appendLifecycleLog,
+      clearLifecycleLogs: state.clearLifecycleLogs,
+      closeLifecycleModal: state.closeLifecycleModal,
       refreshEditorData: state.refreshEditorData,
       clearSelectionForDeletedNode: state.clearSelectionForDeletedNode,
       clearSelectionForDeletedEdge: state.clearSelectionForDeletedEdge,
