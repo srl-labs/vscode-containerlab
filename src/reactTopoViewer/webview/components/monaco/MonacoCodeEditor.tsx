@@ -3,7 +3,7 @@ import * as monaco from "monaco-editor";
 import {
   conf as yamlConf,
   language as yamlLanguage
-} from "monaco-editor/esm/vs/basic-languages/yaml/yaml";
+} from "monaco-editor/esm/vs/basic-languages/yaml/yaml.js";
 import * as YAML from "yaml";
 import Ajv from "ajv";
 
@@ -67,7 +67,7 @@ function ensureMonacoConfiguredOnce(): void {
   }
 
   // Avoid JSON diagnostics that require extra config and can be noisy for annotations.
-  monaco.languages.json?.jsonDefaults?.setDiagnosticsOptions({ validate: false });
+  monaco.json?.jsonDefaults?.setDiagnosticsOptions({ validate: false });
 
   monacoConfigured = true;
 }
