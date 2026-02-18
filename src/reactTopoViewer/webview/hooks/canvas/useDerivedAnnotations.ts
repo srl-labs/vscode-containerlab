@@ -15,25 +15,30 @@ import { shallow } from "zustand/shallow";
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
+  TrafficRateAnnotation,
   GroupStyleAnnotation
 } from "../../../shared/types/topology";
 import type { TopoNode } from "../../../shared/types/graph";
 import type {
   FreeTextNodeData,
   FreeShapeNodeData,
+  TrafficRateNodeData,
   GroupNodeData
 } from "../../components/canvas/types";
 import { useGraphStore } from "../../stores/graphStore";
 import {
   nodeToFreeText,
   nodeToFreeShape,
+  nodeToTrafficRate,
   nodeToGroup,
   freeTextToNode,
   freeShapeToNode,
+  trafficRateToNode,
   groupToNode,
   resolveGroupParentId,
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
+  TRAFFIC_RATE_NODE_TYPE,
   GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
 
@@ -45,6 +50,7 @@ export interface UseDerivedAnnotationsReturn {
   groups: GroupStyleAnnotation[];
   textAnnotations: FreeTextAnnotation[];
   shapeAnnotations: FreeShapeAnnotation[];
+  trafficRateAnnotations: TrafficRateAnnotation[];
 
   // Group mutations
   addGroup: (group: GroupStyleAnnotation) => void;
@@ -60,6 +66,11 @@ export interface UseDerivedAnnotationsReturn {
   addShapeAnnotation: (annotation: FreeShapeAnnotation) => void;
   updateShapeAnnotation: (id: string, updates: Partial<FreeShapeAnnotation>) => void;
   deleteShapeAnnotation: (id: string) => void;
+
+  // Traffic-rate annotation mutations
+  addTrafficRateAnnotation: (annotation: TrafficRateAnnotation) => void;
+  updateTrafficRateAnnotation: (id: string, updates: Partial<TrafficRateAnnotation>) => void;
+  deleteTrafficRateAnnotation: (id: string) => void;
 
   // Membership management
   membershipMap: Map<string, string>; // nodeId -> groupId
@@ -79,6 +90,8 @@ const isFreeTextNode = (node: Node): node is Node<FreeTextNodeData> =>
   node.type === FREE_TEXT_NODE_TYPE;
 const isFreeShapeNode = (node: Node): node is Node<FreeShapeNodeData> =>
   node.type === FREE_SHAPE_NODE_TYPE;
+const isTrafficRateNode = (node: Node): node is Node<TrafficRateNodeData> =>
+  node.type === TRAFFIC_RATE_NODE_TYPE;
 
 function selectMembershipEntries(state: { nodes: Node[] }): MembershipEntry[] {
   const entries: MembershipEntry[] = [];
@@ -110,6 +123,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   const groupNodes = useGraphStore((state) => state.nodes.filter(isGroupNode), shallow);
   const textNodes = useGraphStore((state) => state.nodes.filter(isFreeTextNode), shallow);
   const shapeNodes = useGraphStore((state) => state.nodes.filter(isFreeShapeNode), shallow);
+  const trafficRateNodes = useGraphStore((state) => state.nodes.filter(isTrafficRateNode), shallow);
   const membershipEntries = useGraphStore(selectMembershipEntries, areMembershipEntriesEqual);
 
   const addNode = useGraphStore((state) => state.addNode);
@@ -131,6 +145,10 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   const shapeAnnotations = useMemo(() => {
     return shapeNodes.map(nodeToFreeShape);
   }, [shapeNodes]);
+
+  const trafficRateAnnotations = useMemo(() => {
+    return trafficRateNodes.map(nodeToTrafficRate);
+  }, [trafficRateNodes]);
 
   // Membership map: nodeId -> groupId (derived from node data)
   const membershipMap = useMemo(() => {
@@ -246,6 +264,40 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   );
 
   // ============================================================================
+  // Traffic-rate annotation mutations
+  // ============================================================================
+
+  const addTrafficRateAnnotation = useCallback(
+    (annotation: TrafficRateAnnotation) => {
+      const node = trafficRateToNode(annotation);
+      addNode(node as TopoNode);
+    },
+    [addNode]
+  );
+
+  const updateTrafficRateAnnotation = useCallback(
+    (id: string, updates: Partial<TrafficRateAnnotation>) => {
+      const currentNode = useGraphStore
+        .getState()
+        .nodes.find((n) => n.id === id && n.type === TRAFFIC_RATE_NODE_TYPE);
+      if (!currentNode) return;
+
+      const current = nodeToTrafficRate(currentNode as Node<TrafficRateNodeData>);
+      const updated: TrafficRateAnnotation = { ...current, ...updates };
+      const newNode = trafficRateToNode(updated);
+      replaceNode(id, newNode);
+    },
+    [replaceNode]
+  );
+
+  const deleteTrafficRateAnnotation = useCallback(
+    (id: string) => {
+      removeNode(id);
+    },
+    [removeNode]
+  );
+
+  // ============================================================================
   // Membership management
   // ============================================================================
 
@@ -296,6 +348,9 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
         for (const shape of shapeAnnotations) {
           if (shape.groupId === id) members.add(shape.id);
         }
+        for (const traffic of trafficRateAnnotations) {
+          if (traffic.groupId === id) members.add(traffic.id);
+        }
       };
 
       if (!includeNested) {
@@ -329,7 +384,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       members.delete(groupId);
       return Array.from(members);
     },
-    [membershipMap, textAnnotations, shapeAnnotations, groups]
+    [membershipMap, textAnnotations, shapeAnnotations, trafficRateAnnotations, groups]
   );
 
   return useMemo(
@@ -337,6 +392,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       groups,
       textAnnotations,
       shapeAnnotations,
+      trafficRateAnnotations,
       addGroup,
       updateGroup,
       deleteGroup,
@@ -346,6 +402,9 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       addShapeAnnotation,
       updateShapeAnnotation,
       deleteShapeAnnotation,
+      addTrafficRateAnnotation,
+      updateTrafficRateAnnotation,
+      deleteTrafficRateAnnotation,
       membershipMap,
       addNodeToGroup,
       removeNodeFromGroup,
@@ -356,6 +415,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       groups,
       textAnnotations,
       shapeAnnotations,
+      trafficRateAnnotations,
       addGroup,
       updateGroup,
       deleteGroup,
@@ -365,6 +425,9 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       addShapeAnnotation,
       updateShapeAnnotation,
       deleteShapeAnnotation,
+      addTrafficRateAnnotation,
+      updateTrafficRateAnnotation,
+      deleteTrafficRateAnnotation,
       membershipMap,
       addNodeToGroup,
       removeNodeFromGroup,

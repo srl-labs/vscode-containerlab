@@ -1,6 +1,7 @@
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
+  TrafficRateAnnotation,
   GroupStyleAnnotation
 } from "../../../shared/types/topology";
 
@@ -19,6 +20,9 @@ export interface AnnotationState {
   editingShapeAnnotation: FreeShapeAnnotation | null;
   isAddShapeMode: boolean;
   pendingShapeType: "rectangle" | "circle" | "line";
+  trafficRateAnnotations: TrafficRateAnnotation[];
+  selectedTrafficRateIds: Set<string>;
+  editingTrafficRateAnnotation: TrafficRateAnnotation | null;
 }
 
 export interface AnnotationActions {
@@ -90,6 +94,21 @@ export interface AnnotationActions {
   /** Persist annotations to file (call on drag end) */
   persistAnnotations: () => void;
 
+  // Traffic-rate annotations
+  createTrafficRateAtPosition: (position: { x: number; y: number }) => void;
+  selectTrafficRateAnnotation: (id: string) => void;
+  toggleTrafficRateAnnotationSelection: (id: string) => void;
+  boxSelectTrafficRateAnnotations: (ids: string[]) => void;
+  clearTrafficRateAnnotationSelection: () => void;
+  editTrafficRateAnnotation: (id: string) => void;
+  closeTrafficRateEditor: () => void;
+  saveTrafficRateAnnotation: (annotation: TrafficRateAnnotation) => void;
+  deleteTrafficRateAnnotation: (id: string) => void;
+  deleteSelectedTrafficRateAnnotations: () => void;
+  updateTrafficRateSize: (id: string, width: number, height: number) => void;
+  updateTrafficRateAnnotation: (id: string, updates: Partial<TrafficRateAnnotation>) => void;
+  updateTrafficRateGeoPosition: (id: string, coords: { lat: number; lng: number }) => void;
+
   // Membership
   onNodeDropped: (nodeId: string, position: { x: number; y: number }) => void;
 
@@ -100,6 +119,7 @@ export interface AnnotationActions {
     groupIds?: Iterable<string>;
     textIds?: Iterable<string>;
     shapeIds?: Iterable<string>;
+    trafficRateIds?: Iterable<string>;
   }) => { didDelete: boolean; membersCleared: boolean };
 }
 

@@ -883,6 +883,7 @@ function normalizeAnnotations(
   return {
     freeTextAnnotations: annotations.freeTextAnnotations ?? [],
     freeShapeAnnotations: annotations.freeShapeAnnotations ?? [],
+    trafficRateAnnotations: annotations.trafficRateAnnotations ?? [],
     groupStyleAnnotations: annotations.groupStyleAnnotations ?? [],
     nodeAnnotations: annotations.nodeAnnotations ?? [],
     networkNodeAnnotations: annotations.networkNodeAnnotations ?? [],

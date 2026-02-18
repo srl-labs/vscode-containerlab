@@ -28,6 +28,7 @@ import {
 import {
   FREE_SHAPE_NODE_TYPE,
   FREE_TEXT_NODE_TYPE,
+  TRAFFIC_RATE_NODE_TYPE,
   GROUP_NODE_TYPE,
   isAnnotationNodeType
 } from "../../annotations/annotationNodeConverters";
@@ -95,6 +96,10 @@ function handleAltDelete(
     annotationHandlers.onDeleteGroup(node.id);
     return true;
   }
+  if (node.type === TRAFFIC_RATE_NODE_TYPE && annotationHandlers?.onDeleteTrafficRate) {
+    annotationHandlers.onDeleteTrafficRate(node.id);
+    return true;
+  }
   handleDeleteNode(node.id);
   return true;
 }
@@ -136,6 +141,11 @@ function openAnnotationEditor(
   if (node.type === GROUP_NODE_TYPE && annotationHandlers.onEditGroup) {
     clearContextForAnnotationEdit();
     annotationHandlers.onEditGroup(node.id);
+    return true;
+  }
+  if (node.type === TRAFFIC_RATE_NODE_TYPE && annotationHandlers.onEditTrafficRate) {
+    clearContextForAnnotationEdit();
+    annotationHandlers.onEditTrafficRate(node.id);
     return true;
   }
 
@@ -414,6 +424,10 @@ function handleAnnotationDrop(
   }
   if (data.annotationType === "group") {
     handlers.onAddGroupAtPosition?.(snappedPosition);
+    return;
+  }
+  if (data.annotationType === "traffic-rate") {
+    handlers.onAddTrafficRateAtPosition?.(snappedPosition);
   }
 }
 
@@ -879,6 +893,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onAddTextAtPosition,
       onAddGroupAtPosition,
       onAddShapeAtPosition,
+      onAddTrafficRateAtPosition,
       onDropCreateNode,
       onDropCreateNetwork,
       onLockedAction
@@ -1248,7 +1263,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onAddText,
       onAddTextAtPosition,
       onAddShapes,
-      onAddShapeAtPosition
+      onAddShapeAtPosition,
+      onAddTrafficRateAtPosition
     });
 
     const {
@@ -1338,7 +1354,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
             onDropCreateNetwork,
             onAddTextAtPosition,
             onAddShapeAtPosition,
-            onAddGroupAtPosition
+            onAddGroupAtPosition,
+            onAddTrafficRateAtPosition
           }
         });
       },
@@ -1350,7 +1367,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         onDropCreateNetwork,
         onAddTextAtPosition,
         onAddShapeAtPosition,
-        onAddGroupAtPosition
+        onAddGroupAtPosition,
+        onAddTrafficRateAtPosition
       ]
     );
 

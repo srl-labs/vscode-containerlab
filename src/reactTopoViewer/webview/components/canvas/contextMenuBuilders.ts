@@ -16,6 +16,7 @@ import {
   Layers as LayersIcon,
   Link as LinkIcon,
   Remove as RemoveIcon,
+  Speed as SpeedIcon,
   Terminal as TerminalIcon,
   TextFields as TextFieldsIcon,
   Tune as TuneIcon
@@ -28,6 +29,7 @@ import { sendCommandToExtension } from "../../messaging/extensionMessaging";
 import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
+  TRAFFIC_RATE_NODE_TYPE,
   GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
 
@@ -63,6 +65,10 @@ interface MenuBuilderContext {
   editGroup?: (id: string) => void;
   /** Delete group annotation */
   deleteGroup?: (id: string) => void;
+  /** Edit traffic-rate annotation */
+  editTrafficRate?: (id: string) => void;
+  /** Delete traffic-rate annotation */
+  deleteTrafficRate?: (id: string) => void;
 }
 
 interface EdgeMenuBuilderContext {
@@ -89,6 +95,7 @@ type PaneMenuActions = Pick<
   | "onAddTextAtPosition"
   | "onAddShapes"
   | "onAddShapeAtPosition"
+  | "onAddTrafficRateAtPosition"
 >;
 
 interface PaneMenuBuilderContext extends PaneMenuActions {
@@ -213,6 +220,46 @@ function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
   return items;
 }
 
+/**
+ * Build context menu for traffic-rate annotations
+ */
+function buildTrafficRateContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
+  const { targetId, isEditMode, isLocked, closeContextMenu, editTrafficRate, deleteTrafficRate } =
+    ctx;
+
+  const items: ContextMenuItem[] = [
+    {
+      id: "edit-traffic-rate",
+      label: "Edit Traffic Rate",
+      icon: React.createElement(EditIcon, { fontSize: "small" }),
+      disabled: isLocked,
+      onClick: () => {
+        editTrafficRate?.(targetId);
+        closeContextMenu();
+      }
+    }
+  ];
+
+  if (isEditMode) {
+    items.push(
+      { id: DIVIDER_ID, label: "", divider: true },
+      {
+        id: "delete-traffic-rate",
+        label: "Delete Traffic Rate",
+        icon: React.createElement(DeleteIcon, { fontSize: "small" }),
+        disabled: isLocked,
+        danger: true,
+        onClick: () => {
+          deleteTrafficRate?.(targetId);
+          closeContextMenu();
+        }
+      }
+    );
+  }
+
+  return items;
+}
+
 function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
   const { targetId, closeContextMenu, showNodeInfo } = ctx;
   return [
@@ -280,6 +327,9 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
   }
   if (targetNodeType === FREE_SHAPE_NODE_TYPE) {
     return buildFreeShapeContextMenu(ctx);
+  }
+  if (targetNodeType === TRAFFIC_RATE_NODE_TYPE) {
+    return buildTrafficRateContextMenu(ctx);
   }
   if (targetNodeType === GROUP_NODE_TYPE) {
     return buildGroupContextMenu(ctx);
@@ -471,6 +521,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     onAddTextAtPosition,
     onAddShapes,
     onAddShapeAtPosition,
+    onAddTrafficRateAtPosition,
     menuPosition
   } = ctx;
   const items: ContextMenuItem[] = [];
@@ -589,6 +640,21 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
           }
         }
       ]
+    });
+  }
+  if (onAddTrafficRateAtPosition) {
+    editorItems.push({
+      id: "add-traffic-rate",
+      label: "Add Traffic Rate",
+      icon: React.createElement(SpeedIcon, { fontSize: "small" }),
+      disabled: isLocked,
+      onClick: () => {
+        const flowPosition = getFlowPosition();
+        if (flowPosition) {
+          onAddTrafficRateAtPosition(flowPosition);
+        }
+        closeContextMenu();
+      }
     });
   }
   if (editorItems.length > 0) {

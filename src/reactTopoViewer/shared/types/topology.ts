@@ -129,6 +129,31 @@ export interface FreeShapeAnnotation {
 }
 
 /**
+ * Traffic rate annotation for monitoring a node interface on the canvas.
+ */
+export interface TrafficRateAnnotation {
+  id: string;
+  position: { x: number; y: number };
+  geoCoordinates?: { lat: number; lng: number };
+  groupId?: string; // Parent group ID for hierarchy membership
+  nodeId?: string;
+  interfaceName?: string;
+  showLegend?: boolean;
+  width?: number;
+  height?: number;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
+  borderColor?: string;
+  borderWidth?: number;
+  borderStyle?: "solid" | "dashed" | "dotted" | "double";
+  borderRadius?: number;
+  titleColor?: string;
+  textColor?: string;
+  zIndex?: number;
+  [key: string]: unknown;
+}
+
+/**
  * Group annotation for overlay groups (rendered as HTML/SVG overlays).
  * Members are tracked via NodeAnnotation.groupId (preferred) and group/level for legacy display.
  * Groups can be nested via parentId for hierarchical organization.
@@ -227,6 +252,7 @@ export interface AliasEndpointAnnotation {
 export interface TopologyAnnotations {
   freeTextAnnotations?: FreeTextAnnotation[];
   freeShapeAnnotations?: FreeShapeAnnotation[];
+  trafficRateAnnotations?: TrafficRateAnnotation[];
   groupStyleAnnotations?: GroupStyleAnnotation[];
   networkNodeAnnotations?: NetworkNodeAnnotation[];
   nodeAnnotations?: NodeAnnotation[];

@@ -8,6 +8,7 @@ import type { TopologySnapshot } from "../../shared/types/messages";
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
+  TrafficRateAnnotation,
   GroupStyleAnnotation,
   NodeAnnotation,
   NetworkNodeAnnotation,
@@ -155,6 +156,60 @@ function normalizeFreeShapeAnnotations(annotations: FreeShapeAnnotation[]): Free
       position: toPosition(annotation.position) ?? { x: 0, y: 0 },
       endPosition: normalizedEnd
     };
+  });
+}
+
+function normalizeTrafficRateAnnotations(
+  annotations: TrafficRateAnnotation[]
+): TrafficRateAnnotation[] {
+  return annotations.map((annotation) => {
+    const width = toFiniteNumber(annotation.width);
+    const height = toFiniteNumber(annotation.height);
+    const showLegendDisabled = annotation.showLegend === false;
+    const backgroundOpacity = toFiniteNumber(annotation.backgroundOpacity);
+    const borderWidth = toFiniteNumber(annotation.borderWidth);
+    const borderRadius = toFiniteNumber(annotation.borderRadius);
+    const zIndex = toFiniteNumber(annotation.zIndex);
+    const normalized: TrafficRateAnnotation = {
+      ...annotation,
+      position: toPosition(annotation.position) ?? { x: 0, y: 0 }
+    };
+    if (width !== undefined) {
+      normalized.width = width;
+    } else {
+      delete normalized.width;
+    }
+    if (height !== undefined) {
+      normalized.height = height;
+    } else {
+      delete normalized.height;
+    }
+    if (showLegendDisabled) {
+      normalized.showLegend = false;
+    } else {
+      delete normalized.showLegend;
+    }
+    if (backgroundOpacity !== undefined) {
+      normalized.backgroundOpacity = backgroundOpacity;
+    } else {
+      delete normalized.backgroundOpacity;
+    }
+    if (borderWidth !== undefined) {
+      normalized.borderWidth = borderWidth;
+    } else {
+      delete normalized.borderWidth;
+    }
+    if (borderRadius !== undefined) {
+      normalized.borderRadius = borderRadius;
+    } else {
+      delete normalized.borderRadius;
+    }
+    if (zIndex !== undefined) {
+      normalized.zIndex = zIndex;
+    } else {
+      delete normalized.zIndex;
+    }
+    return normalized;
   });
 }
 
@@ -313,7 +368,8 @@ function buildMergedNodes(
   networkNodeAnnotations: NetworkNodeAnnotation[] | undefined,
   groupStyleAnnotations: GroupStyleAnnotation[],
   freeTextAnnotations: FreeTextAnnotation[],
-  freeShapeAnnotations: FreeShapeAnnotation[]
+  freeShapeAnnotations: FreeShapeAnnotation[],
+  trafficRateAnnotations: TrafficRateAnnotation[]
 ): Node[] {
   let topoWithMembership = applyGroupMembershipToNodes(
     newNodes,
@@ -328,7 +384,8 @@ function buildMergedNodes(
   const annotationNodes = annotationsToNodes(
     freeTextAnnotations,
     freeShapeAnnotations,
-    groupStyleAnnotations
+    groupStyleAnnotations,
+    trafficRateAnnotations
   );
   const mergedNodes = [...(topoWithMembership as Node[]), ...(annotationNodes as Node[])];
   return Array.from(new Map(mergedNodes.map((n) => [n.id, n])).values());
@@ -338,6 +395,7 @@ function normalizeAnnotations(annotations?: TopologyAnnotations): Required<Topol
   const {
     freeTextAnnotations = [],
     freeShapeAnnotations = [],
+    trafficRateAnnotations = [],
     groupStyleAnnotations = [],
     nodeAnnotations = [],
     networkNodeAnnotations = [],
@@ -350,6 +408,7 @@ function normalizeAnnotations(annotations?: TopologyAnnotations): Required<Topol
   return {
     freeTextAnnotations: normalizeFreeTextAnnotations(freeTextAnnotations),
     freeShapeAnnotations: normalizeFreeShapeAnnotations(freeShapeAnnotations),
+    trafficRateAnnotations: normalizeTrafficRateAnnotations(trafficRateAnnotations),
     groupStyleAnnotations: normalizeGroupStyleAnnotations(
       groupStyleAnnotations,
       normalizedNodeAnnotations
@@ -424,7 +483,8 @@ export function applySnapshotToStores(
     annotations.networkNodeAnnotations,
     annotations.groupStyleAnnotations,
     annotations.freeTextAnnotations,
-    annotations.freeShapeAnnotations
+    annotations.freeShapeAnnotations,
+    annotations.trafficRateAnnotations
   );
 
   // Apply force layout when no preset positions exist and geo coordinates are not driving layout.

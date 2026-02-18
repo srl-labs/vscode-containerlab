@@ -40,13 +40,15 @@ export async function saveAnnotationNodesFromGraph(
 ): Promise<void> {
   try {
     const graphNodes = nodes ?? useGraphStore.getState().nodes;
-    const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodes);
+    const { freeTextAnnotations, freeShapeAnnotations, trafficRateAnnotations, groups } =
+      nodesToAnnotations(graphNodes);
     await executeTopologyCommand(
       {
         command: "setAnnotations",
         payload: {
           freeTextAnnotations,
           freeShapeAnnotations,
+          trafficRateAnnotations,
           groupStyleAnnotations: groups
         }
       },
@@ -63,13 +65,15 @@ export async function saveAnnotationNodesWithMemberships(
 ): Promise<void> {
   try {
     const graphNodes = nodes ?? useGraphStore.getState().nodes;
-    const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodes);
+    const { freeTextAnnotations, freeShapeAnnotations, trafficRateAnnotations, groups } =
+      nodesToAnnotations(graphNodes);
     await executeTopologyCommand({
       command: "setAnnotationsWithMemberships",
       payload: {
         annotations: {
           freeTextAnnotations,
           freeShapeAnnotations,
+          trafficRateAnnotations,
           groupStyleAnnotations: groups
         },
         memberships: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId ?? null }))

@@ -16,6 +16,10 @@ interface BpsUnit {
 interface TrafficChartProps {
   stats: InterfaceStatsPayload | undefined;
   endpointKey: string;
+  height?: number;
+  compact?: boolean;
+  showLegend?: boolean;
+  emptyMessage?: string | null;
 }
 
 /**
@@ -45,10 +49,63 @@ function createEmptyHistory(): EndpointStatsHistory {
   };
 }
 
+function resolveChartMargin(compact: boolean, showLegend: boolean) {
+  if (!compact) {
+    return { top: 8, right: 48, bottom: 4, left: 48 };
+  }
+
+  if (showLegend) {
+    return { top: 4, right: 8, bottom: 22, left: 8 };
+  }
+
+  return { top: 4, right: 8, bottom: 0, left: 8 };
+}
+
+function resolveLegendSlotProps(compact: boolean, showLegend: boolean) {
+  if (!showLegend) {
+    return undefined;
+  }
+
+  if (!compact) {
+    return {
+      legend: {
+        direction: "horizontal" as const,
+        position: { vertical: "bottom" as const, horizontal: "center" as const }
+      }
+    };
+  }
+
+  return {
+    legend: {
+      direction: "horizontal" as const,
+      position: { vertical: "bottom" as const, horizontal: "start" as const },
+      sx: {
+        fontSize: "0.625rem",
+        gap: 0.5,
+        marginBlock: 0.25,
+        marginInline: 0.25,
+        "& .MuiChartsLegend-series": {
+          gap: 0.5
+        },
+        "& .MuiChartsLegend-mark": {
+          fontSize: "0.7em"
+        }
+      }
+    }
+  };
+}
+
 // Global history store per endpoint key
 const historyStore = new Map<string, EndpointStatsHistory>();
 
-export const TrafficChart: React.FC<TrafficChartProps> = ({ stats, endpointKey }) => {
+export const TrafficChart: React.FC<TrafficChartProps> = ({
+  stats,
+  endpointKey,
+  height = 240,
+  compact = false,
+  showLegend = !compact,
+  emptyMessage = "No traffic data available"
+}) => {
   // Track last-seen stats to avoid double-push in Strict Mode
   const lastStatsRef = useRef<InterfaceStatsPayload | undefined>(undefined);
 
@@ -100,20 +157,23 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({ stats, endpointKey }
       unitLabel: unit.label
     };
   }, [stats, endpointKey]);
+  const margin = resolveChartMargin(compact, showLegend);
+  const legendSlotProps = resolveLegendSlotProps(compact, showLegend);
 
   if (xData.length === 0) {
+    if (emptyMessage === null) return null;
     return (
       <Typography
         variant="body2"
         sx={{ textAlign: "center", color: "text.secondary", fontSize: "0.875rem", mt: 1 }}
       >
-        No traffic data available
+        {emptyMessage}
       </Typography>
     );
   }
 
   return (
-    <Box sx={{ width: "100%", height: 240 }}>
+    <Box sx={{ width: "100%", height }}>
       <LineChart
         xAxis={[
           {
@@ -127,21 +187,21 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({ stats, endpointKey }
         yAxis={[
           {
             id: "bps",
-            label: unitLabel,
-            labelStyle: { fontSize: 11 },
-            tickLabelStyle: { fontSize: 10, fill: "#cccccc" }
+            label: compact ? undefined : unitLabel,
+            labelStyle: compact ? { display: "none" } : { fontSize: 11 },
+            tickLabelStyle: compact ? { display: "none" } : { fontSize: 10, fill: "#cccccc" }
           },
           {
             id: "pps",
-            label: "PPS",
-            labelStyle: { fontSize: 11 },
-            tickLabelStyle: { fontSize: 10, fill: "#cccccc" }
+            label: compact ? undefined : "PPS",
+            labelStyle: compact ? { display: "none" } : { fontSize: 11 },
+            tickLabelStyle: compact ? { display: "none" } : { fontSize: 10, fill: "#cccccc" }
           }
         ]}
         series={[
           {
             data: rxBpsData,
-            label: `RX ${unitLabel}`,
+            label: compact && !showLegend ? undefined : `RX ${unitLabel}`,
             color: "#4ec9b0",
             showMark: false,
             curve: "linear",
@@ -149,7 +209,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({ stats, endpointKey }
           },
           {
             data: txBpsData,
-            label: `TX ${unitLabel}`,
+            label: compact && !showLegend ? undefined : `TX ${unitLabel}`,
             color: "#569cd6",
             showMark: false,
             curve: "linear",
@@ -157,7 +217,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({ stats, endpointKey }
           },
           {
             data: rxPpsData,
-            label: "RX PPS",
+            label: compact && !showLegend ? undefined : "RX PPS",
             color: "#b5cea8",
             showMark: false,
             curve: "linear",
@@ -165,7 +225,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({ stats, endpointKey }
           },
           {
             data: txPpsData,
-            label: "TX PPS",
+            label: compact && !showLegend ? undefined : "TX PPS",
             color: "#9cdcfe",
             showMark: false,
             curve: "linear",
@@ -173,13 +233,8 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({ stats, endpointKey }
           }
         ]}
         grid={{ horizontal: true }}
-        margin={{ top: 8, right: 48, bottom: 4, left: 48 }}
-        slotProps={{
-          legend: {
-            direction: "horizontal",
-            position: { vertical: "bottom", horizontal: "center" }
-          }
-        }}
+        margin={margin}
+        slotProps={legendSlotProps}
         sx={{
           "& .MuiChartsGrid-line": { stroke: "#3e3e42" },
           "& .MuiChartsAxis-line": { stroke: "#cccccc" },

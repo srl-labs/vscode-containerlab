@@ -1,6 +1,7 @@
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
+  TrafficRateAnnotation,
   GroupStyleAnnotation
 } from "../../../../../shared/types/topology";
 import type { GroupEditorData } from "../../../../hooks/canvas";
@@ -61,6 +62,13 @@ export interface ContextPanelEditorState {
   editingShapeAnnotation: FreeShapeAnnotation | null;
   shapeAnnotationHandlers: {
     onSave: (annotation: FreeShapeAnnotation) => void;
+    onClose: () => void;
+    onDelete: (id: string) => void;
+  };
+  editingTrafficRateAnnotation: TrafficRateAnnotation | null;
+  trafficRateAnnotationHandlers: {
+    onSave: (annotation: TrafficRateAnnotation) => void;
+    onPreview?: (annotation: TrafficRateAnnotation) => void;
     onClose: () => void;
     onDelete: (id: string) => void;
   };

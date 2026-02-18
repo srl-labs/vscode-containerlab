@@ -153,7 +153,8 @@ export async function saveNodePositionsWithAnnotations(
 ): Promise<void> {
   try {
     const graphNodes = nodes ?? useGraphStore.getState().nodes;
-    const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodes);
+    const { freeTextAnnotations, freeShapeAnnotations, trafficRateAnnotations, groups } =
+      nodesToAnnotations(graphNodes);
     await executeTopologyCommand(
       {
         command: "savePositionsAndAnnotations",
@@ -162,6 +163,7 @@ export async function saveNodePositionsWithAnnotations(
           annotations: {
             freeTextAnnotations,
             freeShapeAnnotations,
+            trafficRateAnnotations,
             groupStyleAnnotations: groups
           }
         }

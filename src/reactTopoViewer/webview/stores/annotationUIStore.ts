@@ -7,7 +7,11 @@
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/shallow";
 
-import type { FreeTextAnnotation, FreeShapeAnnotation } from "../../shared/types/topology";
+import type {
+  FreeTextAnnotation,
+  FreeShapeAnnotation,
+  TrafficRateAnnotation
+} from "../../shared/types/topology";
 import type { GroupEditorData } from "../hooks/canvas/groupTypes";
 
 // ============================================================================
@@ -31,6 +35,10 @@ export interface AnnotationUIState {
   editingShapeAnnotation: FreeShapeAnnotation | null;
   isAddShapeMode: boolean;
   pendingShapeType: ShapeAnnotationType;
+
+  // Traffic-rate annotation UI state
+  selectedTrafficRateIds: Set<string>;
+  editingTrafficRateAnnotation: TrafficRateAnnotation | null;
 }
 
 export interface AnnotationUIActions {
@@ -69,6 +77,16 @@ export interface AnnotationUIActions {
   disableAddShapeMode: () => void;
   setPendingShapeType: (shapeType: ShapeAnnotationType) => void;
 
+  // Traffic-rate annotation selection
+  selectTrafficRateAnnotation: (id: string) => void;
+  toggleTrafficRateAnnotationSelection: (id: string) => void;
+  boxSelectTrafficRateAnnotations: (ids: string[]) => void;
+  clearTrafficRateAnnotationSelection: () => void;
+
+  // Traffic-rate annotation editing
+  setEditingTrafficRateAnnotation: (annotation: TrafficRateAnnotation | null) => void;
+  closeTrafficRateEditor: () => void;
+
   // Utility
   clearAllSelections: () => void;
 
@@ -76,6 +94,7 @@ export interface AnnotationUIActions {
   removeFromGroupSelection: (id: string) => void;
   removeFromTextSelection: (id: string) => void;
   removeFromShapeSelection: (id: string) => void;
+  removeFromTrafficRateSelection: (id: string) => void;
 }
 
 export type AnnotationUIStore = AnnotationUIState & AnnotationUIActions;
@@ -93,7 +112,9 @@ const initialState: AnnotationUIState = {
   selectedShapeIds: new Set(),
   editingShapeAnnotation: null,
   isAddShapeMode: false,
-  pendingShapeType: "rectangle"
+  pendingShapeType: "rectangle",
+  selectedTrafficRateIds: new Set(),
+  editingTrafficRateAnnotation: null
 };
 
 // ============================================================================
@@ -133,7 +154,8 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
         ? {
             // Ensure only one annotation editor is active at a time.
             editingTextAnnotation: null,
-            editingShapeAnnotation: null
+            editingShapeAnnotation: null,
+            editingTrafficRateAnnotation: null
           }
         : {})
     });
@@ -173,7 +195,8 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
         ? {
             // Ensure only one annotation editor is active at a time.
             editingGroup: null,
-            editingShapeAnnotation: null
+            editingShapeAnnotation: null,
+            editingTrafficRateAnnotation: null
           }
         : {})
     });
@@ -221,7 +244,8 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
         ? {
             // Ensure only one annotation editor is active at a time.
             editingGroup: null,
-            editingTextAnnotation: null
+            editingTextAnnotation: null,
+            editingTrafficRateAnnotation: null
           }
         : {})
     });
@@ -247,12 +271,54 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
     set({ pendingShapeType });
   },
 
+  // Traffic-rate annotation selection
+  selectTrafficRateAnnotation: (id) => {
+    set({ selectedTrafficRateIds: new Set([id]) });
+  },
+
+  toggleTrafficRateAnnotationSelection: (id) => {
+    set((state) => {
+      const next = new Set(state.selectedTrafficRateIds);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return { selectedTrafficRateIds: next };
+    });
+  },
+
+  boxSelectTrafficRateAnnotations: (ids) => {
+    set({ selectedTrafficRateIds: new Set(ids) });
+  },
+
+  clearTrafficRateAnnotationSelection: () => {
+    set({ selectedTrafficRateIds: new Set() });
+  },
+
+  // Traffic-rate annotation editing
+  setEditingTrafficRateAnnotation: (editingTrafficRateAnnotation) => {
+    set({
+      editingTrafficRateAnnotation,
+      ...(editingTrafficRateAnnotation
+        ? {
+            // Ensure only one annotation editor is active at a time.
+            editingGroup: null,
+            editingTextAnnotation: null,
+            editingShapeAnnotation: null
+          }
+        : {})
+    });
+  },
+
+  closeTrafficRateEditor: () => {
+    set({ editingTrafficRateAnnotation: null });
+  },
+
   // Utility
   clearAllSelections: () => {
     set({
       selectedGroupIds: new Set(),
       selectedTextIds: new Set(),
-      selectedShapeIds: new Set()
+      selectedShapeIds: new Set(),
+      selectedTrafficRateIds: new Set()
     });
   },
 
@@ -281,6 +347,15 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
       const next = new Set(state.selectedShapeIds);
       next.delete(id);
       return { selectedShapeIds: next };
+    });
+  },
+
+  removeFromTrafficRateSelection: (id) => {
+    set((state) => {
+      if (!state.selectedTrafficRateIds.has(id)) return state;
+      const next = new Set(state.selectedTrafficRateIds);
+      next.delete(id);
+      return { selectedTrafficRateIds: next };
     });
   }
 }));
@@ -318,6 +393,14 @@ export const useIsAddShapeMode = () => useAnnotationUIStore((state) => state.isA
 /** Get pending shape type */
 export const usePendingShapeType = () => useAnnotationUIStore((state) => state.pendingShapeType);
 
+/** Get selected traffic-rate IDs */
+export const useSelectedTrafficRateIds = () =>
+  useAnnotationUIStore((state) => state.selectedTrafficRateIds);
+
+/** Get editing traffic-rate annotation */
+export const useEditingTrafficRateAnnotation = () =>
+  useAnnotationUIStore((state) => state.editingTrafficRateAnnotation);
+
 /** Get annotation UI state (group/text/shape selections and edit modes) */
 export const useAnnotationUIState = () =>
   useAnnotationUIStore(
@@ -330,7 +413,9 @@ export const useAnnotationUIState = () =>
       selectedShapeIds: state.selectedShapeIds,
       editingShapeAnnotation: state.editingShapeAnnotation,
       isAddShapeMode: state.isAddShapeMode,
-      pendingShapeType: state.pendingShapeType
+      pendingShapeType: state.pendingShapeType,
+      selectedTrafficRateIds: state.selectedTrafficRateIds,
+      editingTrafficRateAnnotation: state.editingTrafficRateAnnotation
     }),
     shallow
   );
@@ -362,10 +447,17 @@ export const useAnnotationUIActions = () =>
       setAddShapeMode: state.setAddShapeMode,
       disableAddShapeMode: state.disableAddShapeMode,
       setPendingShapeType: state.setPendingShapeType,
+      selectTrafficRateAnnotation: state.selectTrafficRateAnnotation,
+      toggleTrafficRateAnnotationSelection: state.toggleTrafficRateAnnotationSelection,
+      boxSelectTrafficRateAnnotations: state.boxSelectTrafficRateAnnotations,
+      clearTrafficRateAnnotationSelection: state.clearTrafficRateAnnotationSelection,
+      setEditingTrafficRateAnnotation: state.setEditingTrafficRateAnnotation,
+      closeTrafficRateEditor: state.closeTrafficRateEditor,
       clearAllSelections: state.clearAllSelections,
       removeFromGroupSelection: state.removeFromGroupSelection,
       removeFromTextSelection: state.removeFromTextSelection,
-      removeFromShapeSelection: state.removeFromShapeSelection
+      removeFromShapeSelection: state.removeFromShapeSelection,
+      removeFromTrafficRateSelection: state.removeFromTrafficRateSelection
     }),
     shallow
   );

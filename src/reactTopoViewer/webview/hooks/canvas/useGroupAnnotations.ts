@@ -57,6 +57,7 @@ function getGroupDeletionContext(
   childGroups: GroupStyleAnnotation[];
   textIds: Set<string>;
   shapeIds: Set<string>;
+  trafficRateIds: Set<string>;
 } {
   const group = groupsSnapshot.find((g) => g.id === id);
   const parentId = group ? (resolveGroupParentId(group.parentId, group.groupId) ?? null) : null;
@@ -66,13 +67,15 @@ function getGroupDeletionContext(
   );
   const textIds = new Set(derived.textAnnotations.map((t) => t.id));
   const shapeIds = new Set(derived.shapeAnnotations.map((s) => s.id));
+  const trafficRateIds = new Set(derived.trafficRateAnnotations.map((entry) => entry.id));
 
   return {
     parentId,
     memberIds,
     childGroups,
     textIds,
-    shapeIds
+    shapeIds,
+    trafficRateIds
   };
 }
 
@@ -94,7 +97,8 @@ function reassignGroupMembers(
   memberIds: string[],
   parentId: string | null,
   textIds: Set<string>,
-  shapeIds: Set<string>
+  shapeIds: Set<string>,
+  trafficRateIds: Set<string>
 ): void {
   for (const memberId of memberIds) {
     if (textIds.has(memberId)) {
@@ -103,6 +107,10 @@ function reassignGroupMembers(
     }
     if (shapeIds.has(memberId)) {
       derived.updateShapeAnnotation(memberId, { groupId: parentId ?? undefined });
+      continue;
+    }
+    if (trafficRateIds.has(memberId)) {
+      derived.updateTrafficRateAnnotation(memberId, { groupId: parentId ?? undefined });
       continue;
     }
 
@@ -184,7 +192,8 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
     (id: string) => {
       const graphNodes = useGraphStore.getState().nodes;
       const groupsSnapshot = buildGroupsSnapshot(derived, graphNodes);
-      const { parentId, memberIds, childGroups, textIds, shapeIds } = getGroupDeletionContext(
+      const { parentId, memberIds, childGroups, textIds, shapeIds, trafficRateIds } =
+        getGroupDeletionContext(
         derived,
         groupsSnapshot,
         id
@@ -195,7 +204,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
 
       // Promote child groups to parent (or clear parent if none)
       updateChildGroupParents(derived, childGroups, parentId);
-      reassignGroupMembers(derived, memberIds, parentId, textIds, shapeIds);
+      reassignGroupMembers(derived, memberIds, parentId, textIds, shapeIds, trafficRateIds);
 
       const memberships = collectNodeGroupMemberships(useGraphStore.getState().nodes);
       void saveAnnotationNodesWithMemberships(memberships);

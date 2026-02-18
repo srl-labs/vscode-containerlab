@@ -19,6 +19,7 @@ export type PanelViewKind =
   | "linkImpairment"
   | "freeTextEditor"
   | "freeShapeEditor"
+  | "trafficRateEditor"
   | "groupEditor";
 
 export interface PanelView {
@@ -51,6 +52,9 @@ function resolveAnnotationView(annotationUI: AnnotationUIState): PanelView | nul
     const shapeType = annotationUI.editingShapeAnnotation.shapeType;
     const prefix = shapeType.charAt(0).toUpperCase() + shapeType.slice(1);
     return { kind: "freeShapeEditor", title: `Edit ${prefix}`, hasFooter: true };
+  }
+  if (annotationUI.editingTrafficRateAnnotation) {
+    return { kind: "trafficRateEditor", title: "Edit Traffic Rate", hasFooter: true };
   }
   if (annotationUI.editingGroup)
     return { kind: "groupEditor", title: "Edit Group", hasFooter: true };
