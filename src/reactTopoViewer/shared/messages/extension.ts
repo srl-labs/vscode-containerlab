@@ -83,6 +83,19 @@ export function isIconCommand(command: string): command is IconCommand {
   return ICON_COMMANDS_SET.has(command as IconCommand);
 }
 
+/** Export commands */
+export const EXPORT_COMMANDS = {
+  EXPORT_SVG_GRAFANA_BUNDLE: "export-svg-grafana-bundle"
+} as const;
+
+const EXPORT_COMMANDS_SET = new Set(Object.values(EXPORT_COMMANDS));
+
+export type ExportCommand = (typeof EXPORT_COMMANDS)[keyof typeof EXPORT_COMMANDS];
+
+export function isExportCommand(command: string): command is ExportCommand {
+  return EXPORT_COMMANDS_SET.has(command as ExportCommand);
+}
+
 export const MSG_TOGGLE_SPLIT_VIEW = "topo-toggle-split-view" as const;
 
 export type ExtensionCommandType =
@@ -91,5 +104,6 @@ export type ExtensionCommandType =
   | InterfaceCommand
   | CustomNodeCommand
   | IconCommand
+  | ExportCommand
   | typeof MSG_TOGGLE_SPLIT_VIEW
   | typeof MSG_CANCEL_LAB_LIFECYCLE;

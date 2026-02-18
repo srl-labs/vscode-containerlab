@@ -15,6 +15,8 @@ import { refreshTopologySnapshot } from "@webview/services/topologyHostCommands"
 import { useGraphStore, useTopoViewerStore } from "@webview/stores";
 import { applyDevVars } from "@webview/theme/devTheme";
 import { vscodeTheme } from "@webview/theme/vscodeTheme";
+import { EXPORT_COMMANDS } from "@shared/messages/extension";
+import { MSG_SVG_EXPORT_RESULT } from "@shared/messages/webview";
 
 import { DevStateManager } from "./mock/DevState";
 import { DevSettingsOverlay } from "./components/DevSettingsOverlay";
@@ -1124,6 +1126,11 @@ function setupDevModeCommandInterceptor(): void {
     actionRef?: string;
     value?: string;
     state?: ExplorerUiState;
+    requestId?: string;
+    baseName?: string;
+    svgContent?: string;
+    dashboardJson?: string;
+    panelYaml?: string;
   };
 
   const warnedCommands = new Set<string>();
@@ -1138,6 +1145,79 @@ function setupDevModeCommandInterceptor(): void {
     if (warnedCommands.has(command)) return;
     warnedCommands.add(command);
     console.warn(`[Dev] Unhandled VS Code command: ${command}`);
+  };
+
+  const postToWebview = (data: Record<string, unknown>): void => {
+    window.dispatchEvent(new MessageEvent("message", { data }));
+  };
+
+  const triggerDownload = (filename: string, content: string, mimeType: string): void => {
+    const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const sanitizeBaseName = (value: string): string => {
+    const trimmed = value.trim();
+    if (!trimmed) return "topology";
+    const withoutSvg = trimmed.replace(/\.svg$/i, "");
+    const sanitized = withoutSvg
+      .split("")
+      .map((char) => {
+        const code = char.charCodeAt(0);
+        const isInvalid = code < 32 || "<>:\"/\\|?*".includes(char);
+        return isInvalid ? "-" : char;
+      })
+      .join("")
+      .trim();
+    return sanitized || "topology";
+  };
+
+  const handleGrafanaBundleExport = (msg: DevVscodeMessage): void => {
+    const requestId = typeof msg.requestId === "string" ? msg.requestId.trim() : "";
+    const svgContent = typeof msg.svgContent === "string" ? msg.svgContent : "";
+    const dashboardJson = typeof msg.dashboardJson === "string" ? msg.dashboardJson : "";
+    const panelYaml = typeof msg.panelYaml === "string" ? msg.panelYaml : "";
+    const baseName = sanitizeBaseName(typeof msg.baseName === "string" ? msg.baseName : "topology");
+
+    if (!requestId || !svgContent || !dashboardJson || !panelYaml) {
+      postToWebview({
+        type: MSG_SVG_EXPORT_RESULT,
+        requestId,
+        success: false,
+        error: "Invalid SVG Grafana export payload"
+      });
+      return;
+    }
+
+    try {
+      const svgFilename = `${baseName}.svg`;
+      const dashboardFilename = `${baseName}.grafana.json`;
+      const panelFilename = `${baseName}.flow_panel.yaml`;
+
+      triggerDownload(svgFilename, svgContent, "image/svg+xml");
+      triggerDownload(dashboardFilename, dashboardJson, "application/json");
+      triggerDownload(panelFilename, panelYaml, "application/x-yaml");
+
+      postToWebview({
+        type: MSG_SVG_EXPORT_RESULT,
+        requestId,
+        success: true,
+        files: [svgFilename, dashboardFilename, panelFilename]
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      postToWebview({
+        type: MSG_SVG_EXPORT_RESULT,
+        requestId,
+        success: false,
+        error: message
+      });
+    }
   };
 
   const handleViewerLog = (msg: DevVscodeMessage) => {
@@ -1206,7 +1286,8 @@ function setupDevModeCommandInterceptor(): void {
 
   const commandHandlers: Record<string, (msg: DevVscodeMessage) => void> = {
     reactTopoViewerLog: handleViewerLog,
-    topoViewerLog: handleViewerLog
+    topoViewerLog: handleViewerLog,
+    [EXPORT_COMMANDS.EXPORT_SVG_GRAFANA_BUNDLE]: handleGrafanaBundleExport
   };
 
   // Create a mock vscode API that intercepts postMessage calls

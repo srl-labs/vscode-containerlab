@@ -127,32 +127,49 @@ export function buildEdgeInfoForExport(edges: Edge[]): EdgeInfo {
 function buildEndpointLabelSvg(text: string, x: number, y: number): string {
   if (!text) return "";
 
-  // Estimate text dimensions
-  const charWidth = EDGE_LABEL.fontSize * 0.6;
-  const textWidth = text.length * charWidth;
-  const bgWidth = textWidth + EDGE_LABEL.paddingX * 2 + 4;
-  const bgHeight = EDGE_LABEL.fontSize + EDGE_LABEL.paddingY * 2 + 4;
-
-  const bgX = x - bgWidth / 2;
-  const bgY = y - bgHeight / 2;
-  const textY = y + EDGE_LABEL.fontSize * 0.35;
+  const compact = getCompactInterfaceLabel(text);
+  const charWidth = EDGE_LABEL.fontSize * 0.58;
+  const textWidth = Math.max(EDGE_LABEL.fontSize * 0.8, compact.length * charWidth);
+  const radius = Math.max(6, textWidth / 2 + 2);
+  const textY = y;
 
   let svg = `<g class="edge-label">`;
 
-  // Background
-  svg += `<rect x="${bgX}" y="${bgY}" width="${bgWidth}" height="${bgHeight}" `;
-  svg += `fill="${EDGE_LABEL.backgroundColor}" rx="${EDGE_LABEL.borderRadius}" ry="${EDGE_LABEL.borderRadius}"/>`;
+  svg += `<circle cx="${x}" cy="${y}" r="${radius}" `;
+  svg += `fill="${EDGE_LABEL.backgroundColor}" stroke="${EDGE_LABEL.outlineColor}" stroke-width="0.7"/>`;
 
-  // Text (no stroke outline - matches canvas appearance)
   svg += `<text x="${x}" y="${textY}" `;
   svg += `font-size="${EDGE_LABEL.fontSize}" `;
   svg += `font-family='${EDGE_LABEL.fontFamily}' `;
-  svg += `fill="${EDGE_LABEL.color}" text-anchor="middle">`;
-  svg += escapeXml(text);
+  svg += `dominant-baseline="middle" alignment-baseline="middle" `;
+  svg += `fill="${EDGE_LABEL.color}" text-anchor="middle" `;
+  svg += `stroke="${EDGE_LABEL.textStrokeColor}" stroke-width="${EDGE_LABEL.textStrokeWidth}" `;
+  svg += `paint-order="stroke" stroke-linejoin="round">`;
+  svg += escapeXml(compact);
   svg += `</text>`;
 
   svg += `</g>`;
   return svg;
+}
+
+function getCompactInterfaceLabel(endpoint: string): string {
+  const trimmed = endpoint.trim();
+  if (!trimmed) return "";
+
+  let end = trimmed.length - 1;
+  while (end >= 0 && (trimmed[end] < "0" || trimmed[end] > "9")) {
+    end -= 1;
+  }
+  if (end >= 0) {
+    let start = end;
+    while (start >= 0 && trimmed[start] >= "0" && trimmed[start] <= "9") {
+      start -= 1;
+    }
+    return trimmed.slice(start + 1, end + 1);
+  }
+
+  const token = trimmed.split(/[:/.-]/).filter((part) => part.length > 0).pop() ?? trimmed;
+  return token.length <= 3 ? token : token.slice(-3);
 }
 
 // ============================================================================

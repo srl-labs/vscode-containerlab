@@ -22,10 +22,12 @@ export const DEFAULT_ICON_COLOR = "#005aff";
 
 export const NODE_LABEL = {
   fontWeight: 500,
-  color: "#F5F5F5",
+  color: "#FFFFFF",
   textShadowColor: "#3C3E41",
   textShadowBlur: 3,
-  backgroundColor: "rgba(0, 0, 0, 0.7)",
+  backgroundColor: "rgba(0, 0, 0, 0.85)",
+  textStrokeColor: "rgba(0, 0, 0, 0.95)",
+  textStrokeWidth: 0.8,
   paddingX: 4,
   paddingY: 1,
   borderRadius: 3,
@@ -58,16 +60,18 @@ export const CONTROL_POINT_STEP_SIZE = 40;
 // ============================================================================
 
 export const EDGE_LABEL = {
-  fontSize: 10,
-  fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-  color: "rgba(0, 0, 0, 0.7)",
-  backgroundColor: "rgba(202, 203, 204, 0.5)",
-  outlineColor: "rgba(255, 255, 255, 0.7)",
-  paddingX: 2,
-  paddingY: 0,
+  fontSize: 9,
+  fontFamily: "Helvetica, Arial, sans-serif",
+  color: "#FFFFFF",
+  backgroundColor: "#bec8d2",
+  textStrokeColor: "rgba(0, 0, 0, 0.95)",
+  textStrokeWidth: 0.6,
+  outlineColor: "rgba(0, 0, 0, 0.25)",
+  paddingX: 3,
+  paddingY: 1,
   borderRadius: 4,
   /** Pixels from node edge for label positioning */
-  offset: 30
+  offset: 18
 } as const;
 
 // ============================================================================

@@ -1,6 +1,6 @@
 // SVG export dialog.
 import React, { useState, useCallback } from "react";
-import type { ReactFlowInstance, Edge } from "@xyflow/react";
+import type { ReactFlowInstance } from "@xyflow/react";
 import {
   AccountTree as AccountTreeIcon,
   Download as DownloadIcon,
@@ -30,19 +30,28 @@ import type {
   FreeShapeAnnotation,
   GroupStyleAnnotation
 } from "../../../shared/types/topology";
+import { EXPORT_COMMANDS } from "../../../shared/messages/extension";
+import { MSG_SVG_EXPORT_RESULT } from "../../../shared/messages/webview";
 import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
+import { sendCommandToExtension } from "../../messaging/extensionMessaging";
+import { subscribeToWebviewMessages } from "../../messaging/webviewMessageBus";
 import { log } from "../../utils/logger";
 import { ColorField, PREVIEW_GRID_BG_SX } from "../ui/form";
 import { DialogTitleWithClose } from "../ui/dialog/DialogChrome";
 
 import {
-  buildSvgDefs,
-  renderNodesToSvg,
-  renderEdgesToSvg,
+  applyPadding,
+  buildGraphSvg,
+  collectGrafanaEdgeCellMappings,
+  sanitizeSvgForGrafana,
+  applyGrafanaCellIdsToSvg,
+  buildGrafanaPanelYaml,
+  buildGrafanaDashboardJson,
+  getViewportSize,
   compositeAnnotationsIntoSvg,
   addBackgroundRect
 } from "./svg-export";
@@ -64,75 +73,6 @@ const ANNOTATION_NODE_TYPES: Set<string> = new Set([
   GROUP_NODE_TYPE
 ]);
 
-function getViewportSize(): { width: number; height: number } | null {
-  const container = document.querySelector(".react-flow") as HTMLElement | null;
-  if (!container) return null;
-  const rect = container.getBoundingClientRect();
-  if (!Number.isFinite(rect.width) || !Number.isFinite(rect.height)) return null;
-  return { width: rect.width, height: rect.height };
-}
-
-function buildViewportTransform(
-  viewport: { x: number; y: number; zoom: number },
-  size: { width: number; height: number },
-  zoomPercent: number
-) {
-  const scaleFactor = Math.max(0.1, zoomPercent / 100);
-  const width = Math.max(1, Math.round(size.width * scaleFactor));
-  const height = Math.max(1, Math.round(size.height * scaleFactor));
-  const transform = `translate(${viewport.x * scaleFactor}, ${viewport.y * scaleFactor}) scale(${viewport.zoom * scaleFactor})`;
-  return { width, height, transform, scaleFactor };
-}
-
-function buildGraphSvg(
-  rfInstance: ReactFlowInstance,
-  zoomPercent: number,
-  customIcons?: CustomIconMap,
-  includeEdgeLabels?: boolean
-) {
-  const viewport = rfInstance.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-  const size = getViewportSize();
-  if (!size) return null;
-  const { width, height, transform } = buildViewportTransform(viewport, size, zoomPercent);
-  const nodes = rfInstance.getNodes?.() ?? [];
-  const edges = rfInstance.getEdges?.() ?? [];
-  const edgesSvg = renderEdgesToSvg(
-    edges as Edge[],
-    nodes,
-    includeEdgeLabels ?? true,
-    ANNOTATION_NODE_TYPES
-  );
-  const nodesSvg = renderNodesToSvg(nodes, customIcons, ANNOTATION_NODE_TYPES);
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
-  svg += buildSvgDefs();
-  svg += `<g transform="${transform}">`;
-  svg += edgesSvg;
-  svg += nodesSvg;
-  svg += `</g></svg>`;
-  return { svg, transform };
-}
-
-function applyPadding(svgContent: string, padding: number): string {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(svgContent, "image/svg+xml");
-  const svgEl = doc.documentElement;
-  const width = parseFloat(svgEl.getAttribute("width") || "0");
-  const height = parseFloat(svgEl.getAttribute("height") || "0");
-  const newWidth = width + 2 * padding;
-  const newHeight = height + 2 * padding;
-  let viewBox = svgEl.getAttribute("viewBox") || `0 0 ${width} ${height}`;
-  const [x, y, vWidth, vHeight] = viewBox.split(" ").map(parseFloat);
-  const paddingX = padding * (vWidth / width);
-  const paddingY = padding * (vHeight / height);
-  svgEl.setAttribute(
-    "viewBox",
-    `${x - paddingX} ${y - paddingY} ${vWidth + 2 * paddingX} ${vHeight + 2 * paddingY}`
-  );
-  svgEl.setAttribute("width", newWidth.toString());
-  svgEl.setAttribute("height", newHeight.toString());
-  return new XMLSerializer().serializeToString(svgEl);
-}
-
 function downloadSvg(content: string, filename: string): void {
   const blob = new Blob([content], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -144,6 +84,66 @@ function downloadSvg(content: string, filename: string): void {
 }
 
 type BackgroundOption = "transparent" | "custom";
+
+interface SvgExportResultMessage {
+  type: typeof MSG_SVG_EXPORT_RESULT;
+  requestId: string;
+  success: boolean;
+  error?: string;
+  files?: string[];
+}
+
+interface GrafanaBundlePayload {
+  requestId: string;
+  baseName: string;
+  svgContent: string;
+  dashboardJson: string;
+  panelYaml: string;
+}
+
+function createRequestId(): string {
+  const bytes = new Uint8Array(8);
+  globalThis.crypto.getRandomValues(bytes);
+  const random = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `svg-export-${Date.now()}-${random}`;
+}
+
+function requestGrafanaBundleExport(payload: GrafanaBundlePayload): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    let unsubscribe = () => {
+      /* no-op until subscription is active */
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      unsubscribe();
+      reject(new Error("Timed out waiting for export confirmation"));
+    }, 30_000);
+
+    unsubscribe = subscribeToWebviewMessages((event) => {
+      const message = event.data as SvgExportResultMessage | undefined;
+      if (!message || message.type !== MSG_SVG_EXPORT_RESULT) return;
+      if (message.requestId !== payload.requestId) return;
+
+      unsubscribe();
+      window.clearTimeout(timeoutId);
+
+      if (!message.success) {
+        reject(new Error(message.error || "Grafana bundle export failed"));
+        return;
+      }
+
+      const files = Array.isArray(message.files)
+        ? message.files.filter((file): file is string => typeof file === "string")
+        : [];
+      resolve(files);
+    });
+
+    sendCommandToExtension(
+      EXPORT_COMMANDS.EXPORT_SVG_GRAFANA_BUNDLE,
+      payload as unknown as Record<string, unknown>
+    );
+  });
+}
 
 export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   isOpen,
@@ -163,6 +163,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   } | null>(null);
   const [includeAnnotations, setIncludeAnnotations] = useState(true);
   const [includeEdgeLabels, setIncludeEdgeLabels] = useState(true);
+  const [exportGrafanaBundle, setExportGrafanaBundle] = useState(false);
   const [backgroundOption, setBackgroundOption] = useState<BackgroundOption>("transparent");
   const [customBackgroundColor, setCustomBackgroundColor] = useState("#1e1e1e");
   const [filename, setFilename] = useState("topology");
@@ -179,7 +180,13 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     setExportStatus(null);
     try {
       log.info(`[SvgExport] Export requested: zoom=${borderZoom}%, padding=${borderPadding}px`);
-      const graphSvg = buildGraphSvg(rfInstance, borderZoom, customIcons, includeEdgeLabels);
+      const graphSvg = buildGraphSvg(
+        rfInstance,
+        borderZoom,
+        customIcons,
+        includeEdgeLabels,
+        ANNOTATION_NODE_TYPES
+      );
       if (!graphSvg) throw new Error("Unable to capture viewport for SVG export");
       let finalSvg = graphSvg.svg;
       if (borderPadding > 0) finalSvg = applyPadding(finalSvg, borderPadding);
@@ -193,8 +200,39 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       if (backgroundOption === "custom") {
         finalSvg = addBackgroundRect(finalSvg, customBackgroundColor);
       }
-      downloadSvg(finalSvg, `${filename || "topology"}.svg`);
-      setExportStatus({ type: "success", message: "SVG exported successfully" });
+
+      const baseName = (filename || "topology").trim() || "topology";
+      if (!exportGrafanaBundle) {
+        downloadSvg(finalSvg, `${baseName}.svg`);
+        setExportStatus({ type: "success", message: "SVG exported successfully" });
+        return;
+      }
+
+      const mappings = collectGrafanaEdgeCellMappings(
+        graphSvg.edges,
+        graphSvg.nodes,
+        ANNOTATION_NODE_TYPES
+      );
+      const grafanaBaseSvg = sanitizeSvgForGrafana(finalSvg);
+      const grafanaSvg = applyGrafanaCellIdsToSvg(grafanaBaseSvg, mappings);
+      const panelYaml = buildGrafanaPanelYaml(mappings);
+      const dashboardJson = buildGrafanaDashboardJson(panelYaml, grafanaSvg, baseName);
+
+      const requestId = createRequestId();
+      const files = await requestGrafanaBundleExport({
+        requestId,
+        baseName,
+        svgContent: grafanaSvg,
+        dashboardJson,
+        panelYaml
+      });
+
+      const suffix =
+        files.length > 0 ? ` (${files.map((file) => file.split("/").pop()).join(", ")})` : "";
+      setExportStatus({
+        type: "success",
+        message: `Grafana bundle exported successfully${suffix}`
+      });
     } catch (error) {
       log.error(`[SvgExport] Export failed: ${error}`);
       setExportStatus({ type: "error", message: `Export failed: ${error}` });
@@ -207,6 +245,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     borderPadding,
     includeAnnotations,
     includeEdgeLabels,
+    exportGrafanaBundle,
     totalAnnotations,
     groups,
     textAnnotations,
@@ -229,6 +268,13 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     }
     return { backgroundColor: customBackgroundColor } as const;
   })();
+
+  let exportButtonLabel = "Export SVG";
+  if (isExporting) {
+    exportButtonLabel = "Exporting...";
+  } else if (exportGrafanaBundle) {
+    exportButtonLabel = "Export Grafana Bundle";
+  }
 
   return (
     <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth data-testid="svg-export-modal">
@@ -345,6 +391,17 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
             }
             label="Edge labels"
           />
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={exportGrafanaBundle}
+                onChange={(e) => setExportGrafanaBundle(e.target.checked)}
+              />
+            }
+            label="Grafana bundle (SVG + dashboard JSON + panel YAML)"
+            data-testid="svg-export-grafana-bundle"
+          />
         </Box>
 
         <Divider />
@@ -436,7 +493,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
           }
           data-testid="svg-export-btn"
         >
-          {isExporting ? "Exporting..." : "Export SVG"}
+          {exportButtonLabel}
         </Button>
       </DialogActions>
     </Dialog>

@@ -33,3 +33,17 @@ export { buildEdgeInfoForExport, edgeToSvg, renderEdgesToSvg } from "./edgesToSv
 // Annotation rendering (existing)
 export { compositeAnnotationsIntoSvg, addBackgroundRect } from "./annotationsToSvg";
 export type { AnnotationData } from "./annotationsToSvg";
+
+// Graph export helpers
+export { getViewportSize, buildViewportTransform, buildGraphSvg, applyPadding } from "./graphSvg";
+export type { GraphSvgResult, ViewportSize } from "./graphSvg";
+
+// Grafana export helpers
+export {
+  collectGrafanaEdgeCellMappings,
+  sanitizeSvgForGrafana,
+  applyGrafanaCellIdsToSvg,
+  buildGrafanaPanelYaml,
+  buildGrafanaDashboardJson
+} from "./grafanaExport";
+export type { GrafanaEdgeCellMapping } from "./grafanaExport";

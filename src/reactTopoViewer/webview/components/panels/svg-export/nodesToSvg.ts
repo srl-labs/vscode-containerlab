@@ -132,6 +132,8 @@ export function buildNodeLabelSvg(label: string, iconCenterX: number, iconBottom
   svg += `font-size="${NODE_LABEL.fontSize}" font-weight="${NODE_LABEL.fontWeight}" `;
   svg += `font-family="system-ui, -apple-system, sans-serif" `;
   svg += `fill="${NODE_LABEL.color}" text-anchor="middle" `;
+  svg += `stroke="${NODE_LABEL.textStrokeColor}" stroke-width="${NODE_LABEL.textStrokeWidth}" `;
+  svg += `paint-order="stroke" stroke-linejoin="round" `;
   svg += `filter="url(#text-shadow)">`;
   svg += escapeXml(displayLabel);
   svg += `</text>`;
