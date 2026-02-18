@@ -46,6 +46,7 @@ export interface ExplorerUiState {
   sectionOrder?: ExplorerSectionId[];
   collapsedBySection?: Partial<Record<ExplorerSectionId, boolean>>;
   expandedBySection?: Partial<Record<ExplorerSectionId, string[]>>;
+  heightRatioBySection?: Partial<Record<ExplorerSectionId, number>>;
 }
 
 export interface ExplorerSnapshotMessage {

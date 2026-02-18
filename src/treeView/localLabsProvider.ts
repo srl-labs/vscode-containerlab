@@ -74,9 +74,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
   }
 
   private performScan(): Promise<void> {
-    // allow only a single filescan at atime
-    // return the running scan promise if a 
-    // scan is currently running
+    // Only one scan at a time – if a scan is already running, return its promise.
     if (this.scanPromise) {
       return this.scanPromise;
     }
