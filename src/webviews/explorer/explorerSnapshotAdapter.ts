@@ -188,9 +188,21 @@ function shouldHideNodeDescription(contextValue: string | undefined): boolean {
   return isLabContext(contextValue);
 }
 
-function labStatusIndicatorFromChildren(children: ExplorerNode[]): ExplorerNode["statusIndicator"] {
-  const containers = children.filter((child) => child.contextValue === "containerlabContainer");
-  if (containers.length === 0) {
+function collectContainerIndicators(children: ExplorerNode[]): ExplorerNode["statusIndicator"][] {
+  const indicators: ExplorerNode["statusIndicator"][] = [];
+  for (const child of children) {
+    if (child.contextValue === "containerlabContainer") {
+      indicators.push(child.statusIndicator);
+    } else if (child.contextValue === "containerlabContainerGroup") {
+      // Recurse into group children to get actual container indicators
+      indicators.push(...collectContainerIndicators(child.children));
+    }
+  }
+  return indicators;
+}
+
+function aggregateStatusFromIndicators(indicators: ExplorerNode["statusIndicator"][]): ExplorerNode["statusIndicator"] {
+  if (indicators.length === 0) {
     return undefined;
   }
 
@@ -198,19 +210,19 @@ function labStatusIndicatorFromChildren(children: ExplorerNode[]): ExplorerNode[
   let notRunning = 0;
   let unhealthyRunning = 0;
 
-  for (const container of containers) {
-    if (container.statusIndicator === "green") {
+  for (const indicator of indicators) {
+    if (indicator === "green") {
       healthyRunning += 1;
       continue;
     }
-    if (container.statusIndicator === "yellow") {
+    if (indicator === "yellow") {
       unhealthyRunning += 1;
       continue;
     }
     notRunning += 1;
   }
 
-  if (healthyRunning === containers.length) {
+  if (healthyRunning === indicators.length) {
     return "green";
   }
   if (healthyRunning > 0 && notRunning > 0 && unhealthyRunning === 0) {
@@ -503,7 +515,7 @@ function getNodeActions(
     return actions;
   }
 
-  if (contextValue === "containerlabContainer") {
+  if (contextValue === "containerlabContainer" || contextValue === "containerlabContainerGroup") {
     appendContainerActions(actions, seen, registry, item);
     return actions;
   }
@@ -530,6 +542,7 @@ function resolvePrimaryAction(
 
   if (
     contextValue === "containerlabContainer" ||
+    contextValue === "containerlabContainerGroup" ||
     contextValue === "containerlabInterfaceUp" ||
     contextValue === "containerlabInterfaceDown" ||
     isShareLinkNode(contextValue)
@@ -606,9 +619,10 @@ async function buildNode(
     shareAction = undefined;
   }
   const primaryAction = resolvePrimaryAction(contextValue, nodeActions);
-  const statusIndicator = isDeployedLab(contextValue)
-    ? labStatusIndicatorFromChildren(children)
-    : getStatusIndicator(item);
+  const statusIndicator =
+    isDeployedLab(contextValue) || contextValue === "containerlabContainerGroup"
+      ? aggregateStatusFromIndicators(collectContainerIndicators(children))
+      : getStatusIndicator(item);
 
   return {
     id: item.id || pathId,

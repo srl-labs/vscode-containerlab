@@ -9,6 +9,14 @@ export interface LabPath {
   relative: string;
 }
 
+/** Strip CIDR mask from an IP address, returning empty string for "N/A". */
+function stripCidr(addr: string | undefined): string {
+  if (!addr || addr === "N/A") {
+    return "";
+  }
+  return addr.split("/")[0];
+}
+
 // Enum to store types of container state icons.
 export const CtrStateIcons = {
   RUNNING: "icons/running.svg",
@@ -32,7 +40,7 @@ export class ClabLabTreeNode extends vscode.TreeItem {
   public readonly labPath: LabPath;
   public readonly name?: string;
   public readonly owner?: string;
-  public containers?: ClabContainerTreeNode[];
+  public containers?: (ClabContainerTreeNode | ClabContainerGroupTreeNode)[];
   public favorite: boolean;
   public sshxLink?: string;
   public sshxNode?: ClabSshxLinkTreeNode;
@@ -45,7 +53,7 @@ export class ClabLabTreeNode extends vscode.TreeItem {
     labPath: LabPath,
     name?: string,
     owner?: string,
-    containers?: ClabContainerTreeNode[],
+    containers?: (ClabContainerTreeNode | ClabContainerGroupTreeNode)[],
     contextValue?: string,
     favorite: boolean = false,
     sshxLink?: string,
@@ -96,6 +104,7 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
   public v6Address?: string;
   public nodeType?: string; // Added node type from clab-node-type
   public nodeGroup?: string; // Added node group from clab-node-group
+  public rootNodeName?: string; // clab-root-node-name — set if this is a sub-container
   public status?: string;
 
   // eslint-disable-next-line max-params -- TreeItem subclass with many optional properties
@@ -137,22 +146,54 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
     this.id = `container:${labPath.absolute}:${name}`;
   }
 
-  // Get the IPv4 address without CIDR mask
   public get IPv4Address() {
-    if (this.v4Address !== "N/A") {
-      return this.v4Address?.split("/")[0];
-    } else {
-      return "";
-    }
+    return stripCidr(this.v4Address);
   }
 
-  // Get the IPv6 address without CIDR mask
   public get IPv6Address() {
-    if (this.v6Address !== "N/A") {
-      return this.v6Address?.split("/")[0];
-    } else {
-      return "";
-    }
+    return stripCidr(this.v6Address);
+  }
+}
+
+/**
+ * Virtual group tree node for root nodes that have sub-containers (e.g., Nokia SRSIM).
+ * Root nodes do not have their own container — they are virtual parents.
+ * Inherits IP details and identity from the primary (0th) sub-container.
+ */
+export class ClabContainerGroupTreeNode extends vscode.TreeItem {
+  public readonly rootNodeName: string;
+  public readonly labPath: LabPath;
+  public children: ClabContainerTreeNode[];
+
+  // Properties inherited from the primary (0th) sub-container
+  public name: string = "";
+  public name_short: string = "";
+  public cID: string = "";
+  public state: string = "";
+  public kind: string = "";
+  public image: string = "";
+  public v4Address?: string;
+  public v6Address?: string;
+  public nodeType?: string;
+  public nodeGroup?: string;
+  public status?: string;
+
+  constructor(rootNodeName: string, labPath: LabPath, children: ClabContainerTreeNode[]) {
+    super(rootNodeName, vscode.TreeItemCollapsibleState.Collapsed);
+    this.rootNodeName = rootNodeName;
+    this.labPath = labPath;
+    this.children = children;
+    this.contextValue = "containerlabContainerGroup";
+    this.iconPath = new vscode.ThemeIcon("symbol-class");
+    this.id = `containerGroup:${labPath.absolute}:${rootNodeName}`;
+  }
+
+  public get IPv4Address() {
+    return stripCidr(this.v4Address);
+  }
+
+  public get IPv6Address() {
+    return stripCidr(this.v6Address);
   }
 }
 
@@ -301,6 +342,25 @@ export interface ClabJSON {
   status?: string; // Also add the optional status field
   node_type?: string; // Node type (e.g. ixrd3, srlinux, etc.)
   node_group?: string; // Node group
+  root_node_name?: string; // Root node short name (for sub-containers)
   network_name?: string; // Management network name
   startedAt?: number;
+}
+
+/**
+ * Flatten a mixed list of container and group nodes into only ClabContainerTreeNode entries.
+ */
+export function flattenContainers(
+  nodes: (ClabContainerTreeNode | ClabContainerGroupTreeNode)[] | undefined
+): ClabContainerTreeNode[] {
+  if (!nodes) return [];
+  const result: ClabContainerTreeNode[] = [];
+  for (const node of nodes) {
+    if (node instanceof ClabContainerGroupTreeNode) {
+      result.push(...node.children);
+    } else {
+      result.push(node);
+    }
+  }
+  return result;
 }

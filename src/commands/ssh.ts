@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import type { ClabContainerTreeNode, ClabLabTreeNode } from "../treeView/common";
+import { type ClabContainerTreeNode, type ClabLabTreeNode, flattenContainers } from "../treeView/common";
 import { sshUserMapping } from "../globals";
 
 import { execCommandInTerminal } from "./command";
@@ -50,7 +50,7 @@ export function sshToLab(node: ClabLabTreeNode | undefined): void {
     return;
   }
 
-  node.containers.forEach((c) => {
+  flattenContainers(node.containers).forEach((c) => {
     sshToNode(c);
   });
 }

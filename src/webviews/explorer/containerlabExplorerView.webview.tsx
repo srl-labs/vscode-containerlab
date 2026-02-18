@@ -50,8 +50,11 @@ import {
 import type { Theme } from "@mui/material/styles";
 import { createRoot } from "react-dom/client";
 import {
+  type Dispatch,
   type DragEvent,
   type MouseEvent,
+  type RefObject,
+  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -78,8 +81,6 @@ import {
 const COLOR_ERROR_MAIN = "error.main";
 const COLOR_TEXT_PRIMARY = "text.primary";
 const COLOR_TEXT_SECONDARY = "text.secondary";
-const COLOR_PRIMARY_MAIN = "primary.main";
-const COLOR_DIVIDER = "divider";
 const COLOR_TEXT_DISABLED = "text.disabled";
 const FILTER_UPDATE_DEBOUNCE_MS = 250;
 const UI_STATE_UPDATE_DEBOUNCE_MS = 160;
@@ -92,6 +93,9 @@ const TREE_DEPTH_INDENT = 1.6;
 const TREE_DISCLOSURE_SLOT_PX = 14;
 const TREE_ROW_GAP = 0.3;
 const NODE_MARKER_SLOT_PX = 14;
+const RESIZE_DIVIDER_HEIGHT_PX = 4;
+const MIN_SECTION_BODY_HEIGHT_PX = 40;
+const FIXED_HEIGHT_SECTIONS: ReadonlySet<ExplorerSectionId> = new Set(["helpFeedback"]);
 
 const STATUS_COLOR_MAP: Record<string, string> = {
   green: "success.main",
@@ -105,12 +109,8 @@ const TOOLBAR_ICON_BUTTON_SX = {
   width: 24,
   height: 24,
   borderRadius: 1,
-  border: "1px solid",
-  borderColor: COLOR_DIVIDER,
   color: COLOR_TEXT_PRIMARY,
-  bgcolor: (theme: Theme) => theme.alpha(theme.palette.background.default, 0.45),
   "&:hover": {
-    borderColor: COLOR_PRIMARY_MAIN,
     bgcolor: (theme: Theme) => theme.alpha(theme.palette.primary.main, 0.14)
   }
 } as const;
@@ -133,6 +133,7 @@ type ActionGroupId =
   | "copy"
   | "tools"
   | "view"
+  | "danger"
   | "other";
 
 type ExplorerNodeKind = "lab" | "container" | "interface" | "link" | "other";
@@ -169,7 +170,8 @@ const ACTION_GROUP_ORDER_DEFAULT: ActionGroupId[] = [
   "copy",
   "tools",
   "view",
-  "other"
+  "other",
+  "danger"
 ];
 
 const ACTION_GROUP_ORDER_BY_NODE_KIND: Record<ExplorerNodeKind, ActionGroupId[]> = {
@@ -185,7 +187,8 @@ const ACTION_GROUP_ORDER_BY_NODE_KIND: Record<ExplorerNodeKind, ActionGroupId[]>
     "copy",
     "view",
     "network",
-    "other"
+    "other",
+    "danger"
   ],
   container: [
     "lifecycle",
@@ -327,9 +330,12 @@ const ACTION_GROUP_RULES: ReadonlyArray<CommandActionGroupRule> = [
       command.includes("openfolder") ||
       command.includes("addtoworkspace") ||
       command.includes("togglefavorite") ||
-      command.includes("delete") ||
       command.includes("clonerepo"),
     group: "topology"
+  },
+  {
+    match: (command) => command.includes("delete"),
+    group: "danger"
   },
   {
     match: (command) =>
@@ -359,7 +365,8 @@ const ACTION_GROUP_SECTION_BY_NODE_KIND: Partial<
     access: 3,
     sharing: 3,
     inspect: 3,
-    tools: 3
+    tools: 3,
+    danger: 5
   },
   container: {
     lifecycle: 1,
@@ -392,6 +399,7 @@ interface ExplorerSectionCardProps {
   isCollapsed: boolean;
   isDropTarget: boolean;
   isBeingDragged: boolean;
+  flexStyle: string;
   onSetSectionRef: (sectionId: ExplorerSectionId, element: HTMLDivElement | null) => void;
   onSectionDragStart: (sectionId: ExplorerSectionId) => (event: DragEvent<HTMLDivElement>) => void;
   onSectionDragOver: (sectionId: ExplorerSectionId) => (event: DragEvent<HTMLDivElement>) => void;
@@ -490,7 +498,7 @@ function nodeKindFromContext(contextValue: string | undefined): ExplorerNodeKind
   if (contextValue.includes("containerlabLab")) {
     return "lab";
   }
-  if (contextValue === "containerlabContainer") {
+  if (contextValue === "containerlabContainer" || contextValue === "containerlabContainerGroup") {
     return "container";
   }
   if (contextValue === "containerlabInterfaceUp" || contextValue === "containerlabInterfaceDown") {
@@ -555,6 +563,7 @@ function actionGroupLabel(groupId: ActionGroupId): string {
     copy: "Copy",
     tools: "Tools",
     view: "View",
+    danger: "Danger",
     other: "Other"
   };
   return labels[groupId];
@@ -573,6 +582,7 @@ function actionGroupIcon(groupId: ActionGroupId): SvgIconComponent {
     copy: ContentCopyIcon,
     tools: BuildIcon,
     view: FilterAltIcon,
+    danger: DeleteOutlineIcon,
     other: BuildIcon
   };
   return icons[groupId];
@@ -1149,7 +1159,7 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
     [menuActions, nodeKind, onInvokeAction]
   );
   const secondaryText = node.description || node.statusDescription;
-  const isContainer = node.contextValue === "containerlabContainer";
+  const isContainer = node.contextValue === "containerlabContainer" || node.contextValue === "containerlabContainerGroup";
   const isInterface =
     node.contextValue === "containerlabInterfaceUp" || node.contextValue === "containerlabInterfaceDown";
   const inlineContainerStatus = isContainer ? secondaryText?.trim() : undefined;
@@ -1179,7 +1189,13 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
       spacing={0.75}
       onContextMenu={handleRowContextMenu}
       data-explorer-node-row="true"
-      sx={{ width: "100%" }}
+      sx={{
+        width: "100%",
+        borderRadius: 0.5,
+        ...(menuOpen && {
+          bgcolor: (theme: Theme) => theme.alpha(theme.palette.primary.main, 0.12)
+        })
+      }}
     >
       <ExplorerNodeTextBlock
         node={node}
@@ -1359,27 +1375,151 @@ function SectionToolbarActions({ actions, onInvokeAction }: Readonly<SectionTool
   );
 }
 
-function getSectionPaperSx(isDropTarget: boolean) {
+interface ResizeDividerProps {
+  aboveId: ExplorerSectionId;
+  belowId: ExplorerSectionId;
+  onResizeStart: (aboveId: ExplorerSectionId, belowId: ExplorerSectionId, startY: number) => void;
+}
+
+function ResizeDivider({ aboveId, belowId, onResizeStart }: Readonly<ResizeDividerProps>) {
+  return (
+    <Box
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onResizeStart(aboveId, belowId, e.clientY);
+      }}
+      sx={{
+        height: RESIZE_DIVIDER_HEIGHT_PX,
+        flex: `0 0 ${RESIZE_DIVIDER_HEIGHT_PX}px`,
+        cursor: "row-resize",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        "&:hover": {
+          bgcolor: (theme: Theme) => theme.alpha(theme.palette.primary.main, 0.18)
+        }
+      }}
+    />
+  );
+}
+
+function usePaneResize(
+  containerRef: RefObject<HTMLDivElement | null>,
+  heightRatioBySection: Partial<Record<ExplorerSectionId, number>>,
+  setHeightRatioBySection: Dispatch<SetStateAction<Partial<Record<ExplorerSectionId, number>>>>,
+  collapsedBySection: Partial<Record<ExplorerSectionId, boolean>>,
+  orderedSectionIds: ExplorerSectionId[]
+) {
+  const [isResizing, setIsResizing] = useState(false);
+  const isResizingRef = useRef(false);
+
+  const handleResizeStart = useCallback(
+    (aboveId: ExplorerSectionId, belowId: ExplorerSectionId, startY: number) => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      isResizingRef.current = true;
+      setIsResizing(true);
+
+      const expandedIds = orderedSectionIds.filter((id) => !collapsedBySection[id] && !FIXED_HEIGHT_SECTIONS.has(id));
+      const headerHeight = 28;
+      const dividerCount = Math.max(0, expandedIds.length - 1);
+      const containerHeight = container.clientHeight;
+      const availableBody = containerHeight - expandedIds.length * headerHeight - dividerCount * RESIZE_DIVIDER_HEIGHT_PX;
+
+      const initialAboveRatio = heightRatioBySection[aboveId] ?? (1 / expandedIds.length);
+      const initialBelowRatio = heightRatioBySection[belowId] ?? (1 / expandedIds.length);
+      const combinedRatio = initialAboveRatio + initialBelowRatio;
+
+      const onMouseMove = (ev: globalThis.MouseEvent) => {
+        if (!isResizingRef.current) return;
+
+        const deltaY = ev.clientY - startY;
+        const ratioDelta = availableBody > 0 ? deltaY / availableBody : 0;
+
+        const minRatio = availableBody > 0 ? MIN_SECTION_BODY_HEIGHT_PX / availableBody : 0;
+        let newAboveRatio = initialAboveRatio + ratioDelta;
+        let newBelowRatio = initialBelowRatio - ratioDelta;
+
+        if (newAboveRatio < minRatio) {
+          newAboveRatio = minRatio;
+          newBelowRatio = combinedRatio - minRatio;
+        }
+        if (newBelowRatio < minRatio) {
+          newBelowRatio = minRatio;
+          newAboveRatio = combinedRatio - minRatio;
+        }
+
+        setHeightRatioBySection((current) => ({
+          ...current,
+          [aboveId]: newAboveRatio,
+          [belowId]: newBelowRatio
+        }));
+      };
+
+      const onMouseUp = () => {
+        isResizingRef.current = false;
+        setIsResizing(false);
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [containerRef, heightRatioBySection, setHeightRatioBySection, collapsedBySection, orderedSectionIds]
+  );
+
+  return { isResizing, handleResizeStart };
+}
+
+function normalizeHeightRatios(
+  currentRatios: Partial<Record<ExplorerSectionId, number>>,
+  expandedIds: ExplorerSectionId[]
+): Partial<Record<ExplorerSectionId, number>> {
+  const n = expandedIds.length;
+  if (n === 0) return currentRatios;
+
+  const nextRatios: Partial<Record<ExplorerSectionId, number>> = { ...currentRatios };
+  for (const id of expandedIds) {
+    if (nextRatios[id] === undefined || nextRatios[id] === 0) {
+      nextRatios[id] = 1 / n;
+    }
+  }
+  const total = expandedIds.reduce((sum, id) => sum + (nextRatios[id] ?? 0), 0);
+  if (total > 0) {
+    for (const id of expandedIds) {
+      nextRatios[id] = (nextRatios[id] ?? 0) / total;
+    }
+  }
+  return nextRatios;
+}
+
+function getSectionPaperSx(isDropTarget: boolean, flexStyle: string) {
   return {
-    flexShrink: 0,
+    flex: flexStyle,
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column" as const,
     overflow: "hidden",
-    borderColor: isDropTarget ? COLOR_PRIMARY_MAIN : COLOR_DIVIDER,
-    transition: "border-color 0.12s ease, box-shadow 0.12s ease",
+    borderRadius: 0,
+    border: "none",
     boxShadow: isDropTarget
       ? (theme: Theme) => `inset 0 0 0 1px ${theme.alpha(theme.palette.primary.main, 0.35)}`
       : "none"
   };
 }
 
-function getSectionHeaderSx(isCollapsed: boolean, isBeingDragged: boolean) {
+function getSectionHeaderSx(_isCollapsed: boolean, isBeingDragged: boolean) {
   return {
     px: 0.75,
-    py: 0.45,
+    py: 0.2,
+    height: 28,
+    minHeight: 28,
+    maxHeight: 28,
     display: "flex",
     alignItems: "center",
     gap: 0.35,
-    borderBottom: isCollapsed ? "none" : "1px solid",
-    borderColor: COLOR_DIVIDER,
     cursor: isBeingDragged ? "grabbing" : "grab",
     userSelect: "none",
     bgcolor: (theme: Theme) =>
@@ -1395,6 +1535,7 @@ function ExplorerSectionCard({
   isCollapsed,
   isDropTarget,
   isBeingDragged,
+  flexStyle,
   onSetSectionRef,
   onSectionDragStart,
   onSectionDragOver,
@@ -1420,15 +1561,15 @@ function ExplorerSectionCard({
       ref={(element: HTMLDivElement | null) => {
         onSetSectionRef(section.id, element);
       }}
-      sx={getSectionPaperSx(isDropTarget)}
+      sx={getSectionPaperSx(isDropTarget, flexStyle)}
+      onDragOver={onSectionDragOver(section.id)}
+      onDrop={onSectionDrop(section.id)}
     >
       <Box
         draggable
         onDragStart={onSectionDragStart(section.id)}
-        onDragOver={onSectionDragOver(section.id)}
-        onDrop={onSectionDrop(section.id)}
         onDragEnd={onSectionDragEnd}
-        sx={getSectionHeaderSx(isCollapsed, isBeingDragged)}
+        sx={{ ...getSectionHeaderSx(isCollapsed, isBeingDragged), flex: "0 0 auto" }}
       >
         <IconButton
           size="small"
@@ -1477,7 +1618,7 @@ function ExplorerSectionCard({
       </Box>
 
       {!isCollapsed && (
-        <Box sx={{ p: 1 }}>
+        <Box sx={{ p: 1, flex: 1, minHeight: 0, overflowY: "auto" }}>
           <SectionTree
             section={section}
             expandedItems={expandedItems}
@@ -1509,7 +1650,11 @@ export function ContainerlabExplorerView() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [draggingSection, setDraggingSection] = useState<ExplorerSectionId | null>(null);
   const [dragOverSection, setDragOverSection] = useState<ExplorerSectionId | null>(null);
+  const [heightRatioBySection, setHeightRatioBySection] = useState<
+    Partial<Record<ExplorerSectionId, number>>
+  >({});
   const [uiStateHydrated, setUiStateHydrated] = useState(false);
+  const paneContainerRef = useRef<HTMLDivElement | null>(null);
   const sectionRefs = useRef<Partial<Record<ExplorerSectionId, HTMLDivElement | null>>>({});
   const pendingFilterSyncRef = useRef<string | null>(null);
   const filterTimeoutRef = useRef<number | null>(null);
@@ -1590,6 +1735,9 @@ export function ContainerlabExplorerView() {
     if (state.expandedBySection) {
       setExpandedBySection(state.expandedBySection);
     }
+    if (state.heightRatioBySection) {
+      setHeightRatioBySection(state.heightRatioBySection);
+    }
     setUiStateHydrated(true);
   }, []);
 
@@ -1663,9 +1811,38 @@ export function ContainerlabExplorerView() {
     setExpandedBySection((current) => ({ ...current, [sectionId]: [] }));
   }, []);
 
+  const sectionsById = useMemo(() => {
+    const map = new Map<ExplorerSectionId, ExplorerSectionSnapshot>();
+    for (const section of sections) {
+      map.set(section.id, section);
+    }
+    return map;
+  }, [sections]);
+
+  const orderedSections = useMemo(() => {
+    const visible: ExplorerSectionSnapshot[] = [];
+    for (const sectionId of sectionOrder) {
+      const section = sectionsById.get(sectionId);
+      if (section) {
+        visible.push(section);
+      }
+    }
+    return visible;
+  }, [sectionOrder, sectionsById]);
+
+  const orderedSectionIds = useMemo(() => orderedSections.map((s) => s.id), [orderedSections]);
+
   const toggleSectionCollapsed = useCallback((sectionId: ExplorerSectionId) => {
-    setCollapsedBySection((current) => ({ ...current, [sectionId]: !(current[sectionId] ?? false) }));
-  }, []);
+    setCollapsedBySection((current) => {
+      const wasCollapsed = current[sectionId] ?? false;
+      const next = { ...current, [sectionId]: !wasCollapsed };
+
+      const expandedAfter = orderedSectionIds.filter((id) => !next[id] && !FIXED_HEIGHT_SECTIONS.has(id));
+      setHeightRatioBySection((currentRatios) => normalizeHeightRatios(currentRatios, expandedAfter));
+
+      return next;
+    });
+  }, [orderedSectionIds]);
 
   const setSectionRef = useCallback((sectionId: ExplorerSectionId, element: HTMLDivElement | null) => {
     sectionRefs.current[sectionId] = element;
@@ -1715,24 +1892,28 @@ export function ContainerlabExplorerView() {
     setDragOverSection(null);
   }, []);
 
-  const sectionsById = useMemo(() => {
-    const map = new Map<ExplorerSectionId, ExplorerSectionSnapshot>();
-    for (const section of sections) {
-      map.set(section.id, section);
-    }
-    return map;
-  }, [sections]);
+  const { isResizing, handleResizeStart } = usePaneResize(
+    paneContainerRef,
+    heightRatioBySection,
+    setHeightRatioBySection,
+    collapsedBySection,
+    orderedSectionIds
+  );
 
-  const orderedSections = useMemo(() => {
-    const visible: ExplorerSectionSnapshot[] = [];
-    for (const sectionId of sectionOrder) {
-      const section = sectionsById.get(sectionId);
-      if (section) {
-        visible.push(section);
+  const sectionFlexStyles = useMemo(() => {
+    const styles: Partial<Record<ExplorerSectionId, string>> = {};
+    const expandedIds = orderedSectionIds.filter((id) => !collapsedBySection[id] && !FIXED_HEIGHT_SECTIONS.has(id));
+    const n = expandedIds.length;
+    for (const id of orderedSectionIds) {
+      if (collapsedBySection[id] || FIXED_HEIGHT_SECTIONS.has(id)) {
+        styles[id] = "0 0 auto";
+      } else {
+        const ratio = heightRatioBySection[id] ?? (n > 0 ? 1 / n : 1);
+        styles[id] = `${ratio} 1 0px`;
       }
     }
-    return visible;
-  }, [sectionOrder, sectionsById]);
+    return styles;
+  }, [orderedSectionIds, collapsedBySection, heightRatioBySection]);
 
   useEffect(
     () => () => {
@@ -1754,7 +1935,8 @@ export function ContainerlabExplorerView() {
     const uiState: ExplorerUiState = {
       sectionOrder,
       collapsedBySection,
-      expandedBySection
+      expandedBySection,
+      heightRatioBySection
     };
 
     if (uiStateTimeoutRef.current !== null) {
@@ -1767,7 +1949,7 @@ export function ContainerlabExplorerView() {
         state: uiState
       });
     }, UI_STATE_UPDATE_DEBOUNCE_MS);
-  }, [sectionOrder, collapsedBySection, expandedBySection, uiStateHydrated, postMessage]);
+  }, [sectionOrder, collapsedBySection, expandedBySection, heightRatioBySection, uiStateHydrated, postMessage]);
 
   return (
     <Box
@@ -1781,17 +1963,29 @@ export function ContainerlabExplorerView() {
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        p: 1.5,
+        bgcolor: "background.paper",
+        pt: 1.5,
+        px: 0,
+        pb: 0,
         gap: 1.5
       }}
     >
       {errorMessage && (
-        <Alert severity="error" onClose={() => setErrorMessage(null)}>
+        <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mx: 1.5 }}>
           {errorMessage}
         </Alert>
       )}
 
-      <Stack direction="row" spacing={1} alignItems="center">
+      <Stack
+        direction="row"
+        spacing={1}
+        alignItems="center"
+        sx={{
+          px: 1.5,
+          py: 0.5,
+          bgcolor: "background.paper"
+        }}
+      >
         <TextField
           size="small"
           fullWidth
@@ -1802,7 +1996,7 @@ export function ContainerlabExplorerView() {
             input: {
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
+                  <FilterAltIcon fontSize="small" />
                 </InputAdornment>
               ),
               endAdornment: undefined
@@ -1811,39 +2005,59 @@ export function ContainerlabExplorerView() {
         />
       </Stack>
 
-      <Stack
-        spacing={1}
-        sx={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", pr: 0.2 }}
+      <Box
+        ref={paneContainerRef}
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          ...(isResizing && { cursor: "row-resize", userSelect: "none" })
+        }}
       >
-        {orderedSections.length === 0 && (
-          <Paper variant="outlined" sx={{ p: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              Loading explorer...
-            </Typography>
-          </Paper>
-        )}
+        {orderedSections.map((section, index) => {
+          const isExpanded = !(collapsedBySection[section.id] ?? false);
+          const prevExpandedId = (() => {
+            for (let i = index - 1; i >= 0; i--) {
+              if (!(collapsedBySection[orderedSections[i].id] ?? false)) {
+                return orderedSections[i].id;
+              }
+            }
+            return null;
+          })();
 
-        {orderedSections.map((section) => (
-          <ExplorerSectionCard
-            key={section.id}
-            section={section}
-            expandedItems={expandedBySection[section.id] ?? []}
-            isCollapsed={collapsedBySection[section.id] ?? false}
-            isDropTarget={dragOverSection === section.id && draggingSection !== section.id}
-            isBeingDragged={draggingSection === section.id}
-            onSetSectionRef={setSectionRef}
-            onSectionDragStart={handleSectionDragStart}
-            onSectionDragOver={handleSectionDragOver}
-            onSectionDrop={handleSectionDrop}
-            onSectionDragEnd={handleSectionDragEnd}
-            onToggleSectionCollapsed={toggleSectionCollapsed}
-            onInvokeAction={invokeAction}
-            onExpandedItemsChange={handleExpandedItemsChange}
-            onExpandAllInSection={expandAllInSection}
-            onCollapseAllInSection={collapseAllInSection}
-          />
-        ))}
-      </Stack>
+          return (
+            <Box key={section.id} sx={{ display: "contents" }}>
+              {isExpanded && prevExpandedId && !FIXED_HEIGHT_SECTIONS.has(section.id) && !FIXED_HEIGHT_SECTIONS.has(prevExpandedId) && (
+                <ResizeDivider
+                  aboveId={prevExpandedId}
+                  belowId={section.id}
+                  onResizeStart={handleResizeStart}
+                />
+              )}
+              <ExplorerSectionCard
+                section={section}
+                expandedItems={expandedBySection[section.id] ?? []}
+                isCollapsed={collapsedBySection[section.id] ?? false}
+                isDropTarget={dragOverSection === section.id && draggingSection !== section.id}
+                isBeingDragged={draggingSection === section.id}
+                flexStyle={sectionFlexStyles[section.id] ?? "0 0 auto"}
+                onSetSectionRef={setSectionRef}
+                onSectionDragStart={handleSectionDragStart}
+                onSectionDragOver={handleSectionDragOver}
+                onSectionDrop={handleSectionDrop}
+                onSectionDragEnd={handleSectionDragEnd}
+                onToggleSectionCollapsed={toggleSectionCollapsed}
+                onInvokeAction={invokeAction}
+                onExpandedItemsChange={handleExpandedItemsChange}
+                onExpandAllInSection={expandAllInSection}
+                onCollapseAllInSection={collapseAllInSection}
+              />
+            </Box>
+          );
+        })}
+      </Box>
     </Box>
   );
 }

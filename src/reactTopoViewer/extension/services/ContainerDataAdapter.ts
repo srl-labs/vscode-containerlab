@@ -3,10 +3,11 @@
  * This allows the shared parser to access container data without VS Code dependencies.
  */
 
-import type {
-  ClabLabTreeNode,
-  ClabContainerTreeNode,
-  ClabInterfaceTreeNode
+import {
+  type ClabLabTreeNode,
+  type ClabContainerTreeNode,
+  type ClabInterfaceTreeNode,
+  flattenContainers
 } from "../../../treeView/common";
 import type {
   ContainerDataProvider,
@@ -65,7 +66,7 @@ export class ContainerDataAdapter implements ContainerDataProvider {
     const labNode = this.findLabNode(labName);
     if (!labNode?.containers) return undefined;
 
-    return labNode.containers.find(
+    return flattenContainers(labNode.containers).find(
       (c) => c.name === containerName || c.name_short === containerName
     );
   }
@@ -101,7 +102,7 @@ export class ContainerDataAdapter implements ContainerDataProvider {
     const labNode = this.findLabNode(labName);
     if (!labNode?.containers) return [];
 
-    return labNode.containers.map((c) => this.toContainerInfo(c));
+    return flattenContainers(labNode.containers).map((c) => this.toContainerInfo(c));
   }
 
   /**

@@ -5,10 +5,11 @@
 
 import * as vscode from "vscode";
 
-import type {
-  ClabContainerTreeNode,
-  ClabInterfaceTreeNode,
-  ClabLabTreeNode
+import {
+  type ClabContainerTreeNode,
+  type ClabInterfaceTreeNode,
+  type ClabLabTreeNode,
+  flattenContainers
 } from "../../../treeView/common";
 import { runningLabsProvider } from "../../../globals";
 import type { EndpointResult } from "../../shared/types/endpoint";
@@ -101,7 +102,7 @@ export class NodeCommandService {
       return undefined;
     }
 
-    const containers: ClabContainerTreeNode[] = currentLab.containers ?? [];
+    const containers: ClabContainerTreeNode[] = flattenContainers(currentLab.containers);
     const directMatch = containers.find(
       (c: ClabContainerTreeNode) =>
         c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
@@ -271,11 +272,11 @@ export class NodeCommandService {
       return interfaceName;
     }
 
-    const container = currentLab.containers?.find(
+    const container = flattenContainers(currentLab.containers).find(
       (c) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
     );
     const intf = container?.interfaces?.find(
-      (i) => i.name === interfaceName || i.alias === interfaceName
+      (i: ClabInterfaceTreeNode) => i.name === interfaceName || i.alias === interfaceName
     );
     if (intf) return intf.name;
 
