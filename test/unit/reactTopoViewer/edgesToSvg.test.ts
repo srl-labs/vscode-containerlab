@@ -172,4 +172,33 @@ describe("edgesToSvg", () => {
     expect(scaledCx).to.be.greaterThan(defaultCx);
     expect(scaledCx - defaultCx).to.be.greaterThan(20);
   });
+
+  it("uses configured interface label overrides", () => {
+    const nodes = [
+      { id: "n1", type: "topology-node", position: { x: 0, y: 0 } },
+      { id: "n2", type: "topology-node", position: { x: 200, y: 0 } }
+    ] as unknown as Node[];
+
+    const edges = [
+      {
+        id: "e1",
+        source: "n1",
+        target: "n2",
+        data: {
+          sourceEndpoint: "1/1/c1/1",
+          targetEndpoint: "1/1/c2/1"
+        }
+      }
+    ] as unknown as Edge[];
+
+    const svg = renderEdgesToSvg(edges, nodes, true, undefined, true, {
+      interfaceLabelOverrides: {
+        "1/1/c1/1": "c1",
+        "1/1/c2/1": "c2"
+      }
+    });
+
+    expect(svg).to.contain(">c1</text>");
+    expect(svg).to.contain(">c2</text>");
+  });
 });

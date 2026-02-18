@@ -43,6 +43,7 @@ interface NodeRect {
 export interface EdgeSvgRenderOptions {
   nodeIconSize?: number;
   interfaceScale?: number;
+  interfaceLabelOverrides?: Record<string, string>;
 }
 
 type InterfaceSide = "top" | "right" | "bottom" | "left";
@@ -69,6 +70,7 @@ interface EndpointAssignment {
 interface ResolvedEdgeRenderOptions {
   nodeIconSize: number;
   interfaceScale: number;
+  interfaceLabelOverrides: Record<string, string>;
 }
 
 // ============================================================================
@@ -112,8 +114,13 @@ function resolveEdgeRenderOptions(
   const interfaceScale = Number.isFinite(interfaceScaleRaw)
     ? clamp(interfaceScaleRaw as number, 0.4, 4)
     : 1;
+  const interfaceLabelOverrides =
+    renderOptions?.interfaceLabelOverrides &&
+    typeof renderOptions.interfaceLabelOverrides === "object"
+      ? renderOptions.interfaceLabelOverrides
+      : {};
 
-  return { nodeIconSize, interfaceScale };
+  return { nodeIconSize, interfaceScale, interfaceLabelOverrides };
 }
 
 function normalizeEndpoint(value: unknown): string | null {
@@ -276,7 +283,11 @@ function buildInterfaceAnchorMap(
       const vector = nodeVectors?.get(endpoint);
       const side = classifyInterfaceSide(vector);
       const sortKey = getInterfaceSortKey(side, vector);
-      const { radius } = getEndpointLabelMetrics(endpoint, renderOptions.interfaceScale);
+      const { radius } = getEndpointLabelMetrics(
+        endpoint,
+        renderOptions.interfaceScale,
+        renderOptions.interfaceLabelOverrides
+      );
       buckets[side].push({ endpoint, sortKey, radius });
     }
 
@@ -407,12 +418,19 @@ export function buildEdgeInfoForExport(edges: Edge[]): EdgeInfo {
 /**
  * Build SVG for edge endpoint label
  */
-function buildEndpointLabelSvg(text: string, x: number, y: number, interfaceScale: number): string {
+function buildEndpointLabelSvg(
+  text: string,
+  x: number,
+  y: number,
+  interfaceScale: number,
+  interfaceLabelOverrides: Record<string, string>
+): string {
   if (!text) return "";
 
   const { compact, radius, fontSize, bubbleStrokeWidth, textStrokeWidth } = getEndpointLabelMetrics(
     text,
-    interfaceScale
+    interfaceScale,
+    interfaceLabelOverrides
   );
   const textY = y;
 
@@ -436,7 +454,7 @@ function buildEndpointLabelSvg(text: string, x: number, y: number, interfaceScal
   return svg;
 }
 
-function getCompactInterfaceLabel(endpoint: string): string {
+function getAutoCompactInterfaceLabel(endpoint: string): string {
   const trimmed = endpoint.trim();
   if (!trimmed) return "";
 
@@ -456,14 +474,29 @@ function getCompactInterfaceLabel(endpoint: string): string {
   return token.length <= 3 ? token : token.slice(-3);
 }
 
-function getEndpointLabelMetrics(endpoint: string, interfaceScale: number): {
+function getDisplayInterfaceLabel(
+  endpoint: string,
+  interfaceLabelOverrides: Record<string, string>
+): string {
+  const override = interfaceLabelOverrides[endpoint];
+  if (typeof override === "string" && override.trim().length > 0) {
+    return override.trim();
+  }
+  return getAutoCompactInterfaceLabel(endpoint);
+}
+
+function getEndpointLabelMetrics(
+  endpoint: string,
+  interfaceScale: number,
+  interfaceLabelOverrides: Record<string, string>
+): {
   compact: string;
   radius: number;
   fontSize: number;
   bubbleStrokeWidth: number;
   textStrokeWidth: number;
 } {
-  const compact = getCompactInterfaceLabel(endpoint);
+  const compact = getDisplayInterfaceLabel(endpoint, interfaceLabelOverrides);
   const safeScale = clamp(interfaceScale, 0.4, 4);
   const fontSize = EDGE_LABEL.fontSize * safeScale;
   const charWidth = fontSize * 0.58;
@@ -475,19 +508,15 @@ function getEndpointLabelMetrics(endpoint: string, interfaceScale: number): {
   return { compact, radius, fontSize, bubbleStrokeWidth, textStrokeWidth };
 }
 
-function getNodeProximateOffset(endpoint: string, interfaceScale: number): number {
-  const { radius } = getEndpointLabelMetrics(endpoint, interfaceScale);
-  // Keep the label bubble just outside the node boundary.
-  return radius + 1;
-}
-
 function getLabelOffsetForEndpoint(
   endpoint: string | undefined,
   nodeProximateLabels: boolean,
-  interfaceScale: number
+  interfaceScale: number,
+  interfaceLabelOverrides: Record<string, string>
 ): number {
   if (!nodeProximateLabels || !endpoint) return EDGE_LABEL.offset;
-  return getNodeProximateOffset(endpoint, interfaceScale);
+  const { radius } = getEndpointLabelMetrics(endpoint, interfaceScale, interfaceLabelOverrides);
+  return radius + 1;
 }
 
 function getRegularEdgeLabelPositions(
@@ -507,12 +536,14 @@ function getRegularEdgeLabelPositions(
   const sourceOffset = getLabelOffsetForEndpoint(
     ctx.edgeData?.sourceEndpoint,
     ctx.nodeProximateLabels,
-    ctx.interfaceScale
+    ctx.interfaceScale,
+    ctx.interfaceLabelOverrides
   );
   const targetOffset = getLabelOffsetForEndpoint(
     ctx.edgeData?.targetEndpoint,
     ctx.nodeProximateLabels,
-    ctx.interfaceScale
+    ctx.interfaceScale,
+    ctx.interfaceLabelOverrides
   );
 
   return {
@@ -592,6 +623,7 @@ interface EdgeRenderContext {
   nodeProximateLabels: boolean;
   nodeIconSize: number;
   interfaceScale: number;
+  interfaceLabelOverrides: Record<string, string>;
   interfaceAnchors?: NodeInterfaceAnchorMap;
 }
 
@@ -610,7 +642,8 @@ function buildEdgeLabels(
       ctx.edgeData.sourceEndpoint,
       sourceLabelPos.x,
       sourceLabelPos.y,
-      ctx.interfaceScale
+      ctx.interfaceScale,
+      ctx.interfaceLabelOverrides
     );
   }
   if (ctx.edgeData?.targetEndpoint) {
@@ -618,7 +651,8 @@ function buildEdgeLabels(
       ctx.edgeData.targetEndpoint,
       targetLabelPos.x,
       targetLabelPos.y,
-      ctx.interfaceScale
+      ctx.interfaceScale,
+      ctx.interfaceLabelOverrides
     );
   }
   return svg;
@@ -736,6 +770,7 @@ export function edgeToSvg(
     nodeProximateLabels,
     nodeIconSize: resolvedRenderOptions.nodeIconSize,
     interfaceScale: resolvedRenderOptions.interfaceScale,
+    interfaceLabelOverrides: resolvedRenderOptions.interfaceLabelOverrides,
     interfaceAnchors
   };
 

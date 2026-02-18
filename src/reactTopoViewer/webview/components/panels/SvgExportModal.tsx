@@ -1,5 +1,5 @@
 // SVG export dialog.
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 import {
   AccountTree as AccountTreeIcon,
@@ -23,6 +23,8 @@ import {
   Paper,
   Radio,
   RadioGroup,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
@@ -100,6 +102,20 @@ const DEFAULT_GRAFANA_NODE_SIZE_PX = 40;
 const DEFAULT_GRAFANA_INTERFACE_SIZE_PERCENT = 100;
 type TrafficThresholdUnit = "kbit" | "mbit" | "gbit";
 const DEFAULT_TRAFFIC_THRESHOLD_UNIT: TrafficThresholdUnit = "mbit";
+type GrafanaSettingsTab = "general" | "interface-names";
+
+interface EdgeInterfaceRow {
+  edgeId: string;
+  source: string;
+  target: string;
+  sourceEndpoint: string;
+  targetEndpoint: string;
+}
+
+const INTERFACE_SELECT_AUTO = "__auto__";
+const INTERFACE_SELECT_FULL = "__full__";
+const INTERFACE_SELECT_TOKEN_PREFIX = "__token__:";
+const GLOBAL_INTERFACE_PART_INDEX_PREFIX = "__part-index__:";
 
 interface SvgExportResultMessage {
   type: typeof MSG_SVG_EXPORT_RESULT;
@@ -179,6 +195,112 @@ function parseBoundedNumber(
   return Math.max(min, Math.min(max, parsed));
 }
 
+function asNonEmptyString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function extractEdgeInterfaceRows(
+  rfInstance: ReactFlowInstance | null,
+): EdgeInterfaceRow[] {
+  if (!rfInstance) return [];
+
+  const edges = rfInstance.getEdges?.() ?? [];
+  const rows: EdgeInterfaceRow[] = [];
+
+  for (const edge of edges) {
+    const data = edge.data as Record<string, unknown> | undefined;
+    const sourceEndpoint = asNonEmptyString(data?.sourceEndpoint);
+    const targetEndpoint = asNonEmptyString(data?.targetEndpoint);
+    if (!sourceEndpoint || !targetEndpoint) continue;
+
+    rows.push({
+      edgeId: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceEndpoint,
+      targetEndpoint,
+    });
+  }
+
+  return rows;
+}
+
+function splitInterfaceParts(endpoint: string): string[] {
+  const baseParts = endpoint
+    .split(/[^A-Za-z0-9]+/g)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+
+  const uniqueParts: string[] = [];
+  const seen = new Set<string>();
+  const addUnique = (part: string): void => {
+    if (seen.has(part)) return;
+    seen.add(part);
+    uniqueParts.push(part);
+  };
+
+  for (const part of baseParts) {
+    addUnique(part);
+
+    const numericSegments = part.match(/\d+/g);
+    if (!numericSegments) continue;
+    for (const numeric of numericSegments) {
+      addUnique(numeric);
+    }
+  }
+
+  return uniqueParts;
+}
+
+function getInterfaceSelectionValue(
+  endpoint: string,
+  interfaceLabelOverrides: Record<string, string>,
+): string {
+  const override = interfaceLabelOverrides[endpoint];
+  if (!override) return INTERFACE_SELECT_AUTO;
+  if (override === endpoint) return INTERFACE_SELECT_FULL;
+  return `${INTERFACE_SELECT_TOKEN_PREFIX}${override}`;
+}
+
+function resolveInterfaceOverrideValue(
+  endpoint: string,
+  selectedValue: string,
+): string | null {
+  if (selectedValue === INTERFACE_SELECT_AUTO) return null;
+  if (selectedValue === INTERFACE_SELECT_FULL) return endpoint;
+  if (selectedValue.startsWith(INTERFACE_SELECT_TOKEN_PREFIX)) {
+    const token = selectedValue.slice(INTERFACE_SELECT_TOKEN_PREFIX.length).trim();
+    return token.length > 0 ? token : null;
+  }
+  return null;
+}
+
+function parseGlobalInterfacePartIndex(
+  selectedValue: string,
+): number | null {
+  if (!selectedValue.startsWith(GLOBAL_INTERFACE_PART_INDEX_PREFIX)) return null;
+  const raw = selectedValue.slice(GLOBAL_INTERFACE_PART_INDEX_PREFIX.length);
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return null;
+  return parsed;
+}
+
+function resolveGlobalInterfaceOverrideValue(
+  endpoint: string,
+  selectedValue: string,
+): string | null {
+  if (selectedValue === INTERFACE_SELECT_AUTO) return null;
+  if (selectedValue === INTERFACE_SELECT_FULL) return endpoint;
+
+  const partIndex = parseGlobalInterfacePartIndex(selectedValue);
+  if (partIndex === null) return null;
+
+  const parts = splitInterfaceParts(endpoint);
+  return parts[partIndex - 1] ?? null;
+}
+
 function hasStrictlyAscendingThresholds(
   thresholds: GrafanaTrafficThresholds,
 ): boolean {
@@ -246,6 +368,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [grafanaSettingsTab, setGrafanaSettingsTab] =
+    useState<GrafanaSettingsTab>("general");
   const [includeAnnotations, setIncludeAnnotations] = useState(true);
   const [includeEdgeLabels, setIncludeEdgeLabels] = useState(true);
   const [exportGrafanaBundle, setExportGrafanaBundle] = useState(false);
@@ -265,6 +389,12 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   const [grafanaInterfaceSizePercent, setGrafanaInterfaceSizePercent] = useState(
     DEFAULT_GRAFANA_INTERFACE_SIZE_PERCENT,
   );
+  const [globalInterfaceOverrideSelection, setGlobalInterfaceOverrideSelection] =
+    useState(INTERFACE_SELECT_AUTO);
+  const [interfaceLinkFilter, setInterfaceLinkFilter] = useState("");
+  const [interfaceLabelOverrides, setInterfaceLabelOverrides] = useState<
+    Record<string, string>
+  >({});
   const [backgroundOption, setBackgroundOption] =
     useState<BackgroundOption>("transparent");
   const [customBackgroundColor, setCustomBackgroundColor] = useState("#1e1e1e");
@@ -273,6 +403,66 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   const isExportAvailable = rfInstance ? Boolean(getViewportSize()) : false;
   const totalAnnotations =
     groups.length + textAnnotations.length + shapeAnnotations.length;
+  const interfaceRows = extractEdgeInterfaceRows(rfInstance);
+  const filteredInterfaceRows = useMemo(() => {
+    const filterValue = interfaceLinkFilter.trim().toLowerCase();
+    if (!filterValue) return interfaceRows;
+
+    return interfaceRows.filter((row) =>
+      [
+        row.edgeId,
+        row.source,
+        row.target,
+        row.sourceEndpoint,
+        row.targetEndpoint,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(filterValue),
+    );
+  }, [interfaceRows, interfaceLinkFilter]);
+  const interfaceEndpoints = useMemo(() => {
+    const unique = new Set<string>();
+    for (const row of interfaceRows) {
+      unique.add(row.sourceEndpoint);
+      unique.add(row.targetEndpoint);
+    }
+    return Array.from(unique.values());
+  }, [interfaceRows]);
+  const maxInterfacePartCount = useMemo(() => {
+    let maxCount = 1;
+    for (const endpoint of interfaceEndpoints) {
+      maxCount = Math.max(maxCount, splitInterfaceParts(endpoint).length);
+    }
+    return maxCount;
+  }, [interfaceEndpoints]);
+  const effectiveInterfaceLabelOverrides = useMemo(() => {
+    const merged: Record<string, string> = {};
+
+    for (const endpoint of interfaceEndpoints) {
+      const globalOverride = resolveGlobalInterfaceOverrideValue(
+        endpoint,
+        globalInterfaceOverrideSelection,
+      );
+      if (globalOverride) {
+        merged[endpoint] = globalOverride;
+      }
+    }
+
+    for (const [endpoint, override] of Object.entries(interfaceLabelOverrides)) {
+      if (typeof override !== "string" || override.trim().length === 0) {
+        delete merged[endpoint];
+      } else {
+        merged[endpoint] = override.trim();
+      }
+    }
+
+    return merged;
+  }, [
+    interfaceEndpoints,
+    globalInterfaceOverrideSelection,
+    interfaceLabelOverrides,
+  ]);
 
   const updateTrafficThreshold = useCallback(
     (threshold: keyof GrafanaTrafficThresholds, rawValue: string) => {
@@ -283,6 +473,23 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       }));
     },
     [trafficThresholdUnit],
+  );
+
+  const updateInterfaceOverride = useCallback(
+    (endpoint: string, selectedValue: string) => {
+      const override = resolveInterfaceOverrideValue(endpoint, selectedValue);
+      setInterfaceLabelOverrides((prev) => {
+        if (!override) {
+          if (!(endpoint in prev)) return prev;
+          const next = { ...prev };
+          delete next[endpoint];
+          return next;
+        }
+        if (prev[endpoint] === override) return prev;
+        return { ...prev, [endpoint]: override };
+      });
+    },
+    [],
   );
 
   const handleExport = useCallback(async () => {
@@ -304,6 +511,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
           ? {
               nodeIconSize: grafanaNodeSizePx,
               interfaceScale: grafanaInterfaceSizePercent / 100,
+              interfaceLabelOverrides: effectiveInterfaceLabelOverrides,
             }
           : undefined;
       const graphSvg = buildGraphSvg(
@@ -414,6 +622,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     trafficThresholdUnit,
     grafanaNodeSizePx,
     grafanaInterfaceSizePercent,
+    effectiveInterfaceLabelOverrides,
     totalAnnotations,
     groups,
     textAnnotations,
@@ -747,171 +956,342 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
           dividers
           sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
-          <Typography variant="body2" color="text.secondary">
-            Configure thresholds and topology sizing used in the exported
-            Grafana panel.
-          </Typography>
-          <Box
-            sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}
-          >
-            <TextField
-              label="Node size"
-              type="number"
-              size="small"
-              value={grafanaNodeSizePx}
-              onChange={(e) =>
-                setGrafanaNodeSizePx(
-                  parseBoundedNumber(
-                    e.target.value,
-                    12,
-                    240,
-                    DEFAULT_GRAFANA_NODE_SIZE_PX,
-                  ),
-                )
-              }
-              slotProps={{
-                htmlInput: { min: 12, max: 240, step: 1 },
-                input: {
-                  endAdornment: (
-                    <InputAdornment position="end">px</InputAdornment>
-                  ),
-                },
-              }}
-            />
-            <TextField
-              label="Interface size"
-              type="number"
-              size="small"
-              value={grafanaInterfaceSizePercent}
-              onChange={(e) =>
-                setGrafanaInterfaceSizePercent(
-                  parseBoundedNumber(
-                    e.target.value,
-                    40,
-                    400,
-                    DEFAULT_GRAFANA_INTERFACE_SIZE_PERCENT,
-                  ),
-                )
-              }
-              slotProps={{
-                htmlInput: { min: 40, max: 400, step: 5 },
-                input: {
-                  endAdornment: (
-                    <InputAdornment position="end">%</InputAdornment>
-                  ),
-                },
-              }}
-            />
-          </Box>
-          <Typography variant="caption" color="text.secondary">
-            Use larger values for dense topologies with many interfaces.
-          </Typography>
-          <Divider />
-          <TextField
-            select
-            label="Traffic threshold unit"
-            size="small"
-            value={trafficThresholdUnit}
-            onChange={(e) =>
-              setTrafficThresholdUnit(e.target.value as TrafficThresholdUnit)
+          <Tabs
+            value={grafanaSettingsTab}
+            onChange={(_event, value) =>
+              setGrafanaSettingsTab(value as GrafanaSettingsTab)
             }
+            variant="fullWidth"
           >
-            <MenuItem value="kbit">kbit/s</MenuItem>
-            <MenuItem value="mbit">Mbit/s</MenuItem>
-            <MenuItem value="gbit">Gbit/s</MenuItem>
-          </TextField>
-          <Box
-            sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}
-          >
-            <TextField
-              label="Green threshold"
-              type="number"
-              size="small"
-              value={formatThresholdForUnit(
-                trafficThresholds.green,
-                trafficThresholdUnit,
-              )}
-              onChange={(e) => updateTrafficThreshold("green", e.target.value)}
-              slotProps={{
-                htmlInput: {
-                  min: 0,
-                  step: getThresholdUnitStep(trafficThresholdUnit),
-                },
-              }}
-            />
-            <TextField
-              label="Yellow threshold"
-              type="number"
-              size="small"
-              value={formatThresholdForUnit(
-                trafficThresholds.yellow,
-                trafficThresholdUnit,
-              )}
-              onChange={(e) => updateTrafficThreshold("yellow", e.target.value)}
-              slotProps={{
-                htmlInput: {
-                  min: 0,
-                  step: getThresholdUnitStep(trafficThresholdUnit),
-                },
-              }}
-            />
-            <TextField
-              label="Orange threshold"
-              type="number"
-              size="small"
-              value={formatThresholdForUnit(
-                trafficThresholds.orange,
-                trafficThresholdUnit,
-              )}
-              onChange={(e) => updateTrafficThreshold("orange", e.target.value)}
-              slotProps={{
-                htmlInput: {
-                  min: 0,
-                  step: getThresholdUnitStep(trafficThresholdUnit),
-                },
-              }}
-            />
-            <TextField
-              label="Red threshold"
-              type="number"
-              size="small"
-              value={formatThresholdForUnit(
-                trafficThresholds.red,
-                trafficThresholdUnit,
-              )}
-              onChange={(e) => updateTrafficThreshold("red", e.target.value)}
-              slotProps={{
-                htmlInput: {
-                  min: 0,
-                  step: getThresholdUnitStep(trafficThresholdUnit),
-                },
-              }}
-            />
-          </Box>
-          <Typography variant="caption" color="text.secondary">
-            Values must be strictly ascending: green &lt; yellow &lt; orange
-            &lt; red (within selected unit).
-          </Typography>
-          <FormControlLabel
-            control={
-              <Checkbox
+            <Tab label="General" value="general" />
+            <Tab label="Interface Names" value="interface-names" />
+          </Tabs>
+
+          {grafanaSettingsTab === "general" && (
+            <>
+              <Typography variant="body2" color="text.secondary">
+                Configure thresholds and topology sizing used in the exported
+                Grafana panel.
+              </Typography>
+              <Box
+                sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}
+              >
+                <TextField
+                  label="Node size"
+                  type="number"
+                  size="small"
+                  value={grafanaNodeSizePx}
+                  onChange={(e) =>
+                    setGrafanaNodeSizePx(
+                      parseBoundedNumber(
+                        e.target.value,
+                        12,
+                        240,
+                        DEFAULT_GRAFANA_NODE_SIZE_PX,
+                      ),
+                    )
+                  }
+                  slotProps={{
+                    htmlInput: { min: 12, max: 240, step: 1 },
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">px</InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+                <TextField
+                  label="Interface size"
+                  type="number"
+                  size="small"
+                  value={grafanaInterfaceSizePercent}
+                  onChange={(e) =>
+                    setGrafanaInterfaceSizePercent(
+                      parseBoundedNumber(
+                        e.target.value,
+                        40,
+                        400,
+                        DEFAULT_GRAFANA_INTERFACE_SIZE_PERCENT,
+                      ),
+                    )
+                  }
+                  slotProps={{
+                    htmlInput: { min: 40, max: 400, step: 5 },
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">%</InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                Use larger values for dense topologies with many interfaces.
+              </Typography>
+              <Divider />
+              <TextField
+                select
+                label="Traffic threshold unit"
                 size="small"
-                checked={excludeNodesWithoutLinks}
-                onChange={(e) => setExcludeNodesWithoutLinks(e.target.checked)}
+                value={trafficThresholdUnit}
+                onChange={(e) =>
+                  setTrafficThresholdUnit(e.target.value as TrafficThresholdUnit)
+                }
+              >
+                <MenuItem value="kbit">kbit/s</MenuItem>
+                <MenuItem value="mbit">Mbit/s</MenuItem>
+                <MenuItem value="gbit">Gbit/s</MenuItem>
+              </TextField>
+              <Box
+                sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}
+              >
+                <TextField
+                  label="Green threshold"
+                  type="number"
+                  size="small"
+                  value={formatThresholdForUnit(
+                    trafficThresholds.green,
+                    trafficThresholdUnit,
+                  )}
+                  onChange={(e) =>
+                    updateTrafficThreshold("green", e.target.value)
+                  }
+                  slotProps={{
+                    htmlInput: {
+                      min: 0,
+                      step: getThresholdUnitStep(trafficThresholdUnit),
+                    },
+                  }}
+                />
+                <TextField
+                  label="Yellow threshold"
+                  type="number"
+                  size="small"
+                  value={formatThresholdForUnit(
+                    trafficThresholds.yellow,
+                    trafficThresholdUnit,
+                  )}
+                  onChange={(e) =>
+                    updateTrafficThreshold("yellow", e.target.value)
+                  }
+                  slotProps={{
+                    htmlInput: {
+                      min: 0,
+                      step: getThresholdUnitStep(trafficThresholdUnit),
+                    },
+                  }}
+                />
+                <TextField
+                  label="Orange threshold"
+                  type="number"
+                  size="small"
+                  value={formatThresholdForUnit(
+                    trafficThresholds.orange,
+                    trafficThresholdUnit,
+                  )}
+                  onChange={(e) =>
+                    updateTrafficThreshold("orange", e.target.value)
+                  }
+                  slotProps={{
+                    htmlInput: {
+                      min: 0,
+                      step: getThresholdUnitStep(trafficThresholdUnit),
+                    },
+                  }}
+                />
+                <TextField
+                  label="Red threshold"
+                  type="number"
+                  size="small"
+                  value={formatThresholdForUnit(
+                    trafficThresholds.red,
+                    trafficThresholdUnit,
+                  )}
+                  onChange={(e) => updateTrafficThreshold("red", e.target.value)}
+                  slotProps={{
+                    htmlInput: {
+                      min: 0,
+                      step: getThresholdUnitStep(trafficThresholdUnit),
+                    },
+                  }}
+                />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                Values must be strictly ascending: green &lt; yellow &lt; orange
+                &lt; red (within selected unit).
+              </Typography>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={excludeNodesWithoutLinks}
+                    onChange={(e) =>
+                      setExcludeNodesWithoutLinks(e.target.checked)
+                    }
+                  />
+                }
+                label="Exclude nodes without any links"
               />
-            }
-            label="Exclude nodes without any links"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={includeGrafanaLegend}
+                    onChange={(e) => setIncludeGrafanaLegend(e.target.checked)}
+                  />
+                }
+                label="Add traffic legend (top-left)"
+              />
+            </>
+          )}
+
+          {grafanaSettingsTab === "interface-names" && (
+            <>
+              <Typography variant="body2" color="text.secondary">
+                Filter links and choose which interface segment should be shown
+                in endpoint bubbles.
+              </Typography>
+              <TextField
+                select
                 size="small"
-                checked={includeGrafanaLegend}
-                onChange={(e) => setIncludeGrafanaLegend(e.target.checked)}
+                label="Global override (all interfaces)"
+                value={globalInterfaceOverrideSelection}
+                onChange={(e) =>
+                  setGlobalInterfaceOverrideSelection(e.target.value)
+                }
+              >
+                <MenuItem value={INTERFACE_SELECT_AUTO}>Auto</MenuItem>
+                <MenuItem value={INTERFACE_SELECT_FULL}>
+                  Full interface name
+                </MenuItem>
+                {Array.from(
+                  { length: maxInterfacePartCount },
+                  (_, index) => index + 1,
+                ).map((partIndex) => (
+                  <MenuItem
+                    key={`global-interface-part-${partIndex}`}
+                    value={`${GLOBAL_INTERFACE_PART_INDEX_PREFIX}${partIndex}`}
+                  >
+                    Part {partIndex}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Typography variant="caption" color="text.secondary">
+                Default for every interface; per-link overrides below take
+                precedence.
+              </Typography>
+              <TextField
+                size="small"
+                label="Filter links"
+                placeholder="Search node or interface name"
+                value={interfaceLinkFilter}
+                onChange={(e) => setInterfaceLinkFilter(e.target.value)}
               />
-            }
-            label="Add traffic legend (top-left)"
-          />
+              <Typography variant="caption" color="text.secondary">
+                {filteredInterfaceRows.length} of {interfaceRows.length} links
+                shown
+              </Typography>
+              <Box
+                sx={{
+                  maxHeight: 360,
+                  overflowY: "auto",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                }}
+              >
+                {filteredInterfaceRows.length === 0 ? (
+                  <Paper variant="outlined" sx={{ p: 1.5 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      No links match the current filter.
+                    </Typography>
+                  </Paper>
+                ) : (
+                  filteredInterfaceRows.map((row) => {
+                    const sourceParts = splitInterfaceParts(row.sourceEndpoint);
+                    const targetParts = splitInterfaceParts(row.targetEndpoint);
+
+                    return (
+                      <Paper key={row.edgeId} variant="outlined" sx={{ p: 1.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {row.source} ↔ {row.target}
+                        </Typography>
+                        <Box
+                          sx={{
+                            mt: 1,
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: 1,
+                          }}
+                        >
+                          <TextField
+                            select
+                            size="small"
+                            label={row.sourceEndpoint}
+                            value={getInterfaceSelectionValue(
+                              row.sourceEndpoint,
+                              interfaceLabelOverrides,
+                            )}
+                            onChange={(e) =>
+                              updateInterfaceOverride(
+                                row.sourceEndpoint,
+                                e.target.value,
+                              )
+                            }
+                          >
+                            <MenuItem value={INTERFACE_SELECT_AUTO}>
+                              Auto (use global)
+                            </MenuItem>
+                            <MenuItem value={INTERFACE_SELECT_FULL}>
+                              Full: {row.sourceEndpoint}
+                            </MenuItem>
+                            {sourceParts.map((part, idx) => (
+                              <MenuItem
+                                key={`${row.edgeId}-source-${idx}-${part}`}
+                                value={`${INTERFACE_SELECT_TOKEN_PREFIX}${part}`}
+                              >
+                                Part {idx + 1}: {part}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                          <TextField
+                            select
+                            size="small"
+                            label={row.targetEndpoint}
+                            value={getInterfaceSelectionValue(
+                              row.targetEndpoint,
+                              interfaceLabelOverrides,
+                            )}
+                            onChange={(e) =>
+                              updateInterfaceOverride(
+                                row.targetEndpoint,
+                                e.target.value,
+                              )
+                            }
+                          >
+                            <MenuItem value={INTERFACE_SELECT_AUTO}>
+                              Auto (use global)
+                            </MenuItem>
+                            <MenuItem value={INTERFACE_SELECT_FULL}>
+                              Full: {row.targetEndpoint}
+                            </MenuItem>
+                            {targetParts.map((part, idx) => (
+                              <MenuItem
+                                key={`${row.edgeId}-target-${idx}-${part}`}
+                                value={`${INTERFACE_SELECT_TOKEN_PREFIX}${part}`}
+                              >
+                                Part {idx + 1}: {part}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        </Box>
+                      </Paper>
+                    );
+                  })
+                )}
+              </Box>
+            </>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIsGrafanaSettingsOpen(false)}>Done</Button>
