@@ -680,14 +680,9 @@ function getGeoEditableState(isGeoLayout: boolean, isLocked: boolean): boolean {
 }
 
 function getEffectiveEdgeRenderConfig(
-  edgeRenderConfig: { labelMode: EdgeLabelMode; suppressLabels: boolean; suppressHitArea: boolean },
-  isGeoLayout: boolean
+  edgeRenderConfig: { labelMode: EdgeLabelMode; suppressLabels: boolean; suppressHitArea: boolean }
 ): { labelMode: EdgeLabelMode; suppressLabels: boolean; suppressHitArea: boolean } {
-  return {
-    ...edgeRenderConfig,
-    suppressLabels: edgeRenderConfig.suppressLabels || isGeoLayout,
-    suppressHitArea: edgeRenderConfig.suppressHitArea || isGeoLayout
-  };
+  return edgeRenderConfig;
 }
 
 function getCanvasContainerClassName(isGeoLayout: boolean, isGeoInteracting: boolean): string {
@@ -1152,8 +1147,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     );
     const isGeoInteracting = getGeoInteractingState(isGeoLayout, geoLayout.isInteracting);
     const effectiveEdgeRenderConfig = useMemo(
-      () => getEffectiveEdgeRenderConfig(edgeRenderConfig, isGeoLayout),
-      [edgeRenderConfig, isGeoLayout]
+      () => getEffectiveEdgeRenderConfig(edgeRenderConfig),
+      [edgeRenderConfig]
     );
     const activeNodeTypes = useMemo(
       () => (isLowDetail && !isGeoLayout ? nodeTypesLite : nodeTypes),

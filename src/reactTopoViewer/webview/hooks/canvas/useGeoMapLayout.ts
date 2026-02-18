@@ -56,9 +56,19 @@ const MAP_STYLE: StyleSpecification = {
     }
   ]
 };
-// Default center in Europe (Stuttgart, Germany area)
-const DEFAULT_LAT = 48.684826888402256;
-const DEFAULT_LNG = 9.007895390625677;
+const INITIAL_GEO_SEQUENCE: GeoCoordinates[] = [
+  // Stuttgart
+  { lat: 48.775846, lng: 9.182932 },
+  // Frankfurt
+  { lat: 50.110924, lng: 8.682127 },
+  // Paris
+  { lat: 48.856613, lng: 2.352222 },
+  // London
+  { lat: 51.507351, lng: -0.127758 }
+];
+// Default center in Europe (Stuttgart).
+const DEFAULT_LAT = INITIAL_GEO_SEQUENCE[0].lat;
+const DEFAULT_LNG = INITIAL_GEO_SEQUENCE[0].lng;
 const DEFAULT_CENTER: [number, number] = [DEFAULT_LNG, DEFAULT_LAT];
 const DEFAULT_ZOOM = 4;
 
@@ -77,8 +87,10 @@ const GEO_VIEWPORT_RESET = { x: 0, y: 0, zoom: 1 };
 const INTERACTION_END_DEBOUNCE_MS = 20;
 const ZOOM_END_DEBOUNCE_MS = 20;
 
-// Offset multiplier for distributing nodes without coordinates (smaller = tighter cluster)
-const GEO_OFFSET_MULTIPLIER = 0.15;
+// Keep wrapped city assignments visually separate when sequence repeats.
+const GEO_REPEAT_RING_POINTS = 8;
+const GEO_REPEAT_RADIUS_STEP = 2.8;
+const MAX_GEO_SLOT_SCAN = 4096;
 
 let maplibreWorkerBlobUrl: string | null = null;
 let maplibreWorkerBlobSourceKey: string | null = null;
@@ -261,33 +273,65 @@ function buildGeoBounds(nodes: Node[]): LngLatBounds | null {
   return bounds;
 }
 
-function boundsCenter(bounds: LngLatBounds): GeoCoordinates {
-  const center = bounds.getCenter();
-  return roundGeo({ lat: center.lat, lng: center.lng });
+function geoKey(coords: GeoCoordinates): string {
+  const rounded = roundGeo(coords);
+  return `${rounded.lat},${rounded.lng}`;
+}
+
+function geoCoordinatesForSlot(slot: number): GeoCoordinates {
+  const sequenceLength = INITIAL_GEO_SEQUENCE.length;
+  const base = INITIAL_GEO_SEQUENCE[slot % sequenceLength];
+  const repeatIndex = Math.floor(slot / sequenceLength);
+  if (repeatIndex === 0) {
+    return roundGeo(base);
+  }
+
+  const ringIndex = repeatIndex - 1;
+  const ring = Math.floor(ringIndex / GEO_REPEAT_RING_POINTS) + 1;
+  const ringPointIndex = ringIndex % GEO_REPEAT_RING_POINTS;
+  const angle = (2 * Math.PI * ringPointIndex) / GEO_REPEAT_RING_POINTS;
+  const radius = ring * GEO_REPEAT_RADIUS_STEP;
+
+  return roundGeo({
+    lat: base.lat + Math.sin(angle) * radius,
+    lng: base.lng + Math.cos(angle) * radius
+  });
 }
 
 function assignAutoGeoCoordinates(
-  nodes: Node[],
-  center: GeoCoordinates
+  nodes: Node[]
 ): { nodes: Node[]; assignments: Array<{ id: string; geoCoordinates: GeoCoordinates }> } {
-  let nodeIndex = 0;
+  const occupied = new Set<string>();
+  for (const node of nodes) {
+    const geo = extractGeoCoordinates(node);
+    if (geo) {
+      occupied.add(geoKey(geo));
+    }
+  }
+
+  let slot = 0;
   const assignments: Array<{ id: string; geoCoordinates: GeoCoordinates }> = [];
 
   const nextNodes = nodes.map((node) => {
     if (!AUTO_GEO_TYPES.has(node.type ?? "")) return node;
     if (extractGeoCoordinates(node)) return node;
 
-    const idHash1 = node.id.length % 5;
-    const idHash2 = (node.id.charCodeAt(0) || 0) % 7;
-    const latOffset = (idHash1 - 2) * GEO_OFFSET_MULTIPLIER;
-    const lngOffset = (idHash2 - 3) * GEO_OFFSET_MULTIPLIER;
+    let geo: GeoCoordinates | null = null;
+    for (let attempts = 0; attempts < MAX_GEO_SLOT_SCAN; attempts += 1) {
+      const candidate = geoCoordinatesForSlot(slot);
+      slot += 1;
+      const key = geoKey(candidate);
+      if (occupied.has(key)) continue;
+      occupied.add(key);
+      geo = candidate;
+      break;
+    }
+    if (!geo) {
+      geo = roundGeo({ lat: DEFAULT_LAT, lng: DEFAULT_LNG });
+      occupied.add(geoKey(geo));
+      log.warn("[GeoMap] Failed to find non-overlapping initial geo slot; using default center");
+    }
 
-    const geo = roundGeo({
-      lat: center.lat + latOffset + nodeIndex * 0.03,
-      lng: center.lng + lngOffset + nodeIndex * 0.035
-    });
-
-    nodeIndex++;
     assignments.push({ id: node.id, geoCoordinates: geo });
     const data = (node.data ?? {}) as Record<string, unknown>;
     return { ...node, data: { ...data, geoCoordinates: geo } };
@@ -668,25 +712,10 @@ export function useGeoMapLayout({
     initialAssignmentRef.current = true;
 
     const currentNodes = nodesRef.current;
-    const existingBounds = buildGeoBounds(currentNodes);
-    let boundsToFit = existingBounds;
-    let nodesWithGeo = currentNodes;
-    let assignments: Array<{ id: string; geoCoordinates: GeoCoordinates }> = [];
-
-    if (existingBounds) {
-      const center = boundsCenter(existingBounds);
-      const assigned = assignAutoGeoCoordinates(currentNodes, center);
-      nodesWithGeo = assigned.nodes;
-      assignments = assigned.assignments;
-    } else {
-      const assigned = assignAutoGeoCoordinates(currentNodes, {
-        lat: DEFAULT_LAT,
-        lng: DEFAULT_LNG
-      });
-      nodesWithGeo = assigned.nodes;
-      assignments = assigned.assignments;
-      boundsToFit = buildGeoBounds(nodesWithGeo);
-    }
+    const assigned = assignAutoGeoCoordinates(currentNodes);
+    const nodesWithGeo = assigned.nodes;
+    const assignments = assigned.assignments;
+    const boundsToFit = buildGeoBounds(nodesWithGeo);
 
     if (boundsToFit) {
       map.fitBounds(boundsToFit, { padding: 120, duration: 0, maxZoom: 12 });
@@ -725,8 +754,7 @@ export function useGeoMapLayout({
     if (geoSyncSignature === geoSyncSignatureRef.current) return;
     geoSyncSignatureRef.current = geoSyncSignature;
 
-    const center = map.getCenter();
-    const assigned = assignAutoGeoCoordinates(nodes, { lat: center.lat, lng: center.lng });
+    const assigned = assignAutoGeoCoordinates(nodes);
     const { nodes: syncedNodes, changed } = syncNodesToMap(map, assigned.nodes);
 
     if (changed || assigned.assignments.length > 0) {
