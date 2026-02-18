@@ -39,6 +39,35 @@ function getEdgeRawData(edgeId: string | null, edges: TopoEdge[]): EdgeRawData |
   };
 }
 
+function getAnnotationHandlerSnapshot(annotations: AnnotationContextValue) {
+  return {
+    handleTextCanvasClick: annotations.handleTextCanvasClick,
+    handleShapeCanvasClick: annotations.handleShapeCanvasClick,
+    disableAddTextMode: annotations.disableAddTextMode,
+    disableAddShapeMode: annotations.disableAddShapeMode,
+    editTextAnnotation: annotations.editTextAnnotation,
+    editShapeAnnotation: annotations.editShapeAnnotation,
+    deleteTextAnnotation: annotations.deleteTextAnnotation,
+    deleteShapeAnnotation: annotations.deleteShapeAnnotation,
+    updateTextSize: annotations.updateTextSize,
+    updateShapeSize: annotations.updateShapeSize,
+    updateTextRotation: annotations.updateTextRotation,
+    updateShapeRotation: annotations.updateShapeRotation,
+    onTextRotationStart: annotations.onTextRotationStart,
+    onTextRotationEnd: annotations.onTextRotationEnd,
+    onShapeRotationStart: annotations.onShapeRotationStart,
+    onShapeRotationEnd: annotations.onShapeRotationEnd,
+    updateShapeStartPosition: annotations.updateShapeStartPosition,
+    updateShapeEndPosition: annotations.updateShapeEndPosition,
+    persistAnnotations: annotations.persistAnnotations,
+    onNodeDropped: annotations.onNodeDropped,
+    updateGroupSize: annotations.updateGroupSize,
+    editGroup: annotations.editGroup,
+    deleteGroup: annotations.deleteGroup,
+    getGroupMembers: annotations.getGroupMembers
+  };
+}
+
 export function useCustomNodeErrorToast(
   customNodeError: unknown,
   addToast: (message: string, type?: "success" | "error" | "info", duration?: number) => void,
@@ -183,58 +212,8 @@ export function useAnnotationCanvasHandlers(annotations: AnnotationContextValue)
   );
 
   // Keep a stable handlers object for ReactFlow/canvas store subscribers.
-  const latestAnnotationsRef = React.useRef({
-    handleTextCanvasClick: annotations.handleTextCanvasClick,
-    handleShapeCanvasClick: annotations.handleShapeCanvasClick,
-    disableAddTextMode: annotations.disableAddTextMode,
-    disableAddShapeMode: annotations.disableAddShapeMode,
-    editTextAnnotation: annotations.editTextAnnotation,
-    editShapeAnnotation: annotations.editShapeAnnotation,
-    deleteTextAnnotation: annotations.deleteTextAnnotation,
-    deleteShapeAnnotation: annotations.deleteShapeAnnotation,
-    updateTextSize: annotations.updateTextSize,
-    updateShapeSize: annotations.updateShapeSize,
-    updateTextRotation: annotations.updateTextRotation,
-    updateShapeRotation: annotations.updateShapeRotation,
-    onTextRotationStart: annotations.onTextRotationStart,
-    onTextRotationEnd: annotations.onTextRotationEnd,
-    onShapeRotationStart: annotations.onShapeRotationStart,
-    onShapeRotationEnd: annotations.onShapeRotationEnd,
-    updateShapeStartPosition: annotations.updateShapeStartPosition,
-    updateShapeEndPosition: annotations.updateShapeEndPosition,
-    persistAnnotations: annotations.persistAnnotations,
-    onNodeDropped: annotations.onNodeDropped,
-    updateGroupSize: annotations.updateGroupSize,
-    editGroup: annotations.editGroup,
-    deleteGroup: annotations.deleteGroup,
-    getGroupMembers: annotations.getGroupMembers
-  });
-  latestAnnotationsRef.current = {
-    handleTextCanvasClick: annotations.handleTextCanvasClick,
-    handleShapeCanvasClick: annotations.handleShapeCanvasClick,
-    disableAddTextMode: annotations.disableAddTextMode,
-    disableAddShapeMode: annotations.disableAddShapeMode,
-    editTextAnnotation: annotations.editTextAnnotation,
-    editShapeAnnotation: annotations.editShapeAnnotation,
-    deleteTextAnnotation: annotations.deleteTextAnnotation,
-    deleteShapeAnnotation: annotations.deleteShapeAnnotation,
-    updateTextSize: annotations.updateTextSize,
-    updateShapeSize: annotations.updateShapeSize,
-    updateTextRotation: annotations.updateTextRotation,
-    updateShapeRotation: annotations.updateShapeRotation,
-    onTextRotationStart: annotations.onTextRotationStart,
-    onTextRotationEnd: annotations.onTextRotationEnd,
-    onShapeRotationStart: annotations.onShapeRotationStart,
-    onShapeRotationEnd: annotations.onShapeRotationEnd,
-    updateShapeStartPosition: annotations.updateShapeStartPosition,
-    updateShapeEndPosition: annotations.updateShapeEndPosition,
-    persistAnnotations: annotations.persistAnnotations,
-    onNodeDropped: annotations.onNodeDropped,
-    updateGroupSize: annotations.updateGroupSize,
-    editGroup: annotations.editGroup,
-    deleteGroup: annotations.deleteGroup,
-    getGroupMembers: annotations.getGroupMembers
-  };
+  const latestAnnotationsRef = React.useRef(getAnnotationHandlerSnapshot(annotations));
+  latestAnnotationsRef.current = getAnnotationHandlerSnapshot(annotations);
 
   const onAddTextClick = React.useCallback((position: { x: number; y: number }) => {
     latestAnnotationsRef.current.handleTextCanvasClick(position);
