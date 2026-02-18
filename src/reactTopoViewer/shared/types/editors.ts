@@ -287,6 +287,10 @@ export interface LinkEditorData {
   // Extended properties
   sourceMac?: string;
   targetMac?: string;
+  sourceIpv4?: string;
+  sourceIpv6?: string;
+  targetIpv4?: string;
+  targetIpv6?: string;
   mtu?: number | string;
   vars?: Record<string, string>;
   labels?: Record<string, string>;

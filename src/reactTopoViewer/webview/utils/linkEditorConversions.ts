@@ -5,6 +5,8 @@ import type { LinkEditorData } from "../../shared/types/editors";
 import type { LinkSaveData } from "../../shared/io/LinkPersistenceIO";
 import { isSpecialEndpointId } from "../../shared/utilities/LinkTypes";
 
+type LinkExtraData = NonNullable<LinkSaveData["extraData"]>;
+
 /** Parse MTU from raw value (can be string or number) */
 function parseMtu(raw: unknown): number | undefined {
   if (raw === undefined || raw === "") return undefined;
@@ -18,16 +20,38 @@ function getStr(obj: Record<string, unknown>, key: string, fallback = ""): strin
 }
 
 /** Get MAC address from extended data or legacy endpoint object */
+function getEndpointValue(
+  extraData: Record<string, unknown>,
+  extKey: string,
+  rawData: Record<string, unknown>,
+  endpointKey: string,
+  endpointField: string
+): string {
+  const extVal = extraData[extKey] as string | undefined;
+  if (extVal) return extVal;
+  const endpoint = rawData[endpointKey] as Record<string, unknown> | undefined;
+  return (endpoint?.[endpointField] as string) || "";
+}
+
+/** Get MAC address from extended data or legacy endpoint object */
 function getMac(
   extraData: Record<string, unknown>,
   extKey: string,
   rawData: Record<string, unknown>,
   endpointKey: string
 ): string {
-  const extVal = extraData[extKey] as string | undefined;
-  if (extVal) return extVal;
-  const endpoint = rawData[endpointKey] as Record<string, unknown> | undefined;
-  return (endpoint?.mac as string) || "";
+  return getEndpointValue(extraData, extKey, rawData, endpointKey, "mac");
+}
+
+/** Get endpoint IP address from extended data or legacy endpoint object */
+function getIp(
+  extraData: Record<string, unknown>,
+  extKey: string,
+  rawData: Record<string, unknown>,
+  endpointKey: string,
+  ipVersion: "ipv4" | "ipv6"
+): string {
+  return getEndpointValue(extraData, extKey, rawData, endpointKey, ipVersion);
 }
 
 /** Get key-value map from extended data or raw data */
@@ -42,6 +66,24 @@ function getMap(
     (rawData[rawKey] as Record<string, string>) ||
     {}
   );
+}
+
+function assignExtraString(
+  extraData: LinkExtraData,
+  key: keyof LinkExtraData,
+  value: string | undefined
+): void {
+  if (!value) return;
+  extraData[key] = value;
+}
+
+function assignExtraMap(
+  extraData: LinkExtraData,
+  key: "extVars" | "extLabels",
+  value: Record<string, string> | undefined
+): void {
+  if (!value || Object.keys(value).length === 0) return;
+  extraData[key] = value;
 }
 
 /**
@@ -75,6 +117,10 @@ export function convertToLinkEditorData(
     type: getStr(extraData, "extType") || getStr(rawData, "linkType", "veth"),
     sourceMac: getMac(extraData, "extSourceMac", rawData, "endpointA"),
     targetMac: getMac(extraData, "extTargetMac", rawData, "endpointB"),
+    sourceIpv4: getIp(extraData, "extSourceIpv4", rawData, "endpointA", "ipv4"),
+    sourceIpv6: getIp(extraData, "extSourceIpv6", rawData, "endpointA", "ipv6"),
+    targetIpv4: getIp(extraData, "extTargetIpv4", rawData, "endpointB", "ipv4"),
+    targetIpv6: getIp(extraData, "extTargetIpv6", rawData, "endpointB", "ipv6"),
     mtu: parseMtu(extraData.extMtu),
     vars: getMap(extraData, "extVars", rawData, "vars"),
     labels: getMap(extraData, "extLabels", rawData, "labels"),
@@ -96,7 +142,7 @@ export function convertToLinkEditorData(
  */
 export function convertEditorDataToLinkSaveData(data: LinkEditorData): LinkSaveData {
   // Build extraData with extended properties
-  const extraData: LinkSaveData["extraData"] = {};
+  const extraData: LinkExtraData = {};
 
   if (data.type && data.type !== "veth") {
     extraData.extType = data.type;
@@ -104,18 +150,14 @@ export function convertEditorDataToLinkSaveData(data: LinkEditorData): LinkSaveD
   if (data.mtu !== undefined && data.mtu !== "") {
     extraData.extMtu = data.mtu;
   }
-  if (data.sourceMac) {
-    extraData.extSourceMac = data.sourceMac;
-  }
-  if (data.targetMac) {
-    extraData.extTargetMac = data.targetMac;
-  }
-  if (data.vars && Object.keys(data.vars).length > 0) {
-    extraData.extVars = data.vars;
-  }
-  if (data.labels && Object.keys(data.labels).length > 0) {
-    extraData.extLabels = data.labels;
-  }
+  assignExtraString(extraData, "extSourceMac", data.sourceMac);
+  assignExtraString(extraData, "extTargetMac", data.targetMac);
+  assignExtraString(extraData, "extSourceIpv4", data.sourceIpv4);
+  assignExtraString(extraData, "extSourceIpv6", data.sourceIpv6);
+  assignExtraString(extraData, "extTargetIpv4", data.targetIpv4);
+  assignExtraString(extraData, "extTargetIpv6", data.targetIpv6);
+  assignExtraMap(extraData, "extVars", data.vars);
+  assignExtraMap(extraData, "extLabels", data.labels);
 
   const saveData: LinkSaveData = {
     id: data.id,

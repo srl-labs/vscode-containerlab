@@ -149,6 +149,9 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
     }
   },
   MuiOutlinedInput: {
+    defaultProps: {
+      notched: true
+    },
     styleOverrides: {
       root: {
         "&:hover .MuiOutlinedInput-notchedOutline": {
@@ -162,6 +165,9 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
         borderColor: "var(--vscode-input-border)"
       }
     }
+  },
+  MuiInputLabel: {
+    defaultProps: { shrink: true }
   },
   MuiTextField: { defaultProps: { size: "small", variant: "outlined" } },
   MuiSelect: { defaultProps: { size: "small" } },

@@ -4,14 +4,17 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Paper from "@mui/material/Paper";
 
-import { KeyValueList, PanelAddSection } from "../../ui/form";
+import { KeyValueList, PanelAddSection, InputField, PanelSection } from "../../ui/form";
 
 import type { LinkTabProps, LinkEditorData } from "./types";
 
 /**
- * Veth link properties (vars, labels)
+ * Veth link properties (MAC, MTU, endpoint IPs, vars, labels)
  */
 const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
+  const sourceName = data.source || "Source";
+  const targetName = data.target || "Target";
+
   const handleAddVar = () => {
     const vars = data.vars || {};
     onChange({ vars: { ...vars, "": "" } });
@@ -24,7 +27,69 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      <PanelAddSection title="Variables" onAdd={handleAddVar} withTopDivider={false}>
+      <PanelSection title="Endpoint Properties">
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+          <InputField
+            id="link-source-mac"
+            label={`${sourceName} MAC`}
+            value={data.sourceMac ?? ""}
+            onChange={(value) => onChange({ sourceMac: value })}
+            placeholder="e.g., 02:42:ac:11:00:01"
+          />
+          <InputField
+            id="link-target-mac"
+            label={`${targetName} MAC`}
+            value={data.targetMac ?? ""}
+            onChange={(value) => onChange({ targetMac: value })}
+            placeholder="e.g., 02:42:ac:11:00:02"
+          />
+        </Box>
+
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+          <InputField
+            id="link-source-ipv4"
+            label={`${sourceName} IPv4`}
+            value={data.sourceIpv4 ?? ""}
+            onChange={(value) => onChange({ sourceIpv4: value })}
+            placeholder="e.g., 10.0.0.1/24"
+          />
+          <InputField
+            id="link-target-ipv4"
+            label={`${targetName} IPv4`}
+            value={data.targetIpv4 ?? ""}
+            onChange={(value) => onChange({ targetIpv4: value })}
+            placeholder="e.g., 10.0.0.2/24"
+          />
+        </Box>
+
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+          <InputField
+            id="link-source-ipv6"
+            label={`${sourceName} IPv6`}
+            value={data.sourceIpv6 ?? ""}
+            onChange={(value) => onChange({ sourceIpv6: value })}
+            placeholder="e.g., 2001:db8::1/64"
+          />
+          <InputField
+            id="link-target-ipv6"
+            label={`${targetName} IPv6`}
+            value={data.targetIpv6 ?? ""}
+            onChange={(value) => onChange({ targetIpv6: value })}
+            placeholder="e.g., 2001:db8::2/64"
+          />
+        </Box>
+
+        <InputField
+          id="link-mtu"
+          label="MTU"
+          value={data.mtu?.toString() || ""}
+          onChange={(value) => onChange({ mtu: value ? parseInt(value, 10) : undefined })}
+          placeholder="e.g., 1500"
+          type="number"
+        />
+      </PanelSection>
+
+      <PanelAddSection title="Variables" onAdd={handleAddVar}>
         <KeyValueList
           items={data.vars || {}}
           onChange={(vars) => onChange({ vars })}
