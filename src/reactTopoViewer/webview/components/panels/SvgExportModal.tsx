@@ -4,7 +4,8 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import {
   AccountTree as AccountTreeIcon,
   Download as DownloadIcon,
-  Lightbulb as LightbulbIcon
+  Lightbulb as LightbulbIcon,
+  Settings as SettingsIcon,
 } from "@mui/icons-material";
 import {
   Alert,
@@ -22,20 +23,20 @@ import {
   Radio,
   RadioGroup,
   TextField,
-  Typography
+  Typography,
 } from "@mui/material";
 
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
-  GroupStyleAnnotation
+  GroupStyleAnnotation,
 } from "../../../shared/types/topology";
 import { EXPORT_COMMANDS } from "../../../shared/messages/extension";
 import { MSG_SVG_EXPORT_RESULT } from "../../../shared/messages/webview";
 import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
-  GROUP_NODE_TYPE
+  GROUP_NODE_TYPE,
 } from "../../annotations/annotationNodeConverters";
 import { sendCommandToExtension } from "../../messaging/extensionMessaging";
 import { subscribeToWebviewMessages } from "../../messaging/webviewMessageBus";
@@ -47,15 +48,21 @@ import {
   applyPadding,
   buildGraphSvg,
   collectGrafanaEdgeCellMappings,
+  collectLinkedNodeIds,
   sanitizeSvgForGrafana,
+  removeUnlinkedNodesFromSvg,
+  trimGrafanaSvgToTopologyContent,
+  addGrafanaTrafficLegend,
+  makeGrafanaSvgResponsive,
   applyGrafanaCellIdsToSvg,
   buildGrafanaPanelYaml,
   buildGrafanaDashboardJson,
+  DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS,
   getViewportSize,
   compositeAnnotationsIntoSvg,
-  addBackgroundRect
+  addBackgroundRect,
 } from "./svg-export";
-import type { CustomIconMap } from "./svg-export";
+import type { CustomIconMap, GrafanaTrafficThresholds } from "./svg-export";
 
 export interface SvgExportModalProps {
   isOpen: boolean;
@@ -70,7 +77,7 @@ export interface SvgExportModalProps {
 const ANNOTATION_NODE_TYPES: Set<string> = new Set([
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
-  GROUP_NODE_TYPE
+  GROUP_NODE_TYPE,
 ]);
 
 function downloadSvg(content: string, filename: string): void {
@@ -104,11 +111,31 @@ interface GrafanaBundlePayload {
 function createRequestId(): string {
   const bytes = new Uint8Array(8);
   globalThis.crypto.getRandomValues(bytes);
-  const random = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const random = Array.from(bytes, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
   return `svg-export-${Date.now()}-${random}`;
 }
 
-function requestGrafanaBundleExport(payload: GrafanaBundlePayload): Promise<string[]> {
+function parseThreshold(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, parsed);
+}
+
+function hasStrictlyAscendingThresholds(
+  thresholds: GrafanaTrafficThresholds,
+): boolean {
+  return (
+    thresholds.green < thresholds.yellow &&
+    thresholds.yellow < thresholds.orange &&
+    thresholds.orange < thresholds.red
+  );
+}
+
+function requestGrafanaBundleExport(
+  payload: GrafanaBundlePayload,
+): Promise<string[]> {
   return new Promise((resolve, reject) => {
     let unsubscribe = () => {
       /* no-op until subscription is active */
@@ -133,14 +160,16 @@ function requestGrafanaBundleExport(payload: GrafanaBundlePayload): Promise<stri
       }
 
       const files = Array.isArray(message.files)
-        ? message.files.filter((file): file is string => typeof file === "string")
+        ? message.files.filter(
+            (file): file is string => typeof file === "string",
+          )
         : [];
       resolve(files);
     });
 
     sendCommandToExtension(
       EXPORT_COMMANDS.EXPORT_SVG_GRAFANA_BUNDLE,
-      payload as unknown as Record<string, unknown>
+      payload as unknown as Record<string, unknown>,
     );
   });
 }
@@ -152,7 +181,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   shapeAnnotations = [],
   groups = [],
   rfInstance,
-  customIcons
+  customIcons,
 }) => {
   const [borderZoom, setBorderZoom] = useState(100);
   const [borderPadding, setBorderPadding] = useState(0);
@@ -164,38 +193,65 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   const [includeAnnotations, setIncludeAnnotations] = useState(true);
   const [includeEdgeLabels, setIncludeEdgeLabels] = useState(true);
   const [exportGrafanaBundle, setExportGrafanaBundle] = useState(false);
-  const [backgroundOption, setBackgroundOption] = useState<BackgroundOption>("transparent");
+  const [isGrafanaSettingsOpen, setIsGrafanaSettingsOpen] = useState(false);
+  const [excludeNodesWithoutLinks, setExcludeNodesWithoutLinks] =
+    useState(true);
+  const [includeGrafanaLegend, setIncludeGrafanaLegend] = useState(false);
+  const [trafficThresholds, setTrafficThresholds] =
+    useState<GrafanaTrafficThresholds>({
+      ...DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS,
+    });
+  const [backgroundOption, setBackgroundOption] =
+    useState<BackgroundOption>("transparent");
   const [customBackgroundColor, setCustomBackgroundColor] = useState("#1e1e1e");
   const [filename, setFilename] = useState("topology");
 
   const isExportAvailable = rfInstance ? Boolean(getViewportSize()) : false;
-  const totalAnnotations = groups.length + textAnnotations.length + shapeAnnotations.length;
+  const totalAnnotations =
+    groups.length + textAnnotations.length + shapeAnnotations.length;
+
+  const updateTrafficThreshold = useCallback(
+    (threshold: keyof GrafanaTrafficThresholds, rawValue: string) => {
+      const nextValue = parseThreshold(rawValue);
+      setTrafficThresholds((prev) => ({
+        ...prev,
+        [threshold]: nextValue,
+      }));
+    },
+    [],
+  );
 
   const handleExport = useCallback(async () => {
     if (!isExportAvailable || !rfInstance) {
-      setExportStatus({ type: "error", message: "SVG export is not yet available" });
+      setExportStatus({
+        type: "error",
+        message: "SVG export is not yet available",
+      });
       return;
     }
     setIsExporting(true);
     setExportStatus(null);
     try {
-      log.info(`[SvgExport] Export requested: zoom=${borderZoom}%, padding=${borderPadding}px`);
+      log.info(
+        `[SvgExport] Export requested: zoom=${borderZoom}%, padding=${borderPadding}px`,
+      );
       const graphSvg = buildGraphSvg(
         rfInstance,
         borderZoom,
         customIcons,
         includeEdgeLabels,
         ANNOTATION_NODE_TYPES,
-        exportGrafanaBundle
+        exportGrafanaBundle,
       );
-      if (!graphSvg) throw new Error("Unable to capture viewport for SVG export");
+      if (!graphSvg)
+        throw new Error("Unable to capture viewport for SVG export");
       let finalSvg = graphSvg.svg;
       if (borderPadding > 0) finalSvg = applyPadding(finalSvg, borderPadding);
       if (includeAnnotations && totalAnnotations > 0) {
         finalSvg = compositeAnnotationsIntoSvg(
           finalSvg,
           { groups, textAnnotations, shapeAnnotations },
-          borderZoom / 100
+          borderZoom / 100,
         );
       }
       if (backgroundOption === "custom") {
@@ -205,19 +261,50 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       const baseName = (filename || "topology").trim() || "topology";
       if (!exportGrafanaBundle) {
         downloadSvg(finalSvg, `${baseName}.svg`);
-        setExportStatus({ type: "success", message: "SVG exported successfully" });
+        setExportStatus({
+          type: "success",
+          message: "SVG exported successfully",
+        });
         return;
+      }
+      if (!hasStrictlyAscendingThresholds(trafficThresholds)) {
+        throw new Error(
+          "Traffic thresholds must be strictly ascending (green < yellow < orange < red)",
+        );
       }
 
       const mappings = collectGrafanaEdgeCellMappings(
         graphSvg.edges,
         graphSvg.nodes,
-        ANNOTATION_NODE_TYPES
+        ANNOTATION_NODE_TYPES,
       );
-      const grafanaBaseSvg = sanitizeSvgForGrafana(finalSvg);
-      const grafanaSvg = applyGrafanaCellIdsToSvg(grafanaBaseSvg, mappings);
-      const panelYaml = buildGrafanaPanelYaml(mappings);
-      const dashboardJson = buildGrafanaDashboardJson(panelYaml, grafanaSvg, baseName);
+      let grafanaBaseSvg = sanitizeSvgForGrafana(finalSvg);
+      if (excludeNodesWithoutLinks) {
+        const linkedNodeIds = collectLinkedNodeIds(
+          graphSvg.edges,
+          graphSvg.nodes,
+          ANNOTATION_NODE_TYPES,
+        );
+        grafanaBaseSvg = removeUnlinkedNodesFromSvg(
+          grafanaBaseSvg,
+          linkedNodeIds,
+        );
+        grafanaBaseSvg = trimGrafanaSvgToTopologyContent(
+          grafanaBaseSvg,
+          Math.max(6, borderPadding),
+        );
+      }
+      let grafanaSvg = applyGrafanaCellIdsToSvg(grafanaBaseSvg, mappings);
+      if (includeGrafanaLegend) {
+        grafanaSvg = addGrafanaTrafficLegend(grafanaSvg, trafficThresholds);
+      }
+      grafanaSvg = makeGrafanaSvgResponsive(grafanaSvg);
+      const panelYaml = buildGrafanaPanelYaml(mappings, { trafficThresholds });
+      const dashboardJson = buildGrafanaDashboardJson(
+        panelYaml,
+        grafanaSvg,
+        baseName,
+      );
 
       const requestId = createRequestId();
       const files = await requestGrafanaBundleExport({
@@ -225,14 +312,16 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         baseName,
         svgContent: grafanaSvg,
         dashboardJson,
-        panelYaml
+        panelYaml,
       });
 
       const suffix =
-        files.length > 0 ? ` (${files.map((file) => file.split("/").pop()).join(", ")})` : "";
+        files.length > 0
+          ? ` (${files.map((file) => file.split("/").pop()).join(", ")})`
+          : "";
       setExportStatus({
         type: "success",
-        message: `Grafana bundle exported successfully${suffix}`
+        message: `Grafana bundle exported successfully${suffix}`,
       });
     } catch (error) {
       log.error(`[SvgExport] Export failed: ${error}`);
@@ -247,6 +336,9 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     includeAnnotations,
     includeEdgeLabels,
     exportGrafanaBundle,
+    excludeNodesWithoutLinks,
+    includeGrafanaLegend,
+    trafficThresholds,
     totalAnnotations,
     groups,
     textAnnotations,
@@ -255,7 +347,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     customBackgroundColor,
     filename,
     rfInstance,
-    customIcons
+    customIcons,
   ]);
 
   const previewBackgroundSx = (() => {
@@ -264,7 +356,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         backgroundImage:
           "linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%)",
         backgroundSize: "8px 8px",
-        backgroundPosition: "0 0, 0 4px, 4px -4px, -4px 0px"
+        backgroundPosition: "0 0, 0 4px, 4px -4px, -4px 0px",
       } as const;
     }
     return { backgroundColor: customBackgroundColor } as const;
@@ -278,225 +370,376 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   }
 
   return (
-    <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth data-testid="svg-export-modal">
-      <DialogTitleWithClose title="Export SVG" onClose={onClose} />
-      <DialogContent dividers sx={{ p: 0 }}>
-        <Box sx={{ p: 2 }}>
-          <TextField
-            label="Filename"
-            size="small"
-            fullWidth
-            value={filename}
-            onChange={(e) => setFilename(e.target.value)}
-            placeholder="topology"
-            data-testid="svg-export-filename"
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <Typography variant="caption" color="text.secondary">
-                      .svg
-                    </Typography>
-                  </InputAdornment>
-                )
-              }
-            }}
-          />
-        </Box>
-
-        <Divider />
-        <Box sx={{ px: 2, py: 1 }}>
-          <Typography variant="subtitle2">Quality & Size</Typography>
-        </Box>
-        <Divider />
-        <Box sx={{ p: 2 }}>
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+    <>
+      <Dialog
+        open={isOpen}
+        onClose={onClose}
+        maxWidth="sm"
+        fullWidth
+        data-testid="svg-export-modal"
+      >
+        <DialogTitleWithClose title="Export SVG" onClose={onClose} />
+        <DialogContent dividers sx={{ p: 0 }}>
+          <Box sx={{ p: 2 }}>
             <TextField
-              label="Zoom"
-              type="number"
+              label="Filename"
               size="small"
-              value={borderZoom}
-              onChange={(e) =>
-                setBorderZoom(Math.max(10, Math.min(300, parseFloat(e.target.value) || 0)))
-              }
+              fullWidth
+              value={filename}
+              onChange={(e) => setFilename(e.target.value)}
+              placeholder="topology"
+              data-testid="svg-export-filename"
               slotProps={{
-                htmlInput: { min: 10, max: 300, step: 1 },
-                input: { endAdornment: <InputAdornment position="end">%</InputAdornment> }
-              }}
-            />
-            <TextField
-              label="Padding"
-              type="number"
-              size="small"
-              value={borderPadding}
-              onChange={(e) => setBorderPadding(Math.max(0, parseFloat(e.target.value) || 0))}
-              slotProps={{
-                htmlInput: { min: 0, max: 500, step: 1 },
-                input: { endAdornment: <InputAdornment position="end">px</InputAdornment> }
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Typography variant="caption" color="text.secondary">
+                        .svg
+                      </Typography>
+                    </InputAdornment>
+                  ),
+                },
               }}
             />
           </Box>
-        </Box>
 
-        <Divider />
-        <Box sx={{ px: 2, py: 1 }}>
-          <Typography variant="subtitle2">Background</Typography>
-        </Box>
-        <Divider />
-        <Box sx={{ display: "flex", flexDirection: "column", px: 2, py: 1 }}>
-          <RadioGroup
-            value={backgroundOption}
-            onChange={(e) => setBackgroundOption(e.target.value as BackgroundOption)}
-          >
-            <FormControlLabel
-              value="transparent"
-              control={<Radio size="small" />}
-              label="Transparent"
-            />
-            <FormControlLabel value="custom" control={<Radio size="small" />} label="Custom" />
-          </RadioGroup>
-          {backgroundOption === "custom" && (
-            <Box sx={{ pl: 4, pt: 1 }}>
-              <ColorField
-                label="Color"
-                value={customBackgroundColor}
-                onChange={setCustomBackgroundColor}
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="subtitle2">Quality & Size</Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ p: 2 }}>
+            <Box
+              sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}
+            >
+              <TextField
+                label="Zoom"
+                type="number"
+                size="small"
+                value={borderZoom}
+                onChange={(e) =>
+                  setBorderZoom(
+                    Math.max(
+                      10,
+                      Math.min(300, parseFloat(e.target.value) || 0),
+                    ),
+                  )
+                }
+                slotProps={{
+                  htmlInput: { min: 10, max: 300, step: 1 },
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">%</InputAdornment>
+                    ),
+                  },
+                }}
+              />
+              <TextField
+                label="Padding"
+                type="number"
+                size="small"
+                value={borderPadding}
+                onChange={(e) =>
+                  setBorderPadding(Math.max(0, parseFloat(e.target.value) || 0))
+                }
+                slotProps={{
+                  htmlInput: { min: 0, max: 500, step: 1 },
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">px</InputAdornment>
+                    ),
+                  },
+                }}
               />
             </Box>
-          )}
-        </Box>
+          </Box>
 
-        <Divider />
-        <Box sx={{ px: 2, py: 1 }}>
-          <Typography variant="subtitle2">Include</Typography>
-        </Box>
-        <Divider />
-        <Box sx={{ display: "flex", flexDirection: "column", px: 2, py: 1 }}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                size="small"
-                checked={includeAnnotations}
-                onChange={(e) => setIncludeAnnotations(e.target.checked)}
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="subtitle2">Background</Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ display: "flex", flexDirection: "column", px: 2, py: 1 }}>
+            <RadioGroup
+              value={backgroundOption}
+              onChange={(e) =>
+                setBackgroundOption(e.target.value as BackgroundOption)
+              }
+            >
+              <FormControlLabel
+                value="transparent"
+                control={<Radio size="small" />}
+                label="Transparent"
               />
-            }
-            label="Annotations"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                size="small"
-                checked={includeEdgeLabels}
-                onChange={(e) => setIncludeEdgeLabels(e.target.checked)}
+              <FormControlLabel
+                value="custom"
+                control={<Radio size="small" />}
+                label="Custom"
               />
-            }
-            label="Edge labels"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                size="small"
-                checked={exportGrafanaBundle}
-                onChange={(e) => setExportGrafanaBundle(e.target.checked)}
-              />
-            }
-            label="Grafana bundle (SVG + dashboard JSON + panel YAML)"
-            data-testid="svg-export-grafana-bundle"
-          />
-        </Box>
+            </RadioGroup>
+            {backgroundOption === "custom" && (
+              <Box sx={{ pl: 4, pt: 1 }}>
+                <ColorField
+                  label="Color"
+                  value={customBackgroundColor}
+                  onChange={setCustomBackgroundColor}
+                />
+              </Box>
+            )}
+          </Box>
 
-        <Divider />
-        <Box sx={{ px: 2, py: 1 }}>
-          <Typography variant="subtitle2">Preview</Typography>
-        </Box>
-        <Divider />
-        <Box sx={{ p: 2 }}>
-          <Box
-            sx={{
-              position: "relative",
-              p: 2,
-              borderRadius: 1,
-              overflow: "hidden",
-              border: 1,
-              borderColor: "divider"
-            }}
-          >
-            <Box sx={{ position: "absolute", inset: 0, opacity: 0.3, ...PREVIEW_GRID_BG_SX }} />
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="subtitle2">Include</Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ display: "flex", flexDirection: "column", px: 2, py: 1 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  checked={includeAnnotations}
+                  onChange={(e) => setIncludeAnnotations(e.target.checked)}
+                />
+              }
+              label="Annotations"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  checked={includeEdgeLabels}
+                  onChange={(e) => setIncludeEdgeLabels(e.target.checked)}
+                />
+              }
+              label="Edge labels"
+            />
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 1,
+              }}
+            >
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={exportGrafanaBundle}
+                    onChange={(e) => setExportGrafanaBundle(e.target.checked)}
+                  />
+                }
+                label="Grafana bundle"
+                data-testid="svg-export-grafana-bundle"
+              />
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<SettingsIcon />}
+                disabled={!exportGrafanaBundle}
+                onClick={() => setIsGrafanaSettingsOpen(true)}
+                data-testid="svg-export-grafana-advanced-btn"
+              >
+                Advanced Grafana Settings
+              </Button>
+            </Box>
+          </Box>
+
+          <Divider />
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="subtitle2">Preview</Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ p: 2 }}>
             <Box
               sx={{
                 position: "relative",
-                zIndex: 10,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center"
+                p: 2,
+                borderRadius: 1,
+                overflow: "hidden",
+                border: 1,
+                borderColor: "divider",
               }}
             >
               <Box
                 sx={{
-                  width: 96,
-                  height: 64,
-                  borderRadius: 1,
-                  boxShadow: 3,
-                  border: 1,
-                  borderColor: "divider",
+                  position: "absolute",
+                  inset: 0,
+                  opacity: 0.3,
+                  ...PREVIEW_GRID_BG_SX,
+                }}
+              />
+              <Box
+                sx={{
+                  position: "relative",
+                  zIndex: 10,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  transition: "all 200ms",
-                  ...previewBackgroundSx,
-                  padding: `${Math.min(borderPadding / 20, 8)}px`,
-                  transform: `scale(${0.8 + borderZoom / 500})`
                 }}
               >
-                <AccountTreeIcon sx={{ fontSize: 24, color: "primary.main", opacity: 0.8 }} />
+                <Box
+                  sx={{
+                    width: 96,
+                    height: 64,
+                    borderRadius: 1,
+                    boxShadow: 3,
+                    border: 1,
+                    borderColor: "divider",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 200ms",
+                    ...previewBackgroundSx,
+                    padding: `${Math.min(borderPadding / 20, 8)}px`,
+                    transform: `scale(${0.8 + borderZoom / 500})`,
+                  }}
+                >
+                  <AccountTreeIcon
+                    sx={{ fontSize: 24, color: "primary.main", opacity: 0.8 }}
+                  />
+                </Box>
               </Box>
             </Box>
           </Box>
-        </Box>
 
-        <Divider />
-        <Box sx={{ p: 2 }}>
-          <Paper variant="outlined" sx={{ p: 1.5 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-              <LightbulbIcon sx={{ fontSize: 14, color: "warning.main" }} />
-              <Typography variant="caption" color="text.secondary">
-                Tips
+          <Divider />
+          <Box sx={{ p: 2 }}>
+            <Paper variant="outlined" sx={{ p: 1.5 }}>
+              <Box
+                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}
+              >
+                <LightbulbIcon sx={{ fontSize: 14, color: "warning.main" }} />
+                <Typography variant="caption" color="text.secondary">
+                  Tips
+                </Typography>
+              </Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                component="ul"
+                sx={{ pl: 2, m: 0, "& li": { mb: 0.25 } }}
+              >
+                <li>Higher zoom = better quality, larger file</li>
+                <li>SVG files scale without quality loss</li>
+                <li>Transparent background for layering</li>
               </Typography>
-            </Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              component="ul"
-              sx={{ pl: 2, m: 0, "& li": { mb: 0.25 } }}
-            >
-              <li>Higher zoom = better quality, larger file</li>
-              <li>SVG files scale without quality loss</li>
-              <li>Transparent background for layering</li>
-            </Typography>
-          </Paper>
-        </Box>
-
-        {exportStatus && (
-          <Box sx={{ px: 2, pb: 2 }}>
-            <Alert severity={exportStatus.type === "success" ? "success" : "error"}>
-              {exportStatus.message}
-            </Alert>
+            </Paper>
           </Box>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button
-          fullWidth
-          onClick={() => void handleExport()}
-          disabled={isExporting || !isExportAvailable}
-          startIcon={
-            isExporting ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />
-          }
-          data-testid="svg-export-btn"
+
+          {exportStatus && (
+            <Box sx={{ px: 2, pb: 2 }}>
+              <Alert
+                severity={exportStatus.type === "success" ? "success" : "error"}
+              >
+                {exportStatus.message}
+              </Alert>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            fullWidth
+            onClick={() => void handleExport()}
+            disabled={isExporting || !isExportAvailable}
+            startIcon={
+              isExporting ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <DownloadIcon />
+              )
+            }
+            data-testid="svg-export-btn"
+          >
+            {exportButtonLabel}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={isGrafanaSettingsOpen}
+        onClose={() => setIsGrafanaSettingsOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        data-testid="svg-export-grafana-settings-modal"
+      >
+        <DialogTitleWithClose
+          title="Advanced Grafana Settings"
+          onClose={() => setIsGrafanaSettingsOpen(false)}
+        />
+        <DialogContent
+          dividers
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
-          {exportButtonLabel}
-        </Button>
-      </DialogActions>
-    </Dialog>
+          <Typography variant="body2" color="text.secondary">
+            Configure traffic thresholds used in the exported Grafana panel.
+          </Typography>
+          <Box
+            sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}
+          >
+            <TextField
+              label="Green threshold"
+              type="number"
+              size="small"
+              value={trafficThresholds.green}
+              onChange={(e) => updateTrafficThreshold("green", e.target.value)}
+              slotProps={{ htmlInput: { min: 0, step: 1 } }}
+            />
+            <TextField
+              label="Yellow threshold"
+              type="number"
+              size="small"
+              value={trafficThresholds.yellow}
+              onChange={(e) => updateTrafficThreshold("yellow", e.target.value)}
+              slotProps={{ htmlInput: { min: 0, step: 1 } }}
+            />
+            <TextField
+              label="Orange threshold"
+              type="number"
+              size="small"
+              value={trafficThresholds.orange}
+              onChange={(e) => updateTrafficThreshold("orange", e.target.value)}
+              slotProps={{ htmlInput: { min: 0, step: 1 } }}
+            />
+            <TextField
+              label="Red threshold"
+              type="number"
+              size="small"
+              value={trafficThresholds.red}
+              onChange={(e) => updateTrafficThreshold("red", e.target.value)}
+              slotProps={{ htmlInput: { min: 0, step: 1 } }}
+            />
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            Values must be strictly ascending: green &lt; yellow &lt; orange
+            &lt; red.
+          </Typography>
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={excludeNodesWithoutLinks}
+                onChange={(e) => setExcludeNodesWithoutLinks(e.target.checked)}
+              />
+            }
+            label="Exclude nodes without any links"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={includeGrafanaLegend}
+                onChange={(e) => setIncludeGrafanaLegend(e.target.checked)}
+              />
+            }
+            label="Add traffic legend (top-left)"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsGrafanaSettingsOpen(false)}>Done</Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
