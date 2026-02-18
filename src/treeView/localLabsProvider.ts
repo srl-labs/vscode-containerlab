@@ -12,6 +12,7 @@ import * as ins from "./inspector";
 const WATCHER_GLOB_PATTERN = "**/*.clab.{yaml,yml}";
 const CLAB_GLOB_PATTERN = "{**/*.clab.yml,**/*.clab.yaml}";
 const IGNORE_GLOB_PATTERN = "**/node_modules/**";
+const SCAN_TIMEOUT_MS = 120_000;
 
 export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
   c.ClabLabTreeNode | c.ClabFolderTreeNode | undefined
@@ -31,20 +32,25 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
   private delSubdirWatcher = vscode.workspace.createFileSystemWatcher("**/", true, true, false);
   private treeFilter: string = "";
 
+  private cachedUris: Map<string, vscode.Uri> | undefined;
+  private scanPromise: Promise<void> | undefined;
+  private scanRequested = false;
+
   constructor() {
     this.watcher.onDidCreate((uri) => {
       if (!uri.scheme || uri.scheme === "file") {
+        this.cachedUris?.set(uri.fsPath, uri);
         this.refresh();
       }
     });
     this.watcher.onDidDelete((uri) => {
       if (!uri.scheme || uri.scheme === "file") {
+        this.cachedUris?.delete(uri.fsPath);
         this.refresh();
       }
     });
     this.watcher.onDidChange((uri) => {
       if (!uri.scheme || uri.scheme === "file") {
-        // Don't invalidate cache on file changes, just refresh
         this.refresh();
       }
     });
@@ -53,9 +59,57 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
     // of the subdir deletion.
     this.delSubdirWatcher.onDidDelete((uri) => {
       if (!uri.scheme || uri.scheme === "file") {
+        if (this.cachedUris) {
+          const prefix = uri.fsPath + path.sep;
+          for (const fsPath of this.cachedUris.keys()) {
+            if (fsPath.startsWith(prefix)) {
+              this.cachedUris.delete(fsPath);
+            }
+          }
+        }
         this.refresh();
       }
     });
+
+  }
+
+  private performScan(): Promise<void> {
+    // allow only a single filescan at atime
+    // return the running scan promise if a 
+    // scan is currently running
+    if (this.scanPromise) {
+      return this.scanPromise;
+    }
+
+    const scan = (async () => {
+      try {
+        outputChannel.debug("[LocalTreeDataProvider] Performing file discovery scan");
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("File scan timed out after 120s")), SCAN_TIMEOUT_MS)
+        );
+        const uris = (
+          await Promise.race([
+            vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN),
+            timeout
+          ])
+        ).filter((u) => !u.scheme || u.scheme === "file");
+        this.cachedUris = new Map(uris.map((u) => [u.fsPath, u]));
+        outputChannel.debug(
+          `[LocalTreeDataProvider] Scan found ${this.cachedUris.size} lab files`
+        );
+        this.refresh();
+      } catch (err: unknown) {
+        outputChannel.error(`[LocalTreeDataProvider] File scan failed: ${err}`);
+        if (!this.cachedUris) {
+          this.cachedUris = new Map();
+        }
+      } finally {
+        this.scanPromise = undefined;
+      }
+    })();
+
+    this.scanPromise = scan;
+    return scan;
   }
 
   refresh(): void {
@@ -126,10 +180,16 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
   }
 
   private async getLabUris(): Promise<vscode.Uri[]> {
-    outputChannel.debug("[LocalTreeDataProvider] Performing file discovery");
-    return (await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN)).filter(
-      (u) => !u.scheme || u.scheme === "file"
-    );
+    if (!this.scanRequested) {
+      this.scanRequested = true;
+      await this.performScan();
+    } else if (this.scanPromise) {
+      await this.scanPromise;
+    }
+    if (this.cachedUris) {
+      return Array.from(this.cachedUris.values());
+    }
+    return [];
   }
 
   private addLab(
