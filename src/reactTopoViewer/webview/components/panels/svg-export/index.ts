@@ -25,7 +25,7 @@ export {
   buildNodeLabelSvg,
   renderNodesToSvg,
 } from "./nodesToSvg";
-export type { CustomIconMap } from "./nodesToSvg";
+export type { CustomIconMap, NodeSvgRenderOptions } from "./nodesToSvg";
 
 // Edge rendering
 export {
@@ -33,6 +33,7 @@ export {
   edgeToSvg,
   renderEdgesToSvg,
 } from "./edgesToSvg";
+export type { EdgeSvgRenderOptions } from "./edgesToSvg";
 
 // Annotation rendering (existing)
 export {
@@ -48,7 +49,7 @@ export {
   buildGraphSvg,
   applyPadding,
 } from "./graphSvg";
-export type { GraphSvgResult, ViewportSize } from "./graphSvg";
+export type { GraphSvgResult, ViewportSize, GraphSvgRenderOptions } from "./graphSvg";
 
 // Grafana export helpers
 export {

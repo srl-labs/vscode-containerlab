@@ -1,7 +1,12 @@
 // Edge-to-SVG conversion for export.
 import type { Node, Edge } from "@xyflow/react";
 
-import { getEdgePoints, calculateControlPoint, getLabelPosition } from "../../canvas/edgeGeometry";
+import {
+  getEdgePoints,
+  calculateControlPoint,
+  getLabelPosition,
+  getNodeIntersection
+} from "../../canvas/edgeGeometry";
 
 import {
   NODE_ICON_SIZE,
@@ -35,6 +40,37 @@ interface NodeRect {
   height: number;
 }
 
+export interface EdgeSvgRenderOptions {
+  nodeIconSize?: number;
+  interfaceScale?: number;
+}
+
+type InterfaceSide = "top" | "right" | "bottom" | "left";
+
+interface EndpointVector {
+  dx: number;
+  dy: number;
+  samples: number;
+}
+
+interface InterfaceAnchor {
+  x: number;
+  y: number;
+}
+
+type NodeInterfaceAnchorMap = Map<string, Map<string, InterfaceAnchor>>;
+
+interface EndpointAssignment {
+  endpoint: string;
+  sortKey: number;
+  radius: number;
+}
+
+interface ResolvedEdgeRenderOptions {
+  nodeIconSize: number;
+  interfaceScale: number;
+}
+
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -59,6 +95,253 @@ function getEdgeColor(linkStatus: string | undefined): string {
  */
 function getCanonicalEdgeKey(source: string, target: string): string {
   return source < target ? `${source}:${target}` : `${target}:${source}`;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function resolveEdgeRenderOptions(
+  renderOptions?: EdgeSvgRenderOptions
+): ResolvedEdgeRenderOptions {
+  const nodeIconSizeRaw = renderOptions?.nodeIconSize;
+  const interfaceScaleRaw = renderOptions?.interfaceScale;
+  const nodeIconSize = Number.isFinite(nodeIconSizeRaw)
+    ? clamp(nodeIconSizeRaw as number, 12, 240)
+    : NODE_ICON_SIZE;
+  const interfaceScale = Number.isFinite(interfaceScaleRaw)
+    ? clamp(interfaceScaleRaw as number, 0.4, 4)
+    : 1;
+
+  return { nodeIconSize, interfaceScale };
+}
+
+function normalizeEndpoint(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function getNodeRect(node: Node, nodeIconSize: number): NodeRect {
+  return {
+    x: node.position.x,
+    y: node.position.y,
+    width: nodeIconSize,
+    height: nodeIconSize
+  };
+}
+
+function getRectCenter(rect: NodeRect): { x: number; y: number } {
+  return {
+    x: rect.x + rect.width / 2,
+    y: rect.y + rect.height / 2
+  };
+}
+
+function sideBuckets(): Record<InterfaceSide, EndpointAssignment[]> {
+  return { top: [], right: [], bottom: [], left: [] };
+}
+
+function getOrCreateNodeEndpointVectors(
+  vectorsByNode: Map<string, Map<string, EndpointVector>>,
+  nodeId: string
+): Map<string, EndpointVector> {
+  const existing = vectorsByNode.get(nodeId);
+  if (existing) return existing;
+  const created = new Map<string, EndpointVector>();
+  vectorsByNode.set(nodeId, created);
+  return created;
+}
+
+function addEndpointVector(
+  vectorsByNode: Map<string, Map<string, EndpointVector>>,
+  nodeId: string,
+  endpoint: string,
+  dx: number,
+  dy: number
+): void {
+  const nodeVectors = getOrCreateNodeEndpointVectors(vectorsByNode, nodeId);
+  const existing = nodeVectors.get(endpoint) ?? { dx: 0, dy: 0, samples: 0 };
+  existing.dx += dx;
+  existing.dy += dy;
+  existing.samples += 1;
+  nodeVectors.set(endpoint, existing);
+}
+
+function getOrCreateEndpointSet(
+  endpointsByNode: Map<string, Set<string>>,
+  nodeId: string
+): Set<string> {
+  const existing = endpointsByNode.get(nodeId);
+  if (existing) return existing;
+  const created = new Set<string>();
+  endpointsByNode.set(nodeId, created);
+  return created;
+}
+
+const HORIZONTAL_SLOPE_THRESHOLD = 0.25;
+
+function classifyInterfaceSide(vector: EndpointVector | undefined): InterfaceSide {
+  if (!vector || vector.samples <= 0) return "bottom";
+
+  const dx = vector.dx / vector.samples;
+  const dy = vector.dy / vector.samples;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+
+  // Keep anchors on top/bottom by default; use sides only for near-horizontal links.
+  if (absDx > 0.001 && absDy <= absDx * HORIZONTAL_SLOPE_THRESHOLD) {
+    return dx >= 0 ? "right" : "left";
+  }
+
+  return dy >= 0 ? "bottom" : "top";
+}
+
+function getInterfaceSortKey(side: InterfaceSide, vector: EndpointVector | undefined): number {
+  if (!vector || vector.samples <= 0) return 0;
+  const avgDx = vector.dx / vector.samples;
+  const avgDy = vector.dy / vector.samples;
+  return side === "top" || side === "bottom" ? avgDx : avgDy;
+}
+
+function positionInterfaceAnchor(
+  rect: NodeRect,
+  side: InterfaceSide,
+  index: number,
+  total: number,
+  radius: number
+): InterfaceAnchor {
+  const slot = (index + 1) / (total + 1);
+  const out = radius + 1;
+
+  switch (side) {
+    case "top":
+      return { x: rect.x + rect.width * slot, y: rect.y - out };
+    case "right":
+      return { x: rect.x + rect.width + out, y: rect.y + rect.height * slot };
+    case "bottom":
+      return { x: rect.x + rect.width * slot, y: rect.y + rect.height + out };
+    case "left":
+      return { x: rect.x - out, y: rect.y + rect.height * slot };
+  }
+}
+
+function buildInterfaceAnchorMap(
+  edges: Edge[],
+  nodeMap: Map<string, Node>,
+  renderOptions: ResolvedEdgeRenderOptions
+): NodeInterfaceAnchorMap {
+  const endpointsByNode = new Map<string, Set<string>>();
+  const vectorsByNode = new Map<string, Map<string, EndpointVector>>();
+
+  for (const edge of edges) {
+    const data = edge.data as TopologyEdgeData | undefined;
+    const sourceEndpoint = normalizeEndpoint(data?.sourceEndpoint);
+    const targetEndpoint = normalizeEndpoint(data?.targetEndpoint);
+
+    if (sourceEndpoint) getOrCreateEndpointSet(endpointsByNode, edge.source).add(sourceEndpoint);
+    if (targetEndpoint) getOrCreateEndpointSet(endpointsByNode, edge.target).add(targetEndpoint);
+
+    if (!sourceEndpoint && !targetEndpoint) continue;
+    if (edge.source === edge.target) continue;
+
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
+    if (!sourceNode || !targetNode) continue;
+
+    const sourceCenter = getRectCenter(getNodeRect(sourceNode, renderOptions.nodeIconSize));
+    const targetCenter = getRectCenter(getNodeRect(targetNode, renderOptions.nodeIconSize));
+    const forwardDx = targetCenter.x - sourceCenter.x;
+    const forwardDy = targetCenter.y - sourceCenter.y;
+
+    if (sourceEndpoint) {
+      addEndpointVector(vectorsByNode, edge.source, sourceEndpoint, forwardDx, forwardDy);
+    }
+    if (targetEndpoint) {
+      addEndpointVector(vectorsByNode, edge.target, targetEndpoint, -forwardDx, -forwardDy);
+    }
+  }
+
+  const anchorsByNode: NodeInterfaceAnchorMap = new Map();
+
+  for (const [nodeId, endpoints] of endpointsByNode) {
+    const node = nodeMap.get(nodeId);
+    if (!node) continue;
+
+    const rect = getNodeRect(node, renderOptions.nodeIconSize);
+    const nodeVectors = vectorsByNode.get(nodeId);
+    const buckets = sideBuckets();
+
+    for (const endpoint of endpoints) {
+      const vector = nodeVectors?.get(endpoint);
+      const side = classifyInterfaceSide(vector);
+      const sortKey = getInterfaceSortKey(side, vector);
+      const { radius } = getEndpointLabelMetrics(endpoint, renderOptions.interfaceScale);
+      buckets[side].push({ endpoint, sortKey, radius });
+    }
+
+    const endpointAnchors = new Map<string, InterfaceAnchor>();
+
+    for (const side of ["top", "right", "bottom", "left"] as const) {
+      const assignments = buckets[side];
+      assignments.sort((a, b) => {
+        const bySort = a.sortKey - b.sortKey;
+        if (bySort !== 0) return bySort;
+        return a.endpoint.localeCompare(b.endpoint);
+      });
+
+      for (let i = 0; i < assignments.length; i++) {
+        const assignment = assignments[i];
+        endpointAnchors.set(
+          assignment.endpoint,
+          positionInterfaceAnchor(rect, side, i, assignments.length, assignment.radius)
+        );
+      }
+    }
+
+    anchorsByNode.set(nodeId, endpointAnchors);
+  }
+
+  return anchorsByNode;
+}
+
+function resolveEdgePointsWithInterfaceAnchors(
+  sourceRect: NodeRect,
+  targetRect: NodeRect,
+  sourceAnchor?: InterfaceAnchor,
+  targetAnchor?: InterfaceAnchor
+): { sx: number; sy: number; tx: number; ty: number } {
+  if (sourceAnchor && targetAnchor) {
+    return { sx: sourceAnchor.x, sy: sourceAnchor.y, tx: targetAnchor.x, ty: targetAnchor.y };
+  }
+
+  if (sourceAnchor) {
+    const targetCenter = getRectCenter(targetRect);
+    const targetPoint = getNodeIntersection(
+      targetCenter.x,
+      targetCenter.y,
+      targetRect.width,
+      targetRect.height,
+      sourceAnchor.x,
+      sourceAnchor.y
+    );
+    return { sx: sourceAnchor.x, sy: sourceAnchor.y, tx: targetPoint.x, ty: targetPoint.y };
+  }
+
+  if (targetAnchor) {
+    const sourceCenter = getRectCenter(sourceRect);
+    const sourcePoint = getNodeIntersection(
+      sourceCenter.x,
+      sourceCenter.y,
+      sourceRect.width,
+      sourceRect.height,
+      targetAnchor.x,
+      targetAnchor.y
+    );
+    return { sx: sourcePoint.x, sy: sourcePoint.y, tx: targetAnchor.x, ty: targetAnchor.y };
+  }
+
+  return getEdgePoints(sourceRect, targetRect);
 }
 
 // ============================================================================
@@ -124,23 +407,27 @@ export function buildEdgeInfoForExport(edges: Edge[]): EdgeInfo {
 /**
  * Build SVG for edge endpoint label
  */
-function buildEndpointLabelSvg(text: string, x: number, y: number): string {
+function buildEndpointLabelSvg(text: string, x: number, y: number, interfaceScale: number): string {
   if (!text) return "";
 
-  const { compact, radius } = getEndpointLabelMetrics(text);
+  const { compact, radius, fontSize, bubbleStrokeWidth, textStrokeWidth } = getEndpointLabelMetrics(
+    text,
+    interfaceScale
+  );
   const textY = y;
 
   let svg = `<g class="edge-label">`;
 
   svg += `<circle cx="${x}" cy="${y}" r="${radius}" `;
-  svg += `fill="${EDGE_LABEL.backgroundColor}" stroke="${EDGE_LABEL.outlineColor}" stroke-width="0.7"/>`;
+  svg += `fill="${EDGE_LABEL.backgroundColor}" stroke="${EDGE_LABEL.outlineColor}" `;
+  svg += `stroke-width="${bubbleStrokeWidth}"/>`;
 
   svg += `<text x="${x}" y="${textY}" `;
-  svg += `font-size="${EDGE_LABEL.fontSize}" `;
+  svg += `font-size="${fontSize}" `;
   svg += `font-family='${EDGE_LABEL.fontFamily}' `;
   svg += `dominant-baseline="middle" alignment-baseline="middle" `;
   svg += `fill="${EDGE_LABEL.color}" text-anchor="middle" `;
-  svg += `stroke="${EDGE_LABEL.textStrokeColor}" stroke-width="${EDGE_LABEL.textStrokeWidth}" `;
+  svg += `stroke="${EDGE_LABEL.textStrokeColor}" stroke-width="${textStrokeWidth}" `;
   svg += `paint-order="stroke" stroke-linejoin="round">`;
   svg += escapeXml(compact);
   svg += `</text>`;
@@ -169,37 +456,63 @@ function getCompactInterfaceLabel(endpoint: string): string {
   return token.length <= 3 ? token : token.slice(-3);
 }
 
-function getEndpointLabelMetrics(endpoint: string): { compact: string; radius: number } {
+function getEndpointLabelMetrics(endpoint: string, interfaceScale: number): {
+  compact: string;
+  radius: number;
+  fontSize: number;
+  bubbleStrokeWidth: number;
+  textStrokeWidth: number;
+} {
   const compact = getCompactInterfaceLabel(endpoint);
-  const charWidth = EDGE_LABEL.fontSize * 0.58;
-  const textWidth = Math.max(EDGE_LABEL.fontSize * 0.8, compact.length * charWidth);
-  const radius = Math.max(6, textWidth / 2 + 2);
-  return { compact, radius };
+  const safeScale = clamp(interfaceScale, 0.4, 4);
+  const fontSize = EDGE_LABEL.fontSize * safeScale;
+  const charWidth = fontSize * 0.58;
+  const textWidth = Math.max(fontSize * 0.8, compact.length * charWidth);
+  const radius = Math.max(6 * safeScale, textWidth / 2 + 2 * safeScale);
+  const bubbleStrokeWidth = 0.7 * Math.max(0.6, safeScale);
+  const textStrokeWidth = EDGE_LABEL.textStrokeWidth * Math.max(0.6, safeScale);
+
+  return { compact, radius, fontSize, bubbleStrokeWidth, textStrokeWidth };
 }
 
-function getNodeProximateOffset(endpoint: string): number {
-  const { radius } = getEndpointLabelMetrics(endpoint);
+function getNodeProximateOffset(endpoint: string, interfaceScale: number): number {
+  const { radius } = getEndpointLabelMetrics(endpoint, interfaceScale);
   // Keep the label bubble just outside the node boundary.
   return radius + 1;
 }
 
-function getLabelOffsetForEndpoint(endpoint: string | undefined, nodeProximateLabels: boolean): number {
+function getLabelOffsetForEndpoint(
+  endpoint: string | undefined,
+  nodeProximateLabels: boolean,
+  interfaceScale: number
+): number {
   if (!nodeProximateLabels || !endpoint) return EDGE_LABEL.offset;
-  return getNodeProximateOffset(endpoint);
+  return getNodeProximateOffset(endpoint, interfaceScale);
 }
 
 function getRegularEdgeLabelPositions(
   ctx: EdgeRenderContext,
   points: { sx: number; sy: number; tx: number; ty: number },
-  controlPoint: { x: number; y: number } | null
+  controlPoint: { x: number; y: number } | null,
+  sourceAnchor?: InterfaceAnchor,
+  targetAnchor?: InterfaceAnchor
 ): { sourceLabelPos: { x: number; y: number }; targetLabelPos: { x: number; y: number } } {
+  if (ctx.nodeProximateLabels && sourceAnchor && targetAnchor) {
+    return {
+      sourceLabelPos: sourceAnchor,
+      targetLabelPos: targetAnchor
+    };
+  }
+
   const sourceOffset = getLabelOffsetForEndpoint(
     ctx.edgeData?.sourceEndpoint,
-    ctx.nodeProximateLabels
+    ctx.nodeProximateLabels,
+    ctx.interfaceScale
   );
   const targetOffset = getLabelOffsetForEndpoint(
     ctx.edgeData?.targetEndpoint,
-    ctx.nodeProximateLabels
+    ctx.nodeProximateLabels,
+    ctx.interfaceScale
   );
 
   return {
@@ -277,6 +590,9 @@ interface EdgeRenderContext {
   edgeData: TopologyEdgeData | undefined;
   includeLabels: boolean;
   nodeProximateLabels: boolean;
+  nodeIconSize: number;
+  interfaceScale: number;
+  interfaceAnchors?: NodeInterfaceAnchorMap;
 }
 
 /**
@@ -290,10 +606,20 @@ function buildEdgeLabels(
   if (!ctx.includeLabels) return "";
   let svg = "";
   if (ctx.edgeData?.sourceEndpoint) {
-    svg += buildEndpointLabelSvg(ctx.edgeData.sourceEndpoint, sourceLabelPos.x, sourceLabelPos.y);
+    svg += buildEndpointLabelSvg(
+      ctx.edgeData.sourceEndpoint,
+      sourceLabelPos.x,
+      sourceLabelPos.y,
+      ctx.interfaceScale
+    );
   }
   if (ctx.edgeData?.targetEndpoint) {
-    svg += buildEndpointLabelSvg(ctx.edgeData.targetEndpoint, targetLabelPos.x, targetLabelPos.y);
+    svg += buildEndpointLabelSvg(
+      ctx.edgeData.targetEndpoint,
+      targetLabelPos.x,
+      targetLabelPos.y,
+      ctx.interfaceScale
+    );
   }
   return svg;
 }
@@ -308,8 +634,8 @@ function renderLoopEdge(ctx: EdgeRenderContext, sourceNode: Node, loopIndex: num
   const { path, sourceLabelPos, targetLabelPos } = buildLoopEdgePath(
     nodeX,
     nodeY,
-    NODE_ICON_SIZE,
-    NODE_ICON_SIZE,
+    ctx.nodeIconSize,
+    ctx.nodeIconSize,
     loopIndex
   );
 
@@ -330,20 +656,23 @@ function renderRegularEdge(
   targetNode: Node,
   parallelInfo: { index: number; total: number; isCanonicalDirection: boolean } | undefined
 ): string {
-  const sourceRect: NodeRect = {
-    x: sourceNode.position.x,
-    y: sourceNode.position.y,
-    width: NODE_ICON_SIZE,
-    height: NODE_ICON_SIZE
-  };
-  const targetRect: NodeRect = {
-    x: targetNode.position.x,
-    y: targetNode.position.y,
-    width: NODE_ICON_SIZE,
-    height: NODE_ICON_SIZE
-  };
+  const sourceRect = getNodeRect(sourceNode, ctx.nodeIconSize);
+  const targetRect = getNodeRect(targetNode, ctx.nodeIconSize);
+  const sourceEndpoint = normalizeEndpoint(ctx.edgeData?.sourceEndpoint);
+  const targetEndpoint = normalizeEndpoint(ctx.edgeData?.targetEndpoint);
+  const sourceAnchor = sourceEndpoint
+    ? ctx.interfaceAnchors?.get(sourceNode.id)?.get(sourceEndpoint)
+    : undefined;
+  const targetAnchor = targetEndpoint
+    ? ctx.interfaceAnchors?.get(targetNode.id)?.get(targetEndpoint)
+    : undefined;
 
-  const points = getEdgePoints(sourceRect, targetRect);
+  const points = resolveEdgePointsWithInterfaceAnchors(
+    sourceRect,
+    targetRect,
+    sourceAnchor,
+    targetAnchor
+  );
   const index = parallelInfo?.index ?? 0;
   const total = parallelInfo?.total ?? 1;
   const isCanonical = parallelInfo?.isCanonicalDirection ?? true;
@@ -371,7 +700,9 @@ function renderRegularEdge(
     const { sourceLabelPos, targetLabelPos } = getRegularEdgeLabelPositions(
       ctx,
       points,
-      controlPoint
+      controlPoint,
+      sourceAnchor,
+      targetAnchor
     );
     svg += buildEdgeLabels(ctx, sourceLabelPos, targetLabelPos);
   }
@@ -388,18 +719,24 @@ export function edgeToSvg(
   nodeMap: Map<string, Node>,
   edgeInfo: EdgeInfo,
   includeLabels: boolean,
-  nodeProximateLabels = false
+  nodeProximateLabels = false,
+  interfaceAnchors?: NodeInterfaceAnchorMap,
+  renderOptions?: ResolvedEdgeRenderOptions
 ): string {
   const sourceNode = nodeMap.get(edge.source);
   if (!sourceNode) return "";
 
+  const resolvedRenderOptions = renderOptions ?? resolveEdgeRenderOptions();
   const edgeData = edge.data as TopologyEdgeData | undefined;
   const ctx: EdgeRenderContext = {
     edgeId: edge.id,
     strokeColor: getEdgeColor(edgeData?.linkStatus),
     edgeData,
     includeLabels,
-    nodeProximateLabels
+    nodeProximateLabels,
+    nodeIconSize: resolvedRenderOptions.nodeIconSize,
+    interfaceScale: resolvedRenderOptions.interfaceScale,
+    interfaceAnchors
   };
 
   // Handle loop edges (self-referencing)
@@ -428,8 +765,10 @@ export function renderEdgesToSvg(
   nodes: Node[],
   includeLabels: boolean,
   annotationNodeTypes?: Set<string>,
-  nodeProximateLabels = false
+  nodeProximateLabels = false,
+  renderOptions?: EdgeSvgRenderOptions
 ): string {
+  const resolvedRenderOptions = resolveEdgeRenderOptions(renderOptions);
   const skipTypes =
     annotationNodeTypes ??
     new Set(["free-text-annotation", "free-shape-annotation", "group-annotation"]);
@@ -452,10 +791,21 @@ export function renderEdgesToSvg(
 
   // Build edge info for parallel/loop detection
   const edgeInfo = buildEdgeInfoForExport(validEdges);
+  const interfaceAnchors = nodeProximateLabels
+    ? buildInterfaceAnchorMap(validEdges, nodeMap, resolvedRenderOptions)
+    : undefined;
 
   let svg = "";
   for (const edge of validEdges) {
-    svg += edgeToSvg(edge, nodeMap, edgeInfo, includeLabels, nodeProximateLabels);
+    svg += edgeToSvg(
+      edge,
+      nodeMap,
+      edgeInfo,
+      includeLabels,
+      nodeProximateLabels,
+      interfaceAnchors,
+      resolvedRenderOptions
+    );
   }
 
   return svg;

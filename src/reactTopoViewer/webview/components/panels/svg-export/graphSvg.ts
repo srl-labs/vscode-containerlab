@@ -2,8 +2,8 @@
 import type { Edge, Node, ReactFlowInstance } from "@xyflow/react";
 
 import { buildSvgDefs } from "./constants";
-import { renderEdgesToSvg } from "./edgesToSvg";
-import { renderNodesToSvg, type CustomIconMap } from "./nodesToSvg";
+import { renderEdgesToSvg, type EdgeSvgRenderOptions } from "./edgesToSvg";
+import { renderNodesToSvg, type CustomIconMap, type NodeSvgRenderOptions } from "./nodesToSvg";
 
 export interface ViewportSize {
   width: number;
@@ -16,6 +16,8 @@ export interface GraphSvgResult {
   nodes: Node[];
   edges: Edge[];
 }
+
+export interface GraphSvgRenderOptions extends EdgeSvgRenderOptions, NodeSvgRenderOptions {}
 
 export function getViewportSize(): ViewportSize | null {
   const container = document.querySelector(".react-flow") as HTMLElement | null;
@@ -43,7 +45,8 @@ export function buildGraphSvg(
   customIcons?: CustomIconMap,
   includeEdgeLabels = true,
   annotationNodeTypes?: Set<string>,
-  nodeProximateLabels = false
+  nodeProximateLabels = false,
+  renderOptions?: GraphSvgRenderOptions
 ): GraphSvgResult | null {
   const viewport = rfInstance.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
   const size = getViewportSize();
@@ -57,9 +60,12 @@ export function buildGraphSvg(
     nodes,
     includeEdgeLabels,
     annotationNodeTypes,
-    nodeProximateLabels
+    nodeProximateLabels,
+    renderOptions
   );
-  const nodesSvg = renderNodesToSvg(nodes, customIcons, annotationNodeTypes);
+  const nodesSvg = renderNodesToSvg(nodes, customIcons, annotationNodeTypes, {
+    nodeIconSize: renderOptions?.nodeIconSize
+  });
 
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
   svg += buildSvgDefs();

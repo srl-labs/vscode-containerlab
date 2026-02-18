@@ -19,6 +19,7 @@ import {
   Divider,
   FormControlLabel,
   InputAdornment,
+  MenuItem,
   Paper,
   Radio,
   RadioGroup,
@@ -62,7 +63,11 @@ import {
   compositeAnnotationsIntoSvg,
   addBackgroundRect,
 } from "./svg-export";
-import type { CustomIconMap, GrafanaTrafficThresholds } from "./svg-export";
+import type {
+  CustomIconMap,
+  GrafanaTrafficThresholds,
+  GraphSvgRenderOptions,
+} from "./svg-export";
 
 export interface SvgExportModalProps {
   isOpen: boolean;
@@ -91,6 +96,10 @@ function downloadSvg(content: string, filename: string): void {
 }
 
 type BackgroundOption = "transparent" | "custom";
+const DEFAULT_GRAFANA_NODE_SIZE_PX = 40;
+const DEFAULT_GRAFANA_INTERFACE_SIZE_PERCENT = 100;
+type TrafficThresholdUnit = "kbit" | "mbit" | "gbit";
+const DEFAULT_TRAFFIC_THRESHOLD_UNIT: TrafficThresholdUnit = "mbit";
 
 interface SvgExportResultMessage {
   type: typeof MSG_SVG_EXPORT_RESULT;
@@ -117,10 +126,57 @@ function createRequestId(): string {
   return `svg-export-${Date.now()}-${random}`;
 }
 
-function parseThreshold(value: string): number {
-  const parsed = Number.parseInt(value, 10);
+function getThresholdUnitMultiplier(unit: TrafficThresholdUnit): number {
+  switch (unit) {
+    case "kbit":
+      return 1_000;
+    case "gbit":
+      return 1_000_000_000;
+    default:
+      return 1_000_000;
+  }
+}
+
+function formatThresholdForUnit(
+  valueBps: number,
+  unit: TrafficThresholdUnit,
+): string {
+  const multiplier = getThresholdUnitMultiplier(unit);
+  if (!Number.isFinite(valueBps) || multiplier <= 0) return "0";
+  const scaled = valueBps / multiplier;
+  return Number(scaled.toFixed(4)).toString();
+}
+
+function parseThreshold(
+  value: string,
+  unit: TrafficThresholdUnit,
+): number {
+  const parsed = Number.parseFloat(value);
   if (!Number.isFinite(parsed)) return 0;
-  return Math.max(0, parsed);
+  const multiplier = getThresholdUnitMultiplier(unit);
+  return Math.max(0, Math.round(parsed * multiplier));
+}
+
+function getThresholdUnitStep(unit: TrafficThresholdUnit): number {
+  switch (unit) {
+    case "kbit":
+      return 1;
+    case "gbit":
+      return 0.01;
+    default:
+      return 0.1;
+  }
+}
+
+function parseBoundedNumber(
+  value: string,
+  min: number,
+  max: number,
+  fallback: number,
+): number {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
 }
 
 function hasStrictlyAscendingThresholds(
@@ -201,6 +257,14 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     useState<GrafanaTrafficThresholds>({
       ...DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS,
     });
+  const [trafficThresholdUnit, setTrafficThresholdUnit] =
+    useState<TrafficThresholdUnit>(DEFAULT_TRAFFIC_THRESHOLD_UNIT);
+  const [grafanaNodeSizePx, setGrafanaNodeSizePx] = useState(
+    DEFAULT_GRAFANA_NODE_SIZE_PX,
+  );
+  const [grafanaInterfaceSizePercent, setGrafanaInterfaceSizePercent] = useState(
+    DEFAULT_GRAFANA_INTERFACE_SIZE_PERCENT,
+  );
   const [backgroundOption, setBackgroundOption] =
     useState<BackgroundOption>("transparent");
   const [customBackgroundColor, setCustomBackgroundColor] = useState("#1e1e1e");
@@ -212,13 +276,13 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
 
   const updateTrafficThreshold = useCallback(
     (threshold: keyof GrafanaTrafficThresholds, rawValue: string) => {
-      const nextValue = parseThreshold(rawValue);
+      const nextValue = parseThreshold(rawValue, trafficThresholdUnit);
       setTrafficThresholds((prev) => ({
         ...prev,
         [threshold]: nextValue,
       }));
     },
-    [],
+    [trafficThresholdUnit],
   );
 
   const handleExport = useCallback(async () => {
@@ -235,6 +299,13 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       log.info(
         `[SvgExport] Export requested: zoom=${borderZoom}%, padding=${borderPadding}px`,
       );
+      const grafanaRenderOptions: GraphSvgRenderOptions | undefined =
+        exportGrafanaBundle
+          ? {
+              nodeIconSize: grafanaNodeSizePx,
+              interfaceScale: grafanaInterfaceSizePercent / 100,
+            }
+          : undefined;
       const graphSvg = buildGraphSvg(
         rfInstance,
         borderZoom,
@@ -242,6 +313,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         includeEdgeLabels,
         ANNOTATION_NODE_TYPES,
         exportGrafanaBundle,
+        grafanaRenderOptions,
       );
       if (!graphSvg)
         throw new Error("Unable to capture viewport for SVG export");
@@ -339,6 +411,9 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     excludeNodesWithoutLinks,
     includeGrafanaLegend,
     trafficThresholds,
+    trafficThresholdUnit,
+    grafanaNodeSizePx,
+    grafanaInterfaceSizePercent,
     totalAnnotations,
     groups,
     textAnnotations,
@@ -673,8 +748,78 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
           sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
           <Typography variant="body2" color="text.secondary">
-            Configure traffic thresholds used in the exported Grafana panel.
+            Configure thresholds and topology sizing used in the exported
+            Grafana panel.
           </Typography>
+          <Box
+            sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}
+          >
+            <TextField
+              label="Node size"
+              type="number"
+              size="small"
+              value={grafanaNodeSizePx}
+              onChange={(e) =>
+                setGrafanaNodeSizePx(
+                  parseBoundedNumber(
+                    e.target.value,
+                    12,
+                    240,
+                    DEFAULT_GRAFANA_NODE_SIZE_PX,
+                  ),
+                )
+              }
+              slotProps={{
+                htmlInput: { min: 12, max: 240, step: 1 },
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">px</InputAdornment>
+                  ),
+                },
+              }}
+            />
+            <TextField
+              label="Interface size"
+              type="number"
+              size="small"
+              value={grafanaInterfaceSizePercent}
+              onChange={(e) =>
+                setGrafanaInterfaceSizePercent(
+                  parseBoundedNumber(
+                    e.target.value,
+                    40,
+                    400,
+                    DEFAULT_GRAFANA_INTERFACE_SIZE_PERCENT,
+                  ),
+                )
+              }
+              slotProps={{
+                htmlInput: { min: 40, max: 400, step: 5 },
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">%</InputAdornment>
+                  ),
+                },
+              }}
+            />
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            Use larger values for dense topologies with many interfaces.
+          </Typography>
+          <Divider />
+          <TextField
+            select
+            label="Traffic threshold unit"
+            size="small"
+            value={trafficThresholdUnit}
+            onChange={(e) =>
+              setTrafficThresholdUnit(e.target.value as TrafficThresholdUnit)
+            }
+          >
+            <MenuItem value="kbit">kbit/s</MenuItem>
+            <MenuItem value="mbit">Mbit/s</MenuItem>
+            <MenuItem value="gbit">Gbit/s</MenuItem>
+          </TextField>
           <Box
             sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}
           >
@@ -682,38 +827,70 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
               label="Green threshold"
               type="number"
               size="small"
-              value={trafficThresholds.green}
+              value={formatThresholdForUnit(
+                trafficThresholds.green,
+                trafficThresholdUnit,
+              )}
               onChange={(e) => updateTrafficThreshold("green", e.target.value)}
-              slotProps={{ htmlInput: { min: 0, step: 1 } }}
+              slotProps={{
+                htmlInput: {
+                  min: 0,
+                  step: getThresholdUnitStep(trafficThresholdUnit),
+                },
+              }}
             />
             <TextField
               label="Yellow threshold"
               type="number"
               size="small"
-              value={trafficThresholds.yellow}
+              value={formatThresholdForUnit(
+                trafficThresholds.yellow,
+                trafficThresholdUnit,
+              )}
               onChange={(e) => updateTrafficThreshold("yellow", e.target.value)}
-              slotProps={{ htmlInput: { min: 0, step: 1 } }}
+              slotProps={{
+                htmlInput: {
+                  min: 0,
+                  step: getThresholdUnitStep(trafficThresholdUnit),
+                },
+              }}
             />
             <TextField
               label="Orange threshold"
               type="number"
               size="small"
-              value={trafficThresholds.orange}
+              value={formatThresholdForUnit(
+                trafficThresholds.orange,
+                trafficThresholdUnit,
+              )}
               onChange={(e) => updateTrafficThreshold("orange", e.target.value)}
-              slotProps={{ htmlInput: { min: 0, step: 1 } }}
+              slotProps={{
+                htmlInput: {
+                  min: 0,
+                  step: getThresholdUnitStep(trafficThresholdUnit),
+                },
+              }}
             />
             <TextField
               label="Red threshold"
               type="number"
               size="small"
-              value={trafficThresholds.red}
+              value={formatThresholdForUnit(
+                trafficThresholds.red,
+                trafficThresholdUnit,
+              )}
               onChange={(e) => updateTrafficThreshold("red", e.target.value)}
-              slotProps={{ htmlInput: { min: 0, step: 1 } }}
+              slotProps={{
+                htmlInput: {
+                  min: 0,
+                  step: getThresholdUnitStep(trafficThresholdUnit),
+                },
+              }}
             />
           </Box>
           <Typography variant="caption" color="text.secondary">
             Values must be strictly ascending: green &lt; yellow &lt; orange
-            &lt; red.
+            &lt; red (within selected unit).
           </Typography>
           <FormControlLabel
             control={

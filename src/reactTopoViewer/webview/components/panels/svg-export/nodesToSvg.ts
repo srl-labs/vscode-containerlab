@@ -21,6 +21,10 @@ import {
 /** Custom icons map type (icon name -> data URI) */
 export type CustomIconMap = Map<string, string>;
 
+export interface NodeSvgRenderOptions {
+  nodeIconSize?: number;
+}
+
 interface TopologyNodeData {
   label?: string;
   role?: string;
@@ -39,6 +43,15 @@ interface NetworkNodeData {
   direction?: string;
   labelBackgroundColor?: string;
   [key: string]: unknown;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function resolveNodeIconSize(nodeIconSize: number | undefined): number {
+  if (!Number.isFinite(nodeIconSize)) return NODE_ICON_SIZE;
+  return clamp(nodeIconSize as number, 12, 240);
 }
 
 // ============================================================================
@@ -221,8 +234,13 @@ export function buildNodeLabelSvg(
 /**
  * Render a topology node (router, switch, etc.) to SVG
  */
-export function topologyNodeToSvg(node: Node, customIconMap?: CustomIconMap): string {
+export function topologyNodeToSvg(
+  node: Node,
+  customIconMap?: CustomIconMap,
+  nodeIconSize: number = NODE_ICON_SIZE
+): string {
   const data = node.data as TopologyNodeData;
+  const iconSize = resolveNodeIconSize(nodeIconSize);
   const x = node.position.x;
   const y = node.position.y;
   const label = data.label ?? node.id;
@@ -239,22 +257,22 @@ export function topologyNodeToSvg(node: Node, customIconMap?: CustomIconMap): st
   if (customDataUri) {
     // Custom icon - decode and embed
     const svgString = decodeSvgDataUri(customDataUri);
-    iconSvgContent = extractSvgContent(svgString, NODE_ICON_SIZE);
+    iconSvgContent = extractSvgContent(svgString, iconSize);
   } else {
     // Built-in icon
     const svgType = getRoleSvgType(role) as NodeType;
     const dataUri = generateEncodedSVG(svgType, iconColor);
     const svgString = decodeSvgDataUri(dataUri);
-    iconSvgContent = extractSvgContent(svgString, NODE_ICON_SIZE);
+    iconSvgContent = extractSvgContent(svgString, iconSize);
   }
 
   let svg = `<g class="export-node topology-node" data-id="${escapeXml(node.id)}">`;
-  const centerX = x + NODE_ICON_SIZE / 2;
-  const centerY = y + NODE_ICON_SIZE / 2;
+  const centerX = x + iconSize / 2;
+  const centerY = y + iconSize / 2;
   svg += `<g transform="rotate(${directionRotation} ${centerX} ${centerY})">`;
 
   // Background rect with fill color (rendered by the icon's st0 class)
-  svg += `<rect x="${x}" y="${y}" width="${NODE_ICON_SIZE}" height="${NODE_ICON_SIZE}" `;
+  svg += `<rect x="${x}" y="${y}" width="${iconSize}" height="${iconSize}" `;
   svg += `rx="${cornerRadius}" ry="${cornerRadius}" fill="${iconColor}"/>`;
 
   // Icon content (transformed to fit)
@@ -268,7 +286,7 @@ export function topologyNodeToSvg(node: Node, customIconMap?: CustomIconMap): st
     label,
     x,
     y,
-    NODE_ICON_SIZE,
+    iconSize,
     labelPosition,
     data.direction,
     data.labelBackgroundColor
@@ -286,8 +304,9 @@ export function topologyNodeToSvg(node: Node, customIconMap?: CustomIconMap): st
  * Render a network node (host, mgmt-net, etc.) to SVG
  * Network nodes use the cloud icon with type-based colors
  */
-export function networkNodeToSvg(node: Node): string {
+export function networkNodeToSvg(node: Node, nodeIconSize: number = NODE_ICON_SIZE): string {
   const data = node.data as NetworkNodeData;
+  const iconSize = resolveNodeIconSize(nodeIconSize);
   const x = node.position.x;
   const y = node.position.y;
   const label = data.label ?? node.id;
@@ -299,15 +318,15 @@ export function networkNodeToSvg(node: Node): string {
   // Generate cloud icon
   const dataUri = generateEncodedSVG("cloud", iconColor);
   const svgString = decodeSvgDataUri(dataUri);
-  const iconSvgContent = extractSvgContent(svgString, NODE_ICON_SIZE);
+  const iconSvgContent = extractSvgContent(svgString, iconSize);
 
   let svg = `<g class="export-node network-node" data-id="${escapeXml(node.id)}">`;
-  const centerX = x + NODE_ICON_SIZE / 2;
-  const centerY = y + NODE_ICON_SIZE / 2;
+  const centerX = x + iconSize / 2;
+  const centerY = y + iconSize / 2;
   svg += `<g transform="rotate(${directionRotation} ${centerX} ${centerY})">`;
 
   // Background rect
-  svg += `<rect x="${x}" y="${y}" width="${NODE_ICON_SIZE}" height="${NODE_ICON_SIZE}" `;
+  svg += `<rect x="${x}" y="${y}" width="${iconSize}" height="${iconSize}" `;
   svg += `rx="${NODE_ICON_RADIUS}" ry="${NODE_ICON_RADIUS}" fill="${iconColor}"/>`;
 
   // Icon content
@@ -321,7 +340,7 @@ export function networkNodeToSvg(node: Node): string {
     label,
     x,
     y,
-    NODE_ICON_SIZE,
+    iconSize,
     labelPosition,
     data.direction,
     data.labelBackgroundColor
@@ -342,8 +361,10 @@ export function networkNodeToSvg(node: Node): string {
 export function renderNodesToSvg(
   nodes: Node[],
   customIconMap?: CustomIconMap,
-  annotationNodeTypes?: Set<string>
+  annotationNodeTypes?: Set<string>,
+  renderOptions?: NodeSvgRenderOptions
 ): string {
+  const nodeIconSize = resolveNodeIconSize(renderOptions?.nodeIconSize);
   const skipTypes =
     annotationNodeTypes ??
     new Set(["free-text-annotation", "free-shape-annotation", "group-annotation"]);
@@ -358,9 +379,9 @@ export function renderNodesToSvg(
 
     // Render based on node type
     if (nodeType === "network-node") {
-      svg += networkNodeToSvg(node);
+      svg += networkNodeToSvg(node, nodeIconSize);
     } else {
-      svg += topologyNodeToSvg(node, customIconMap);
+      svg += topologyNodeToSvg(node, customIconMap, nodeIconSize);
     }
   }
 
