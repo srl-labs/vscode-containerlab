@@ -1160,8 +1160,9 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       [isLowDetail, isGeoLayout]
     );
     const activeEdgeTypes = useMemo(
-      () => (isGeoLayout || isLowDetail ? edgeTypesLite : edgeTypes),
-      [isGeoLayout, isLowDetail]
+      // Geo layout should keep full edge geometry for visual quality.
+      () => (isLowDetail ? edgeTypesLite : edgeTypes),
+      [isLowDetail]
     );
     useSyncCanvasStore({
       linkSourceNode,
@@ -1274,6 +1275,29 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       baseOnNodeDragStop: handlers.onNodeDragStop,
       onShiftClickCreate
     });
+
+    useEffect(() => {
+      if (!isGeoLayout || !geoLayout.isReady) return;
+      const map = geoLayout.mapRef.current;
+      if (!map) return;
+
+      const handleMapClick = (event: { originalEvent?: MouseEvent }) => {
+        const originalEvent = event.originalEvent;
+        if (!originalEvent) return;
+        const target = (originalEvent.target as EventTarget | null) ?? canvasContainerRef.current;
+        wrappedOnPaneClick({
+          shiftKey: originalEvent.shiftKey,
+          target: (target ?? document.body) as EventTarget,
+          clientX: originalEvent.clientX,
+          clientY: originalEvent.clientY
+        } as React.MouseEvent);
+      };
+
+      map.on("click", handleMapClick);
+      return () => {
+        map.off("click", handleMapClick);
+      };
+    }, [isGeoLayout, geoLayout.isReady, geoLayout.mapRef, wrappedOnPaneClick]);
 
     const { reactFlowInstance: handlersReactFlowInstance } = handlers;
 

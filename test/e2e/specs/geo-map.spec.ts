@@ -185,6 +185,56 @@ test.describe("GeoMap Layout", () => {
     }
   });
 
+  test("clicking map background deselects selected nodes and edges", async ({
+    page,
+    topoViewerPage
+  }) => {
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+
+    await page.evaluate((layout) => {
+      const dev = (window as any).__DEV__;
+      dev?.setLayout?.(layout);
+    }, GEO_LAYOUT);
+
+    await page.waitForSelector(GEO_MAP_CANVAS_SELECTOR);
+
+    await topoViewerPage.selectNode("srl1");
+    await expect
+      .poll(async () => (await topoViewerPage.getSelectedNodeIds()).includes("srl1"), {
+        timeout: 3000,
+        message: "node should be selected before map click"
+      })
+      .toBe(true);
+
+    await page.click(GEO_MAP_CANVAS_SELECTOR, { position: { x: 10, y: 10 } });
+    await expect
+      .poll(async () => topoViewerPage.getSelectedNodeIds(), {
+        timeout: 3000,
+        message: "map click should clear selected nodes"
+      })
+      .toEqual([]);
+
+    const edgeIds = await topoViewerPage.getEdgeIds();
+    expect(edgeIds.length).toBeGreaterThan(0);
+    const edgeId = edgeIds[0];
+    await topoViewerPage.selectEdge(edgeId);
+    await expect
+      .poll(async () => (await topoViewerPage.getSelectedEdgeIds()).includes(edgeId), {
+        timeout: 3000,
+        message: "edge should be selected before map click"
+      })
+      .toBe(true);
+
+    await page.click(GEO_MAP_CANVAS_SELECTOR, { position: { x: 20, y: 20 } });
+    await expect
+      .poll(async () => topoViewerPage.getSelectedEdgeIds(), {
+        timeout: 3000,
+        message: "map click should clear selected edges"
+      })
+      .toEqual([]);
+  });
+
   test("undo/redo restores geo coordinates in store and annotations", async ({
     page,
     topoViewerPage

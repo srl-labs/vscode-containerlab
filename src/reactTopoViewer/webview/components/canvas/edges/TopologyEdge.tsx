@@ -16,8 +16,8 @@ import { DEFAULT_ENDPOINT_LABEL_OFFSET } from "../../../annotations/endpointLabe
 const EDGE_COLOR_DEFAULT = "#969799";
 const EDGE_COLOR_UP = "#00df2b";
 const EDGE_COLOR_DOWN = "#df2b00";
-const EDGE_WIDTH_NORMAL = 2.5;
-const EDGE_WIDTH_SELECTED = 4;
+const EDGE_WIDTH_NORMAL = 4;
+const EDGE_WIDTH_SELECTED = 5.5;
 const EDGE_OPACITY_NORMAL = 0.5;
 const EDGE_OPACITY_SELECTED = 1;
 
@@ -411,4 +411,14 @@ const TopologyEdgeComponent: React.FC<EdgeProps> = ({ id, source, target, data, 
   );
 };
 
-export const TopologyEdge = memo(TopologyEdgeComponent);
+function areTopologyEdgePropsEqual(prev: EdgeProps, next: EdgeProps): boolean {
+  return (
+    prev.id === next.id &&
+    prev.source === next.source &&
+    prev.target === next.target &&
+    prev.selected === next.selected &&
+    prev.data === next.data
+  );
+}
+
+export const TopologyEdge = memo(TopologyEdgeComponent, areTopologyEdgePropsEqual);

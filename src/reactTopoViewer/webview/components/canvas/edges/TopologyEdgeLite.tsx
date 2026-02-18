@@ -10,8 +10,8 @@ import { SELECTION_COLOR } from "../types";
 const EDGE_COLOR_DEFAULT = "#969799";
 const EDGE_COLOR_UP = "#00df2b";
 const EDGE_COLOR_DOWN = "#df2b00";
-const EDGE_WIDTH_NORMAL = 2;
-const EDGE_WIDTH_SELECTED = 3;
+const EDGE_WIDTH_NORMAL = 3.5;
+const EDGE_WIDTH_SELECTED = 4.5;
 const EDGE_OPACITY_NORMAL = 0.4;
 const EDGE_OPACITY_SELECTED = 0.9;
 
