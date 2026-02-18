@@ -7,7 +7,7 @@
 import { useCallback, useRef } from "react";
 import type { ReactFlowInstance, Node, Edge } from "@xyflow/react";
 
-import { useGraphActions, useGraphState } from "../../stores/graphStore";
+import { useGraphActions, useGraphStore } from "../../stores/graphStore";
 import { log } from "../../utils/logger";
 import { getUniqueId } from "../../../shared/utilities/idUtils";
 import { isSpecialEndpointId } from "../../../shared/utilities/LinkTypes";
@@ -482,7 +482,7 @@ function finalizePaste(
 interface PerformPasteParams extends PasteCallbacks {
   position?: { x: number; y: number };
   rfInstance?: ReactFlowInstance | null;
-  nodes: Array<{ id: string }>;
+  getNodes: () => Array<{ id: string }>;
   addNode: (node: TopoNode) => void;
   addEdge: (edge: TopoEdge) => void;
   onPasteComplete?: (result: { nodes: TopoNode[]; edges: TopoEdge[] }) => void;
@@ -498,7 +498,7 @@ async function performPaste(params: PerformPasteParams): Promise<boolean> {
   const pastePosition = calculatePastePosition(params.position, params.rfInstance ?? null);
   pasteCounter++;
 
-  const currentNodes = params.rfInstance?.getNodes() ?? params.nodes;
+  const currentNodes = params.rfInstance?.getNodes() ?? params.getNodes();
   const existingNodeIds = new Set<string>(currentNodes.map((n: { id: string }) => n.id));
 
   const ctx = createPasteContext(clipboardData, {
@@ -540,9 +540,9 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
     rfInstance,
     onPasteComplete
   } = options;
-  const { nodes } = useGraphState();
   const { addNode, addEdge } = useGraphActions();
   const lastPasteTimeRef = useRef(0);
+  const getCurrentNodes = useCallback(() => useGraphStore.getState().nodes, []);
 
   /**
    * Copy selected nodes and connected edges to the browser clipboard.
@@ -652,7 +652,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
       return performPaste({
         position,
         rfInstance,
-        nodes,
+        getNodes: getCurrentNodes,
         addNode,
         addEdge,
         onNodeCreated,
@@ -663,7 +663,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
     },
     [
       rfInstance,
-      nodes,
+      getCurrentNodes,
       addNode,
       addEdge,
       onNodeCreated,

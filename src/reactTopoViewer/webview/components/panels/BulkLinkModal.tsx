@@ -16,7 +16,7 @@ import {
 import { Close as CloseIcon } from "@mui/icons-material";
 
 import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
-import { useGraphActions, useGraphState } from "../../stores/graphStore";
+import { useGraphActions, useGraphStore } from "../../stores/graphStore";
 
 import { CopyableCode } from "./bulk-link/CopyableCode";
 import { ConfirmBulkLinksModal } from "./bulk-link/ConfirmBulkLinksModal";
@@ -108,8 +108,9 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
   isLocked,
   onClose
 }) => {
-  const { nodes, edges } = useGraphState();
   const { addEdge } = useGraphActions();
+  const getCurrentNodes = React.useCallback(() => useGraphStore.getState().nodes as TopoNode[], []);
+  const getCurrentEdges = React.useCallback(() => useGraphStore.getState().edges as TopoEdge[], []);
 
   const [sourcePattern, setSourcePattern] = React.useState("");
   const [targetPattern, setTargetPattern] = React.useState("");
@@ -134,20 +135,24 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
   }, [onClose]);
 
   const handleCompute = React.useCallback(() => {
+    const nodes = getCurrentNodes();
+    const edges = getCurrentEdges();
     computeAndValidateCandidates(
-      nodes as TopoNode[],
-      edges as TopoEdge[],
+      nodes,
+      edges,
       sourcePattern,
       targetPattern,
       setStatus,
       setPendingCandidates
     );
-  }, [nodes, edges, sourcePattern, targetPattern]);
+  }, [getCurrentNodes, getCurrentEdges, sourcePattern, targetPattern]);
 
   const handleConfirmCreate = React.useCallback(async () => {
+    const nodes = getCurrentNodes();
+    const edges = getCurrentEdges();
     await confirmAndCreateLinks({
-      nodes: nodes as TopoNode[],
-      edges: edges as TopoEdge[],
+      nodes,
+      edges,
       pendingCandidates,
       canApply,
       addEdge,
@@ -155,7 +160,7 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
       setPendingCandidates,
       onClose
     });
-  }, [nodes, edges, pendingCandidates, canApply, addEdge, onClose]);
+  }, [getCurrentNodes, getCurrentEdges, pendingCandidates, canApply, addEdge, onClose]);
 
   return (
     <>

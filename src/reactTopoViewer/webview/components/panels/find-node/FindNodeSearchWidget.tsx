@@ -8,7 +8,7 @@ import IconButton from "@mui/material/IconButton";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 
-import { useGraphState } from "../../../stores/graphStore";
+import { useGraphStore } from "../../../stores/graphStore";
 import { getNodesBoundingBox } from "../../../utils/graphQueryUtils";
 import type { TopoNode } from "../../../../shared/types/graph";
 
@@ -29,10 +29,10 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
   dense = false,
   showTipsHeader = false
 }) => {
-  const { nodes } = useGraphState();
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [matchCount, setMatchCount] = useState<number | null>(null);
+  const getCurrentNodes = useCallback(() => useGraphStore.getState().nodes as TopoNode[], []);
 
   useEffect(() => {
     if (isActive) {
@@ -53,7 +53,8 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
       return;
     }
 
-    const combinedMatches = getCombinedMatches(nodes as TopoNode[], searchTerm);
+    const currentNodes = (rfInstance?.getNodes() ?? getCurrentNodes()) as TopoNode[];
+    const combinedMatches = getCombinedMatches(currentNodes, searchTerm);
     setMatchCount(combinedMatches.length);
 
     if (combinedMatches.length > 0 && rfInstance) {
@@ -69,7 +70,7 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
           });
       }
     }
-  }, [nodes, searchTerm, rfInstance]);
+  }, [searchTerm, rfInstance, getCurrentNodes]);
 
   const handleClear = useCallback(() => {
     setSearchTerm("");

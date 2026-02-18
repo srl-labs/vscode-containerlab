@@ -18,6 +18,7 @@ import {
   collectNodeGroupMemberships,
   parseEndpointLabelOffset
 } from "./annotations";
+import { buildEdgeAnnotationLookup, type EdgeAnnotationLookup } from "./annotations/edgeAnnotations";
 import type { ReactFlowCanvasRef } from "./components/canvas";
 import { ReactFlowCanvas } from "./components/canvas";
 import { Navbar } from "./components/navbar/Navbar";
@@ -34,7 +35,6 @@ import { ShortcutDisplay, ToastContainer } from "./components/ui";
 import { EasterEggRenderer, useEasterEgg } from "./easter-eggs";
 import {
   useAppAnnotations,
-  useAppDerivedData,
   useAppEditorBindings,
   useAppE2EExposure,
   useAppGraphHandlers,
@@ -46,6 +46,7 @@ import {
   useIconReconciliation,
   useUndoRedoControls
 } from "./hooks/app";
+import { useFilteredGraphElements, useSelectionData } from "./hooks/app/useAppContentHelpers";
 import {
   useAppHandlers,
   useContextMenuHandlers,
@@ -253,6 +254,166 @@ export interface AppContentProps {
   onInit: (instance: ReactFlowInstance) => void;
 }
 
+interface StoreSelectionState {
+  selectedNode: string | null;
+  selectedEdge: string | null;
+  editingImpairment: string | null;
+  editingNode: string | null;
+  editingEdge: string | null;
+  editingNetwork: string | null;
+  endpointLabelOffset: number;
+}
+
+type CanvasPropsWithoutGraph = Omit<
+  React.ComponentPropsWithoutRef<typeof ReactFlowCanvas>,
+  "nodes" | "edges"
+>;
+
+interface GraphCanvasMainProps {
+  canvasRef: React.RefObject<ReactFlowCanvasRef | null>;
+  canvasProps: CanvasPropsWithoutGraph;
+  showDummyLinks: boolean;
+  edgeAnnotationLookup: EdgeAnnotationLookup;
+  endpointLabelOffsetEnabled: boolean;
+  endpointLabelOffset: number;
+}
+
+function areSelectedNodesEqual(left: TopoNode | null, right: TopoNode | null): boolean {
+  if (left === right) return true;
+  if (!left || !right) return false;
+  return left.id === right.id && left.data === right.data;
+}
+
+function areSelectedEdgesEqual(left: TopoEdge | null, right: TopoEdge | null): boolean {
+  if (left === right) return true;
+  if (!left || !right) return false;
+  return (
+    left.id === right.id &&
+    left.source === right.source &&
+    left.target === right.target &&
+    left.data === right.data
+  );
+}
+
+function useGraphNodeById(nodeId: string | null): TopoNode | null {
+  return useGraphStore(
+    React.useCallback(
+      (graphState) =>
+        nodeId
+          ? ((graphState.nodes.find((node) => node.id === nodeId) as TopoNode | undefined) ?? null)
+          : null,
+      [nodeId]
+    ),
+    areSelectedNodesEqual
+  );
+}
+
+function useGraphEdgeById(edgeId: string | null): TopoEdge | null {
+  return useGraphStore(
+    React.useCallback(
+      (graphState) =>
+        edgeId ? ((graphState.edges.find((edge) => edge.id === edgeId) as TopoEdge | undefined) ?? null) : null,
+      [edgeId]
+    ),
+    areSelectedEdgesEqual
+  );
+}
+
+function useStoreBackedSelectionData(
+  state: StoreSelectionState,
+  edgeAnnotationLookup: EdgeAnnotationLookup
+) {
+  const selectedNode = useGraphNodeById(state.selectedNode);
+  const editingNode = useGraphNodeById(state.editingNode);
+  const editingNetwork = useGraphNodeById(state.editingNetwork);
+  const selectedEdge = useGraphEdgeById(state.selectedEdge);
+  const editingImpairment = useGraphEdgeById(state.editingImpairment);
+  const editingEdge = useGraphEdgeById(state.editingEdge);
+
+  const selectionNodes = React.useMemo(() => {
+    const deduped = new Map<string, TopoNode>();
+    for (const node of [selectedNode, editingNode, editingNetwork]) {
+      if (!node) continue;
+      deduped.set(node.id, node);
+    }
+    return Array.from(deduped.values());
+  }, [selectedNode, editingNode, editingNetwork]);
+
+  const selectionEdges = React.useMemo(() => {
+    const deduped = new Map<string, TopoEdge>();
+    for (const edge of [selectedEdge, editingImpairment, editingEdge]) {
+      if (!edge) continue;
+      deduped.set(edge.id, edge);
+    }
+    return Array.from(deduped.values());
+  }, [selectedEdge, editingImpairment, editingEdge]);
+
+  return useSelectionData(state, selectionNodes, selectionEdges, edgeAnnotationLookup);
+}
+
+const GraphCanvasMain: React.FC<GraphCanvasMainProps> = React.memo(
+  ({
+    canvasRef,
+    canvasProps,
+    showDummyLinks,
+    edgeAnnotationLookup,
+    endpointLabelOffsetEnabled,
+    endpointLabelOffset
+  }) => {
+    const { nodes, edges } = useGraphState();
+    const graphNodes = nodes as TopoNode[];
+    const graphEdges = edges as TopoEdge[];
+    useIconReconciliation();
+
+    const { filteredNodes, filteredEdges } = useFilteredGraphElements(
+      graphNodes,
+      graphEdges,
+      showDummyLinks
+    );
+
+    const renderedEdges = React.useMemo(() => {
+      if (filteredEdges.length === 0) return filteredEdges;
+      return filteredEdges.map((edge) => {
+        const data = (edge.data ?? {}) as TopologyEdgeData;
+        const sourceEndpoint = data.sourceEndpoint;
+        const targetEndpoint = data.targetEndpoint;
+        const annotation = findEdgeAnnotationInLookup(edgeAnnotationLookup, {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          sourceEndpoint,
+          targetEndpoint
+        });
+        const annotationOffset = parseEndpointLabelOffset(annotation?.endpointLabelOffset);
+        const annotationEnabled =
+          annotation?.endpointLabelOffsetEnabled ??
+          (annotation?.endpointLabelOffset !== undefined ? true : undefined);
+        const enabled = annotationEnabled ?? endpointLabelOffsetEnabled;
+        const resolvedOffset = enabled ? (annotationOffset ?? endpointLabelOffset) : 0;
+
+        if (
+          data.endpointLabelOffsetEnabled === enabled &&
+          data.endpointLabelOffset === resolvedOffset
+        ) {
+          return edge;
+        }
+
+        return {
+          ...edge,
+          data: {
+            ...data,
+            endpointLabelOffsetEnabled: enabled,
+            endpointLabelOffset: resolvedOffset
+          }
+        };
+      });
+    }, [filteredEdges, edgeAnnotationLookup, endpointLabelOffset, endpointLabelOffsetEnabled]);
+
+    return <ReactFlowCanvas ref={canvasRef} {...canvasProps} nodes={filteredNodes} edges={renderedEdges} />;
+  }
+);
+GraphCanvasMain.displayName = "GraphCanvasMain";
+
 export const AppContent: React.FC<AppContentProps> = ({
   reactFlowRef,
   rfInstance,
@@ -261,7 +422,6 @@ export const AppContent: React.FC<AppContentProps> = ({
 }) => {
   const state = useTopoViewerState();
   const topoActions = useTopoViewerActions();
-  const { nodes, edges } = useGraphState();
   const graphActions = useGraphActions();
   const annotationUiActions = useAnnotationUIActions();
   const isProcessing = state.isProcessing;
@@ -349,9 +509,6 @@ export const AppContent: React.FC<AppContentProps> = ({
     window.vscode?.postMessage({ command: "dump-css-vars", vars: sorted });
   }, []);
 
-  const graphNodes = nodes as TopoNode[];
-  const graphEdges = edges as TopoEdge[];
-
   const undoRedo = useUndoRedoControls(state.canUndo, state.canRedo);
   const { trigger: triggerLockShake } = useShakeAnimation();
 
@@ -369,55 +526,22 @@ export const AppContent: React.FC<AppContentProps> = ({
     rfInstance,
     onLockedAction: handleLockedAction
   });
-
-  const { filteredNodes, filteredEdges, selectionData, edgeAnnotationLookup } = useAppDerivedData({
-    state,
-    nodes: graphNodes,
-    edges: graphEdges
-  });
-
-  const renderedEdges = React.useMemo(() => {
-    if (filteredEdges.length === 0) return filteredEdges;
-    return filteredEdges.map((edge) => {
-      const data = (edge.data ?? {}) as TopologyEdgeData;
-      const sourceEndpoint = data.sourceEndpoint;
-      const targetEndpoint = data.targetEndpoint;
-      const annotation = findEdgeAnnotationInLookup(edgeAnnotationLookup, {
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        sourceEndpoint,
-        targetEndpoint
-      });
-      const annotationOffset = parseEndpointLabelOffset(annotation?.endpointLabelOffset);
-      const annotationEnabled =
-        annotation?.endpointLabelOffsetEnabled ??
-        (annotation?.endpointLabelOffset !== undefined ? true : undefined);
-      const enabled = annotationEnabled ?? state.endpointLabelOffsetEnabled;
-      const resolvedOffset = enabled ? (annotationOffset ?? state.endpointLabelOffset) : 0;
-
-      if (
-        data.endpointLabelOffsetEnabled === enabled &&
-        data.endpointLabelOffset === resolvedOffset
-      ) {
-        return edge;
-      }
-
-      return {
-        ...edge,
-        data: {
-          ...data,
-          endpointLabelOffsetEnabled: enabled,
-          endpointLabelOffset: resolvedOffset
-        }
-      };
-    });
-  }, [
-    filteredEdges,
-    edgeAnnotationLookup,
-    state.endpointLabelOffset,
-    state.endpointLabelOffsetEnabled
-  ]);
+  const edgeAnnotationLookup = React.useMemo(
+    () => buildEdgeAnnotationLookup(state.edgeAnnotations),
+    [state.edgeAnnotations]
+  );
+  const selectionData = useStoreBackedSelectionData(
+    {
+      selectedNode: state.selectedNode,
+      selectedEdge: state.selectedEdge,
+      editingImpairment: state.editingImpairment,
+      editingNode: state.editingNode,
+      editingEdge: state.editingEdge,
+      editingNetwork: state.editingNetwork,
+      endpointLabelOffset: state.endpointLabelOffset
+    },
+    edgeAnnotationLookup
+  );
 
   const [paletteTabRequest, setPaletteTabRequest] = React.useState<{ tabId: string } | undefined>(
     undefined
@@ -524,6 +648,8 @@ export const AppContent: React.FC<AppContentProps> = ({
     handleUpdateEdgeData: graphHandlers.handleUpdateEdgeData
   });
 
+  const getGraphNodes = React.useCallback(() => useGraphStore.getState().nodes as TopoNode[], []);
+
   const graphCreation = useGraphCreation({
     rfInstance,
     onLockedAction: handleLockedAction,
@@ -532,7 +658,7 @@ export const AppContent: React.FC<AppContentProps> = ({
       isLocked: isInteractionLocked,
       customNodes: state.customNodes,
       defaultNode: state.defaultNode,
-      nodes: graphNodes
+      getNodes: getGraphNodes
     },
     onEdgeCreated: graphHandlers.handleEdgeCreated,
     onNodeCreated: graphHandlers.handleNodeCreatedCallback,
@@ -726,9 +852,6 @@ export const AppContent: React.FC<AppContentProps> = ({
 
   const easterEgg = useEasterEgg({});
 
-  // Track used custom icons and copy them to workspace .clab-icons/ folder
-  useIconReconciliation(nodes);
-
   // Auto-open context panel when selection/editing state changes
   React.useEffect(() => {
     if (hasContextContent && !isProcessing && !panelVisibility.isContextPanelOpen) {
@@ -754,6 +877,70 @@ export const AppContent: React.FC<AppContentProps> = ({
       /* ignore */
     });
   }, [reactFlowRef, rfInstance]);
+
+  const handleOpenNodePalette = React.useCallback(() => {
+    handleContextPanelBack();
+    panelVisibility.handleOpenContextPanel();
+  }, [handleContextPanelBack, panelVisibility]);
+
+  const canvasProps = React.useMemo<CanvasPropsWithoutGraph>(
+    () => ({
+      isContextPanelOpen: panelVisibility.isContextPanelOpen,
+      onPaneClick: handleEmptyCanvasClick,
+      layout: layoutControls.layout,
+      isGeoLayout: layoutControls.isGeoLayout,
+      gridLineWidth: layoutControls.gridLineWidth,
+      gridStyle: layoutControls.gridStyle,
+      gridColor: layoutControls.gridColor,
+      gridBgColor: layoutControls.gridBgColor,
+      annotationMode,
+      annotationHandlers: canvasAnnotationHandlers,
+      linkLabelMode: state.linkLabelMode,
+      onInit,
+      onEdgeCreated: graphHandlers.handleEdgeCreated,
+      onShiftClickCreate: graphCreation.createNodeAtPosition,
+      onNodeDelete: graphHandlers.handleDeleteNode,
+      onEdgeDelete: graphHandlers.handleDeleteLink,
+      onOpenNodePalette: handleOpenNodePalette,
+      onAddGroup: annotations.handleAddGroup,
+      onAddText: annotations.handleAddText,
+      onAddShapes: annotations.handleAddShapes,
+      onAddTextAtPosition: annotations.createTextAtPosition,
+      onAddGroupAtPosition: annotations.createGroupAtPosition,
+      onAddShapeAtPosition: annotations.createShapeAtPosition,
+      onDropCreateNode: handleDropCreateNode,
+      onDropCreateNetwork: handleDropCreateNetwork,
+      onLockedAction: handleLockedAction
+    }),
+    [
+      panelVisibility.isContextPanelOpen,
+      handleEmptyCanvasClick,
+      layoutControls.layout,
+      layoutControls.isGeoLayout,
+      layoutControls.gridLineWidth,
+      layoutControls.gridStyle,
+      layoutControls.gridColor,
+      layoutControls.gridBgColor,
+      annotationMode,
+      canvasAnnotationHandlers,
+      state.linkLabelMode,
+      onInit,
+      graphHandlers.handleEdgeCreated,
+      graphCreation.createNodeAtPosition,
+      graphHandlers.handleDeleteNode,
+      graphHandlers.handleDeleteLink,
+      handleOpenNodePalette,
+      annotations.handleAddGroup,
+      annotations.handleAddText,
+      annotations.handleAddShapes,
+      annotations.createTextAtPosition,
+      annotations.createGroupAtPosition,
+      annotations.createShapeAtPosition,
+      handleDropCreateNode,
+      handleDropCreateNetwork,
+      handleLockedAction
+    ]
+  );
 
   const handleNetworkSave = React.useCallback(
     (data: Parameters<typeof networkEditorHandlers.handleSave>[0]) => {
@@ -943,39 +1130,13 @@ export const AppContent: React.FC<AppContentProps> = ({
               position: "relative"
             }}
           >
-            <ReactFlowCanvas
-              ref={reactFlowRef}
-              nodes={filteredNodes}
-              edges={renderedEdges}
-              isContextPanelOpen={panelVisibility.isContextPanelOpen}
-              onPaneClick={handleEmptyCanvasClick}
-              layout={layoutControls.layout}
-              isGeoLayout={layoutControls.isGeoLayout}
-              gridLineWidth={layoutControls.gridLineWidth}
-              gridStyle={layoutControls.gridStyle}
-              gridColor={layoutControls.gridColor}
-              gridBgColor={layoutControls.gridBgColor}
-              annotationMode={annotationMode}
-              annotationHandlers={canvasAnnotationHandlers}
-              linkLabelMode={state.linkLabelMode}
-              onInit={onInit}
-              onEdgeCreated={graphHandlers.handleEdgeCreated}
-              onShiftClickCreate={graphCreation.createNodeAtPosition}
-              onNodeDelete={graphHandlers.handleDeleteNode}
-              onEdgeDelete={graphHandlers.handleDeleteLink}
-              onOpenNodePalette={() => {
-                handleContextPanelBack();
-                panelVisibility.handleOpenContextPanel();
-              }}
-              onAddGroup={annotations.handleAddGroup}
-              onAddText={annotations.handleAddText}
-              onAddShapes={annotations.handleAddShapes}
-              onAddTextAtPosition={annotations.createTextAtPosition}
-              onAddGroupAtPosition={annotations.createGroupAtPosition}
-              onAddShapeAtPosition={annotations.createShapeAtPosition}
-              onDropCreateNode={handleDropCreateNode}
-              onDropCreateNetwork={handleDropCreateNetwork}
-              onLockedAction={handleLockedAction}
+            <GraphCanvasMain
+              canvasRef={reactFlowRef}
+              canvasProps={canvasProps}
+              showDummyLinks={state.showDummyLinks}
+              edgeAnnotationLookup={edgeAnnotationLookup}
+              endpointLabelOffset={state.endpointLabelOffset}
+              endpointLabelOffsetEnabled={state.endpointLabelOffsetEnabled}
             />
             <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
             <EasterEggRenderer easterEgg={easterEgg} />

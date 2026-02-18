@@ -69,17 +69,39 @@ export interface UseDerivedAnnotationsReturn {
   getGroupMembers: (groupId: string, options?: { includeNested?: boolean }) => string[];
 }
 
+interface MembershipEntry {
+  id: string;
+  groupId: string;
+}
+
 const isGroupNode = (node: Node): node is Node<GroupNodeData> => node.type === GROUP_NODE_TYPE;
 const isFreeTextNode = (node: Node): node is Node<FreeTextNodeData> =>
   node.type === FREE_TEXT_NODE_TYPE;
 const isFreeShapeNode = (node: Node): node is Node<FreeShapeNodeData> =>
   node.type === FREE_SHAPE_NODE_TYPE;
 
-const hasGroupMembership = (node: Node): boolean => {
-  const data = node.data as Record<string, unknown> | undefined;
-  const groupId = data?.groupId;
-  return typeof groupId === "string" && groupId.length > 0;
-};
+function selectMembershipEntries(state: { nodes: Node[] }): MembershipEntry[] {
+  const entries: MembershipEntry[] = [];
+  for (const node of state.nodes) {
+    const data = node.data as Record<string, unknown> | undefined;
+    const groupId = data?.groupId;
+    if (typeof groupId === "string" && groupId.length > 0) {
+      entries.push({ id: node.id, groupId });
+    }
+  }
+  return entries;
+}
+
+function areMembershipEntriesEqual(left: MembershipEntry[], right: MembershipEntry[]): boolean {
+  if (left === right) return true;
+  if (left.length !== right.length) return false;
+  for (let i = 0; i < left.length; i++) {
+    if (left[i].id !== right[i].id || left[i].groupId !== right[i].groupId) {
+      return false;
+    }
+  }
+  return true;
+}
 
 /**
  * Hook to derive annotation data from graph state and provide mutation functions
@@ -88,7 +110,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   const groupNodes = useGraphStore((state) => state.nodes.filter(isGroupNode), shallow);
   const textNodes = useGraphStore((state) => state.nodes.filter(isFreeTextNode), shallow);
   const shapeNodes = useGraphStore((state) => state.nodes.filter(isFreeShapeNode), shallow);
-  const membershipNodes = useGraphStore((state) => state.nodes.filter(hasGroupMembership), shallow);
+  const membershipEntries = useGraphStore(selectMembershipEntries, areMembershipEntriesEqual);
 
   const addNode = useGraphStore((state) => state.addNode);
   const removeNode = useGraphStore((state) => state.removeNode);
@@ -113,15 +135,11 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   // Membership map: nodeId -> groupId (derived from node data)
   const membershipMap = useMemo(() => {
     const map = new Map<string, string>();
-    for (const node of membershipNodes) {
-      const data = node.data as Record<string, unknown> | undefined;
-      const groupId = data?.groupId as string | undefined;
-      if (groupId) {
-        map.set(node.id, groupId);
-      }
+    for (const entry of membershipEntries) {
+      map.set(entry.id, entry.groupId);
     }
     return map;
-  }, [membershipNodes]);
+  }, [membershipEntries]);
 
   // ============================================================================
   // Group mutations

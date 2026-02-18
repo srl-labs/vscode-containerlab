@@ -50,7 +50,7 @@ export interface GraphCreationConfig {
     isLocked: boolean;
     customNodes: CustomNodeTemplate[];
     defaultNode: string;
-    nodes: TopoNode[];
+    getNodes: () => TopoNode[];
   };
   /** Callback when an edge is created */
   onEdgeCreated: EdgeCreatedCallback;
@@ -98,16 +98,18 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   } = config;
 
   const getUsedNodeIds = React.useCallback(() => {
+    const currentNodes = state.getNodes();
     const ids = new Set<string>();
-    for (const node of state.nodes) {
+    for (const node of currentNodes) {
       if (node.id) ids.add(node.id);
     }
     return ids;
-  }, [state.nodes]);
+  }, [state.getNodes]);
 
   const getExistingNetworkNodes = React.useCallback(() => {
+    const currentNodes = state.getNodes();
     const nodes: Array<{ id: string; kind: NetworkType }> = [];
-    for (const node of state.nodes) {
+    for (const node of currentNodes) {
       if (node.type !== "network-node") continue;
       const data = node.data as Record<string, unknown>;
       const kind = data.kind || data.nodeType;
@@ -116,7 +118,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
       }
     }
     return nodes;
-  }, [state.nodes]);
+  }, [state.getNodes]);
 
   // Edge creation - uses ReactFlow's connection API
   // Note: Edge creation is primarily handled through ReactFlow's onConnect callback

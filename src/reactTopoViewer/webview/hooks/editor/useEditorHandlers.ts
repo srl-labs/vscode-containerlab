@@ -22,7 +22,7 @@ import {
   buildNetworkNodeAnnotations
 } from "../../services";
 import { requestSnapshot } from "../../services/topologyHostClient";
-import { useGraphState, useGraphStore } from "../../stores/graphStore";
+import { useGraphStore } from "../../stores/graphStore";
 import {
   findEdgeAnnotation,
   upsertEdgeLabelOffsetAnnotation
@@ -764,8 +764,9 @@ export function useNetworkEditorHandlers(
   editingNetworkData: NetworkEditorData | null,
   renameNode?: RenameNodeCallback
 ) {
-  const { edges, nodes } = useGraphState();
   const initialDataRef = React.useRef<NetworkEditorData | null>(null);
+  const getCurrentEdges = React.useCallback(() => useGraphStore.getState().edges, []);
+  const getCurrentNodes = React.useCallback(() => useGraphStore.getState().nodes, []);
 
   React.useEffect(() => {
     if (editingNetworkData) {
@@ -825,7 +826,8 @@ export function useNetworkEditorHandlers(
       if (!LINK_BASED_NETWORK_TYPES.has(data.networkType)) return;
 
       const extraData = buildNetworkExtraData(data);
-      const linkCommands = edges
+      const currentEdges = getCurrentEdges();
+      const linkCommands = currentEdges
         .filter((edge) => edge.source === data.id || edge.target === data.id)
         .map((edge) => {
           const sourceEndpoint = (edge.data as Record<string, unknown> | undefined)
@@ -868,7 +870,7 @@ export function useNetworkEditorHandlers(
         );
       }
     },
-    [edges]
+    [getCurrentEdges]
   );
 
   const persistBridgeNetwork = React.useCallback((data: NetworkEditorData, newNodeId: string) => {
@@ -887,10 +889,12 @@ export function useNetworkEditorHandlers(
 
   const persistBridgeAlias = React.useCallback(
     async (data: NetworkEditorData, newNodeId: string) => {
-      if (!isBridgeAliasCandidate(data, newNodeId, nodes as BasicNode[])) return false;
+      const currentNodes = getCurrentNodes();
+      if (!isBridgeAliasCandidate(data, newNodeId, currentNodes as BasicNode[])) return false;
 
       const aliasId = data.id;
-      const edgeInfos = collectAliasEdgeInfos(edges as BasicEdge[], aliasId);
+      const currentEdges = getCurrentEdges();
+      const edgeInfos = collectAliasEdgeInfos(currentEdges as BasicEdge[], aliasId);
       const { interfaceSet, interfaceCandidates } = extractInterfaceCandidates(edgeInfos);
 
       const snapshot = await requestSnapshot();
@@ -945,7 +949,7 @@ export function useNetworkEditorHandlers(
 
       return true;
     },
-    [edges, nodes]
+    [getCurrentEdges, getCurrentNodes]
   );
 
   const persistNetworkEdits = React.useCallback(

@@ -4,7 +4,7 @@
  * Provides visual alignment guides that appear when dragging nodes,
  * helping to align nodes horizontally and vertically with other nodes.
  */
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { Node, XYPosition } from "@xyflow/react";
 
 /** Distance threshold in pixels for triggering alignment snap */
@@ -28,6 +28,22 @@ export interface AlignmentResult {
   lines: HelperLinePositions;
   /** Snapped position if alignment detected, null otherwise */
   snappedPosition: XYPosition | null;
+}
+
+const EMPTY_HELPER_LINES: HelperLinePositions = {
+  horizontal: null,
+  vertical: null,
+  horizontalMidpoint: null,
+  verticalMidpoint: null
+};
+
+function areHelperLinesEqual(left: HelperLinePositions, right: HelperLinePositions): boolean {
+  return (
+    left.horizontal === right.horizontal &&
+    left.vertical === right.vertical &&
+    left.horizontalMidpoint === right.horizontalMidpoint &&
+    left.verticalMidpoint === right.verticalMidpoint
+  );
 }
 
 /** Get node dimensions with defaults */
@@ -231,15 +247,41 @@ export function calculateAlignments(
  * Hook to manage helper lines state during node dragging
  */
 export function useHelperLines() {
-  const [helperLines, setHelperLines] = useState<HelperLinePositions>({
-    horizontal: null,
-    vertical: null,
-    horizontalMidpoint: null,
-    verticalMidpoint: null
-  });
+  const [helperLines, setHelperLines] = useState<HelperLinePositions>(EMPTY_HELPER_LINES);
 
   // Track if we're currently showing lines (to avoid unnecessary state updates)
   const hasLinesRef = useRef(false);
+  const helperLinesRef = useRef<HelperLinePositions>(EMPTY_HELPER_LINES);
+  const pendingLinesRef = useRef<HelperLinePositions | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+
+  const flushPendingLines = useCallback(() => {
+    rafIdRef.current = null;
+    const pending = pendingLinesRef.current;
+    if (!pending) return;
+    pendingLinesRef.current = null;
+    if (areHelperLinesEqual(helperLinesRef.current, pending)) return;
+    helperLinesRef.current = pending;
+    setHelperLines(pending);
+  }, []);
+
+  const scheduleHelperLineUpdate = useCallback(
+    (nextLines: HelperLinePositions) => {
+      pendingLinesRef.current = nextLines;
+      if (rafIdRef.current !== null) return;
+      rafIdRef.current = window.requestAnimationFrame(flushPendingLines);
+    },
+    [flushPendingLines]
+  );
+
+  useEffect(
+    () => () => {
+      if (rafIdRef.current !== null) {
+        window.cancelAnimationFrame(rafIdRef.current);
+      }
+    },
+    []
+  );
 
   /**
    * Update helper lines based on dragged node position
@@ -257,26 +299,30 @@ export function useHelperLines() {
 
       // Only update state if lines changed
       if (hasLines || hasLinesRef.current) {
-        setHelperLines(lines);
+        scheduleHelperLineUpdate(lines);
         hasLinesRef.current = hasLines;
       }
 
       return enableSnap ? snappedPosition : null;
     },
-    []
+    [scheduleHelperLineUpdate]
   );
 
   /** Clear helper lines (call on drag end) */
   const clearHelperLines = useCallback(() => {
-    if (hasLinesRef.current) {
-      setHelperLines({
-        horizontal: null,
-        vertical: null,
-        horizontalMidpoint: null,
-        verticalMidpoint: null
-      });
-      hasLinesRef.current = false;
+    if (rafIdRef.current !== null) {
+      window.cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
     }
+    pendingLinesRef.current = null;
+
+    if (!hasLinesRef.current && areHelperLinesEqual(helperLinesRef.current, EMPTY_HELPER_LINES)) {
+      return;
+    }
+
+    helperLinesRef.current = EMPTY_HELPER_LINES;
+    setHelperLines(EMPTY_HELPER_LINES);
+    hasLinesRef.current = false;
   }, []);
 
   return {
