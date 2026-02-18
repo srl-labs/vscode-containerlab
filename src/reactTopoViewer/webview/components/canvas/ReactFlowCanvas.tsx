@@ -319,7 +319,7 @@ function useDragHandlers(
   const handleNodeDrag = useCallback(
     (event: React.MouseEvent, node: Node) => {
       onNodeDrag(event, node);
-      // Update helper lines during drag (skip in geo layout)
+      // Update helper lines during drag (skip in geo layout).
       if (helperLineHandlers && !helperLineHandlers.isGeoLayout) {
         helperLineHandlers.updateHelperLines(node, helperLineHandlers.allNodes);
       }

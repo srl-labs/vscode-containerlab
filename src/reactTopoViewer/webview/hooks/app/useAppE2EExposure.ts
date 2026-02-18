@@ -5,7 +5,7 @@ import type { ReactFlowInstance } from "@xyflow/react";
 
 import type { TopoViewerActions, TopoViewerState } from "../../stores/topoViewerStore";
 import type { useLayoutControls } from "../ui";
-import type { AnnotationContextValue } from "../canvas";
+import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 
 import type { GraphCreationReturn } from "./useGraphCreation";
 import type { UndoRedoControls } from "./useUndoRedoControls";
@@ -22,7 +22,10 @@ interface AppE2EExposureParams {
   >;
   undoRedo: Pick<UndoRedoControls, "canUndo" | "canRedo">;
   graphHandlers: Pick<AppGraphHandlers, "handleEdgeCreated" | "handleNodeCreatedCallback">;
-  annotations: Pick<AnnotationContextValue, "handleAddGroup" | "groups">;
+  annotations: {
+    handleAddGroup: () => void;
+    getGroups: () => GroupStyleAnnotation[];
+  };
   graphCreation: Pick<GraphCreationReturn, "createNetworkAtPosition">;
   layoutControls: LayoutControls;
   rfInstance: ReactFlowInstance | null;
@@ -50,7 +53,7 @@ export function useAppE2EExposure({
     createNetworkAtPosition: graphCreation.createNetworkAtPosition,
     editNode: actions.editNode,
     editNetwork: actions.editNetwork,
-    groups: annotations.groups,
+    getGroups: annotations.getGroups,
     elements: [],
     setLayout: layoutControls.setLayout,
     isGeoLayout: layoutControls.isGeoLayout,
