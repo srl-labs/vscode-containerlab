@@ -44,6 +44,14 @@ interface LabDiscoveryResult {
   containersToRefresh: Set<c.ClabContainerTreeNode>;
 }
 
+type ContainerListEntry = c.ClabContainerTreeNode | c.ClabContainerGroupTreeNode;
+
+interface ContainerMergeState {
+  orderedEntries: ContainerListEntry[];
+  containersToRefresh: Set<c.ClabContainerTreeNode>;
+  branchStructureChanged: boolean;
+}
+
 export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   c.ClabLabTreeNode | c.ClabContainerTreeNode
 > {
@@ -162,15 +170,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
    */
   private findContainerNode(containerShortId: string): c.ClabContainerTreeNode | undefined {
     for (const lab of this.treeItems) {
-      if (!lab.containers) continue;
-      for (const entry of lab.containers) {
-        if (entry instanceof c.ClabContainerGroupTreeNode) {
-          for (const child of entry.children) {
-            if (child.cID === containerShortId) return child;
-          }
-        } else if (entry.cID === containerShortId) {
-          return entry;
-        }
+      const entries = lab.containers ?? [];
+      const found = this
+        .flattenContainerNodes(entries)
+        .find((container) => container.cID === containerShortId);
+      if (found) {
+        return found;
       }
     }
     return undefined;
@@ -503,65 +508,110 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     containersToRefresh: c.ClabContainerTreeNode[];
     branchStructureChanged: boolean;
   } {
-    const existingContainers = new Map<string, c.ClabContainerTreeNode>();
-    const existingGroups = new Map<string, c.ClabContainerGroupTreeNode>();
-
-    for (const entry of targetLab.containers || []) {
-      if (entry instanceof c.ClabContainerGroupTreeNode) {
-        existingGroups.set(entry.rootNodeName, entry);
-      } else {
-        existingContainers.set(entry.name ?? String(entry.label ?? ""), entry);
-      }
-    }
-
-    const orderedEntries: (c.ClabContainerTreeNode | c.ClabContainerGroupTreeNode)[] = [];
-    const containersToRefresh: Set<c.ClabContainerTreeNode> = new Set();
-    let branchStructureChanged = false;
+    const { existingContainers, existingGroups } = this.buildExistingContainerMaps(
+      targetLab.containers || []
+    );
+    const state = this.createContainerMergeState();
 
     for (const incoming of sourceLab.containers || []) {
-      if (incoming instanceof c.ClabContainerGroupTreeNode) {
-        const existingGroup = existingGroups.get(incoming.rootNodeName);
-        if (existingGroup) {
-          const groupMerge = this.mergeGroupChildren(existingGroup, incoming);
-          if (groupMerge.changed) branchStructureChanged = true;
-          groupMerge.containersToRefresh.forEach((c) => containersToRefresh.add(c));
-
-          // Update group icon
-          existingGroup.iconPath = incoming.iconPath;
-
-          orderedEntries.push(existingGroup);
-          existingGroups.delete(incoming.rootNodeName);
-        } else {
-          branchStructureChanged = true;
-          orderedEntries.push(incoming);
-        }
-      } else {
-        const key = incoming.name ?? String(incoming.label ?? "");
-        const existing = key ? existingContainers.get(key) : undefined;
-
-        if (existing) {
-          const result = this.updateContainerNode(existing, incoming);
-          if (result.changed) containersToRefresh.add(existing);
-          if (result.structureChanged) containersToRefresh.add(existing);
-          orderedEntries.push(existing);
-          existingContainers.delete(key);
-        } else {
-          branchStructureChanged = true;
-          orderedEntries.push(incoming);
-        }
-      }
+      this.mergeIncomingContainerEntry(incoming, existingContainers, existingGroups, state);
     }
 
     if (existingContainers.size > 0 || existingGroups.size > 0) {
-      branchStructureChanged = true;
+      state.branchStructureChanged = true;
     }
 
-    targetLab.containers = orderedEntries;
+    targetLab.containers = state.orderedEntries;
 
     return {
-      containersToRefresh: Array.from(containersToRefresh),
-      branchStructureChanged
+      containersToRefresh: Array.from(state.containersToRefresh),
+      branchStructureChanged: state.branchStructureChanged
     };
+  }
+
+  private buildExistingContainerMaps(entries: ContainerListEntry[]): {
+    existingContainers: Map<string, c.ClabContainerTreeNode>;
+    existingGroups: Map<string, c.ClabContainerGroupTreeNode>;
+  } {
+    const existingContainers = new Map<string, c.ClabContainerTreeNode>();
+    const existingGroups = new Map<string, c.ClabContainerGroupTreeNode>();
+
+    for (const entry of entries) {
+      if (entry instanceof c.ClabContainerGroupTreeNode) {
+        existingGroups.set(entry.rootNodeName, entry);
+      } else {
+        existingContainers.set(this.getNodeKey(entry), entry);
+      }
+    }
+
+    return { existingContainers, existingGroups };
+  }
+
+  private createContainerMergeState(): ContainerMergeState {
+    return {
+      orderedEntries: [],
+      containersToRefresh: new Set<c.ClabContainerTreeNode>(),
+      branchStructureChanged: false
+    };
+  }
+
+  private mergeIncomingContainerEntry(
+    incoming: ContainerListEntry,
+    existingContainers: Map<string, c.ClabContainerTreeNode>,
+    existingGroups: Map<string, c.ClabContainerGroupTreeNode>,
+    state: ContainerMergeState
+  ): void {
+    if (incoming instanceof c.ClabContainerGroupTreeNode) {
+      this.mergeIncomingGroup(incoming, existingGroups, state);
+      return;
+    }
+
+    this.mergeIncomingContainer(incoming, existingContainers, state);
+  }
+
+  private mergeIncomingGroup(
+    incoming: c.ClabContainerGroupTreeNode,
+    existingGroups: Map<string, c.ClabContainerGroupTreeNode>,
+    state: ContainerMergeState
+  ): void {
+    const existingGroup = existingGroups.get(incoming.rootNodeName);
+    if (!existingGroup) {
+      state.branchStructureChanged = true;
+      state.orderedEntries.push(incoming);
+      return;
+    }
+
+    const groupMerge = this.mergeGroupChildren(existingGroup, incoming);
+    if (groupMerge.changed) {
+      state.branchStructureChanged = true;
+    }
+    groupMerge.containersToRefresh.forEach((container) => state.containersToRefresh.add(container));
+
+    // Keep existing group node identity while updating display attributes.
+    existingGroup.iconPath = incoming.iconPath;
+    state.orderedEntries.push(existingGroup);
+    existingGroups.delete(incoming.rootNodeName);
+  }
+
+  private mergeIncomingContainer(
+    incoming: c.ClabContainerTreeNode,
+    existingContainers: Map<string, c.ClabContainerTreeNode>,
+    state: ContainerMergeState
+  ): void {
+    const key = this.getNodeKey(incoming);
+    const existing = existingContainers.get(key);
+    if (!existing) {
+      state.branchStructureChanged = true;
+      state.orderedEntries.push(incoming);
+      return;
+    }
+
+    const result = this.updateContainerNode(existing, incoming);
+    if (result.changed || result.structureChanged) {
+      state.containersToRefresh.add(existing);
+    }
+    state.orderedEntries.push(existing);
+    existingContainers.delete(key);
   }
 
   private mergeGroupChildren(
@@ -572,15 +622,15 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     containersToRefresh: c.ClabContainerTreeNode[];
   } {
     const existingChildren = new Map<string, c.ClabContainerTreeNode>(
-      target.children.map((child) => [child.name ?? String(child.label ?? ""), child])
+      target.children.map((child) => [this.getNodeKey(child), child])
     );
     const orderedChildren: c.ClabContainerTreeNode[] = [];
     const containersToRefresh: Set<c.ClabContainerTreeNode> = new Set();
     let changed = false;
 
     for (const incoming of source.children) {
-      const key = incoming.name ?? String(incoming.label ?? "");
-      const existing = key ? existingChildren.get(key) : undefined;
+      const key = this.getNodeKey(incoming);
+      const existing = existingChildren.get(key);
 
       if (existing) {
         const result = this.updateContainerNode(existing, incoming);
@@ -678,7 +728,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     let structureChanged = false;
 
     for (const incoming of source.interfaces || []) {
-      const key = incoming.name ?? String(incoming.label ?? "");
+      const key = this.getNodeKey(incoming);
       const existing = existingInterfaces.get(key);
       if (existing) {
         if (this.updateInterfaceNode(existing, incoming)) {
@@ -748,6 +798,15 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     }
 
     return changed;
+  }
+
+  private getNodeKey(
+    node: {
+      name?: string;
+      label?: vscode.TreeItemLabel | string;
+    }
+  ): string {
+    return node.name ?? String(node.label ?? "");
   }
 
   private areObjectValuesEqual<T extends object>(a: T | undefined, b: T | undefined): boolean {
