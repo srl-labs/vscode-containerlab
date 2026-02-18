@@ -127,10 +127,7 @@ export function buildEdgeInfoForExport(edges: Edge[]): EdgeInfo {
 function buildEndpointLabelSvg(text: string, x: number, y: number): string {
   if (!text) return "";
 
-  const compact = getCompactInterfaceLabel(text);
-  const charWidth = EDGE_LABEL.fontSize * 0.58;
-  const textWidth = Math.max(EDGE_LABEL.fontSize * 0.8, compact.length * charWidth);
-  const radius = Math.max(6, textWidth / 2 + 2);
+  const { compact, radius } = getEndpointLabelMetrics(text);
   const textY = y;
 
   let svg = `<g class="edge-label">`;
@@ -170,6 +167,59 @@ function getCompactInterfaceLabel(endpoint: string): string {
 
   const token = trimmed.split(/[:/.-]/).filter((part) => part.length > 0).pop() ?? trimmed;
   return token.length <= 3 ? token : token.slice(-3);
+}
+
+function getEndpointLabelMetrics(endpoint: string): { compact: string; radius: number } {
+  const compact = getCompactInterfaceLabel(endpoint);
+  const charWidth = EDGE_LABEL.fontSize * 0.58;
+  const textWidth = Math.max(EDGE_LABEL.fontSize * 0.8, compact.length * charWidth);
+  const radius = Math.max(6, textWidth / 2 + 2);
+  return { compact, radius };
+}
+
+function getNodeProximateOffset(endpoint: string): number {
+  const { radius } = getEndpointLabelMetrics(endpoint);
+  // Keep the label bubble just outside the node boundary.
+  return radius + 1;
+}
+
+function getLabelOffsetForEndpoint(endpoint: string | undefined, nodeProximateLabels: boolean): number {
+  if (!nodeProximateLabels || !endpoint) return EDGE_LABEL.offset;
+  return getNodeProximateOffset(endpoint);
+}
+
+function getRegularEdgeLabelPositions(
+  ctx: EdgeRenderContext,
+  points: { sx: number; sy: number; tx: number; ty: number },
+  controlPoint: { x: number; y: number } | null
+): { sourceLabelPos: { x: number; y: number }; targetLabelPos: { x: number; y: number } } {
+  const sourceOffset = getLabelOffsetForEndpoint(
+    ctx.edgeData?.sourceEndpoint,
+    ctx.nodeProximateLabels
+  );
+  const targetOffset = getLabelOffsetForEndpoint(
+    ctx.edgeData?.targetEndpoint,
+    ctx.nodeProximateLabels
+  );
+
+  return {
+    sourceLabelPos: getLabelPosition(
+      points.sx,
+      points.sy,
+      points.tx,
+      points.ty,
+      sourceOffset,
+      controlPoint ?? undefined
+    ),
+    targetLabelPos: getLabelPosition(
+      points.tx,
+      points.ty,
+      points.sx,
+      points.sy,
+      targetOffset,
+      controlPoint ?? undefined
+    )
+  };
 }
 
 // ============================================================================
@@ -226,6 +276,7 @@ interface EdgeRenderContext {
   strokeColor: string;
   edgeData: TopologyEdgeData | undefined;
   includeLabels: boolean;
+  nodeProximateLabels: boolean;
 }
 
 /**
@@ -317,21 +368,10 @@ function renderRegularEdge(
   svg += `stroke-width="${EDGE_STYLE.strokeWidth}" opacity="${EDGE_STYLE.opacity}"/>`;
 
   if (ctx.includeLabels) {
-    const sourceLabelPos = getLabelPosition(
-      points.sx,
-      points.sy,
-      points.tx,
-      points.ty,
-      EDGE_LABEL.offset,
-      controlPoint ?? undefined
-    );
-    const targetLabelPos = getLabelPosition(
-      points.tx,
-      points.ty,
-      points.sx,
-      points.sy,
-      EDGE_LABEL.offset,
-      controlPoint ?? undefined
+    const { sourceLabelPos, targetLabelPos } = getRegularEdgeLabelPositions(
+      ctx,
+      points,
+      controlPoint
     );
     svg += buildEdgeLabels(ctx, sourceLabelPos, targetLabelPos);
   }
@@ -347,7 +387,8 @@ export function edgeToSvg(
   edge: Edge,
   nodeMap: Map<string, Node>,
   edgeInfo: EdgeInfo,
-  includeLabels: boolean
+  includeLabels: boolean,
+  nodeProximateLabels = false
 ): string {
   const sourceNode = nodeMap.get(edge.source);
   if (!sourceNode) return "";
@@ -357,7 +398,8 @@ export function edgeToSvg(
     edgeId: edge.id,
     strokeColor: getEdgeColor(edgeData?.linkStatus),
     edgeData,
-    includeLabels
+    includeLabels,
+    nodeProximateLabels
   };
 
   // Handle loop edges (self-referencing)
@@ -385,7 +427,8 @@ export function renderEdgesToSvg(
   edges: Edge[],
   nodes: Node[],
   includeLabels: boolean,
-  annotationNodeTypes?: Set<string>
+  annotationNodeTypes?: Set<string>,
+  nodeProximateLabels = false
 ): string {
   const skipTypes =
     annotationNodeTypes ??
@@ -412,7 +455,7 @@ export function renderEdgesToSvg(
 
   let svg = "";
   for (const edge of validEdges) {
-    svg += edgeToSvg(edge, nodeMap, edgeInfo, includeLabels);
+    svg += edgeToSvg(edge, nodeMap, edgeInfo, includeLabels, nodeProximateLabels);
   }
 
   return svg;

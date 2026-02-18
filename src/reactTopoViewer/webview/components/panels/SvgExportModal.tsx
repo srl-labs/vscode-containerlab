@@ -185,7 +185,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         borderZoom,
         customIcons,
         includeEdgeLabels,
-        ANNOTATION_NODE_TYPES
+        ANNOTATION_NODE_TYPES,
+        exportGrafanaBundle
       );
       if (!graphSvg) throw new Error("Unable to capture viewport for SVG export");
       let finalSvg = graphSvg.svg;

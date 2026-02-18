@@ -42,7 +42,8 @@ export function buildGraphSvg(
   zoomPercent: number,
   customIcons?: CustomIconMap,
   includeEdgeLabels = true,
-  annotationNodeTypes?: Set<string>
+  annotationNodeTypes?: Set<string>,
+  nodeProximateLabels = false
 ): GraphSvgResult | null {
   const viewport = rfInstance.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
   const size = getViewportSize();
@@ -51,7 +52,13 @@ export function buildGraphSvg(
   const nodes = (rfInstance.getNodes?.() ?? []) as Node[];
   const edges = (rfInstance.getEdges?.() ?? []) as Edge[];
 
-  const edgesSvg = renderEdgesToSvg(edges, nodes, includeEdgeLabels, annotationNodeTypes);
+  const edgesSvg = renderEdgesToSvg(
+    edges,
+    nodes,
+    includeEdgeLabels,
+    annotationNodeTypes,
+    nodeProximateLabels
+  );
   const nodesSvg = renderNodesToSvg(nodes, customIcons, annotationNodeTypes);
 
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
