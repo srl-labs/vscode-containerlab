@@ -759,6 +759,10 @@ function sanitizeLinkExtraData(
   return Object.keys(cleaned).length > 0 ? cleaned : undefined;
 }
 
+function getConnectedNetworkEdges(edges: BasicEdge[], networkNodeId: string): BasicEdge[] {
+  return edges.filter((edge) => edge.source === networkNodeId || edge.target === networkNodeId);
+}
+
 export function useNetworkEditorHandlers(
   editNetwork: (id: string | null) => void,
   editingNetworkData: NetworkEditorData | null,
@@ -822,36 +826,35 @@ export function useNetworkEditorHandlers(
   );
 
   const persistLinkBasedNetwork = React.useCallback(
-    async (data: NetworkEditorData, newNodeId: string) => {
+    async (data: NetworkEditorData, newNodeId: string, connectedEdges: BasicEdge[]) => {
       if (!LINK_BASED_NETWORK_TYPES.has(data.networkType)) return;
 
       const extraData = buildNetworkExtraData(data);
-      const currentEdges = getCurrentEdges();
-      const linkCommands = currentEdges
-        .filter((edge) => edge.source === data.id || edge.target === data.id)
-        .map((edge) => {
-          const sourceEndpoint = (edge.data as Record<string, unknown> | undefined)
-            ?.sourceEndpoint as string | undefined;
-          const targetEndpoint = (edge.data as Record<string, unknown> | undefined)
-            ?.targetEndpoint as string | undefined;
-          const nextSource = edge.source === data.id ? newNodeId : edge.source;
-          const nextTarget = edge.target === data.id ? newNodeId : edge.target;
-          return {
-            command: "editLink" as const,
-            payload: {
-              id: edge.id,
-              source: nextSource,
-              target: nextTarget,
-              sourceEndpoint,
-              targetEndpoint,
-              extraData,
-              originalSource: edge.source,
-              originalTarget: edge.target,
-              originalSourceEndpoint: sourceEndpoint,
-              originalTargetEndpoint: targetEndpoint
-            }
-          };
-        });
+      const linkCommands = connectedEdges.map((edge) => {
+        const sourceEndpoint = (edge.data as Record<string, unknown> | undefined)?.sourceEndpoint as
+          | string
+          | undefined;
+        const targetEndpoint = (edge.data as Record<string, unknown> | undefined)?.targetEndpoint as
+          | string
+          | undefined;
+        const nextSource = edge.source === data.id ? newNodeId : edge.source;
+        const nextTarget = edge.target === data.id ? newNodeId : edge.target;
+        return {
+          command: "editLink" as const,
+          payload: {
+            id: edge.id,
+            source: nextSource,
+            target: nextTarget,
+            sourceEndpoint,
+            targetEndpoint,
+            extraData,
+            originalSource: edge.source,
+            originalTarget: edge.target,
+            originalSourceEndpoint: sourceEndpoint,
+            originalTargetEndpoint: targetEndpoint
+          }
+        };
+      });
 
       const graphNodes = useGraphStore.getState().nodes;
       const networkNodeAnnotations = buildNetworkNodeAnnotations(graphNodes);
@@ -870,7 +873,7 @@ export function useNetworkEditorHandlers(
         );
       }
     },
-    [getCurrentEdges]
+    []
   );
 
   const persistBridgeNetwork = React.useCallback((data: NetworkEditorData, newNodeId: string) => {
@@ -964,6 +967,9 @@ export function useNetworkEditorHandlers(
       }
 
       const newNodeId = calculateExpectedNodeId(data);
+      const preRenameConnectedEdges = LINK_BASED_NETWORK_TYPES.has(data.networkType)
+        ? getConnectedNetworkEdges(getCurrentEdges() as BasicEdge[], data.id)
+        : [];
 
       if (BRIDGE_NETWORK_TYPES.has(data.networkType)) {
         const aliasHandled = await persistBridgeAlias(data, newNodeId);
@@ -981,7 +987,7 @@ export function useNetworkEditorHandlers(
       applyGraphUpdates(data, newNodeId);
 
       if (LINK_BASED_NETWORK_TYPES.has(data.networkType)) {
-        await persistLinkBasedNetwork(data, newNodeId);
+        await persistLinkBasedNetwork(data, newNodeId, preRenameConnectedEdges);
       } else if (BRIDGE_NETWORK_TYPES.has(data.networkType)) {
         persistBridgeNetwork(data, newNodeId);
       }
@@ -996,6 +1002,7 @@ export function useNetworkEditorHandlers(
     },
     [
       editNetwork,
+      getCurrentEdges,
       applyGraphUpdates,
       persistLinkBasedNetwork,
       persistBridgeNetwork,
