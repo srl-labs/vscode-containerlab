@@ -498,7 +498,7 @@ function nodeKindFromContext(contextValue: string | undefined): ExplorerNodeKind
   if (contextValue.includes("containerlabLab")) {
     return "lab";
   }
-  if (contextValue === "containerlabContainer") {
+  if (contextValue === "containerlabContainer" || contextValue === "containerlabContainerGroup") {
     return "container";
   }
   if (contextValue === "containerlabInterfaceUp" || contextValue === "containerlabInterfaceDown") {
@@ -1159,7 +1159,7 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
     [menuActions, nodeKind, onInvokeAction]
   );
   const secondaryText = node.description || node.statusDescription;
-  const isContainer = node.contextValue === "containerlabContainer";
+  const isContainer = node.contextValue === "containerlabContainer" || node.contextValue === "containerlabContainerGroup";
   const isInterface =
     node.contextValue === "containerlabInterfaceUp" || node.contextValue === "containerlabInterfaceDown";
   const inlineContainerStatus = isContainer ? secondaryText?.trim() : undefined;
@@ -2016,14 +2016,6 @@ export function ContainerlabExplorerView() {
           ...(isResizing && { cursor: "row-resize", userSelect: "none" })
         }}
       >
-        {orderedSections.length === 0 && (
-          <Paper variant="outlined" sx={{ p: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              Loading explorer...
-            </Typography>
-          </Paper>
-        )}
-
         {orderedSections.map((section, index) => {
           const isExpanded = !(collapsedBySection[section.id] ?? false);
           const prevExpandedId = (() => {

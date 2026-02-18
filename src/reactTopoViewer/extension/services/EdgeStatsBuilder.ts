@@ -2,7 +2,7 @@
  * EdgeStatsBuilder - Builds edge statistics updates from lab inspection data
  */
 
-import type { ClabLabTreeNode } from "../../../treeView/common";
+import { type ClabLabTreeNode, flattenContainers } from "../../../treeView/common";
 import type { ClabTopology } from "../../shared/types/topology";
 import type { TopoEdge, TopologyEdgeData } from "../../shared/types/graph";
 import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from "../../shared/parsing";
@@ -71,7 +71,7 @@ export function buildNodeRuntimeUpdates(
   }
 
   for (const lab of labValues) {
-    for (const container of lab.containers ?? []) {
+    for (const container of flattenContainers(lab.containers)) {
       updates.push({
         containerLongName: container.name,
         containerShortName: container.name_short,

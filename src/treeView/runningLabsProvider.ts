@@ -36,7 +36,7 @@ interface LightDarkIcon {
   dark: vscode.Uri;
 }
 
-type RunningTreeNode = c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabInterfaceTreeNode;
+type RunningTreeNode = c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabContainerGroupTreeNode | c.ClabInterfaceTreeNode;
 
 interface LabDiscoveryResult {
   rootChanged: boolean;
@@ -163,9 +163,13 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   private findContainerNode(containerShortId: string): c.ClabContainerTreeNode | undefined {
     for (const lab of this.treeItems) {
       if (!lab.containers) continue;
-      for (const container of lab.containers) {
-        if (container.cID === containerShortId) {
-          return container;
+      for (const entry of lab.containers) {
+        if (entry instanceof c.ClabContainerGroupTreeNode) {
+          for (const child of entry.children) {
+            if (child.cID === containerShortId) return child;
+          }
+        } else if (entry.cID === containerShortId) {
+          return entry;
         }
       }
     }
@@ -231,6 +235,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
     if (!element) return this.getRootChildren();
     if (element instanceof c.ClabLabTreeNode) return this.getLabChildren(element);
+    if (element instanceof c.ClabContainerGroupTreeNode) return element.children;
     if (element instanceof c.ClabContainerTreeNode) return this.getContainerChildren(element);
     return undefined;
   }
@@ -261,15 +266,26 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   ): boolean {
     if (filter(String(lab.label))) return true;
     const containers = lab.containers || [];
-    return containers.some(
-      (cn) =>
+    return containers.some((cn) => {
+      if (cn instanceof c.ClabContainerGroupTreeNode) {
+        return (
+          filter(String(cn.label)) ||
+          cn.children.some(
+            (child) =>
+              filter(String(child.label)) ||
+              child.interfaces?.some((it) => filter(String(it.label)))
+          )
+        );
+      }
+      return (
         filter(String(cn.label)) ||
         (cn as c.ClabContainerTreeNode).interfaces?.some((it) => filter(String(it.label)))
-    );
+      );
+    });
   }
 
   private getLabChildren(element: c.ClabLabTreeNode) {
-    let containers: (c.ClabContainerTreeNode | c.ClabSshxLinkTreeNode | c.ClabGottyLinkTreeNode)[] =
+    let containers: (c.ClabContainerTreeNode | c.ClabContainerGroupTreeNode | c.ClabSshxLinkTreeNode | c.ClabGottyLinkTreeNode)[] =
       element.containers || [];
     if (element.sshxNode) containers = [element.sshxNode, ...containers];
     if (element.gottyNode) containers = [element.gottyNode, ...containers];
@@ -280,12 +296,23 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     if (labMatch) return containers;
 
     return containers.filter((cn) => {
+      if (cn instanceof c.ClabContainerGroupTreeNode) {
+        return this.groupMatchesFilter(cn, filter);
+      }
       if (cn instanceof c.ClabContainerTreeNode) {
         return this.containerMatchesFilter(cn, filter);
       }
       // Keep link nodes when filtering
       return true;
     });
+  }
+
+  private groupMatchesFilter(
+    group: c.ClabContainerGroupTreeNode,
+    filter: ReturnType<typeof FilterUtils.createFilter>
+  ): boolean {
+    if (filter(String(group.label))) return true;
+    return group.children.some((cn) => this.containerMatchesFilter(cn, filter));
   }
 
   private containerMatchesFilter(
@@ -476,45 +503,107 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     containersToRefresh: c.ClabContainerTreeNode[];
     branchStructureChanged: boolean;
   } {
-    const existingContainers = new Map<string, c.ClabContainerTreeNode>(
-      (targetLab.containers || []).map((container) => [
-        container.name ?? String(container.label ?? ""),
-        container
-      ])
-    );
-    const orderedContainers: c.ClabContainerTreeNode[] = [];
+    const existingContainers = new Map<string, c.ClabContainerTreeNode>();
+    const existingGroups = new Map<string, c.ClabContainerGroupTreeNode>();
+
+    for (const entry of targetLab.containers || []) {
+      if (entry instanceof c.ClabContainerGroupTreeNode) {
+        existingGroups.set(entry.rootNodeName, entry);
+      } else {
+        existingContainers.set(entry.name ?? String(entry.label ?? ""), entry);
+      }
+    }
+
+    const orderedEntries: (c.ClabContainerTreeNode | c.ClabContainerGroupTreeNode)[] = [];
     const containersToRefresh: Set<c.ClabContainerTreeNode> = new Set();
     let branchStructureChanged = false;
 
     for (const incoming of sourceLab.containers || []) {
-      const key = incoming.name ?? String(incoming.label ?? "");
-      const existing = key ? existingContainers.get(key) : undefined;
+      if (incoming instanceof c.ClabContainerGroupTreeNode) {
+        const existingGroup = existingGroups.get(incoming.rootNodeName);
+        if (existingGroup) {
+          const groupMerge = this.mergeGroupChildren(existingGroup, incoming);
+          if (groupMerge.changed) branchStructureChanged = true;
+          groupMerge.containersToRefresh.forEach((c) => containersToRefresh.add(c));
 
-      if (existing) {
-        const result = this.updateContainerNode(existing, incoming);
-        if (result.changed) {
-          containersToRefresh.add(existing);
+          // Update group icon
+          existingGroup.iconPath = incoming.iconPath;
+
+          orderedEntries.push(existingGroup);
+          existingGroups.delete(incoming.rootNodeName);
+        } else {
+          branchStructureChanged = true;
+          orderedEntries.push(incoming);
         }
-        if (result.structureChanged) {
-          containersToRefresh.add(existing);
-        }
-        orderedContainers.push(existing);
-        existingContainers.delete(key);
       } else {
-        branchStructureChanged = true;
-        orderedContainers.push(incoming);
+        const key = incoming.name ?? String(incoming.label ?? "");
+        const existing = key ? existingContainers.get(key) : undefined;
+
+        if (existing) {
+          const result = this.updateContainerNode(existing, incoming);
+          if (result.changed) containersToRefresh.add(existing);
+          if (result.structureChanged) containersToRefresh.add(existing);
+          orderedEntries.push(existing);
+          existingContainers.delete(key);
+        } else {
+          branchStructureChanged = true;
+          orderedEntries.push(incoming);
+        }
       }
     }
 
-    if (existingContainers.size > 0) {
+    if (existingContainers.size > 0 || existingGroups.size > 0) {
       branchStructureChanged = true;
     }
 
-    targetLab.containers = orderedContainers;
+    targetLab.containers = orderedEntries;
 
     return {
       containersToRefresh: Array.from(containersToRefresh),
       branchStructureChanged
+    };
+  }
+
+  private mergeGroupChildren(
+    target: c.ClabContainerGroupTreeNode,
+    source: c.ClabContainerGroupTreeNode
+  ): {
+    changed: boolean;
+    containersToRefresh: c.ClabContainerTreeNode[];
+  } {
+    const existingChildren = new Map<string, c.ClabContainerTreeNode>(
+      target.children.map((child) => [child.name ?? String(child.label ?? ""), child])
+    );
+    const orderedChildren: c.ClabContainerTreeNode[] = [];
+    const containersToRefresh: Set<c.ClabContainerTreeNode> = new Set();
+    let changed = false;
+
+    for (const incoming of source.children) {
+      const key = incoming.name ?? String(incoming.label ?? "");
+      const existing = key ? existingChildren.get(key) : undefined;
+
+      if (existing) {
+        const result = this.updateContainerNode(existing, incoming);
+        if (result.changed || result.structureChanged) {
+          containersToRefresh.add(existing);
+        }
+        orderedChildren.push(existing);
+        existingChildren.delete(key);
+      } else {
+        changed = true;
+        orderedChildren.push(incoming);
+      }
+    }
+
+    if (existingChildren.size > 0) {
+      changed = true;
+    }
+
+    target.children = orderedChildren;
+
+    return {
+      changed,
+      containersToRefresh: Array.from(containersToRefresh)
     };
   }
 
@@ -819,6 +908,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
           status: status,
           node_type: container.Labels["clab-node-type"] || undefined,
           node_group: container.Labels["clab-node-group"] || undefined,
+          root_node_name: container.Labels["clab-root-node-name"] || undefined,
           network_name: container.NetworkName || undefined,
           startedAt: container.StartedAt
         };
@@ -997,8 +1087,9 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
       (c: c.ClabJSON) => (c.absLabPath || utils.normalizeLabPath(c.labPath)) === normPath
     );
     const discoveredContainers = this.discoverContainers(containersForThisLab, labPathObj.absolute);
-    const { running, unhealthy } = this.getContainerHealth(discoveredContainers);
-    const icon = this.determineIcon(discoveredContainers.length, running, unhealthy);
+    const flatContainers = this.flattenContainerNodes(discoveredContainers);
+    const { running, unhealthy } = this.getContainerHealthFromNodes(flatContainers);
+    const icon = this.determineIcon(flatContainers.length, running, unhealthy);
     const isFav = favoriteLabs.has(normPath);
     const contextVal = isFav ? "containerlabLabDeployedFavorite" : "containerlabLabDeployed";
     const sshxLink = sshxSessions.get(container.lab_name);
@@ -1025,7 +1116,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     return labNode;
   }
 
-  private getContainerHealth(containers: c.ClabContainerTreeNode[]): {
+  private getContainerHealthFromNodes(containers: c.ClabContainerTreeNode[]): {
     running: number;
     unhealthy: number;
   } {
@@ -1041,6 +1132,23 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
       }
     }
     return { running, unhealthy };
+  }
+
+  /**
+   * Flatten a mixed list of container and group nodes into a flat list of container nodes.
+   */
+  private flattenContainerNodes(
+    nodes: (c.ClabContainerTreeNode | c.ClabContainerGroupTreeNode)[]
+  ): c.ClabContainerTreeNode[] {
+    const result: c.ClabContainerTreeNode[] = [];
+    for (const node of nodes) {
+      if (node instanceof c.ClabContainerGroupTreeNode) {
+        result.push(...node.children);
+      } else {
+        result.push(node);
+      }
+    }
+    return result;
   }
 
   private determineIcon(total: number, running: number, unhealthy: number): string {
@@ -1197,7 +1305,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   private discoverContainers(
     containersForThisLab: c.ClabJSON[],
     absLabPath: string
-  ): c.ClabContainerTreeNode[] {
+  ): (c.ClabContainerTreeNode | c.ClabContainerGroupTreeNode)[] {
     let containerNodes: c.ClabContainerTreeNode[] = [];
 
     containersForThisLab.forEach((container: c.ClabJSON) => {
@@ -1236,6 +1344,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         "containerlabContainer"
       );
 
+      node.rootNodeName = container.root_node_name;
       node.description = container.status ? ` ${container.status}` : "";
       node.tooltip = tooltipParts.join("\n");
 
@@ -1246,7 +1355,73 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     });
 
     // Sort container nodes alphabetically by name
-    return containerNodes.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+    containerNodes.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+
+    // Group sub-containers under their root node
+    return this.groupContainers(containerNodes, absLabPath);
+  }
+
+  /**
+   * Group sub-containers (those with rootNodeName) under virtual ClabContainerGroupTreeNode parents.
+   * Containers without rootNodeName remain as top-level entries.
+   */
+  private groupContainers(
+    containerNodes: c.ClabContainerTreeNode[],
+    absLabPath: string
+  ): (c.ClabContainerTreeNode | c.ClabContainerGroupTreeNode)[] {
+    const groups = new Map<string, c.ClabContainerTreeNode[]>();
+    const ungrouped: c.ClabContainerTreeNode[] = [];
+
+    for (const node of containerNodes) {
+      if (node.rootNodeName) {
+        const existing = groups.get(node.rootNodeName) || [];
+        existing.push(node);
+        groups.set(node.rootNodeName, existing);
+      } else {
+        ungrouped.push(node);
+      }
+    }
+
+    const result: (c.ClabContainerTreeNode | c.ClabContainerGroupTreeNode)[] = [...ungrouped];
+    for (const [rootName, children] of groups) {
+      const labPath: c.LabPath = {
+        absolute: absLabPath,
+        relative: utils.getRelLabFolderPath(absLabPath)
+      };
+      const groupNode = new c.ClabContainerGroupTreeNode(rootName, labPath, children);
+
+      // Only show interfaces on the primary (0th) sub-container
+      for (let i = 1; i < children.length; i++) {
+        children[i].interfaces = [];
+        children[i].collapsibleState = vscode.TreeItemCollapsibleState.None;
+      }
+
+      // Inherit IP details and identity from the primary (0th) sub-container
+      const primary = children[0];
+      const namePrefix = primary.name.slice(0, primary.name.length - primary.name_short.length);
+      groupNode.name = namePrefix + rootName;
+      groupNode.name_short = rootName;
+      groupNode.state = primary.state;
+      groupNode.kind = primary.kind;
+      groupNode.image = primary.image;
+      groupNode.v4Address = primary.v4Address;
+      groupNode.v6Address = primary.v6Address;
+      groupNode.nodeType = primary.nodeType;
+      groupNode.nodeGroup = primary.nodeGroup;
+      groupNode.status = primary.status;
+      groupNode.tooltip = primary.tooltip;
+      groupNode.description = primary.description;
+
+      // Compute aggregate status description and icon from children
+      const { running, unhealthy } = this.getContainerHealthFromNodes(children);
+      const icon = this.determineIcon(children.length, running, unhealthy);
+      const iconUri = this.getResourceUri(icon);
+      groupNode.iconPath = { light: iconUri, dark: iconUri };
+
+      result.push(groupNode);
+    }
+
+    return result.sort((a, b) => String(a.label).localeCompare(String(b.label)));
   }
 
   private discoverContainerInterfaces(

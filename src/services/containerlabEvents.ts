@@ -474,6 +474,9 @@ function buildLabels(
   if (isString(attributes["clab-node-group"])) {
     labels["clab-node-group"] = attributes["clab-node-group"];
   }
+  if (isString(attributes["clab-root-node-name"])) {
+    labels["clab-root-node-name"] = attributes["clab-root-node-name"];
+  }
   return labels;
 }
 

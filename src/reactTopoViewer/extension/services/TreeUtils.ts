@@ -2,10 +2,11 @@
  * Tree utilities for finding containers and interfaces.
  */
 
-import type {
-  ClabLabTreeNode,
-  ClabContainerTreeNode,
-  ClabInterfaceTreeNode
+import {
+  type ClabLabTreeNode,
+  type ClabContainerTreeNode,
+  type ClabInterfaceTreeNode,
+  flattenContainers
 } from "../../../treeView/common";
 
 /**
@@ -23,7 +24,7 @@ export function findContainerNode(
     ? Object.values(labs).filter((l) => l.name === clabName)
     : Object.values(labs);
   for (const lab of labValues) {
-    const container = lab.containers?.find(
+    const container = flattenContainers(lab.containers).find(
       (c: ClabContainerTreeNode) => c.name === name || c.name_short === name || c.label === name
     );
     if (container) {
