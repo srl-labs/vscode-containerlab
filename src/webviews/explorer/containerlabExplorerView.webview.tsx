@@ -133,6 +133,7 @@ type ActionGroupId =
   | "copy"
   | "tools"
   | "view"
+  | "danger"
   | "other";
 
 type ExplorerNodeKind = "lab" | "container" | "interface" | "link" | "other";
@@ -169,7 +170,8 @@ const ACTION_GROUP_ORDER_DEFAULT: ActionGroupId[] = [
   "copy",
   "tools",
   "view",
-  "other"
+  "other",
+  "danger"
 ];
 
 const ACTION_GROUP_ORDER_BY_NODE_KIND: Record<ExplorerNodeKind, ActionGroupId[]> = {
@@ -185,7 +187,8 @@ const ACTION_GROUP_ORDER_BY_NODE_KIND: Record<ExplorerNodeKind, ActionGroupId[]>
     "copy",
     "view",
     "network",
-    "other"
+    "other",
+    "danger"
   ],
   container: [
     "lifecycle",
@@ -327,9 +330,12 @@ const ACTION_GROUP_RULES: ReadonlyArray<CommandActionGroupRule> = [
       command.includes("openfolder") ||
       command.includes("addtoworkspace") ||
       command.includes("togglefavorite") ||
-      command.includes("delete") ||
       command.includes("clonerepo"),
     group: "topology"
+  },
+  {
+    match: (command) => command.includes("delete"),
+    group: "danger"
   },
   {
     match: (command) =>
@@ -359,7 +365,8 @@ const ACTION_GROUP_SECTION_BY_NODE_KIND: Partial<
     access: 3,
     sharing: 3,
     inspect: 3,
-    tools: 3
+    tools: 3,
+    danger: 5
   },
   container: {
     lifecycle: 1,
@@ -556,6 +563,7 @@ function actionGroupLabel(groupId: ActionGroupId): string {
     copy: "Copy",
     tools: "Tools",
     view: "View",
+    danger: "Danger",
     other: "Other"
   };
   return labels[groupId];
@@ -574,6 +582,7 @@ function actionGroupIcon(groupId: ActionGroupId): SvgIconComponent {
     copy: ContentCopyIcon,
     tools: BuildIcon,
     view: FilterAltIcon,
+    danger: DeleteOutlineIcon,
     other: BuildIcon
   };
   return icons[groupId];
