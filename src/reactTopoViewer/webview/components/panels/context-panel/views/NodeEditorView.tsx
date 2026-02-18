@@ -1,5 +1,5 @@
 // Node editor content for the ContextPanel.
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 
 import { EditorPanel } from "../../../ui/editor/EditorPanel";
 import type { TabConfig } from "../../../ui/editor/EditorPanel";
@@ -21,6 +21,7 @@ export interface NodeEditorViewProps {
   nodeData: NodeEditorData | null;
   onSave: (data: NodeEditorData) => void;
   onApply: (data: NodeEditorData) => void;
+  onPreview?: (data: NodeEditorData) => void;
   inheritedProps?: string[];
   /** Disable editing, but keep scrolling and tab navigation available */
   readOnly?: boolean;
@@ -60,6 +61,7 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
   nodeData,
   onSave,
   onApply,
+  onPreview,
   inheritedProps = [],
   readOnly = false,
   onFooterRef
@@ -88,6 +90,11 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
     onSave,
     resetAfterApply
   );
+
+  useEffect(() => {
+    if (!formData || readOnly || !onPreview) return;
+    onPreview(formData);
+  }, [formData, readOnly, onPreview]);
 
   useFooterControlsRef(
     onFooterRef,

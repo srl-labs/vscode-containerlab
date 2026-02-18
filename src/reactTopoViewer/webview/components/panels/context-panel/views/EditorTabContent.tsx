@@ -63,6 +63,7 @@ export const EditorTabContent: React.FC<EditorTabContentProps> = ({
           nodeData={editingNodeData}
           onSave={nodeEditorHandlers.handleSave}
           onApply={nodeEditorHandlers.handleApply}
+          onPreview={nodeEditorHandlers.previewVisuals}
           inheritedProps={editingNodeInheritedProps}
           onFooterRef={onFooterRef}
           readOnly={isReadOnly}

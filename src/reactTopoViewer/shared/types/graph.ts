@@ -17,6 +17,9 @@ export interface TopologyNodeData {
   image?: string;
   iconColor?: string;
   iconCornerRadius?: number;
+  labelPosition?: string;
+  direction?: string;
+  labelBackgroundColor?: string;
   state?: string;
   mgmtIpv4Address?: string;
   mgmtIpv6Address?: string;
@@ -41,6 +44,9 @@ export interface NetworkNodeData {
     | "bridge"
     | "ovs-bridge"
     | string;
+  labelPosition?: string;
+  direction?: string;
+  labelBackgroundColor?: string;
   geoCoordinates?: { lat: number; lng: number };
   extraData?: Record<string, unknown>;
   [key: string]: unknown;

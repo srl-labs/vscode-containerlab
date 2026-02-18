@@ -200,6 +200,9 @@ interface TopologyAnnotations {
     group?: string;
     level?: string;
     icon?: string;
+    labelPosition?: string;
+    direction?: string;
+    labelBackgroundColor?: string;
   }>;
   freeTextAnnotations?: Array<{ id: string; text: string; position: { x: number; y: number } }>;
   freeShapeAnnotations?: Array<{

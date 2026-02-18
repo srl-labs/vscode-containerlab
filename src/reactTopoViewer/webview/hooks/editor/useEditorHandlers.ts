@@ -84,7 +84,42 @@ function updateNodeExtraData(data: NodeEditorData): Record<string, unknown> {
   if (data.iconCornerRadius !== undefined) {
     newExtraData.iconCornerRadius = data.iconCornerRadius;
   }
+  if (data.labelPosition !== undefined) {
+    newExtraData.labelPosition = data.labelPosition;
+  }
+  if (data.direction !== undefined) {
+    newExtraData.direction = data.direction;
+  }
+  if ("labelBackgroundColor" in data) {
+    newExtraData.labelBackgroundColor = data.labelBackgroundColor;
+  }
   return newExtraData;
+}
+
+function updateNodeVisualPreview(
+  nodeId: string,
+  labelPosition: string | undefined,
+  direction: string | undefined,
+  labelBackgroundColor: string | undefined
+): void {
+  const graphState = useGraphStore.getState();
+  const node = graphState.nodes.find((entry) => entry.id === nodeId);
+  if (!node) return;
+  const currentData = (node.data ?? {}) as Record<string, unknown>;
+  if (
+    currentData.labelPosition === labelPosition &&
+    currentData.direction === direction &&
+    currentData.labelBackgroundColor === labelBackgroundColor
+  ) {
+    return;
+  }
+  graphState.updateNode(nodeId, {
+    data: {
+      labelPosition,
+      direction,
+      labelBackgroundColor
+    }
+  });
 }
 
 function applyNodeChanges(
@@ -366,6 +401,15 @@ export function useNodeEditorHandlers(
   const initialDataRef = React.useRef<NodeEditorData | null>(null);
 
   React.useEffect(() => {
+    const previous = initialDataRef.current;
+    if (previous && previous.id !== editingNodeData?.id) {
+      updateNodeVisualPreview(
+        previous.id,
+        previous.labelPosition,
+        previous.direction,
+        previous.labelBackgroundColor
+      );
+    }
     if (editingNodeData) {
       initialDataRef.current = { ...editingNodeData };
     } else {
@@ -374,6 +418,15 @@ export function useNodeEditorHandlers(
   }, [editingNodeData?.id]);
 
   const handleClose = React.useCallback(() => {
+    const initialData = initialDataRef.current;
+    if (initialData) {
+      updateNodeVisualPreview(
+        initialData.id,
+        initialData.labelPosition,
+        initialData.direction,
+        initialData.labelBackgroundColor
+      );
+    }
     initialDataRef.current = null;
     editNode(null);
   }, [editNode]);
@@ -421,7 +474,18 @@ export function useNodeEditorHandlers(
     [persistDeps]
   );
 
-  return { handleClose, handleSave, handleApply };
+  const previewVisuals = React.useCallback((data: NodeEditorData) => {
+    const initialData = initialDataRef.current;
+    if (!initialData) return;
+    updateNodeVisualPreview(
+      initialData.id,
+      data.labelPosition,
+      data.direction,
+      data.labelBackgroundColor
+    );
+  }, []);
+
+  return { handleClose, handleSave, handleApply, previewVisuals };
 }
 
 // ============================================================================

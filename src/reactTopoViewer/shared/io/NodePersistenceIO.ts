@@ -80,6 +80,9 @@ export interface NodeAnnotationData {
   icon?: string;
   iconColor?: string;
   iconCornerRadius?: number;
+  labelPosition?: string | null;
+  direction?: string | null;
+  labelBackgroundColor?: string | null;
   /** Interface pattern for link creation - tracks template inheritance */
   interfacePattern?: string;
   /** Group ID for group membership */
@@ -522,6 +525,9 @@ export function applyAnnotationData(
     icon?: string;
     iconColor?: string;
     iconCornerRadius?: number;
+    labelPosition?: string;
+    direction?: string;
+    labelBackgroundColor?: string;
     interfacePattern?: string;
     groupId?: string;
   },
@@ -536,6 +542,21 @@ export function applyAnnotationData(
   if (data.icon) annotation.icon = data.icon;
   if (data.iconColor) annotation.iconColor = data.iconColor;
   if (data.iconCornerRadius !== undefined) annotation.iconCornerRadius = data.iconCornerRadius;
+  if (data.labelPosition === null) {
+    delete annotation.labelPosition;
+  } else if (data.labelPosition !== undefined) {
+    annotation.labelPosition = data.labelPosition;
+  }
+  if (data.direction === null) {
+    delete annotation.direction;
+  } else if (data.direction !== undefined) {
+    annotation.direction = data.direction;
+  }
+  if (data.labelBackgroundColor === null) {
+    delete annotation.labelBackgroundColor;
+  } else if (data.labelBackgroundColor !== undefined) {
+    annotation.labelBackgroundColor = data.labelBackgroundColor;
+  }
   if (data.interfacePattern) annotation.interfacePattern = data.interfacePattern;
   if (data.groupId) annotation.groupId = data.groupId;
 }
@@ -547,6 +568,9 @@ export function buildAnnotationProps(data?: NodeAnnotationData): Record<string, 
     ...(data.icon && { icon: data.icon }),
     ...(data.iconColor && { iconColor: data.iconColor }),
     ...(data.iconCornerRadius !== undefined && { iconCornerRadius: data.iconCornerRadius }),
+    ...(data.labelPosition !== undefined && { labelPosition: data.labelPosition }),
+    ...(data.direction !== undefined && { direction: data.direction }),
+    ...(data.labelBackgroundColor !== undefined && { labelBackgroundColor: data.labelBackgroundColor }),
     ...(data.interfacePattern && { interfacePattern: data.interfacePattern }),
     ...(data.groupId && { groupId: data.groupId })
   };

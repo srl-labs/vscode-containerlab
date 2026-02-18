@@ -202,6 +202,10 @@ export class TopologyIO {
               icon: nodeData.extraData.topoViewerRole as string | undefined,
               iconColor: nodeData.extraData.iconColor as string | undefined,
               iconCornerRadius: nodeData.extraData.iconCornerRadius as number | undefined,
+              labelPosition: nodeData.extraData.labelPosition as string | null | undefined,
+              direction: nodeData.extraData.direction as string | null | undefined,
+              labelBackgroundColor:
+                nodeData.extraData.labelBackgroundColor as string | null | undefined,
               interfacePattern: nodeData.extraData.interfacePattern as string | undefined,
               groupId: nodeData.extraData.groupId as string | undefined
             }
@@ -238,6 +242,9 @@ export class TopologyIO {
           icon: nodeData.extraData.topoViewerRole as string | undefined,
           iconColor: nodeData.extraData.iconColor as string | undefined,
           iconCornerRadius: nodeData.extraData.iconCornerRadius as number | undefined,
+          labelPosition: nodeData.extraData.labelPosition as string | null | undefined,
+          direction: nodeData.extraData.direction as string | null | undefined,
+          labelBackgroundColor: nodeData.extraData.labelBackgroundColor as string | null | undefined,
           interfacePattern: nodeData.extraData.interfacePattern as string | undefined
         };
         // Only save if there's actual annotation data to save
@@ -246,6 +253,9 @@ export class TopologyIO {
           annotationData.icon ||
           annotationData.iconColor ||
           annotationData.iconCornerRadius !== undefined ||
+          annotationData.labelPosition !== undefined ||
+          annotationData.direction !== undefined ||
+          annotationData.labelBackgroundColor !== undefined ||
           annotationData.interfacePattern
         ) {
           await this.saveNodeAnnotations(nodeId, annotationData);

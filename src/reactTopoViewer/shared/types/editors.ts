@@ -104,6 +104,9 @@ export interface NodeEditorData extends AdvancedNodeFields {
   icon?: string;
   iconColor?: string;
   iconCornerRadius?: number;
+  labelPosition?: string;
+  direction?: string;
+  labelBackgroundColor?: string;
   // Custom node settings
   customName?: string;
   baseName?: string;

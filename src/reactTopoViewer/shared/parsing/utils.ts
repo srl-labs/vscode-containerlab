@@ -40,10 +40,10 @@ export function isPresetLayout(parsed: ClabTopology, annotations?: TopologyAnnot
 }
 
 /**
- * Extracts icon visual properties from node annotation.
+ * Extracts node visual properties from node annotation.
  *
  * @param nodeAnn - The node annotation
- * @returns Object with iconColor and/or iconCornerRadius if present
+ * @returns Object with visual properties if present
  */
 export function extractIconVisuals(nodeAnn: NodeAnnotation | undefined): Record<string, unknown> {
   const visuals: Record<string, unknown> = {};
@@ -52,6 +52,15 @@ export function extractIconVisuals(nodeAnn: NodeAnnotation | undefined): Record<
   }
   if (typeof nodeAnn?.iconCornerRadius === "number") {
     visuals.iconCornerRadius = nodeAnn.iconCornerRadius;
+  }
+  if (typeof nodeAnn?.labelPosition === "string") {
+    visuals.labelPosition = nodeAnn.labelPosition;
+  }
+  if (typeof nodeAnn?.direction === "string") {
+    visuals.direction = nodeAnn.direction;
+  }
+  if (typeof nodeAnn?.labelBackgroundColor === "string") {
+    visuals.labelBackgroundColor = nodeAnn.labelBackgroundColor;
   }
   return visuals;
 }

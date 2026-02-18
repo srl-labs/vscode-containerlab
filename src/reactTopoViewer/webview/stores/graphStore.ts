@@ -180,6 +180,20 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
         if (extraData.iconCornerRadius !== undefined) {
           updatedData.iconCornerRadius = extraData.iconCornerRadius;
         }
+        if ("labelPosition" in extraData) {
+          updatedData.labelPosition =
+            typeof extraData.labelPosition === "string" ? extraData.labelPosition : undefined;
+        }
+        if ("direction" in extraData) {
+          updatedData.direction =
+            typeof extraData.direction === "string" ? extraData.direction : undefined;
+        }
+        if ("labelBackgroundColor" in extraData) {
+          updatedData.labelBackgroundColor =
+            typeof extraData.labelBackgroundColor === "string"
+              ? extraData.labelBackgroundColor
+              : undefined;
+        }
         return { ...node, data: updatedData };
       })
     }));
