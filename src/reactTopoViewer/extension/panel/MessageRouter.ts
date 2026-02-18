@@ -21,17 +21,21 @@ import {
   MSG_CUSTOM_NODE_ERROR,
   MSG_CUSTOM_NODE_UPDATED,
   MSG_ICON_LIST_RESPONSE,
-  MSG_LAB_LIFECYCLE_STATUS
+  MSG_LAB_LIFECYCLE_STATUS,
+  MSG_SVG_EXPORT_RESULT
 } from "../../shared/messages/webview";
 import type {
   CustomNodeCommand,
+  ExportCommand,
   IconCommand,
   InterfaceCommand,
   LifecycleCommand,
   NodeCommand
 } from "../../shared/messages/extension";
 import {
+  EXPORT_COMMANDS,
   isCustomNodeCommand,
+  isExportCommand,
   isIconCommand,
   isInterfaceCommand,
   isLifecycleCommand,
@@ -47,6 +51,14 @@ type WebviewMessage = Record<string, unknown> & {
   requestId?: string;
   endpointName?: string;
 };
+
+interface GrafanaBundleExportPayload {
+  requestId: string;
+  baseName: string;
+  svgContent: string;
+  dashboardJson: string;
+  panelYaml: string;
+}
 
 const TOPOLOGY_HOST_GET_SNAPSHOT = "topology-host:get-snapshot";
 const TOPOLOGY_HOST_COMMAND = "topology-host:command";
@@ -375,6 +387,135 @@ export class MessageRouter {
     return typeof message.name === "string" ? message.name : "";
   }
 
+  private sanitizeExportBaseName(baseName: string): string {
+    const trimmed = baseName.trim();
+    if (!trimmed) return "topology";
+    const withoutSvg = trimmed.replace(/\.svg$/i, "");
+    const invalidChars = new Set(["<", ">", ":", "\"", "/", "\\", "|", "?", "*"]);
+    const sanitized = withoutSvg
+      .split("")
+      .map((char) => (char.charCodeAt(0) < 32 || invalidChars.has(char) ? "-" : char))
+      .join("")
+      .trim();
+    return sanitized || "topology";
+  }
+
+  private postSvgExportResult(
+    panel: vscode.WebviewPanel,
+    payload: {
+      requestId: string;
+      success: boolean;
+      error?: string;
+      files?: string[];
+    }
+  ): void {
+    panel.webview.postMessage({
+      type: MSG_SVG_EXPORT_RESULT,
+      requestId: payload.requestId,
+      success: payload.success,
+      ...(payload.error ? { error: payload.error } : {}),
+      ...(payload.files ? { files: payload.files } : {})
+    });
+  }
+
+  private parseGrafanaBundlePayload(message: WebviewMessage): GrafanaBundleExportPayload | null {
+    const requestId = typeof message.requestId === "string" ? message.requestId.trim() : "";
+    const baseName = typeof message.baseName === "string" ? message.baseName : "topology";
+    const svgContent = typeof message.svgContent === "string" ? message.svgContent : "";
+    const dashboardJson = typeof message.dashboardJson === "string" ? message.dashboardJson : "";
+    const panelYaml = typeof message.panelYaml === "string" ? message.panelYaml : "";
+
+    if (!requestId || !svgContent || !dashboardJson || !panelYaml) {
+      return null;
+    }
+
+    return {
+      requestId,
+      baseName: this.sanitizeExportBaseName(baseName),
+      svgContent,
+      dashboardJson,
+      panelYaml
+    };
+  }
+
+  private async handleGrafanaBundleExport(
+    message: WebviewMessage,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
+    const payload = this.parseGrafanaBundlePayload(message);
+    const requestId = payload?.requestId ?? (typeof message.requestId === "string" ? message.requestId : "");
+    if (!payload) {
+      this.postSvgExportResult(panel, {
+        requestId,
+        success: false,
+        error: "Invalid SVG Grafana export payload"
+      });
+      return;
+    }
+
+    const yamlDir = this.context.yamlFilePath ? path.dirname(this.context.yamlFilePath) : undefined;
+    const defaultFile = `${payload.baseName}.svg`;
+    const defaultUri = yamlDir ? vscode.Uri.file(path.join(yamlDir, defaultFile)) : undefined;
+
+    try {
+      const selectedUri = await vscode.window.showSaveDialog({
+        title: "Export Grafana SVG Bundle",
+        saveLabel: "Export",
+        defaultUri,
+        filters: { SVG: ["svg"] }
+      });
+
+      if (!selectedUri) {
+        this.postSvgExportResult(panel, {
+          requestId: payload.requestId,
+          success: false,
+          error: "Export cancelled"
+        });
+        return;
+      }
+
+      const selectedPath = selectedUri.fsPath;
+      const basePath = selectedPath.toLowerCase().endsWith(".svg")
+        ? selectedPath.slice(0, -4)
+        : selectedPath;
+
+      const svgPath = `${basePath}.svg`;
+      const dashboardPath = `${basePath}.grafana.json`;
+      const panelPath = `${basePath}.flow_panel.yaml`;
+
+      await nodeFsAdapter.writeFile(svgPath, payload.svgContent);
+      await nodeFsAdapter.writeFile(dashboardPath, payload.dashboardJson);
+      await nodeFsAdapter.writeFile(panelPath, payload.panelYaml);
+
+      this.postSvgExportResult(panel, {
+        requestId: payload.requestId,
+        success: true,
+        files: [svgPath, dashboardPath, panelPath]
+      });
+      log.info(
+        `[MessageRouter] Exported Grafana SVG bundle: ${svgPath}, ${dashboardPath}, ${panelPath}`
+      );
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      this.postSvgExportResult(panel, {
+        requestId: payload.requestId,
+        success: false,
+        error
+      });
+      log.error(`[MessageRouter] Failed to export Grafana SVG bundle: ${error}`);
+    }
+  }
+
+  private async handleExportCommand(
+    command: ExportCommand,
+    message: WebviewMessage,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
+    if (command === EXPORT_COMMANDS.EXPORT_SVG_GRAFANA_BUNDLE) {
+      await this.handleGrafanaBundleExport(message, panel);
+    }
+  }
+
   private async handleNodeCommand(command: NodeCommand, message: WebviewMessage): Promise<void> {
     const yamlFilePath = this.getYamlFilePath(command);
     if (!yamlFilePath) return;
@@ -519,6 +660,11 @@ export class MessageRouter {
 
     if (isIconCommand(command)) {
       await this.handleIconCommand(command, message, panel);
+      return true;
+    }
+
+    if (isExportCommand(command)) {
+      await this.handleExportCommand(command, message, panel);
       return true;
     }
 

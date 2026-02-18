@@ -2,6 +2,7 @@
  * SelectField - Dropdown select
  */
 import React from "react";
+import Box from "@mui/material/Box";
 import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
@@ -14,6 +15,7 @@ import ClearIcon from "@mui/icons-material/Clear";
 export interface SelectOption {
   value: string;
   label: string;
+  icon?: React.ReactNode;
 }
 
 interface SelectFieldProps {
@@ -28,6 +30,31 @@ interface SelectFieldProps {
   helperText?: string;
   required?: boolean;
   clearable?: boolean;
+}
+
+const INLINE_FLEX_DISPLAY = "inline-flex";
+const INLINE_FLEX_ALIGN_SX = {
+  display: INLINE_FLEX_DISPLAY,
+  alignItems: "center"
+} as const;
+
+function renderOptionLabel(
+  label: string,
+  icon: React.ReactNode | undefined,
+  gap = 1
+): React.ReactElement {
+  if (!icon) {
+    return <span>{label}</span>;
+  }
+
+  return (
+    <Box sx={{ ...INLINE_FLEX_ALIGN_SX, gap }}>
+      <Box component="span" sx={INLINE_FLEX_ALIGN_SX}>
+        {icon}
+      </Box>
+      <span>{label}</span>
+    </Box>
+  );
 }
 
 export const SelectField: React.FC<SelectFieldProps> = ({
@@ -54,6 +81,15 @@ export const SelectField: React.FC<SelectFieldProps> = ({
         onChange={(e) => onChange(e.target.value)}
         label={label}
         displayEmpty={!!placeholder && !label}
+        renderValue={(selected): React.ReactElement => {
+          const selectedValue = String(selected);
+          const option = options.find((opt) => opt.value === selectedValue);
+          if (!option) {
+            return <span>{selectedValue}</span>;
+          }
+
+          return renderOptionLabel(option.label, option.icon, 0.75);
+        }}
         endAdornment={
           showClear ? (
             <InputAdornment position="end" sx={{ mr: 2 }}>
@@ -78,7 +114,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
         )}
         {options.map((opt) => (
           <MenuItem key={opt.value} value={opt.value}>
-            {opt.label}
+            {renderOptionLabel(opt.label, opt.icon)}
           </MenuItem>
         ))}
       </Select>

@@ -78,6 +78,9 @@ const NODE_FALLBACK_PROPS = [
   "topoViewerRole",
   "iconColor",
   "iconCornerRadius",
+  "labelPosition",
+  "direction",
+  "labelBackgroundColor",
   "interfacePattern"
 ] as const;
 

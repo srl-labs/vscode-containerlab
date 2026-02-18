@@ -21,18 +21,37 @@ import {
 /** Custom icons map type (icon name -> data URI) */
 export type CustomIconMap = Map<string, string>;
 
+export interface NodeSvgRenderOptions {
+  nodeIconSize?: number;
+}
+
 interface TopologyNodeData {
   label?: string;
   role?: string;
   iconColor?: string;
   iconCornerRadius?: number;
+  labelPosition?: string;
+  direction?: string;
+  labelBackgroundColor?: string;
   [key: string]: unknown;
 }
 
 interface NetworkNodeData {
   label?: string;
   nodeType?: string;
+  labelPosition?: string;
+  direction?: string;
+  labelBackgroundColor?: string;
   [key: string]: unknown;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function resolveNodeIconSize(nodeIconSize: number | undefined): number {
+  if (!Number.isFinite(nodeIconSize)) return NODE_ICON_SIZE;
+  return clamp(nodeIconSize as number, 12, 240);
 }
 
 // ============================================================================
@@ -90,15 +109,49 @@ function extractSvgContent(svgString: string, targetSize: number): string {
   return `<g transform="scale(${scale.toFixed(4)})">${inner}</g>`;
 }
 
+function normalizeNodeLabelPosition(value: unknown): "top" | "right" | "bottom" | "left" {
+  switch (value) {
+    case "top":
+    case "right":
+    case "left":
+      return value;
+    default:
+      return "bottom";
+  }
+}
+
+function getNodeDirectionRotation(value: unknown): number {
+  switch (value) {
+    case "up":
+      return 270;
+    case "right":
+      return 0;
+    case "down":
+      return 90;
+    case "left":
+      return 180;
+    default:
+      return 0;
+  }
+}
+
 // ============================================================================
 // Node Label Builder
 // ============================================================================
 
 /**
  * Build SVG for node label with background and text shadow
- * Positioned below the icon
+ * Positioned around the icon.
  */
-export function buildNodeLabelSvg(label: string, iconCenterX: number, iconBottomY: number): string {
+export function buildNodeLabelSvg(
+  label: string,
+  iconX: number,
+  iconY: number,
+  iconSize: number,
+  position?: string,
+  direction?: string,
+  labelBackgroundColor?: string
+): string {
   if (!label) return "";
 
   // Estimate text width (rough approximation)
@@ -106,13 +159,36 @@ export function buildNodeLabelSvg(label: string, iconCenterX: number, iconBottom
   const textWidth = Math.min(label.length * charWidth, NODE_LABEL.maxWidth);
   const bgWidth = textWidth + NODE_LABEL.paddingX * 2;
   const bgHeight = NODE_LABEL.fontSize + NODE_LABEL.paddingY * 2 + 2;
+  const iconCenterX = iconX + iconSize / 2;
+  const iconCenterY = iconY + iconSize / 2;
+  const gap = NODE_LABEL.marginTop;
+  const textRotation = getNodeDirectionRotation(direction);
+  const isVerticalText = textRotation === 90 || textRotation === 270;
+  const verticalGap = gap + (isVerticalText ? 2 : 0);
+  const sideOverlap = isVerticalText ? 2 : 6;
 
-  // Position label centered below icon
-  const labelY = iconBottomY + NODE_LABEL.marginTop;
-  const bgX = iconCenterX - bgWidth / 2;
-  const bgY = labelY;
-  const textX = iconCenterX;
-  const textY = labelY + NODE_LABEL.paddingY + NODE_LABEL.fontSize * 0.8;
+  const resolvedPosition = normalizeNodeLabelPosition(position);
+
+  let bgX = iconCenterX - bgWidth / 2;
+  let bgY = iconY + iconSize + verticalGap;
+
+  switch (resolvedPosition) {
+    case "top":
+      bgY = iconY - bgHeight - verticalGap;
+      break;
+    case "right":
+      bgX = iconX + iconSize - sideOverlap;
+      bgY = iconCenterY - bgHeight / 2;
+      break;
+    case "left":
+      bgX = iconX - bgWidth + sideOverlap;
+      bgY = iconCenterY - bgHeight / 2;
+      break;
+  }
+
+  const textX = bgX + bgWidth / 2;
+  const textY = bgY + NODE_LABEL.paddingY + NODE_LABEL.fontSize * 0.8;
+  const textCenterY = bgY + bgHeight / 2;
 
   // Truncate label if too long
   let displayLabel = label;
@@ -122,19 +198,31 @@ export function buildNodeLabelSvg(label: string, iconCenterX: number, iconBottom
   }
 
   let svg = "";
+  if (textRotation !== 0) {
+    svg += `<g transform="rotate(${textRotation} ${textX} ${textCenterY})">`;
+  }
 
+  const bgColor =
+    typeof labelBackgroundColor === "string" && labelBackgroundColor.trim().length > 0
+      ? labelBackgroundColor.trim()
+      : NODE_LABEL.backgroundColor;
   // Background rect
   svg += `<rect x="${bgX}" y="${bgY}" width="${bgWidth}" height="${bgHeight}" `;
-  svg += `fill="${NODE_LABEL.backgroundColor}" rx="${NODE_LABEL.borderRadius}" ry="${NODE_LABEL.borderRadius}"/>`;
+  svg += `fill="${bgColor}" rx="${NODE_LABEL.borderRadius}" ry="${NODE_LABEL.borderRadius}"/>`;
 
   // Label text with shadow filter
   svg += `<text x="${textX}" y="${textY}" `;
   svg += `font-size="${NODE_LABEL.fontSize}" font-weight="${NODE_LABEL.fontWeight}" `;
   svg += `font-family="system-ui, -apple-system, sans-serif" `;
   svg += `fill="${NODE_LABEL.color}" text-anchor="middle" `;
+  svg += `stroke="${NODE_LABEL.textStrokeColor}" stroke-width="${NODE_LABEL.textStrokeWidth}" `;
+  svg += `paint-order="stroke" stroke-linejoin="round" `;
   svg += `filter="url(#text-shadow)">`;
   svg += escapeXml(displayLabel);
   svg += `</text>`;
+  if (textRotation !== 0) {
+    svg += `</g>`;
+  }
 
   return svg;
 }
@@ -146,14 +234,21 @@ export function buildNodeLabelSvg(label: string, iconCenterX: number, iconBottom
 /**
  * Render a topology node (router, switch, etc.) to SVG
  */
-export function topologyNodeToSvg(node: Node, customIconMap?: CustomIconMap): string {
+export function topologyNodeToSvg(
+  node: Node,
+  customIconMap?: CustomIconMap,
+  nodeIconSize: number = NODE_ICON_SIZE
+): string {
   const data = node.data as TopologyNodeData;
+  const iconSize = resolveNodeIconSize(nodeIconSize);
   const x = node.position.x;
   const y = node.position.y;
   const label = data.label ?? node.id;
   const role = data.role ?? "pe";
   const iconColor = data.iconColor ?? DEFAULT_ICON_COLOR;
   const cornerRadius = data.iconCornerRadius ?? NODE_ICON_RADIUS;
+  const labelPosition = data.labelPosition;
+  const directionRotation = getNodeDirectionRotation(data.direction);
 
   // Check for custom icon first
   let iconSvgContent = "";
@@ -162,31 +257,40 @@ export function topologyNodeToSvg(node: Node, customIconMap?: CustomIconMap): st
   if (customDataUri) {
     // Custom icon - decode and embed
     const svgString = decodeSvgDataUri(customDataUri);
-    iconSvgContent = extractSvgContent(svgString, NODE_ICON_SIZE);
+    iconSvgContent = extractSvgContent(svgString, iconSize);
   } else {
     // Built-in icon
     const svgType = getRoleSvgType(role) as NodeType;
     const dataUri = generateEncodedSVG(svgType, iconColor);
     const svgString = decodeSvgDataUri(dataUri);
-    iconSvgContent = extractSvgContent(svgString, NODE_ICON_SIZE);
+    iconSvgContent = extractSvgContent(svgString, iconSize);
   }
 
-  const iconCenterX = x + NODE_ICON_SIZE / 2;
-  const iconBottomY = y + NODE_ICON_SIZE;
-
   let svg = `<g class="export-node topology-node" data-id="${escapeXml(node.id)}">`;
+  const centerX = x + iconSize / 2;
+  const centerY = y + iconSize / 2;
+  svg += `<g transform="rotate(${directionRotation} ${centerX} ${centerY})">`;
 
   // Background rect with fill color (rendered by the icon's st0 class)
-  svg += `<rect x="${x}" y="${y}" width="${NODE_ICON_SIZE}" height="${NODE_ICON_SIZE}" `;
+  svg += `<rect x="${x}" y="${y}" width="${iconSize}" height="${iconSize}" `;
   svg += `rx="${cornerRadius}" ry="${cornerRadius}" fill="${iconColor}"/>`;
 
   // Icon content (transformed to fit)
   svg += `<g transform="translate(${x}, ${y})" style="color: ${iconColor}">`;
   svg += iconSvgContent;
   svg += `</g>`;
+  svg += `</g>`;
 
   // Label
-  svg += buildNodeLabelSvg(label, iconCenterX, iconBottomY);
+  svg += buildNodeLabelSvg(
+    label,
+    x,
+    y,
+    iconSize,
+    labelPosition,
+    data.direction,
+    data.labelBackgroundColor
+  );
 
   svg += `</g>`;
   return svg;
@@ -200,35 +304,47 @@ export function topologyNodeToSvg(node: Node, customIconMap?: CustomIconMap): st
  * Render a network node (host, mgmt-net, etc.) to SVG
  * Network nodes use the cloud icon with type-based colors
  */
-export function networkNodeToSvg(node: Node): string {
+export function networkNodeToSvg(node: Node, nodeIconSize: number = NODE_ICON_SIZE): string {
   const data = node.data as NetworkNodeData;
+  const iconSize = resolveNodeIconSize(nodeIconSize);
   const x = node.position.x;
   const y = node.position.y;
   const label = data.label ?? node.id;
   const nodeType = data.nodeType ?? "host";
   const iconColor = getNetworkTypeColor(nodeType);
+  const labelPosition = data.labelPosition;
+  const directionRotation = getNodeDirectionRotation(data.direction);
 
   // Generate cloud icon
   const dataUri = generateEncodedSVG("cloud", iconColor);
   const svgString = decodeSvgDataUri(dataUri);
-  const iconSvgContent = extractSvgContent(svgString, NODE_ICON_SIZE);
-
-  const iconCenterX = x + NODE_ICON_SIZE / 2;
-  const iconBottomY = y + NODE_ICON_SIZE;
+  const iconSvgContent = extractSvgContent(svgString, iconSize);
 
   let svg = `<g class="export-node network-node" data-id="${escapeXml(node.id)}">`;
+  const centerX = x + iconSize / 2;
+  const centerY = y + iconSize / 2;
+  svg += `<g transform="rotate(${directionRotation} ${centerX} ${centerY})">`;
 
   // Background rect
-  svg += `<rect x="${x}" y="${y}" width="${NODE_ICON_SIZE}" height="${NODE_ICON_SIZE}" `;
+  svg += `<rect x="${x}" y="${y}" width="${iconSize}" height="${iconSize}" `;
   svg += `rx="${NODE_ICON_RADIUS}" ry="${NODE_ICON_RADIUS}" fill="${iconColor}"/>`;
 
   // Icon content
   svg += `<g transform="translate(${x}, ${y})" style="color: ${iconColor}">`;
   svg += iconSvgContent;
   svg += `</g>`;
+  svg += `</g>`;
 
   // Label (network nodes use slightly smaller font)
-  svg += buildNodeLabelSvg(label, iconCenterX, iconBottomY);
+  svg += buildNodeLabelSvg(
+    label,
+    x,
+    y,
+    iconSize,
+    labelPosition,
+    data.direction,
+    data.labelBackgroundColor
+  );
 
   svg += `</g>`;
   return svg;
@@ -245,8 +361,10 @@ export function networkNodeToSvg(node: Node): string {
 export function renderNodesToSvg(
   nodes: Node[],
   customIconMap?: CustomIconMap,
-  annotationNodeTypes?: Set<string>
+  annotationNodeTypes?: Set<string>,
+  renderOptions?: NodeSvgRenderOptions
 ): string {
+  const nodeIconSize = resolveNodeIconSize(renderOptions?.nodeIconSize);
   const skipTypes =
     annotationNodeTypes ??
     new Set(["free-text-annotation", "free-shape-annotation", "group-annotation"]);
@@ -261,9 +379,9 @@ export function renderNodesToSvg(
 
     // Render based on node type
     if (nodeType === "network-node") {
-      svg += networkNodeToSvg(node);
+      svg += networkNodeToSvg(node, nodeIconSize);
     } else {
-      svg += topologyNodeToSvg(node, customIconMap);
+      svg += topologyNodeToSvg(node, customIconMap, nodeIconSize);
     }
   }
 

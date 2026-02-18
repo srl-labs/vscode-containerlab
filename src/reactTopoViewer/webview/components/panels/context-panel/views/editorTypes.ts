@@ -27,6 +27,7 @@ export interface ContextPanelEditorState {
     handleClose: () => void;
     handleSave: (data: NodeEditorData) => void;
     handleApply: (data: NodeEditorData) => void;
+    previewVisuals: (data: NodeEditorData) => void;
     handleDelete?: () => void;
   };
   editingLinkData: LinkEditorData | null;

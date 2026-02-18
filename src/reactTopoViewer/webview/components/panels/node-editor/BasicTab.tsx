@@ -1,10 +1,22 @@
 // Basic tab for node editor.
 import React, { useState, useMemo, useCallback, useEffect } from "react";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Typography from "@mui/material/Typography";
+import { Box, Button, Typography } from "@mui/material";
+import {
+  RotateLeft as RotateLeftIcon,
+  RotateRight as RotateRightIcon,
+  SwapHoriz as SwapHorizIcon,
+  SyncAlt as SyncAltIcon
+} from "@mui/icons-material";
 
-import { InputField, FilterableDropdown, IconPreview, PanelSection } from "../../ui/form";
+import {
+  InputField,
+  FilterableDropdown,
+  IconPreview,
+  PanelSection,
+  SelectField,
+  ColorField,
+  CheckboxField
+} from "../../ui/form";
 import { IconSelectorModal } from "../../ui/IconSelectorModal";
 import type { NodeType } from "../../../icons/SvgGenerator";
 import { generateEncodedSVG } from "../../../icons/SvgGenerator";
@@ -32,6 +44,20 @@ const ICON_OPTIONS = [
   { value: "ue", label: "User Equipment" },
   { value: "cloud", label: "Cloud" },
   { value: "client", label: "Client" }
+];
+
+const NODE_LABEL_POSITION_OPTIONS = [
+  { value: "bottom", label: "Bottom" },
+  { value: "top", label: "Top" },
+  { value: "left", label: "Left" },
+  { value: "right", label: "Right" }
+];
+
+const NODE_DIRECTION_OPTIONS = [
+  { value: "right", label: "Horizontal", icon: <SwapHorizIcon fontSize="small" /> },
+  { value: "down", label: "Rotate text 90deg", icon: <RotateRightIcon fontSize="small" /> },
+  { value: "left", label: "Rotate text 180deg", icon: <SyncAltIcon fontSize="small" /> },
+  { value: "up", label: "Rotate text 270deg", icon: <RotateLeftIcon fontSize="small" /> }
 ];
 
 /**
@@ -346,6 +372,45 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   );
 };
 
+const LabelAndDirectionFields: React.FC<TabProps> = ({ data, onChange }) => {
+  const isTransparent = data.labelBackgroundColor?.trim().toLowerCase() === "transparent";
+  const pickerColor = !isTransparent && data.labelBackgroundColor ? data.labelBackgroundColor : "#000000";
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+        <SelectField
+          id="node-label-position"
+          label="Label Position"
+          value={data.labelPosition ?? "bottom"}
+          onChange={(value) => onChange({ labelPosition: value })}
+          options={NODE_LABEL_POSITION_OPTIONS}
+        />
+      <SelectField
+        id="node-direction"
+        label="Label Text Direction"
+        value={data.direction ?? "right"}
+        onChange={(value) => onChange({ direction: value })}
+        options={NODE_DIRECTION_OPTIONS}
+      />
+      </Box>
+      <ColorField
+        id="node-label-bg-color"
+        label="Label Background"
+        value={pickerColor}
+        onChange={(value) => onChange({ labelBackgroundColor: value })}
+        disabled={isTransparent}
+      />
+      <CheckboxField
+        id="node-label-bg-transparent"
+        label="Transparent"
+        checked={isTransparent}
+        onChange={(checked) => onChange({ labelBackgroundColor: checked ? "transparent" : "" })}
+      />
+    </Box>
+  );
+};
+
 export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => {
   // Get schema data (kinds and types)
   const { kinds, getTypesForKind, kindSupportsType, isLoaded } = useSchema();
@@ -426,6 +491,12 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
       <PanelSection title="Icon" bodySx={{ p: 2 }}>
         <IconField data={data} onChange={onChange} />
       </PanelSection>
+
+      {!data.isCustomTemplate && (
+        <PanelSection title="Label & Direction" bodySx={{ p: 2 }}>
+          <LabelAndDirectionFields data={data} onChange={onChange} />
+        </PanelSection>
+      )}
     </Box>
   );
 };

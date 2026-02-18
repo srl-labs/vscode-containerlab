@@ -34,6 +34,8 @@ export const MSG_ICON_LIST_RESPONSE = "icon-list-response";
 export const MSG_LAB_LIFECYCLE_STATUS = "lab-lifecycle-status";
 export const MSG_LAB_LIFECYCLE_LOG = "lab-lifecycle-log";
 
+export const MSG_SVG_EXPORT_RESULT = "svg-export-result";
+
 export type WebviewMessageType =
   | typeof MSG_TOPOLOGY_DATA
   | typeof MSG_EDGE_STATS_UPDATE
@@ -47,4 +49,5 @@ export type WebviewMessageType =
   | typeof MSG_CUSTOM_NODE_ERROR
   | typeof MSG_ICON_LIST_RESPONSE
   | typeof MSG_LAB_LIFECYCLE_STATUS
-  | typeof MSG_LAB_LIFECYCLE_LOG;
+  | typeof MSG_LAB_LIFECYCLE_LOG
+  | typeof MSG_SVG_EXPORT_RESULT;

@@ -18,7 +18,17 @@ function parseBasicProps(
   extra: Record<string, unknown>
 ): Pick<
   NodeEditorData,
-  "id" | "name" | "kind" | "type" | "image" | "icon" | "iconColor" | "iconCornerRadius"
+  | "id"
+  | "name"
+  | "kind"
+  | "type"
+  | "image"
+  | "icon"
+  | "iconColor"
+  | "iconCornerRadius"
+  | "labelPosition"
+  | "direction"
+  | "labelBackgroundColor"
 > {
   return {
     id: (rawData.id as string) || "",
@@ -30,7 +40,13 @@ function parseBasicProps(
     // ReactFlow node data uses "role", parsed element format uses "topoViewerRole"
     icon: (rawData.role as string) || (rawData.topoViewerRole as string) || "",
     iconColor: rawData.iconColor as string | undefined,
-    iconCornerRadius: rawData.iconCornerRadius as number | undefined
+    iconCornerRadius: rawData.iconCornerRadius as number | undefined,
+    labelPosition:
+      (rawData.labelPosition as string | undefined) || (extra.labelPosition as string | undefined),
+    direction: (rawData.direction as string | undefined) || (extra.direction as string | undefined),
+    labelBackgroundColor:
+      (rawData.labelBackgroundColor as string | undefined) ||
+      (extra.labelBackgroundColor as string | undefined)
   };
 }
 
@@ -580,6 +596,35 @@ export function convertEditorDataToYaml(data: Record<string, unknown>): YamlExtr
 // NodeEditorData -> NodeSaveData (for TopologyIO service)
 // ============================================================================
 
+function mapDefaultToNull(
+  value: string | undefined,
+  defaultValue: string
+): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return value === defaultValue ? null : value;
+}
+
+function normalizeLabelBackgroundColor(value: string | undefined): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const trimmedValue = value.trim();
+  if (trimmedValue === "") {
+    return null;
+  }
+
+  const normalizedValue = trimmedValue.replace(/\s+/g, "").toLowerCase();
+  if (normalizedValue === "rgba(0,0,0,0.7)") {
+    return null;
+  }
+
+  return trimmedValue;
+}
+
 /**
  * Convert NodeEditorData to NodeSaveData format for TopologyIO.
  * This is used when saving node editor changes via the services.
@@ -593,15 +638,21 @@ export function convertEditorDataToNodeSaveData(
   oldName?: string
 ): NodeSaveData {
   const yamlExtraData = convertEditorDataToYaml(data as unknown as Record<string, unknown>);
+  const labelPosition = mapDefaultToNull(data.labelPosition, "bottom");
+  const direction = mapDefaultToNull(data.direction, "right");
+  const labelBackgroundColor = normalizeLabelBackgroundColor(data.labelBackgroundColor);
 
-  // Build the extraData with annotation props (icon, iconColor, iconCornerRadius, interfacePattern)
+  // Build the extraData with annotation props.
   const extraData: NodeSaveData["extraData"] = {
     ...yamlExtraData,
     // Annotation properties (saved to annotations.json, not YAML)
     topoViewerRole: data.icon,
     iconColor: data.iconColor,
     iconCornerRadius: data.iconCornerRadius,
-    interfacePattern: data.interfacePattern
+    interfacePattern: data.interfacePattern,
+    labelPosition,
+    direction,
+    labelBackgroundColor
   };
 
   const saveData: NodeSaveData = {

@@ -70,7 +70,9 @@ async function selectMuiOption(page: Page, fieldId: string, optionName: string):
   const select = page.locator(`#${fieldId}`);
   await expect(select).toBeVisible({ timeout: 3000 });
   await select.click({ force: true });
-  const option = page.getByRole("option", { name: optionName }).first();
+  const listbox = page.getByRole("listbox").first();
+  await expect(listbox).toBeVisible({ timeout: 3000 });
+  const option = listbox.getByRole("option", { name: optionName }).first();
   await expect(option).toBeVisible({ timeout: 3000 });
   await option.click();
   await page.waitForTimeout(200);
@@ -151,6 +153,42 @@ test.describe("Node Editor Persistence", () => {
 
     // Verify kind is still set
     await expect(page.locator(SEL_KIND_FIELD)).toHaveValue(TEST_KIND);
+  });
+
+  test("node label position and direction persist to annotations", async ({
+    page,
+    topoViewerPage
+  }) => {
+    const nodeIds = await topoViewerPage.getNodeIds();
+    expect(nodeIds.length).toBeGreaterThan(0);
+    const nodeId = nodeIds[0];
+
+    await openNodeEditor(page, nodeId);
+    await navigateToTab(page, TAB.BASIC);
+
+    await selectMuiOption(page, "node-label-position", "Top");
+    await selectMuiOption(page, "node-direction", "Rotate text 90deg");
+    await setCheckbox(page, "node-label-bg-transparent", true);
+
+    await page.locator(SEL_APPLY_BTN).click();
+    await expect
+      .poll(
+        async () => {
+          const annotations = await topoViewerPage.getAnnotationsFromFile(TEST_TOPOLOGY);
+          const nodeAnnotation = annotations.nodeAnnotations?.find((entry) => entry.id === nodeId);
+          return `${nodeAnnotation?.labelPosition ?? ""}|${nodeAnnotation?.direction ?? ""}|${nodeAnnotation?.labelBackgroundColor ?? ""}`;
+        },
+        { timeout: 5000 }
+      )
+      .toBe("top|down|transparent");
+
+    await returnToPalette(page);
+    await openNodeEditor(page, nodeId);
+    await navigateToTab(page, TAB.BASIC);
+
+    await expect(page.locator("#node-label-position")).toContainText("Top");
+    await expect(page.locator("#node-direction")).toContainText("Rotate text 90deg");
+    await expect(page.locator("#node-label-bg-transparent")).toBeChecked();
   });
 
   test("startup-config field persists to YAML", async ({ page, topoViewerPage }) => {

@@ -196,16 +196,7 @@ export class TopologyIO {
       // Save position and annotation data to annotations if provided
       const nodeId = nodeData.name || nodeData.id;
       if (nodeData.position && nodeId) {
-        const annotationData: NodeAnnotationData | undefined = nodeData.extraData
-          ? {
-              label: nodeData.extraData.label as string | null | undefined,
-              icon: nodeData.extraData.topoViewerRole as string | undefined,
-              iconColor: nodeData.extraData.iconColor as string | undefined,
-              iconCornerRadius: nodeData.extraData.iconCornerRadius as number | undefined,
-              interfacePattern: nodeData.extraData.interfacePattern as string | undefined,
-              groupId: nodeData.extraData.groupId as string | undefined
-            }
-          : undefined;
+        const annotationData = this.buildNodeAnnotationData(nodeData.extraData, true);
         await this.saveNodePosition(nodeId, nodeData.position, annotationData);
       }
     }
@@ -222,37 +213,60 @@ export class TopologyIO {
 
     const topoObj = this.doc.toJS() as ClabTopology;
     const result = editNodeInDoc(this.doc, nodeData, topoObj, this.logger);
-    if (result.success) {
-      await this.saveMaybeDeferred();
+    if (!result.success) return result;
 
-      // If node was renamed, update annotations
-      if (result.renamed) {
-        await this.renameNodeAnnotations(result.renamed.oldId, result.renamed.newId);
-      }
-
-      // Save icon/annotation data if provided
-      const nodeId = result.renamed?.newId || nodeData.name || nodeData.id;
-      if (nodeData.extraData && nodeId) {
-        const annotationData: NodeAnnotationData = {
-          label: nodeData.extraData.label as string | null | undefined,
-          icon: nodeData.extraData.topoViewerRole as string | undefined,
-          iconColor: nodeData.extraData.iconColor as string | undefined,
-          iconCornerRadius: nodeData.extraData.iconCornerRadius as number | undefined,
-          interfacePattern: nodeData.extraData.interfacePattern as string | undefined
-        };
-        // Only save if there's actual annotation data to save
-        if (
-          annotationData.label !== undefined ||
-          annotationData.icon ||
-          annotationData.iconColor ||
-          annotationData.iconCornerRadius !== undefined ||
-          annotationData.interfacePattern
-        ) {
-          await this.saveNodeAnnotations(nodeId, annotationData);
-        }
-      }
+    await this.saveMaybeDeferred();
+    if (result.renamed) {
+      await this.renameNodeAnnotations(result.renamed.oldId, result.renamed.newId);
     }
+    await this.persistEditedNodeAnnotations(nodeData, result.renamed);
     return result;
+  }
+
+  private buildNodeAnnotationData(
+    extraData: NodeSaveData["extraData"],
+    includeGroupId = false
+  ): NodeAnnotationData | undefined {
+    if (!extraData) return undefined;
+    return {
+      label: extraData.label as string | null | undefined,
+      icon: extraData.topoViewerRole as string | undefined,
+      iconColor: extraData.iconColor as string | undefined,
+      iconCornerRadius: extraData.iconCornerRadius as number | undefined,
+      labelPosition: extraData.labelPosition as string | null | undefined,
+      direction: extraData.direction as string | null | undefined,
+      labelBackgroundColor: extraData.labelBackgroundColor as string | null | undefined,
+      interfacePattern: extraData.interfacePattern as string | undefined,
+      groupId: includeGroupId ? (extraData.groupId as string | undefined) : undefined
+    };
+  }
+
+  private hasPersistableAnnotationData(
+    annotationData: NodeAnnotationData | undefined
+  ): annotationData is NodeAnnotationData {
+    if (!annotationData) return false;
+    return (
+      annotationData.label !== undefined ||
+      Boolean(annotationData.icon) ||
+      Boolean(annotationData.iconColor) ||
+      annotationData.iconCornerRadius !== undefined ||
+      annotationData.labelPosition !== undefined ||
+      annotationData.direction !== undefined ||
+      annotationData.labelBackgroundColor !== undefined ||
+      Boolean(annotationData.interfacePattern)
+    );
+  }
+
+  private async persistEditedNodeAnnotations(
+    nodeData: NodeSaveData,
+    renamed?: { oldId: string; newId: string }
+  ): Promise<void> {
+    const nodeId = renamed?.newId || nodeData.name || nodeData.id;
+    if (!nodeId) return;
+
+    const annotationData = this.buildNodeAnnotationData(nodeData.extraData);
+    if (!this.hasPersistableAnnotationData(annotationData)) return;
+    await this.saveNodeAnnotations(nodeId, annotationData);
   }
 
   /**

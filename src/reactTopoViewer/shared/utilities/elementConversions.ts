@@ -67,6 +67,9 @@ export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
     const networkNodeData: NetworkNodeData = {
       label: getNodeLabel(data),
       nodeType: role as NetworkNodeData["nodeType"],
+      labelPosition: data.labelPosition as string | undefined,
+      direction: data.direction as string | undefined,
+      labelBackgroundColor: data.labelBackgroundColor as string | undefined,
       ...(geoCoordinates ? { geoCoordinates } : {}),
       extraData: extraData
     };
@@ -87,6 +90,9 @@ export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
     image: extraData.image as string | undefined,
     iconColor: data.iconColor as string | undefined,
     iconCornerRadius: data.iconCornerRadius as number | undefined,
+    labelPosition: data.labelPosition as string | undefined,
+    direction: data.direction as string | undefined,
+    labelBackgroundColor: data.labelBackgroundColor as string | undefined,
     state: extraData.state as string | undefined,
     mgmtIpv4Address: extraData.mgmtIpv4Address as string | undefined,
     mgmtIpv6Address: extraData.mgmtIpv6Address as string | undefined,
@@ -181,6 +187,9 @@ export function topoNodeToParsedElement(node: TopoNode): ParsedElement {
       topoViewerRole: data.role ?? data.nodeType ?? "pe",
       iconColor: data.iconColor,
       iconCornerRadius: data.iconCornerRadius,
+      labelPosition: data.labelPosition,
+      direction: data.direction,
+      labelBackgroundColor: data.labelBackgroundColor,
       lat,
       lng,
       extraData: data.extraData ?? {}

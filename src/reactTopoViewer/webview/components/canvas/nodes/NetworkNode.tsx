@@ -13,7 +13,7 @@ import {
   useEasterEggGlow
 } from "../../../stores/canvasStore";
 
-import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE } from "./nodeStyles";
+import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE, getNodeDirectionRotation } from "./nodeStyles";
 
 /**
  * Get icon color based on node type
@@ -50,11 +50,12 @@ const HANDLE_POSITIONS = [
  */
 const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = data as NetworkNodeData;
-  const { label, nodeType } = nodeData;
+  const { label, nodeType, labelPosition, direction, labelBackgroundColor } = nodeData;
   const { linkSourceNode } = useLinkCreationContext();
   const { suppressLabels } = useNodeRenderConfig();
   const easterEggGlow = useEasterEggGlow();
   const [isHovered, setIsHovered] = useState(false);
+  const directionRotation = useMemo(() => getNodeDirectionRotation(direction), [direction]);
 
   // Check if this node is a valid link target (in link creation mode and not the source node)
   // Network nodes do not support loop/self-referencing links
@@ -121,10 +122,22 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     backgroundRepeat: "no-repeat",
     backgroundColor: "var(--topoviewer-network-node-background)",
     borderRadius: 4,
+    transform: directionRotation !== 0 ? `rotate(${directionRotation}deg)` : undefined,
     ...getOutlineStyle()
   };
 
-  const labelStyle = useMemo(() => buildNodeLabelStyle({ marginTop: 4, fontSize: "0.65rem" }), []);
+  const labelStyle = useMemo(
+    () =>
+      buildNodeLabelStyle({
+        position: labelPosition,
+        direction,
+        backgroundColor: labelBackgroundColor,
+        iconSize: ICON_SIZE,
+        fontSize: "0.65rem",
+        maxWidth: 110
+      }),
+    [labelPosition, direction, labelBackgroundColor]
+  );
 
   return (
     <div

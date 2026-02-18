@@ -8,6 +8,7 @@ import type { NetworkNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 
 import { ICON_SIZE, LiteNodeShell } from "./NodeLiteBase";
+import { getNodeDirectionRotation } from "./nodeStyles";
 
 function getNodeTypeColor(nodeType: string): string {
   switch (nodeType) {
@@ -30,12 +31,14 @@ function getNodeTypeColor(nodeType: string): string {
 const NetworkNodeLiteComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const nodeData = data as NetworkNodeData;
   const color = getNodeTypeColor(nodeData.nodeType);
+  const rotation = getNodeDirectionRotation(nodeData.direction);
 
   const iconStyle: React.CSSProperties = {
     width: ICON_SIZE,
     height: ICON_SIZE,
     backgroundColor: color,
     borderRadius: 4,
+    transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
     outline: selected ? `2px solid ${SELECTION_COLOR}` : "none",
     outlineOffset: 1
   };

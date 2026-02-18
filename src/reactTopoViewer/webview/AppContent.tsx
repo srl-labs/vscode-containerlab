@@ -885,6 +885,7 @@ export const AppContent: React.FC<AppContentProps> = ({
                 handleClose: nodeEditorHandlers.handleClose,
                 handleSave: nodeEditorHandlers.handleSave,
                 handleApply: nodeEditorHandlers.handleApply,
+                previewVisuals: nodeEditorHandlers.previewVisuals,
                 handleDelete: selectionData.editingNodeData
                   ? () => graphHandlers.handleDeleteNode(selectionData.editingNodeData!.id)
                   : undefined

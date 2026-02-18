@@ -23,6 +23,7 @@ import { getCustomIconMap } from "../../../utils/iconUtils";
 import {
   buildNodeLabelStyle,
   HIDDEN_HANDLE_STYLE,
+  getNodeDirectionRotation,
   getNodeRuntimeBadgeState,
   type NodeRuntimeBadgeState
 } from "./nodeStyles";
@@ -35,8 +36,6 @@ function getRoleSvgType(role: string): NodeType {
   if (mapped) return mapped as NodeType;
   return "pe"; // Default to PE router icon
 }
-
-const LABEL_STYLE = buildNodeLabelStyle({ marginTop: -2, fontSize: "0.7rem" });
 
 // Icon style constants
 const ICON_SIZE = 40;
@@ -120,12 +119,22 @@ const SELECTED_OUTLINE = `2px solid ${SELECTION_COLOR}`;
  */
 const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const nodeData = data as TopologyNodeData;
-  const { label, role, iconColor, iconCornerRadius, state } = nodeData;
+  const {
+    label,
+    role,
+    iconColor,
+    iconCornerRadius,
+    state,
+    labelPosition,
+    direction,
+    labelBackgroundColor
+  } = nodeData;
   const { linkSourceNode } = useLinkCreationContext();
   const { suppressLabels } = useNodeRenderConfig();
   const easterEggGlow = useEasterEggGlow();
   const customIcons = useCustomIcons();
   const deploymentState = useDeploymentState();
+  const directionRotation = useMemo(() => getNodeDirectionRotation(direction), [direction]);
 
   // Check if this node is a valid link target (in link creation mode)
   const isLinkTarget = linkSourceNode !== null;
@@ -152,6 +161,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
       ...ICON_STYLE_BASE,
       backgroundImage: `url(${iconUrl})`,
       borderRadius: iconCornerRadius ? `${iconCornerRadius}px` : 4,
+      transform: directionRotation !== 0 ? `rotate(${directionRotation}deg)` : undefined,
       // Use outline for selection - doesn't affect layout
       outline: selected ? SELECTED_OUTLINE : "none",
       outlineOffset: 1
@@ -166,7 +176,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
     }
 
     return style;
-  }, [iconUrl, iconCornerRadius, selected, easterEggGlow]);
+  }, [iconUrl, iconCornerRadius, directionRotation, selected, easterEggGlow]);
 
   // Container style based on link target mode
   const containerStyle = isLinkTarget ? CONTAINER_STYLE_LINK_TARGET : CONTAINER_STYLE_BASE;
@@ -193,6 +203,18 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
       border: `1px solid ${runtimeBadgeColors.border}`
     }),
     [runtimeBadgeColors.bg, runtimeBadgeColors.border]
+  );
+  const labelStyle = useMemo(
+    () =>
+      buildNodeLabelStyle({
+        position: labelPosition,
+        direction,
+        backgroundColor: labelBackgroundColor,
+        iconSize: ICON_SIZE,
+        fontSize: "0.7rem",
+        maxWidth: 110
+      }),
+    [labelPosition, direction, labelBackgroundColor]
   );
 
   return (
@@ -226,7 +248,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
 
       {/* Node label */}
       {!suppressLabels && (
-        <div style={LABEL_STYLE} className="topology-node-label">
+        <div style={labelStyle} className="topology-node-label">
           {label}
         </div>
       )}

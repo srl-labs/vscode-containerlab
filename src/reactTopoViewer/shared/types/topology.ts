@@ -188,6 +188,9 @@ export interface NodeAnnotation {
   icon?: string;
   iconColor?: string;
   iconCornerRadius?: number;
+  labelPosition?: string;
+  direction?: string;
+  labelBackgroundColor?: string;
   groupLabelPos?: string;
   /** Internal group ID for membership (preferred). */
   groupId?: string;
