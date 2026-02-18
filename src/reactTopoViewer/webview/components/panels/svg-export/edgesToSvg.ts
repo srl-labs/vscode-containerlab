@@ -186,6 +186,73 @@ function getOrCreateEndpointSet(
   return created;
 }
 
+function trackNodeEndpoint(
+  endpointsByNode: Map<string, Set<string>>,
+  nodeId: string,
+  endpoint: string | null
+): void {
+  if (!endpoint) return;
+  getOrCreateEndpointSet(endpointsByNode, nodeId).add(endpoint);
+}
+
+function collectEdgeEndpointVectors(
+  edge: Edge,
+  sourceEndpoint: string | null,
+  targetEndpoint: string | null,
+  nodeMap: Map<string, Node>,
+  nodeIconSize: number,
+  vectorsByNode: Map<string, Map<string, EndpointVector>>
+): void {
+  if (!sourceEndpoint && !targetEndpoint) return;
+  if (edge.source === edge.target) return;
+
+  const sourceNode = nodeMap.get(edge.source);
+  const targetNode = nodeMap.get(edge.target);
+  if (!sourceNode || !targetNode) return;
+
+  const sourceCenter = getRectCenter(getNodeRect(sourceNode, nodeIconSize));
+  const targetCenter = getRectCenter(getNodeRect(targetNode, nodeIconSize));
+  const forwardDx = targetCenter.x - sourceCenter.x;
+  const forwardDy = targetCenter.y - sourceCenter.y;
+
+  if (sourceEndpoint) {
+    addEndpointVector(vectorsByNode, edge.source, sourceEndpoint, forwardDx, forwardDy);
+  }
+  if (targetEndpoint) {
+    addEndpointVector(vectorsByNode, edge.target, targetEndpoint, -forwardDx, -forwardDy);
+  }
+}
+
+function collectInterfaceAnchorInputs(
+  edges: Edge[],
+  nodeMap: Map<string, Node>,
+  nodeIconSize: number
+): {
+  endpointsByNode: Map<string, Set<string>>;
+  vectorsByNode: Map<string, Map<string, EndpointVector>>;
+} {
+  const endpointsByNode = new Map<string, Set<string>>();
+  const vectorsByNode = new Map<string, Map<string, EndpointVector>>();
+
+  for (const edge of edges) {
+    const data = edge.data as TopologyEdgeData | undefined;
+    const sourceEndpoint = normalizeEndpoint(data?.sourceEndpoint);
+    const targetEndpoint = normalizeEndpoint(data?.targetEndpoint);
+    trackNodeEndpoint(endpointsByNode, edge.source, sourceEndpoint);
+    trackNodeEndpoint(endpointsByNode, edge.target, targetEndpoint);
+    collectEdgeEndpointVectors(
+      edge,
+      sourceEndpoint,
+      targetEndpoint,
+      nodeMap,
+      nodeIconSize,
+      vectorsByNode
+    );
+  }
+
+  return { endpointsByNode, vectorsByNode };
+}
+
 const HORIZONTAL_SLOPE_THRESHOLD = 0.25;
 
 function classifyInterfaceSide(vector: EndpointVector | undefined): InterfaceSide {
@@ -233,86 +300,73 @@ function positionInterfaceAnchor(
   }
 }
 
+function buildNodeSideAssignments(
+  endpoints: Set<string>,
+  nodeVectors: Map<string, EndpointVector> | undefined,
+  renderOptions: ResolvedEdgeRenderOptions
+): Record<InterfaceSide, EndpointAssignment[]> {
+  const buckets = sideBuckets();
+  for (const endpoint of endpoints) {
+    const vector = nodeVectors?.get(endpoint);
+    const side = classifyInterfaceSide(vector);
+    const sortKey = getInterfaceSortKey(side, vector);
+    const { radius } = getEndpointLabelMetrics(
+      endpoint,
+      renderOptions.interfaceScale,
+      renderOptions.interfaceLabelOverrides
+    );
+    buckets[side].push({ endpoint, sortKey, radius });
+  }
+  return buckets;
+}
+
+function sortEndpointAssignments(assignments: EndpointAssignment[]): void {
+  assignments.sort((a, b) => {
+    const bySort = a.sortKey - b.sortKey;
+    if (bySort !== 0) return bySort;
+    return a.endpoint.localeCompare(b.endpoint);
+  });
+}
+
+function assignNodeAnchors(
+  rect: NodeRect,
+  buckets: Record<InterfaceSide, EndpointAssignment[]>
+): Map<string, InterfaceAnchor> {
+  const endpointAnchors = new Map<string, InterfaceAnchor>();
+  for (const side of ["top", "right", "bottom", "left"] as const) {
+    const assignments = buckets[side];
+    sortEndpointAssignments(assignments);
+    for (let i = 0; i < assignments.length; i++) {
+      const assignment = assignments[i];
+      endpointAnchors.set(
+        assignment.endpoint,
+        positionInterfaceAnchor(rect, side, i, assignments.length, assignment.radius)
+      );
+    }
+  }
+  return endpointAnchors;
+}
+
 function buildInterfaceAnchorMap(
   edges: Edge[],
   nodeMap: Map<string, Node>,
   renderOptions: ResolvedEdgeRenderOptions
 ): NodeInterfaceAnchorMap {
-  const endpointsByNode = new Map<string, Set<string>>();
-  const vectorsByNode = new Map<string, Map<string, EndpointVector>>();
-
-  for (const edge of edges) {
-    const data = edge.data as TopologyEdgeData | undefined;
-    const sourceEndpoint = normalizeEndpoint(data?.sourceEndpoint);
-    const targetEndpoint = normalizeEndpoint(data?.targetEndpoint);
-
-    if (sourceEndpoint) getOrCreateEndpointSet(endpointsByNode, edge.source).add(sourceEndpoint);
-    if (targetEndpoint) getOrCreateEndpointSet(endpointsByNode, edge.target).add(targetEndpoint);
-
-    if (!sourceEndpoint && !targetEndpoint) continue;
-    if (edge.source === edge.target) continue;
-
-    const sourceNode = nodeMap.get(edge.source);
-    const targetNode = nodeMap.get(edge.target);
-    if (!sourceNode || !targetNode) continue;
-
-    const sourceCenter = getRectCenter(getNodeRect(sourceNode, renderOptions.nodeIconSize));
-    const targetCenter = getRectCenter(getNodeRect(targetNode, renderOptions.nodeIconSize));
-    const forwardDx = targetCenter.x - sourceCenter.x;
-    const forwardDy = targetCenter.y - sourceCenter.y;
-
-    if (sourceEndpoint) {
-      addEndpointVector(vectorsByNode, edge.source, sourceEndpoint, forwardDx, forwardDy);
-    }
-    if (targetEndpoint) {
-      addEndpointVector(vectorsByNode, edge.target, targetEndpoint, -forwardDx, -forwardDy);
-    }
-  }
-
+  const { endpointsByNode, vectorsByNode } = collectInterfaceAnchorInputs(
+    edges,
+    nodeMap,
+    renderOptions.nodeIconSize
+  );
   const anchorsByNode: NodeInterfaceAnchorMap = new Map();
-
   for (const [nodeId, endpoints] of endpointsByNode) {
     const node = nodeMap.get(nodeId);
     if (!node) continue;
-
     const rect = getNodeRect(node, renderOptions.nodeIconSize);
     const nodeVectors = vectorsByNode.get(nodeId);
-    const buckets = sideBuckets();
-
-    for (const endpoint of endpoints) {
-      const vector = nodeVectors?.get(endpoint);
-      const side = classifyInterfaceSide(vector);
-      const sortKey = getInterfaceSortKey(side, vector);
-      const { radius } = getEndpointLabelMetrics(
-        endpoint,
-        renderOptions.interfaceScale,
-        renderOptions.interfaceLabelOverrides
-      );
-      buckets[side].push({ endpoint, sortKey, radius });
-    }
-
-    const endpointAnchors = new Map<string, InterfaceAnchor>();
-
-    for (const side of ["top", "right", "bottom", "left"] as const) {
-      const assignments = buckets[side];
-      assignments.sort((a, b) => {
-        const bySort = a.sortKey - b.sortKey;
-        if (bySort !== 0) return bySort;
-        return a.endpoint.localeCompare(b.endpoint);
-      });
-
-      for (let i = 0; i < assignments.length; i++) {
-        const assignment = assignments[i];
-        endpointAnchors.set(
-          assignment.endpoint,
-          positionInterfaceAnchor(rect, side, i, assignments.length, assignment.radius)
-        );
-      }
-    }
-
+    const buckets = buildNodeSideAssignments(endpoints, nodeVectors, renderOptions);
+    const endpointAnchors = assignNodeAnchors(rect, buckets);
     anchorsByNode.set(nodeId, endpointAnchors);
   }
-
   return anchorsByNode;
 }
 
@@ -681,6 +735,43 @@ function renderLoopEdge(ctx: EdgeRenderContext, sourceNode: Node, loopIndex: num
   return svg;
 }
 
+function resolveRegularEdgeAnchors(
+  ctx: EdgeRenderContext,
+  sourceNode: Node,
+  targetNode: Node
+): { sourceAnchor?: InterfaceAnchor; targetAnchor?: InterfaceAnchor } {
+  const sourceEndpoint = normalizeEndpoint(ctx.edgeData?.sourceEndpoint);
+  const targetEndpoint = normalizeEndpoint(ctx.edgeData?.targetEndpoint);
+  return {
+    sourceAnchor: sourceEndpoint
+      ? ctx.interfaceAnchors?.get(sourceNode.id)?.get(sourceEndpoint)
+      : undefined,
+    targetAnchor: targetEndpoint
+      ? ctx.interfaceAnchors?.get(targetNode.id)?.get(targetEndpoint)
+      : undefined
+  };
+}
+
+function buildRegularEdgePath(
+  points: { sx: number; sy: number; tx: number; ty: number },
+  parallelInfo: { index: number; total: number; isCanonicalDirection: boolean } | undefined
+): { path: string; controlPoint: { x: number; y: number } | null } {
+  const controlPoint = calculateControlPoint(
+    points.sx,
+    points.sy,
+    points.tx,
+    points.ty,
+    parallelInfo?.index ?? 0,
+    parallelInfo?.total ?? 1,
+    parallelInfo?.isCanonicalDirection ?? true,
+    CONTROL_POINT_STEP_SIZE
+  );
+  const path = controlPoint
+    ? `M ${points.sx} ${points.sy} Q ${controlPoint.x} ${controlPoint.y} ${points.tx} ${points.ty}`
+    : `M ${points.sx} ${points.sy} L ${points.tx} ${points.ty}`;
+  return { path, controlPoint };
+}
+
 /**
  * Render a regular edge (between two different nodes) to SVG
  */
@@ -692,55 +783,30 @@ function renderRegularEdge(
 ): string {
   const sourceRect = getNodeRect(sourceNode, ctx.nodeIconSize);
   const targetRect = getNodeRect(targetNode, ctx.nodeIconSize);
-  const sourceEndpoint = normalizeEndpoint(ctx.edgeData?.sourceEndpoint);
-  const targetEndpoint = normalizeEndpoint(ctx.edgeData?.targetEndpoint);
-  const sourceAnchor = sourceEndpoint
-    ? ctx.interfaceAnchors?.get(sourceNode.id)?.get(sourceEndpoint)
-    : undefined;
-  const targetAnchor = targetEndpoint
-    ? ctx.interfaceAnchors?.get(targetNode.id)?.get(targetEndpoint)
-    : undefined;
-
+  const { sourceAnchor, targetAnchor } = resolveRegularEdgeAnchors(
+    ctx,
+    sourceNode,
+    targetNode
+  );
   const points = resolveEdgePointsWithInterfaceAnchors(
     sourceRect,
     targetRect,
     sourceAnchor,
     targetAnchor
   );
-  const index = parallelInfo?.index ?? 0;
-  const total = parallelInfo?.total ?? 1;
-  const isCanonical = parallelInfo?.isCanonicalDirection ?? true;
-
-  const controlPoint = calculateControlPoint(
-    points.sx,
-    points.sy,
-    points.tx,
-    points.ty,
-    index,
-    total,
-    isCanonical,
-    CONTROL_POINT_STEP_SIZE
-  );
-
-  const path = controlPoint
-    ? `M ${points.sx} ${points.sy} Q ${controlPoint.x} ${controlPoint.y} ${points.tx} ${points.ty}`
-    : `M ${points.sx} ${points.sy} L ${points.tx} ${points.ty}`;
+  const { path, controlPoint } = buildRegularEdgePath(points, parallelInfo);
 
   let svg = `<g class="export-edge" data-id="${escapeXml(ctx.edgeId)}">`;
   svg += `<path d="${path}" fill="none" stroke="${ctx.strokeColor}" `;
   svg += `stroke-width="${EDGE_STYLE.strokeWidth}" opacity="${EDGE_STYLE.opacity}"/>`;
-
-  if (ctx.includeLabels) {
-    const { sourceLabelPos, targetLabelPos } = getRegularEdgeLabelPositions(
-      ctx,
-      points,
-      controlPoint,
-      sourceAnchor,
-      targetAnchor
-    );
-    svg += buildEdgeLabels(ctx, sourceLabelPos, targetLabelPos);
-  }
-
+  const { sourceLabelPos, targetLabelPos } = getRegularEdgeLabelPositions(
+    ctx,
+    points,
+    controlPoint,
+    sourceAnchor,
+    targetAnchor
+  );
+  svg += buildEdgeLabels(ctx, sourceLabelPos, targetLabelPos);
   svg += `</g>`;
   return svg;
 }

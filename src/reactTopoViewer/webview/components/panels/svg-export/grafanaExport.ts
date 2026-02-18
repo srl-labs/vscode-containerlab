@@ -4,6 +4,7 @@ import type { Edge, Node } from "@xyflow/react";
 import type { TopologyEdgeData } from "../../../../shared/types/graph";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+const SVG_MIME_TYPE = "image/svg+xml";
 const CELL_ID_PREAMBLE = "cell-";
 
 export interface GrafanaEdgeCellMapping {
@@ -242,6 +243,26 @@ function parseNumericAttr(el: Element, attrName: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function parseTransformFunctionArgs(
+  transformAttr: string,
+  functionName: string,
+): number[] {
+  const normalizedAttr = transformAttr.toLowerCase();
+  const normalizedFunctionName = functionName.toLowerCase();
+  const startIdx = normalizedAttr.indexOf(`${normalizedFunctionName}(`);
+  if (startIdx < 0) return [];
+
+  const argsStart = startIdx + normalizedFunctionName.length + 1;
+  const argsEnd = transformAttr.indexOf(")", argsStart);
+  if (argsEnd < 0) return [];
+
+  return transformAttr
+    .slice(argsStart, argsEnd)
+    .split(/[,\s]+/)
+    .map((part) => Number.parseFloat(part))
+    .filter((value) => Number.isFinite(value));
+}
+
 function parseGraphTransform(svgEl: Element): GraphTransform {
   const transformedRoot = Array.from(svgEl.children).find(
     (child) =>
@@ -249,21 +270,12 @@ function parseGraphTransform(svgEl: Element): GraphTransform {
   );
   const transformAttr = transformedRoot?.getAttribute("transform") ?? "";
 
-  const translateMatch =
-    /translate\(\s*([-+]?\d*\.?\d+(?:e[-+]?\d+)?)\s*(?:[, ]\s*([-+]?\d*\.?\d+(?:e[-+]?\d+)?))?\s*\)/i.exec(
-      transformAttr,
-    );
-  const scaleMatch =
-    /scale\(\s*([-+]?\d*\.?\d+(?:e[-+]?\d+)?)\s*(?:[, ]\s*([-+]?\d*\.?\d+(?:e[-+]?\d+)?))?\s*\)/i.exec(
-      transformAttr,
-    );
+  const translateArgs = parseTransformFunctionArgs(transformAttr, "translate");
+  const scaleArgs = parseTransformFunctionArgs(transformAttr, "scale");
 
-  const tx = translateMatch ? Number.parseFloat(translateMatch[1]) : 0;
-  const ty =
-    translateMatch && translateMatch[2]
-      ? Number.parseFloat(translateMatch[2])
-      : 0;
-  const scale = scaleMatch ? Number.parseFloat(scaleMatch[1]) : 1;
+  const tx = translateArgs[0] ?? 0;
+  const ty = translateArgs[1] ?? 0;
+  const scale = scaleArgs[0] ?? 1;
 
   return {
     tx: Number.isFinite(tx) ? tx : 0,
@@ -289,23 +301,11 @@ function includePathBounds(
   }
 }
 
-export function trimGrafanaSvgToTopologyContent(
-  svgContent: string,
-  padding = 12,
-): string {
-  if (
-    typeof DOMParser === "undefined" ||
-    typeof XMLSerializer === "undefined"
-  ) {
-    return svgContent;
-  }
-
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(svgContent, "image/svg+xml");
-  const svgEl = doc.documentElement;
-  const transform = parseGraphTransform(svgEl);
-  const bounds = createBounds();
-
+function includeNodeRectBounds(
+  doc: XMLDocument,
+  bounds: Bounds,
+  transform: GraphTransform,
+): void {
   for (const rect of Array.from(
     doc.querySelectorAll("g.export-node rect[x][y][width][height]"),
   )) {
@@ -324,7 +324,13 @@ export function trimGrafanaSvgToTopologyContent(
       height * transform.scale,
     );
   }
+}
 
+function includeEdgeCircleBounds(
+  doc: XMLDocument,
+  bounds: Bounds,
+  transform: GraphTransform,
+): void {
   for (const circle of Array.from(
     doc.querySelectorAll("g.export-edge circle[cx][cy][r]"),
   )) {
@@ -343,14 +349,40 @@ export function trimGrafanaSvgToTopologyContent(
       radius * 2,
     );
   }
+}
 
-  for (const edgePath of Array.from(
-    doc.querySelectorAll("g.export-edge path[d]"),
-  )) {
+function includeEdgePathBounds(
+  doc: XMLDocument,
+  bounds: Bounds,
+  transform: GraphTransform,
+): void {
+  for (const edgePath of Array.from(doc.querySelectorAll("g.export-edge path[d]"))) {
     const pathData = edgePath.getAttribute("d");
     if (!pathData) continue;
     includePathBounds(bounds, transform, pathData);
   }
+}
+
+export function trimGrafanaSvgToTopologyContent(
+  svgContent: string,
+  padding = 12,
+): string {
+  if (
+    typeof DOMParser === "undefined" ||
+    typeof XMLSerializer === "undefined"
+  ) {
+    return svgContent;
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgContent, SVG_MIME_TYPE);
+  const svgEl = doc.documentElement;
+  const transform = parseGraphTransform(svgEl);
+  const bounds = createBounds();
+
+  includeNodeRectBounds(doc, bounds, transform);
+  includeEdgeCircleBounds(doc, bounds, transform);
+  includeEdgePathBounds(doc, bounds, transform);
 
   if (!hasBounds(bounds)) return svgContent;
 
@@ -434,7 +466,7 @@ export function addGrafanaTrafficLegend(
   }
 
   const parser = new DOMParser();
-  const doc = parser.parseFromString(svgContent, "image/svg+xml");
+  const doc = parser.parseFromString(svgContent, SVG_MIME_TYPE);
   const svgEl = doc.documentElement;
   const legendRows = createLegendTextRows(trafficThresholds);
   const viewBox = parseViewBox(svgEl);
@@ -506,7 +538,7 @@ export function makeGrafanaSvgResponsive(svgContent: string): string {
   }
 
   const parser = new DOMParser();
-  const doc = parser.parseFromString(svgContent, "image/svg+xml");
+  const doc = parser.parseFromString(svgContent, SVG_MIME_TYPE);
   const svgEl = doc.documentElement;
 
   svgEl.setAttribute("width", "100%");
@@ -601,140 +633,200 @@ function fmt(n: number): string {
   return Number(n.toFixed(3)).toString();
 }
 
-function midpointForPath(pathData: string): Point | null {
+type ParsedPathCommand =
+  | { sx: number; sy: number; command: "L"; args: [number, number] }
+  | {
+      sx: number;
+      sy: number;
+      command: "Q";
+      args: [number, number, number, number];
+    }
+  | {
+      sx: number;
+      sy: number;
+      command: "C";
+      args: [number, number, number, number, number, number];
+    };
+
+function parseNumericPathArgs(
+  tokens: string[],
+  startIndex: number,
+  count: number,
+): number[] | null {
+  const args: number[] = [];
+  for (let i = 0; i < count; i++) {
+    const value = Number.parseFloat(tokens[startIndex + i] ?? "");
+    if (!Number.isFinite(value)) return null;
+    args.push(value);
+  }
+  return args;
+}
+
+function parsePathCommand(pathData: string): ParsedPathCommand | null {
   const tokens = pathData.match(/[A-Za-z]|[-+]?\d*\.?\d+(?:e[-+]?\d+)?/g);
   if (!tokens || tokens.length < 6) return null;
-
-  const cmd0 = tokens[0]?.toUpperCase();
-  if (cmd0 !== "M") return null;
+  if (tokens[0]?.toUpperCase() !== "M") return null;
 
   const sx = Number.parseFloat(tokens[1]);
   const sy = Number.parseFloat(tokens[2]);
-  const cmd1 = tokens[3]?.toUpperCase();
-  if (!Number.isFinite(sx) || !Number.isFinite(sy) || !cmd1) return null;
+  if (!Number.isFinite(sx) || !Number.isFinite(sy)) return null;
 
-  if (cmd1 === "L" && tokens.length >= 6) {
-    const tx = Number.parseFloat(tokens[4]);
-    const ty = Number.parseFloat(tokens[5]);
-    if (!Number.isFinite(tx) || !Number.isFinite(ty)) return null;
-    return lerp({ x: sx, y: sy }, { x: tx, y: ty }, 0.5);
+  switch (tokens[3]?.toUpperCase()) {
+    case "L": {
+      const args = parseNumericPathArgs(tokens, 4, 2);
+      if (!args) return null;
+      return { sx, sy, command: "L", args: [args[0], args[1]] };
+    }
+    case "Q": {
+      const args = parseNumericPathArgs(tokens, 4, 4);
+      if (!args) return null;
+      return { sx, sy, command: "Q", args: [args[0], args[1], args[2], args[3]] };
+    }
+    case "C": {
+      const args = parseNumericPathArgs(tokens, 4, 6);
+      if (!args) return null;
+      return {
+        sx,
+        sy,
+        command: "C",
+        args: [args[0], args[1], args[2], args[3], args[4], args[5]],
+      };
+    }
+    default:
+      return null;
   }
+}
 
-  if (cmd1 === "Q" && tokens.length >= 8) {
-    const cx = Number.parseFloat(tokens[4]);
-    const cy = Number.parseFloat(tokens[5]);
-    const tx = Number.parseFloat(tokens[6]);
-    const ty = Number.parseFloat(tokens[7]);
-    if (![cx, cy, tx, ty].every(Number.isFinite)) return null;
-    const t = 0.5;
-    const oneMinusT = 1 - t;
-    return {
-      x: oneMinusT * oneMinusT * sx + 2 * oneMinusT * t * cx + t * t * tx,
-      y: oneMinusT * oneMinusT * sy + 2 * oneMinusT * t * cy + t * t * ty,
-    };
+function midpointForLinePath(
+  sx: number,
+  sy: number,
+  args: [number, number],
+): Point {
+  const [tx, ty] = args;
+  return lerp({ x: sx, y: sy }, { x: tx, y: ty }, 0.5);
+}
+
+function midpointForQuadraticPath(
+  sx: number,
+  sy: number,
+  args: [number, number, number, number],
+): Point {
+  const [cx, cy, tx, ty] = args;
+  const t = 0.5;
+  const oneMinusT = 1 - t;
+  return {
+    x: oneMinusT * oneMinusT * sx + 2 * oneMinusT * t * cx + t * t * tx,
+    y: oneMinusT * oneMinusT * sy + 2 * oneMinusT * t * cy + t * t * ty,
+  };
+}
+
+function midpointForCubicPath(
+  sx: number,
+  sy: number,
+  args: [number, number, number, number, number, number],
+): Point {
+  const [c1x, c1y, c2x, c2y, tx, ty] = args;
+  const t = 0.5;
+  const oneMinusT = 1 - t;
+  return {
+    x:
+      oneMinusT * oneMinusT * oneMinusT * sx +
+      3 * oneMinusT * oneMinusT * t * c1x +
+      3 * oneMinusT * t * t * c2x +
+      t * t * t * tx,
+    y:
+      oneMinusT * oneMinusT * oneMinusT * sy +
+      3 * oneMinusT * oneMinusT * t * c1y +
+      3 * oneMinusT * t * t * c2y +
+      t * t * t * ty,
+  };
+}
+
+function midpointForPath(pathData: string): Point | null {
+  const parsed = parsePathCommand(pathData);
+  if (!parsed) return null;
+  switch (parsed.command) {
+    case "L":
+      return midpointForLinePath(parsed.sx, parsed.sy, parsed.args);
+    case "Q":
+      return midpointForQuadraticPath(parsed.sx, parsed.sy, parsed.args);
+    case "C":
+      return midpointForCubicPath(parsed.sx, parsed.sy, parsed.args);
   }
+}
 
-  if (cmd1 === "C" && tokens.length >= 10) {
-    const c1x = Number.parseFloat(tokens[4]);
-    const c1y = Number.parseFloat(tokens[5]);
-    const c2x = Number.parseFloat(tokens[6]);
-    const c2y = Number.parseFloat(tokens[7]);
-    const tx = Number.parseFloat(tokens[8]);
-    const ty = Number.parseFloat(tokens[9]);
-    if (![c1x, c1y, c2x, c2y, tx, ty].every(Number.isFinite)) return null;
-    const t = 0.5;
-    const oneMinusT = 1 - t;
-    return {
-      x:
-        oneMinusT * oneMinusT * oneMinusT * sx +
-        3 * oneMinusT * oneMinusT * t * c1x +
-        3 * oneMinusT * t * t * c2x +
-        t * t * t * tx,
-      y:
-        oneMinusT * oneMinusT * oneMinusT * sy +
-        3 * oneMinusT * oneMinusT * t * c1y +
-        3 * oneMinusT * t * t * c2y +
-        t * t * t * ty,
-    };
-  }
+function splitLinePath(
+  sx: number,
+  sy: number,
+  args: [number, number],
+): { first: string; second: string } {
+  const [tx, ty] = args;
+  const p0 = { x: sx, y: sy };
+  const p1 = { x: tx, y: ty };
+  const m = lerp(p0, p1);
+  return {
+    first: `M ${fmt(p0.x)} ${fmt(p0.y)} L ${fmt(m.x)} ${fmt(m.y)}`,
+    second: `M ${fmt(m.x)} ${fmt(m.y)} L ${fmt(p1.x)} ${fmt(p1.y)}`,
+  };
+}
 
-  return null;
+function splitQuadraticPath(
+  sx: number,
+  sy: number,
+  args: [number, number, number, number],
+): { first: string; second: string } {
+  const [cx, cy, tx, ty] = args;
+  const p0 = { x: sx, y: sy };
+  const p1 = { x: cx, y: cy };
+  const p2 = { x: tx, y: ty };
+  const p01 = lerp(p0, p1);
+  const p12 = lerp(p1, p2);
+  const mid = lerp(p01, p12);
+  return {
+    first: `M ${fmt(p0.x)} ${fmt(p0.y)} Q ${fmt(p01.x)} ${fmt(p01.y)} ${fmt(mid.x)} ${fmt(mid.y)}`,
+    second: `M ${fmt(mid.x)} ${fmt(mid.y)} Q ${fmt(p12.x)} ${fmt(p12.y)} ${fmt(p2.x)} ${fmt(p2.y)}`,
+  };
+}
+
+function splitCubicPath(
+  sx: number,
+  sy: number,
+  args: [number, number, number, number, number, number],
+): { first: string; second: string } {
+  const [c1x, c1y, c2x, c2y, tx, ty] = args;
+  const p0 = { x: sx, y: sy };
+  const p1 = { x: c1x, y: c1y };
+  const p2 = { x: c2x, y: c2y };
+  const p3 = { x: tx, y: ty };
+  const p01 = lerp(p0, p1);
+  const p12 = lerp(p1, p2);
+  const p23 = lerp(p2, p3);
+  const p012 = lerp(p01, p12);
+  const p123 = lerp(p12, p23);
+  const mid = lerp(p012, p123);
+  return {
+    first:
+      `M ${fmt(p0.x)} ${fmt(p0.y)} C ${fmt(p01.x)} ${fmt(p01.y)} ${fmt(p012.x)} ${fmt(p012.y)} ` +
+      `${fmt(mid.x)} ${fmt(mid.y)}`,
+    second:
+      `M ${fmt(mid.x)} ${fmt(mid.y)} C ${fmt(p123.x)} ${fmt(p123.y)} ${fmt(p23.x)} ${fmt(p23.y)} ` +
+      `${fmt(p3.x)} ${fmt(p3.y)}`,
+  };
 }
 
 function splitPathIntoHalves(
   pathData: string,
 ): { first: string; second: string } | null {
-  const tokens = pathData.match(/[A-Za-z]|[-+]?\d*\.?\d+(?:e[-+]?\d+)?/g);
-  if (!tokens || tokens.length < 6) return null;
-
-  const cmd0 = tokens[0]?.toUpperCase();
-  if (cmd0 !== "M") return null;
-
-  const sx = Number.parseFloat(tokens[1]);
-  const sy = Number.parseFloat(tokens[2]);
-  const cmd1 = tokens[3]?.toUpperCase();
-  if (!Number.isFinite(sx) || !Number.isFinite(sy) || !cmd1) return null;
-
-  if (cmd1 === "L" && tokens.length >= 6) {
-    const tx = Number.parseFloat(tokens[4]);
-    const ty = Number.parseFloat(tokens[5]);
-    if (!Number.isFinite(tx) || !Number.isFinite(ty)) return null;
-    const p0 = { x: sx, y: sy };
-    const p1 = { x: tx, y: ty };
-    const m = lerp(p0, p1);
-    return {
-      first: `M ${fmt(p0.x)} ${fmt(p0.y)} L ${fmt(m.x)} ${fmt(m.y)}`,
-      second: `M ${fmt(m.x)} ${fmt(m.y)} L ${fmt(p1.x)} ${fmt(p1.y)}`,
-    };
+  const parsed = parsePathCommand(pathData);
+  if (!parsed) return null;
+  switch (parsed.command) {
+    case "L":
+      return splitLinePath(parsed.sx, parsed.sy, parsed.args);
+    case "Q":
+      return splitQuadraticPath(parsed.sx, parsed.sy, parsed.args);
+    case "C":
+      return splitCubicPath(parsed.sx, parsed.sy, parsed.args);
   }
-
-  if (cmd1 === "Q" && tokens.length >= 8) {
-    const cx = Number.parseFloat(tokens[4]);
-    const cy = Number.parseFloat(tokens[5]);
-    const tx = Number.parseFloat(tokens[6]);
-    const ty = Number.parseFloat(tokens[7]);
-    if (![cx, cy, tx, ty].every(Number.isFinite)) return null;
-    const p0 = { x: sx, y: sy };
-    const p1 = { x: cx, y: cy };
-    const p2 = { x: tx, y: ty };
-    const p01 = lerp(p0, p1);
-    const p12 = lerp(p1, p2);
-    const mid = lerp(p01, p12);
-    return {
-      first: `M ${fmt(p0.x)} ${fmt(p0.y)} Q ${fmt(p01.x)} ${fmt(p01.y)} ${fmt(mid.x)} ${fmt(mid.y)}`,
-      second: `M ${fmt(mid.x)} ${fmt(mid.y)} Q ${fmt(p12.x)} ${fmt(p12.y)} ${fmt(p2.x)} ${fmt(p2.y)}`,
-    };
-  }
-
-  if (cmd1 === "C" && tokens.length >= 10) {
-    const c1x = Number.parseFloat(tokens[4]);
-    const c1y = Number.parseFloat(tokens[5]);
-    const c2x = Number.parseFloat(tokens[6]);
-    const c2y = Number.parseFloat(tokens[7]);
-    const tx = Number.parseFloat(tokens[8]);
-    const ty = Number.parseFloat(tokens[9]);
-    if (![c1x, c1y, c2x, c2y, tx, ty].every(Number.isFinite)) return null;
-    const p0 = { x: sx, y: sy };
-    const p1 = { x: c1x, y: c1y };
-    const p2 = { x: c2x, y: c2y };
-    const p3 = { x: tx, y: ty };
-    const p01 = lerp(p0, p1);
-    const p12 = lerp(p1, p2);
-    const p23 = lerp(p2, p3);
-    const p012 = lerp(p01, p12);
-    const p123 = lerp(p12, p23);
-    const mid = lerp(p012, p123);
-    return {
-      first:
-        `M ${fmt(p0.x)} ${fmt(p0.y)} C ${fmt(p01.x)} ${fmt(p01.y)} ${fmt(p012.x)} ${fmt(p012.y)} ` +
-        `${fmt(mid.x)} ${fmt(mid.y)}`,
-      second:
-        `M ${fmt(mid.x)} ${fmt(mid.y)} C ${fmt(p123.x)} ${fmt(p123.y)} ${fmt(p23.x)} ${fmt(p23.y)} ` +
-        `${fmt(p3.x)} ${fmt(p3.y)}`,
-    };
-  }
-
-  return null;
 }
 
 function parsePathEndpoints(
@@ -748,8 +840,7 @@ function parsePathEndpoints(
 
   const numbers = tokens
     .slice(1)
-    .filter((token) => /^[+-]?\d*\.?\d+(?:e[+-]?\d+)?$/i.test(token))
-    .map((token) => Number.parseFloat(token))
+    .map((token) => Number(token))
     .filter((value) => Number.isFinite(value));
   if (numbers.length < 4) return null;
 
@@ -896,6 +987,97 @@ function resolveOperstateCellElements(edgeGroup: Element): {
   };
 }
 
+function buildEdgeGroupByDataId(doc: XMLDocument): Map<string, Element> {
+  const edgeGroupByDataId = new Map<string, Element>();
+  for (const group of Array.from(doc.querySelectorAll("g.export-edge"))) {
+    const edgeDataId = group.getAttribute("data-id");
+    if (!edgeDataId || edgeGroupByDataId.has(edgeDataId)) continue;
+    edgeGroupByDataId.set(edgeDataId, group);
+  }
+  return edgeGroupByDataId;
+}
+
+function replaceTrafficPathWithHalfCells(
+  doc: XMLDocument,
+  trafficPath: Element,
+  mapping: GrafanaEdgeCellMapping,
+  occupiedTrafficLabelPoints: Point[],
+  graphScale: number,
+): void {
+  const parent = trafficPath.parentNode;
+  if (!parent) return;
+
+  const pathData = trafficPath.getAttribute("d") ?? "";
+  const split = splitPathIntoHalves(pathData);
+  const firstHalfData = split?.first ?? pathData;
+  const secondHalfData = split?.second ?? pathData;
+
+  const firstHalf = createTrafficHalfCell(
+    doc,
+    trafficPath,
+    firstHalfData,
+    mapping.trafficCellId,
+    occupiedTrafficLabelPoints,
+    graphScale,
+  );
+  const secondHalf = createTrafficHalfCell(
+    doc,
+    trafficPath,
+    secondHalfData,
+    mapping.reverseTrafficCellId,
+    occupiedTrafficLabelPoints,
+    graphScale,
+  );
+  parent.insertBefore(firstHalf, trafficPath);
+  parent.insertBefore(secondHalf, trafficPath);
+  trafficPath.remove();
+}
+
+function applyTrafficCellsToEdgeGroup(
+  doc: XMLDocument,
+  mapping: GrafanaEdgeCellMapping,
+  trafficGroup: Element,
+  occupiedTrafficLabelPoints: Point[],
+  graphScale: number,
+): void {
+  const trafficCellEl = resolveTrafficCellElement(trafficGroup);
+  if (trafficCellEl.tagName.toLowerCase() !== "path") {
+    setCellIdAttributes(trafficCellEl, mapping.trafficCellId);
+    return;
+  }
+
+  replaceTrafficPathWithHalfCells(
+    doc,
+    trafficCellEl,
+    mapping,
+    occupiedTrafficLabelPoints,
+    graphScale,
+  );
+}
+
+function applyOperstateCellsToEdgeGroup(
+  doc: XMLDocument,
+  mapping: GrafanaEdgeCellMapping,
+  trafficGroup: Element,
+): void {
+  const operstateCellEls = resolveOperstateCellElements(trafficGroup);
+  if (operstateCellEls.source) {
+    setCellIdAttributes(operstateCellEls.source, mapping.operstateCellId);
+    operstateCellEls.source.classList.add("grafana-operstate-cell");
+  } else {
+    const operstateGroup = createOperstateCellGroup(
+      doc,
+      trafficGroup,
+      mapping.operstateCellId,
+    );
+    trafficGroup.parentNode?.insertBefore(operstateGroup, trafficGroup);
+  }
+
+  if (!operstateCellEls.target) return;
+  setCellIdAttributes(operstateCellEls.target, mapping.targetOperstateCellId);
+  operstateCellEls.target.classList.add("grafana-operstate-cell");
+}
+
 export function applyGrafanaCellIdsToSvg(
   svgContent: string,
   mappings: GrafanaEdgeCellMapping[],
@@ -903,92 +1085,23 @@ export function applyGrafanaCellIdsToSvg(
   if (mappings.length === 0) return svgContent;
 
   const parser = new DOMParser();
-  const doc = parser.parseFromString(svgContent, "image/svg+xml");
+  const doc = parser.parseFromString(svgContent, SVG_MIME_TYPE);
   const graphTransform = parseGraphTransform(doc.documentElement);
   const graphScale = Math.max(0.05, Math.abs(graphTransform.scale));
-  const edgeGroupByDataId = new Map<string, Element>();
-
-  for (const group of Array.from(doc.querySelectorAll("g.export-edge"))) {
-    const edgeDataId = group.getAttribute("data-id");
-    if (!edgeDataId || edgeGroupByDataId.has(edgeDataId)) continue;
-    edgeGroupByDataId.set(edgeDataId, group);
-  }
-
+  const edgeGroupByDataId = buildEdgeGroupByDataId(doc);
   const occupiedTrafficLabelPoints: Point[] = [];
 
   for (const mapping of mappings) {
     const trafficGroup = edgeGroupByDataId.get(mapping.edgeId);
     if (!trafficGroup) continue;
-
-    const trafficCellEl = resolveTrafficCellElement(trafficGroup);
-    if (trafficCellEl.tagName.toLowerCase() === "path") {
-      const d = trafficCellEl.getAttribute("d") ?? "";
-      const split = splitPathIntoHalves(d);
-      if (split && trafficCellEl.parentNode) {
-        const firstHalf = createTrafficHalfCell(
-          doc,
-          trafficCellEl,
-          split.first,
-          mapping.trafficCellId,
-          occupiedTrafficLabelPoints,
-          graphScale,
-        );
-        const secondHalf = createTrafficHalfCell(
-          doc,
-          trafficCellEl,
-          split.second,
-          mapping.reverseTrafficCellId,
-          occupiedTrafficLabelPoints,
-          graphScale,
-        );
-        trafficCellEl.parentNode.insertBefore(firstHalf, trafficCellEl);
-        trafficCellEl.parentNode.insertBefore(secondHalf, trafficCellEl);
-        trafficCellEl.remove();
-      } else {
-        const firstHalf = createTrafficHalfCell(
-          doc,
-          trafficCellEl,
-          d,
-          mapping.trafficCellId,
-          occupiedTrafficLabelPoints,
-          graphScale,
-        );
-        const secondHalf = createTrafficHalfCell(
-          doc,
-          trafficCellEl,
-          d,
-          mapping.reverseTrafficCellId,
-          occupiedTrafficLabelPoints,
-          graphScale,
-        );
-        trafficCellEl.parentNode?.insertBefore(firstHalf, trafficCellEl);
-        trafficCellEl.parentNode?.insertBefore(secondHalf, trafficCellEl);
-        trafficCellEl.remove();
-      }
-    } else {
-      setCellIdAttributes(trafficCellEl, mapping.trafficCellId);
-    }
-
-    const operstateCellEls = resolveOperstateCellElements(trafficGroup);
-    if (operstateCellEls.source) {
-      setCellIdAttributes(operstateCellEls.source, mapping.operstateCellId);
-      operstateCellEls.source.classList.add("grafana-operstate-cell");
-    } else {
-      const operstateGroup = createOperstateCellGroup(
-        doc,
-        trafficGroup,
-        mapping.operstateCellId,
-      );
-      trafficGroup.parentNode?.insertBefore(operstateGroup, trafficGroup);
-    }
-
-    if (operstateCellEls.target) {
-      setCellIdAttributes(
-        operstateCellEls.target,
-        mapping.targetOperstateCellId,
-      );
-      operstateCellEls.target.classList.add("grafana-operstate-cell");
-    }
+    applyTrafficCellsToEdgeGroup(
+      doc,
+      mapping,
+      trafficGroup,
+      occupiedTrafficLabelPoints,
+      graphScale,
+    );
+    applyOperstateCellsToEdgeGroup(doc, mapping, trafficGroup);
   }
 
   return new XMLSerializer().serializeToString(doc.documentElement);
@@ -1005,7 +1118,7 @@ export function sanitizeSvgForGrafana(svgContent: string): string {
   }
 
   const parser = new DOMParser();
-  const doc = parser.parseFromString(svgContent, "image/svg+xml");
+  const doc = parser.parseFromString(svgContent, SVG_MIME_TYPE);
 
   for (const textEl of Array.from(doc.querySelectorAll("text[filter]"))) {
     textEl.removeAttribute("filter");
@@ -1044,7 +1157,7 @@ export function removeUnlinkedNodesFromSvg(
   }
 
   const parser = new DOMParser();
-  const doc = parser.parseFromString(svgContent, "image/svg+xml");
+  const doc = parser.parseFromString(svgContent, SVG_MIME_TYPE);
 
   for (const nodeEl of Array.from(
     doc.querySelectorAll("g.export-node[data-id]"),

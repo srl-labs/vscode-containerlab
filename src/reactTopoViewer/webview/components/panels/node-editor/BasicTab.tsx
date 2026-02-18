@@ -1,12 +1,12 @@
 // Basic tab for node editor.
 import React, { useState, useMemo, useCallback, useEffect } from "react";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Typography from "@mui/material/Typography";
-import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
-import RotateRightIcon from "@mui/icons-material/RotateRight";
-import RotateLeftIcon from "@mui/icons-material/RotateLeft";
-import SyncAltIcon from "@mui/icons-material/SyncAlt";
+import { Box, Button, Typography } from "@mui/material";
+import {
+  RotateLeft as RotateLeftIcon,
+  RotateRight as RotateRightIcon,
+  SwapHoriz as SwapHorizIcon,
+  SyncAlt as SyncAltIcon
+} from "@mui/icons-material";
 
 import {
   InputField,

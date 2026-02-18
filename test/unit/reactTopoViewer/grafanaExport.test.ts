@@ -16,6 +16,12 @@ describe("grafanaExport helpers", () => {
   const LEAF_NODE_ID = "leaf1";
   const CLIENT_NODE_ID = "client1";
   const TOPOLOGY_NODE_TYPE = "topology-node";
+  const FREE_TEXT_NODE_TYPE = "free-text-node";
+  const ANNOTATION_NODE_TYPES = new Set([
+    FREE_TEXT_NODE_TYPE,
+    "free-shape-node",
+    "group-node",
+  ]);
   const EDGE_VALID_ID = "edge-valid";
   const EDGE_VALID_OPERSTATE_ID = "leaf1:e1-1";
   const EDGE_VALID_OPERSTATE_REVERSE_ID = "client1:eth1";
@@ -26,7 +32,7 @@ describe("grafanaExport helpers", () => {
     const nodes = [
       { id: LEAF_NODE_ID, type: TOPOLOGY_NODE_TYPE },
       { id: CLIENT_NODE_ID, type: TOPOLOGY_NODE_TYPE },
-      { id: "note1", type: "free-text-node" },
+      { id: "note1", type: FREE_TEXT_NODE_TYPE },
     ] as unknown as Node[];
 
     const edges = [
@@ -53,7 +59,7 @@ describe("grafanaExport helpers", () => {
     const mappings = collectGrafanaEdgeCellMappings(
       edges,
       nodes,
-      new Set(["free-text-node", "free-shape-node", "group-node"]),
+      ANNOTATION_NODE_TYPES,
     );
 
     expect(mappings).to.have.lengthOf(1);
@@ -188,7 +194,7 @@ describe("grafanaExport helpers", () => {
     const linkedNodeIds = collectLinkedNodeIds(
       edges,
       nodes,
-      new Set(["free-text-node", "free-shape-node", "group-node"]),
+      ANNOTATION_NODE_TYPES,
     );
     const svg =
       '<svg xmlns="http://www.w3.org/2000/svg">' +

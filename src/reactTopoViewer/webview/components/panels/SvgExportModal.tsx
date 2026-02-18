@@ -68,6 +68,7 @@ import {
 import type {
   CustomIconMap,
   GrafanaTrafficThresholds,
+  GraphSvgResult,
   GraphSvgRenderOptions,
 } from "./svg-export";
 
@@ -131,6 +132,12 @@ interface GrafanaBundlePayload {
   svgContent: string;
   dashboardJson: string;
   panelYaml: string;
+}
+
+interface PreparedSvgExport {
+  baseName: string;
+  finalSvg: string;
+  graphSvg: GraphSvgResult;
 }
 
 function createRequestId(): string {
@@ -492,6 +499,139 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     [],
   );
 
+  const prepareSvgExport = useCallback((): PreparedSvgExport => {
+    if (!rfInstance) {
+      throw new Error("SVG export is not yet available");
+    }
+
+    const grafanaRenderOptions: GraphSvgRenderOptions | undefined =
+      exportGrafanaBundle
+        ? {
+            nodeIconSize: grafanaNodeSizePx,
+            interfaceScale: grafanaInterfaceSizePercent / 100,
+            interfaceLabelOverrides: effectiveInterfaceLabelOverrides,
+          }
+        : undefined;
+    const graphSvg = buildGraphSvg(
+      rfInstance,
+      borderZoom,
+      customIcons,
+      includeEdgeLabels,
+      ANNOTATION_NODE_TYPES,
+      exportGrafanaBundle,
+      grafanaRenderOptions,
+    );
+    if (!graphSvg) {
+      throw new Error("Unable to capture viewport for SVG export");
+    }
+
+    let finalSvg = graphSvg.svg;
+    if (borderPadding > 0) finalSvg = applyPadding(finalSvg, borderPadding);
+    if (includeAnnotations && totalAnnotations > 0) {
+      finalSvg = compositeAnnotationsIntoSvg(
+        finalSvg,
+        { groups, textAnnotations, shapeAnnotations },
+        borderZoom / 100,
+      );
+    }
+    if (backgroundOption === "custom") {
+      finalSvg = addBackgroundRect(finalSvg, customBackgroundColor);
+    }
+
+    const baseName = (filename || "topology").trim() || "topology";
+    return { baseName, finalSvg, graphSvg };
+  }, [
+    exportGrafanaBundle,
+    grafanaNodeSizePx,
+    grafanaInterfaceSizePercent,
+    effectiveInterfaceLabelOverrides,
+    rfInstance,
+    borderZoom,
+    customIcons,
+    includeEdgeLabels,
+    borderPadding,
+    includeAnnotations,
+    totalAnnotations,
+    groups,
+    textAnnotations,
+    shapeAnnotations,
+    backgroundOption,
+    customBackgroundColor,
+    filename,
+  ]);
+
+  const exportPlainSvg = useCallback((prepared: PreparedSvgExport): void => {
+    downloadSvg(prepared.finalSvg, `${prepared.baseName}.svg`);
+    setExportStatus({
+      type: "success",
+      message: "SVG exported successfully",
+    });
+  }, []);
+
+  const exportGrafanaBundleFiles = useCallback(
+    async (prepared: PreparedSvgExport): Promise<void> => {
+      if (!hasStrictlyAscendingThresholds(trafficThresholds)) {
+        throw new Error(
+          "Traffic thresholds must be strictly ascending (green < yellow < orange < red)",
+        );
+      }
+
+      const mappings = collectGrafanaEdgeCellMappings(
+        prepared.graphSvg.edges,
+        prepared.graphSvg.nodes,
+        ANNOTATION_NODE_TYPES,
+      );
+      let grafanaBaseSvg = sanitizeSvgForGrafana(prepared.finalSvg);
+      if (excludeNodesWithoutLinks) {
+        const linkedNodeIds = collectLinkedNodeIds(
+          prepared.graphSvg.edges,
+          prepared.graphSvg.nodes,
+          ANNOTATION_NODE_TYPES,
+        );
+        grafanaBaseSvg = removeUnlinkedNodesFromSvg(grafanaBaseSvg, linkedNodeIds);
+        grafanaBaseSvg = trimGrafanaSvgToTopologyContent(
+          grafanaBaseSvg,
+          Math.max(6, borderPadding),
+        );
+      }
+
+      let grafanaSvg = applyGrafanaCellIdsToSvg(grafanaBaseSvg, mappings);
+      if (includeGrafanaLegend) {
+        grafanaSvg = addGrafanaTrafficLegend(grafanaSvg, trafficThresholds);
+      }
+      grafanaSvg = makeGrafanaSvgResponsive(grafanaSvg);
+      const panelYaml = buildGrafanaPanelYaml(mappings, { trafficThresholds });
+      const dashboardJson = buildGrafanaDashboardJson(
+        panelYaml,
+        grafanaSvg,
+        prepared.baseName,
+      );
+
+      const requestId = createRequestId();
+      const files = await requestGrafanaBundleExport({
+        requestId,
+        baseName: prepared.baseName,
+        svgContent: grafanaSvg,
+        dashboardJson,
+        panelYaml,
+      });
+      const suffix =
+        files.length > 0
+          ? ` (${files.map((file) => file.split("/").pop()).join(", ")})`
+          : "";
+      setExportStatus({
+        type: "success",
+        message: `Grafana bundle exported successfully${suffix}`,
+      });
+    },
+    [
+      trafficThresholds,
+      excludeNodesWithoutLinks,
+      borderPadding,
+      includeGrafanaLegend,
+    ],
+  );
+
   const handleExport = useCallback(async () => {
     if (!isExportAvailable || !rfInstance) {
       setExportStatus({
@@ -506,103 +646,12 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       log.info(
         `[SvgExport] Export requested: zoom=${borderZoom}%, padding=${borderPadding}px`,
       );
-      const grafanaRenderOptions: GraphSvgRenderOptions | undefined =
-        exportGrafanaBundle
-          ? {
-              nodeIconSize: grafanaNodeSizePx,
-              interfaceScale: grafanaInterfaceSizePercent / 100,
-              interfaceLabelOverrides: effectiveInterfaceLabelOverrides,
-            }
-          : undefined;
-      const graphSvg = buildGraphSvg(
-        rfInstance,
-        borderZoom,
-        customIcons,
-        includeEdgeLabels,
-        ANNOTATION_NODE_TYPES,
-        exportGrafanaBundle,
-        grafanaRenderOptions,
-      );
-      if (!graphSvg)
-        throw new Error("Unable to capture viewport for SVG export");
-      let finalSvg = graphSvg.svg;
-      if (borderPadding > 0) finalSvg = applyPadding(finalSvg, borderPadding);
-      if (includeAnnotations && totalAnnotations > 0) {
-        finalSvg = compositeAnnotationsIntoSvg(
-          finalSvg,
-          { groups, textAnnotations, shapeAnnotations },
-          borderZoom / 100,
-        );
-      }
-      if (backgroundOption === "custom") {
-        finalSvg = addBackgroundRect(finalSvg, customBackgroundColor);
-      }
-
-      const baseName = (filename || "topology").trim() || "topology";
+      const prepared = prepareSvgExport();
       if (!exportGrafanaBundle) {
-        downloadSvg(finalSvg, `${baseName}.svg`);
-        setExportStatus({
-          type: "success",
-          message: "SVG exported successfully",
-        });
+        exportPlainSvg(prepared);
         return;
       }
-      if (!hasStrictlyAscendingThresholds(trafficThresholds)) {
-        throw new Error(
-          "Traffic thresholds must be strictly ascending (green < yellow < orange < red)",
-        );
-      }
-
-      const mappings = collectGrafanaEdgeCellMappings(
-        graphSvg.edges,
-        graphSvg.nodes,
-        ANNOTATION_NODE_TYPES,
-      );
-      let grafanaBaseSvg = sanitizeSvgForGrafana(finalSvg);
-      if (excludeNodesWithoutLinks) {
-        const linkedNodeIds = collectLinkedNodeIds(
-          graphSvg.edges,
-          graphSvg.nodes,
-          ANNOTATION_NODE_TYPES,
-        );
-        grafanaBaseSvg = removeUnlinkedNodesFromSvg(
-          grafanaBaseSvg,
-          linkedNodeIds,
-        );
-        grafanaBaseSvg = trimGrafanaSvgToTopologyContent(
-          grafanaBaseSvg,
-          Math.max(6, borderPadding),
-        );
-      }
-      let grafanaSvg = applyGrafanaCellIdsToSvg(grafanaBaseSvg, mappings);
-      if (includeGrafanaLegend) {
-        grafanaSvg = addGrafanaTrafficLegend(grafanaSvg, trafficThresholds);
-      }
-      grafanaSvg = makeGrafanaSvgResponsive(grafanaSvg);
-      const panelYaml = buildGrafanaPanelYaml(mappings, { trafficThresholds });
-      const dashboardJson = buildGrafanaDashboardJson(
-        panelYaml,
-        grafanaSvg,
-        baseName,
-      );
-
-      const requestId = createRequestId();
-      const files = await requestGrafanaBundleExport({
-        requestId,
-        baseName,
-        svgContent: grafanaSvg,
-        dashboardJson,
-        panelYaml,
-      });
-
-      const suffix =
-        files.length > 0
-          ? ` (${files.map((file) => file.split("/").pop()).join(", ")})`
-          : "";
-      setExportStatus({
-        type: "success",
-        message: `Grafana bundle exported successfully${suffix}`,
-      });
+      await exportGrafanaBundleFiles(prepared);
     } catch (error) {
       log.error(`[SvgExport] Export failed: ${error}`);
       setExportStatus({ type: "error", message: `Export failed: ${error}` });
@@ -613,25 +662,11 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     isExportAvailable,
     borderZoom,
     borderPadding,
-    includeAnnotations,
-    includeEdgeLabels,
     exportGrafanaBundle,
-    excludeNodesWithoutLinks,
-    includeGrafanaLegend,
-    trafficThresholds,
-    trafficThresholdUnit,
-    grafanaNodeSizePx,
-    grafanaInterfaceSizePercent,
-    effectiveInterfaceLabelOverrides,
-    totalAnnotations,
-    groups,
-    textAnnotations,
-    shapeAnnotations,
-    backgroundOption,
-    customBackgroundColor,
-    filename,
     rfInstance,
-    customIcons,
+    prepareSvgExport,
+    exportPlainSvg,
+    exportGrafanaBundleFiles,
   ]);
 
   const previewBackgroundSx = (() => {

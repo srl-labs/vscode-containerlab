@@ -5,10 +5,12 @@ import type { Edge, Node } from "@xyflow/react";
 import { renderEdgesToSvg } from "../../../src/reactTopoViewer/webview/components/panels/svg-export/edgesToSvg";
 
 describe("edgesToSvg", () => {
+  const TOPOLOGY_NODE_TYPE = "topology-node";
+
   it("renders node-proximate endpoint labels closer to nodes", () => {
     const nodes = [
-      { id: "n1", type: "topology-node", position: { x: 0, y: 0 } },
-      { id: "n2", type: "topology-node", position: { x: 200, y: 0 } }
+      { id: "n1", type: TOPOLOGY_NODE_TYPE, position: { x: 0, y: 0 } },
+      { id: "n2", type: TOPOLOGY_NODE_TYPE, position: { x: 200, y: 0 } }
     ] as unknown as Node[];
 
     const edges = [
@@ -44,8 +46,8 @@ describe("edgesToSvg", () => {
 
   it("anchors edge endpoints to interface label positions in node-proximate mode", () => {
     const nodes = [
-      { id: "n1", type: "topology-node", position: { x: 0, y: 0 } },
-      { id: "n2", type: "topology-node", position: { x: 200, y: 0 } }
+      { id: "n1", type: TOPOLOGY_NODE_TYPE, position: { x: 0, y: 0 } },
+      { id: "n2", type: TOPOLOGY_NODE_TYPE, position: { x: 200, y: 0 } }
     ] as unknown as Node[];
 
     const edges = [
@@ -95,8 +97,8 @@ describe("edgesToSvg", () => {
 
   it("keeps non-horizontal links on top/bottom interfaces", () => {
     const nodes = [
-      { id: "n1", type: "topology-node", position: { x: 0, y: 0 } },
-      { id: "n2", type: "topology-node", position: { x: 160, y: 90 } }
+      { id: "n1", type: TOPOLOGY_NODE_TYPE, position: { x: 0, y: 0 } },
+      { id: "n2", type: TOPOLOGY_NODE_TYPE, position: { x: 160, y: 90 } }
     ] as unknown as Node[];
 
     const edges = [
@@ -140,8 +142,8 @@ describe("edgesToSvg", () => {
 
   it("applies node/interface sizing options to interface anchors", () => {
     const nodes = [
-      { id: "n1", type: "topology-node", position: { x: 0, y: 0 } },
-      { id: "n2", type: "topology-node", position: { x: 200, y: 0 } }
+      { id: "n1", type: TOPOLOGY_NODE_TYPE, position: { x: 0, y: 0 } },
+      { id: "n2", type: TOPOLOGY_NODE_TYPE, position: { x: 200, y: 0 } }
     ] as unknown as Node[];
 
     const edges = [
@@ -175,8 +177,8 @@ describe("edgesToSvg", () => {
 
   it("uses configured interface label overrides", () => {
     const nodes = [
-      { id: "n1", type: "topology-node", position: { x: 0, y: 0 } },
-      { id: "n2", type: "topology-node", position: { x: 200, y: 0 } }
+      { id: "n1", type: TOPOLOGY_NODE_TYPE, position: { x: 0, y: 0 } },
+      { id: "n2", type: TOPOLOGY_NODE_TYPE, position: { x: 200, y: 0 } }
     ] as unknown as Node[];
 
     const edges = [
