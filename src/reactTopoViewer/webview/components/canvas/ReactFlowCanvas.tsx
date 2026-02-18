@@ -319,7 +319,7 @@ function useDragHandlers(
   const handleNodeDrag = useCallback(
     (event: React.MouseEvent, node: Node) => {
       onNodeDrag(event, node);
-      // Update helper lines during drag (skip in geo layout)
+      // Update helper lines during drag (skip in geo layout).
       if (helperLineHandlers && !helperLineHandlers.isGeoLayout) {
         helperLineHandlers.updateHelperLines(node, helperLineHandlers.allNodes);
       }
@@ -680,14 +680,9 @@ function getGeoEditableState(isGeoLayout: boolean, isLocked: boolean): boolean {
 }
 
 function getEffectiveEdgeRenderConfig(
-  edgeRenderConfig: { labelMode: EdgeLabelMode; suppressLabels: boolean; suppressHitArea: boolean },
-  isGeoLayout: boolean
+  edgeRenderConfig: { labelMode: EdgeLabelMode; suppressLabels: boolean; suppressHitArea: boolean }
 ): { labelMode: EdgeLabelMode; suppressLabels: boolean; suppressHitArea: boolean } {
-  return {
-    ...edgeRenderConfig,
-    suppressLabels: edgeRenderConfig.suppressLabels || isGeoLayout,
-    suppressHitArea: edgeRenderConfig.suppressHitArea || isGeoLayout
-  };
+  return edgeRenderConfig;
 }
 
 function getCanvasContainerClassName(isGeoLayout: boolean, isGeoInteracting: boolean): string {
@@ -1152,16 +1147,17 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     );
     const isGeoInteracting = getGeoInteractingState(isGeoLayout, geoLayout.isInteracting);
     const effectiveEdgeRenderConfig = useMemo(
-      () => getEffectiveEdgeRenderConfig(edgeRenderConfig, isGeoLayout),
-      [edgeRenderConfig, isGeoLayout]
+      () => getEffectiveEdgeRenderConfig(edgeRenderConfig),
+      [edgeRenderConfig]
     );
     const activeNodeTypes = useMemo(
       () => (isLowDetail && !isGeoLayout ? nodeTypesLite : nodeTypes),
       [isLowDetail, isGeoLayout]
     );
     const activeEdgeTypes = useMemo(
-      () => (isGeoLayout || isLowDetail ? edgeTypesLite : edgeTypes),
-      [isGeoLayout, isLowDetail]
+      // Geo layout should keep full edge geometry for visual quality.
+      () => (isLowDetail ? edgeTypesLite : edgeTypes),
+      [isLowDetail]
     );
     useSyncCanvasStore({
       linkSourceNode,
@@ -1274,6 +1270,29 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       baseOnNodeDragStop: handlers.onNodeDragStop,
       onShiftClickCreate
     });
+
+    useEffect(() => {
+      if (!isGeoLayout || !geoLayout.isReady) return;
+      const map = geoLayout.mapRef.current;
+      if (!map) return;
+
+      const handleMapClick = (event: { originalEvent?: MouseEvent }) => {
+        const originalEvent = event.originalEvent;
+        if (!originalEvent) return;
+        const target = (originalEvent.target as EventTarget | null) ?? canvasContainerRef.current;
+        wrappedOnPaneClick({
+          shiftKey: originalEvent.shiftKey,
+          target: (target ?? document.body) as EventTarget,
+          clientX: originalEvent.clientX,
+          clientY: originalEvent.clientY
+        } as React.MouseEvent);
+      };
+
+      map.on("click", handleMapClick);
+      return () => {
+        map.off("click", handleMapClick);
+      };
+    }, [isGeoLayout, geoLayout.isReady, geoLayout.mapRef, wrappedOnPaneClick]);
 
     const { reactFlowInstance: handlersReactFlowInstance } = handlers;
 

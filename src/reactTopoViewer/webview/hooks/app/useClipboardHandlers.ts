@@ -7,11 +7,6 @@
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import type {
-  GroupStyleAnnotation,
-  FreeTextAnnotation,
-  FreeShapeAnnotation
-} from "../../../shared/types/topology";
 import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 
 import { useClipboard, type UseClipboardOptions } from "./useClipboard";
@@ -20,19 +15,8 @@ import { useClipboard, type UseClipboardOptions } from "./useClipboard";
  * Avoids circular dependency with AnnotationContext.tsx
  */
 interface AnnotationsClipboardSubset {
-  groups: GroupStyleAnnotation[];
-  textAnnotations: FreeTextAnnotation[];
-  shapeAnnotations: FreeShapeAnnotation[];
   getNodeMembership: (nodeId: string) => string | null;
-  getGroupMembers: (groupId: string, options?: { includeNested?: boolean }) => string[];
-  selectedGroupIds: Set<string>;
-  selectedTextIds: Set<string>;
-  selectedShapeIds: Set<string>;
-  addGroup: (group: GroupStyleAnnotation) => void;
-  saveTextAnnotation: (annotation: FreeTextAnnotation) => void;
-  saveShapeAnnotation: (annotation: FreeShapeAnnotation) => void;
   addNodeToGroup: (nodeId: string, groupId: string) => void;
-  generateGroupId: () => string;
   deleteAllSelected: () => void;
 }
 

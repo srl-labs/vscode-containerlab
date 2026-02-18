@@ -126,7 +126,8 @@ export interface E2ETestingConfig {
   ) => string | null;
   editNode?: (nodeId: string | null) => void;
   editNetwork?: (nodeId: string | null) => void;
-  groups: GroupStyleAnnotation[];
+  groups?: GroupStyleAnnotation[];
+  getGroups?: () => GroupStyleAnnotation[];
   elements: unknown[];
   /** Layout controls for E2E testing */
   setLayout?: (layout: LayoutOption) => void;
@@ -159,6 +160,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
     editNode,
     editNetwork,
     groups,
+    getGroups,
     elements,
     setLayout,
     isGeoLayout,
@@ -221,13 +223,24 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
     }
   }, [editNetwork]);
 
+  const resolveGroups = React.useCallback(() => {
+    if (getGroups) {
+      return getGroups();
+    }
+    return groups ?? [];
+  }, [getGroups, groups]);
+
   // Groups E2E exposure
   React.useEffect(() => {
     if (typeof window !== "undefined" && window.__DEV__) {
-      window.__DEV__.getReactGroups = () => groups;
-      window.__DEV__.groupsCount = groups.length;
+      window.__DEV__.getReactGroups = () => resolveGroups();
+      Object.defineProperty(window.__DEV__, "groupsCount", {
+        configurable: true,
+        enumerable: true,
+        get: () => resolveGroups().length
+      });
     }
-  }, [groups]);
+  }, [resolveGroups]);
 
   // Elements E2E exposure
   React.useEffect(() => {

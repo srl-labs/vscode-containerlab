@@ -450,6 +450,40 @@ export function extractExtMacs(
   };
 }
 
+function endpointIp(endpoint: unknown, key: "ipv4" | "ipv6"): string {
+  if (!endpoint || typeof endpoint !== "object") return "";
+  const value = (endpoint as Record<string, unknown>)[key];
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  return "";
+}
+
+function indexedIp(linkObj: Record<string, unknown>, key: "ipv4" | "ipv6", index: number): string {
+  const values = linkObj[key];
+  if (!Array.isArray(values)) return "";
+  const value = (values as unknown[])[index];
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  return "";
+}
+
+/**
+ * Extracts endpoint IP addresses from endpoint objects (extended format)
+ * with fallback to ordered ipv4/ipv6 arrays (brief format).
+ */
+export function extractExtIps(
+  linkObj: Record<string, unknown>,
+  endA: unknown,
+  endB: unknown
+): Record<string, unknown> {
+  return {
+    extSourceIpv4: endpointIp(endA, "ipv4") || indexedIp(linkObj, "ipv4", 0),
+    extSourceIpv6: endpointIp(endA, "ipv6") || indexedIp(linkObj, "ipv6", 0),
+    extTargetIpv4: endpointIp(endB, "ipv4") || indexedIp(linkObj, "ipv4", 1),
+    extTargetIpv6: endpointIp(endB, "ipv6") || indexedIp(linkObj, "ipv6", 1)
+  };
+}
+
 /**
  * Creates extended info for an edge.
  */
@@ -461,7 +495,8 @@ export function createExtInfo(params: {
   const { linkObj, endA, endB } = params;
   const base = extractExtLinkProps(linkObj);
   const macs = extractExtMacs(linkObj, endA, endB);
-  return { ...base, ...macs };
+  const ips = extractExtIps(linkObj, endA, endB);
+  return { ...base, ...macs, ...ips };
 }
 
 // ============================================================================

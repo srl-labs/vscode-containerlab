@@ -18,6 +18,7 @@ import {
   collectNodeGroupMemberships,
   parseEndpointLabelOffset
 } from "./annotations";
+import { buildEdgeAnnotationLookup, type EdgeAnnotationLookup } from "./annotations/edgeAnnotations";
 import type { ReactFlowCanvasRef } from "./components/canvas";
 import { ReactFlowCanvas } from "./components/canvas";
 import { Navbar } from "./components/navbar/Navbar";
@@ -33,8 +34,6 @@ import { FindNodePopover } from "./components/panels/FindNodePopover";
 import { ShortcutDisplay, ToastContainer } from "./components/ui";
 import { EasterEggRenderer, useEasterEgg } from "./easter-eggs";
 import {
-  useAppAnnotations,
-  useAppDerivedData,
   useAppEditorBindings,
   useAppE2EExposure,
   useAppGraphHandlers,
@@ -46,6 +45,8 @@ import {
   useIconReconciliation,
   useUndoRedoControls
 } from "./hooks/app";
+import { useFilteredGraphElements, useSelectionData } from "./hooks/app/useAppContentHelpers";
+import { useAnnotations, useDerivedAnnotations, type AnnotationContextValue } from "./hooks/canvas";
 import {
   useAppHandlers,
   useContextMenuHandlers,
@@ -56,6 +57,7 @@ import {
 } from "./hooks/ui";
 import {
   useAnnotationUIActions,
+  useAnnotationUIState,
   useGraphActions,
   useGraphState,
   useGraphStore,
@@ -253,6 +255,214 @@ export interface AppContentProps {
   onInit: (instance: ReactFlowInstance) => void;
 }
 
+interface StoreSelectionState {
+  selectedNode: string | null;
+  selectedEdge: string | null;
+  editingImpairment: string | null;
+  editingNode: string | null;
+  editingEdge: string | null;
+  editingNetwork: string | null;
+  endpointLabelOffset: number;
+}
+
+type CanvasPropsWithoutGraph = Omit<
+  React.ComponentPropsWithoutRef<typeof ReactFlowCanvas>,
+  "nodes" | "edges"
+>;
+
+interface GraphCanvasMainProps {
+  canvasRef: React.RefObject<ReactFlowCanvasRef | null>;
+  canvasProps: CanvasPropsWithoutGraph;
+  showDummyLinks: boolean;
+  edgeAnnotationLookup: EdgeAnnotationLookup;
+  endpointLabelOffsetEnabled: boolean;
+  endpointLabelOffset: number;
+}
+
+function areSelectedNodesEqual(left: TopoNode | null, right: TopoNode | null): boolean {
+  if (left === right) return true;
+  if (!left || !right) return false;
+  return left.id === right.id && left.data === right.data;
+}
+
+function areSelectedEdgesEqual(left: TopoEdge | null, right: TopoEdge | null): boolean {
+  if (left === right) return true;
+  if (!left || !right) return false;
+  return (
+    left.id === right.id &&
+    left.source === right.source &&
+    left.target === right.target &&
+    left.data === right.data
+  );
+}
+
+function useGraphNodeById(nodeId: string | null): TopoNode | null {
+  return useGraphStore(
+    React.useCallback(
+      (graphState) =>
+        nodeId
+          ? ((graphState.nodes.find((node) => node.id === nodeId) as TopoNode | undefined) ?? null)
+          : null,
+      [nodeId]
+    ),
+    areSelectedNodesEqual
+  );
+}
+
+function useGraphEdgeById(edgeId: string | null): TopoEdge | null {
+  return useGraphStore(
+    React.useCallback(
+      (graphState) =>
+        edgeId ? ((graphState.edges.find((edge) => edge.id === edgeId) as TopoEdge | undefined) ?? null) : null,
+      [edgeId]
+    ),
+    areSelectedEdgesEqual
+  );
+}
+
+function useStoreBackedSelectionData(
+  state: StoreSelectionState,
+  edgeAnnotationLookup: EdgeAnnotationLookup
+) {
+  const selectedNode = useGraphNodeById(state.selectedNode);
+  const editingNode = useGraphNodeById(state.editingNode);
+  const editingNetwork = useGraphNodeById(state.editingNetwork);
+  const selectedEdge = useGraphEdgeById(state.selectedEdge);
+  const editingImpairment = useGraphEdgeById(state.editingImpairment);
+  const editingEdge = useGraphEdgeById(state.editingEdge);
+
+  const selectionNodes = React.useMemo(() => {
+    const deduped = new Map<string, TopoNode>();
+    for (const node of [selectedNode, editingNode, editingNetwork]) {
+      if (!node) continue;
+      deduped.set(node.id, node);
+    }
+    return Array.from(deduped.values());
+  }, [selectedNode, editingNode, editingNetwork]);
+
+  const selectionEdges = React.useMemo(() => {
+    const deduped = new Map<string, TopoEdge>();
+    for (const edge of [selectedEdge, editingImpairment, editingEdge]) {
+      if (!edge) continue;
+      deduped.set(edge.id, edge);
+    }
+    return Array.from(deduped.values());
+  }, [selectedEdge, editingImpairment, editingEdge]);
+
+  return useSelectionData(state, selectionNodes, selectionEdges, edgeAnnotationLookup);
+}
+
+const GraphCanvasMain: React.FC<GraphCanvasMainProps> = React.memo(
+  ({
+    canvasRef,
+    canvasProps,
+    showDummyLinks,
+    edgeAnnotationLookup,
+    endpointLabelOffsetEnabled,
+    endpointLabelOffset
+  }) => {
+    const { nodes, edges } = useGraphState();
+    const graphNodes = nodes as TopoNode[];
+    const graphEdges = edges as TopoEdge[];
+    useIconReconciliation();
+
+    const { filteredNodes, filteredEdges } = useFilteredGraphElements(
+      graphNodes,
+      graphEdges,
+      showDummyLinks
+    );
+
+    const renderedEdges = React.useMemo(() => {
+      if (filteredEdges.length === 0) return filteredEdges;
+      return filteredEdges.map((edge) => {
+        const data = (edge.data ?? {}) as TopologyEdgeData;
+        const sourceEndpoint = data.sourceEndpoint;
+        const targetEndpoint = data.targetEndpoint;
+        const annotation = findEdgeAnnotationInLookup(edgeAnnotationLookup, {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          sourceEndpoint,
+          targetEndpoint
+        });
+        const annotationOffset = parseEndpointLabelOffset(annotation?.endpointLabelOffset);
+        const annotationEnabled =
+          annotation?.endpointLabelOffsetEnabled ??
+          (annotation?.endpointLabelOffset !== undefined ? true : undefined);
+        const enabled = annotationEnabled ?? endpointLabelOffsetEnabled;
+        const resolvedOffset = enabled ? (annotationOffset ?? endpointLabelOffset) : 0;
+
+        if (
+          data.endpointLabelOffsetEnabled === enabled &&
+          data.endpointLabelOffset === resolvedOffset
+        ) {
+          return edge;
+        }
+
+        return {
+          ...edge,
+          data: {
+            ...data,
+            endpointLabelOffsetEnabled: enabled,
+            endpointLabelOffset: resolvedOffset
+          }
+        };
+      });
+    }, [filteredEdges, edgeAnnotationLookup, endpointLabelOffset, endpointLabelOffsetEnabled]);
+
+    return <ReactFlowCanvas ref={canvasRef} {...canvasProps} nodes={filteredNodes} edges={renderedEdges} />;
+  }
+);
+GraphCanvasMain.displayName = "GraphCanvasMain";
+
+interface AnnotationRuntimeBridgeProps {
+  rfInstance: ReactFlowInstance | null;
+  onLockedAction: () => void;
+  runtimeRef: { current: AnnotationContextValue | null };
+}
+
+const AnnotationRuntimeBridge: React.FC<AnnotationRuntimeBridgeProps> = ({
+  rfInstance,
+  onLockedAction,
+  runtimeRef
+}) => {
+  const annotations = useAnnotations({ rfInstance, onLockedAction });
+  runtimeRef.current = annotations;
+
+  React.useEffect(
+    () => () => {
+      runtimeRef.current = null;
+    },
+    [runtimeRef]
+  );
+
+  return null;
+};
+
+type SvgExportModalContainerProps = Pick<
+  React.ComponentPropsWithoutRef<typeof SvgExportModal>,
+  "onClose" | "rfInstance" | "customIcons"
+>;
+
+const SvgExportModalContainer: React.FC<SvgExportModalContainerProps> = React.memo(
+  ({ onClose, rfInstance, customIcons }) => {
+    const { textAnnotations, shapeAnnotations, groups } = useDerivedAnnotations();
+
+    return (
+      <SvgExportModal
+        isOpen
+        onClose={onClose}
+        textAnnotations={textAnnotations}
+        shapeAnnotations={shapeAnnotations}
+        groups={groups}
+        rfInstance={rfInstance}
+        customIcons={customIcons}
+      />
+    );
+  }
+);
+SvgExportModalContainer.displayName = "SvgExportModalContainer";
+
 export const AppContent: React.FC<AppContentProps> = ({
   reactFlowRef,
   rfInstance,
@@ -261,7 +471,6 @@ export const AppContent: React.FC<AppContentProps> = ({
 }) => {
   const state = useTopoViewerState();
   const topoActions = useTopoViewerActions();
-  const { nodes, edges } = useGraphState();
   const graphActions = useGraphActions();
   const annotationUiActions = useAnnotationUIActions();
   const isProcessing = state.isProcessing;
@@ -349,9 +558,6 @@ export const AppContent: React.FC<AppContentProps> = ({
     window.vscode?.postMessage({ command: "dump-css-vars", vars: sorted });
   }, []);
 
-  const graphNodes = nodes as TopoNode[];
-  const graphEdges = edges as TopoEdge[];
-
   const undoRedo = useUndoRedoControls(state.canUndo, state.canRedo);
   const { trigger: triggerLockShake } = useShakeAnimation();
 
@@ -365,59 +571,182 @@ export const AppContent: React.FC<AppContentProps> = ({
     addToast("Lab is locked (read-only)", "error", 2000);
   }, [triggerLockShake, addToast]);
 
-  const { annotations, annotationMode, canvasAnnotationHandlers } = useAppAnnotations({
-    rfInstance,
-    onLockedAction: handleLockedAction
-  });
+  const annotationRuntimeRef = React.useRef<AnnotationContextValue | null>(null);
+  const annotationUiState = useAnnotationUIState();
 
-  const { filteredNodes, filteredEdges, selectionData, edgeAnnotationLookup } = useAppDerivedData({
-    state,
-    nodes: graphNodes,
-    edges: graphEdges
-  });
+  const annotationMode = React.useMemo(
+    () => ({
+      isAddTextMode: annotationUiState.isAddTextMode,
+      isAddShapeMode: annotationUiState.isAddShapeMode,
+      pendingShapeType: annotationUiState.isAddShapeMode
+        ? annotationUiState.pendingShapeType
+        : undefined
+    }),
+    [
+      annotationUiState.isAddTextMode,
+      annotationUiState.isAddShapeMode,
+      annotationUiState.pendingShapeType
+    ]
+  );
 
-  const renderedEdges = React.useMemo(() => {
-    if (filteredEdges.length === 0) return filteredEdges;
-    return filteredEdges.map((edge) => {
-      const data = (edge.data ?? {}) as TopologyEdgeData;
-      const sourceEndpoint = data.sourceEndpoint;
-      const targetEndpoint = data.targetEndpoint;
-      const annotation = findEdgeAnnotationInLookup(edgeAnnotationLookup, {
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        sourceEndpoint,
-        targetEndpoint
-      });
-      const annotationOffset = parseEndpointLabelOffset(annotation?.endpointLabelOffset);
-      const annotationEnabled =
-        annotation?.endpointLabelOffsetEnabled ??
-        (annotation?.endpointLabelOffset !== undefined ? true : undefined);
-      const enabled = annotationEnabled ?? state.endpointLabelOffsetEnabled;
-      const resolvedOffset = enabled ? (annotationOffset ?? state.endpointLabelOffset) : 0;
-
-      if (
-        data.endpointLabelOffsetEnabled === enabled &&
-        data.endpointLabelOffset === resolvedOffset
-      ) {
-        return edge;
+  const annotationActions = React.useMemo(
+    () => ({
+      handleAddGroup: () => {
+        annotationRuntimeRef.current?.handleAddGroup();
+      },
+      handleAddText: () => {
+        annotationRuntimeRef.current?.handleAddText();
+      },
+      handleAddShapes: (shapeType?: string) => {
+        annotationRuntimeRef.current?.handleAddShapes(shapeType);
+      },
+      createTextAtPosition: (position: { x: number; y: number }) => {
+        annotationRuntimeRef.current?.createTextAtPosition(position);
+      },
+      createGroupAtPosition: (position: { x: number; y: number }) => {
+        annotationRuntimeRef.current?.createGroupAtPosition(position);
+      },
+      createShapeAtPosition: (position: { x: number; y: number }, shapeType?: string) => {
+        annotationRuntimeRef.current?.createShapeAtPosition(position, shapeType);
+      },
+      getNodeMembership: (nodeId: string) =>
+        annotationRuntimeRef.current?.getNodeMembership(nodeId) ?? null,
+      addNodeToGroup: (nodeId: string, groupId: string) => {
+        annotationRuntimeRef.current?.addNodeToGroup(nodeId, groupId);
+      },
+      deleteAllSelected: () => {
+        annotationRuntimeRef.current?.deleteAllSelected();
+      },
+      deleteSelectedForBatch: (
+        options?: Parameters<AnnotationContextValue["deleteSelectedForBatch"]>[0]
+      ) =>
+        annotationRuntimeRef.current?.deleteSelectedForBatch(options) ?? {
+          didDelete: false,
+          membersCleared: false
+        },
+      saveTextAnnotation: (...args: Parameters<AnnotationContextValue["saveTextAnnotation"]>) => {
+        annotationRuntimeRef.current?.saveTextAnnotation(...args);
+      },
+      deleteTextAnnotation: (...args: Parameters<AnnotationContextValue["deleteTextAnnotation"]>) => {
+        annotationRuntimeRef.current?.deleteTextAnnotation(...args);
+      },
+      saveShapeAnnotation: (...args: Parameters<AnnotationContextValue["saveShapeAnnotation"]>) => {
+        annotationRuntimeRef.current?.saveShapeAnnotation(...args);
+      },
+      deleteShapeAnnotation: (...args: Parameters<AnnotationContextValue["deleteShapeAnnotation"]>) => {
+        annotationRuntimeRef.current?.deleteShapeAnnotation(...args);
+      },
+      saveGroup: (...args: Parameters<AnnotationContextValue["saveGroup"]>) => {
+        annotationRuntimeRef.current?.saveGroup(...args);
+      },
+      deleteGroup: (...args: Parameters<AnnotationContextValue["deleteGroup"]>) => {
+        annotationRuntimeRef.current?.deleteGroup(...args);
+      },
+      updateGroup: (...args: Parameters<AnnotationContextValue["updateGroup"]>) => {
+        annotationRuntimeRef.current?.updateGroup(...args);
       }
+    }),
+    []
+  );
 
-      return {
-        ...edge,
-        data: {
-          ...data,
-          endpointLabelOffsetEnabled: enabled,
-          endpointLabelOffset: resolvedOffset
-        }
-      };
-    });
-  }, [
-    filteredEdges,
-    edgeAnnotationLookup,
-    state.endpointLabelOffset,
-    state.endpointLabelOffsetEnabled
-  ]);
+  const canvasAnnotationHandlers = React.useMemo<NonNullable<CanvasPropsWithoutGraph["annotationHandlers"]>>(
+    () => ({
+      onAddTextClick: (position) => {
+        annotationRuntimeRef.current?.handleTextCanvasClick(position);
+      },
+      onAddShapeClick: (position) => {
+        annotationRuntimeRef.current?.handleShapeCanvasClick(position);
+      },
+      disableAddTextMode: () => {
+        annotationRuntimeRef.current?.disableAddTextMode();
+      },
+      disableAddShapeMode: () => {
+        annotationRuntimeRef.current?.disableAddShapeMode();
+      },
+      onEditFreeText: (id) => {
+        annotationRuntimeRef.current?.editTextAnnotation(id);
+      },
+      onEditFreeShape: (id) => {
+        annotationRuntimeRef.current?.editShapeAnnotation(id);
+      },
+      onDeleteFreeText: (id) => {
+        annotationRuntimeRef.current?.deleteTextAnnotation(id);
+      },
+      onDeleteFreeShape: (id) => {
+        annotationRuntimeRef.current?.deleteShapeAnnotation(id);
+      },
+      onUpdateFreeTextSize: (id, width, height) => {
+        annotationRuntimeRef.current?.updateTextSize(id, width, height);
+      },
+      onUpdateFreeShapeSize: (id, width, height) => {
+        annotationRuntimeRef.current?.updateShapeSize(id, width, height);
+      },
+      onUpdateFreeTextRotation: (id, rotation) => {
+        annotationRuntimeRef.current?.updateTextRotation(id, rotation);
+      },
+      onUpdateFreeShapeRotation: (id, rotation) => {
+        annotationRuntimeRef.current?.updateShapeRotation(id, rotation);
+      },
+      onFreeTextRotationStart: (id) => {
+        annotationRuntimeRef.current?.onTextRotationStart(id);
+      },
+      onFreeTextRotationEnd: (id) => {
+        annotationRuntimeRef.current?.onTextRotationEnd(id);
+      },
+      onFreeShapeRotationStart: (id) => {
+        annotationRuntimeRef.current?.onShapeRotationStart(id);
+      },
+      onFreeShapeRotationEnd: (id) => {
+        annotationRuntimeRef.current?.onShapeRotationEnd(id);
+      },
+      onUpdateFreeShapeStartPosition: (id, startPosition) => {
+        annotationRuntimeRef.current?.updateShapeStartPosition(id, startPosition);
+      },
+      onUpdateFreeShapeEndPosition: (id, endPosition) => {
+        annotationRuntimeRef.current?.updateShapeEndPosition(id, endPosition);
+      },
+      onPersistAnnotations: () => {
+        annotationRuntimeRef.current?.persistAnnotations();
+      },
+      onNodeDropped: (nodeId, position) => {
+        annotationRuntimeRef.current?.onNodeDropped(nodeId, position);
+      },
+      onUpdateGroupSize: (id, width, height) => {
+        annotationRuntimeRef.current?.updateGroupSize(id, width, height);
+      },
+      onEditGroup: (id) => {
+        annotationRuntimeRef.current?.editGroup(id);
+      },
+      onDeleteGroup: (id) => {
+        annotationRuntimeRef.current?.deleteGroup(id);
+      },
+      getGroupMembers: (groupId, options) =>
+        annotationRuntimeRef.current?.getGroupMembers(groupId, options) ?? []
+    }),
+    []
+  );
+
+  const getAnnotationGroups = React.useCallback(
+    () => annotationRuntimeRef.current?.groups ?? [],
+    []
+  );
+
+  const edgeAnnotationLookup = React.useMemo(
+    () => buildEdgeAnnotationLookup(state.edgeAnnotations),
+    [state.edgeAnnotations]
+  );
+  const selectionData = useStoreBackedSelectionData(
+    {
+      selectedNode: state.selectedNode,
+      selectedEdge: state.selectedEdge,
+      editingImpairment: state.editingImpairment,
+      editingNode: state.editingNode,
+      editingEdge: state.editingEdge,
+      editingNetwork: state.editingNetwork,
+      endpointLabelOffset: state.endpointLabelOffset
+    },
+    edgeAnnotationLookup
+  );
 
   const [paletteTabRequest, setPaletteTabRequest] = React.useState<{ tabId: string } | undefined>(
     undefined
@@ -524,6 +853,8 @@ export const AppContent: React.FC<AppContentProps> = ({
     handleUpdateEdgeData: graphHandlers.handleUpdateEdgeData
   });
 
+  const getGraphNodes = React.useCallback(() => useGraphStore.getState().nodes as TopoNode[], []);
+
   const graphCreation = useGraphCreation({
     rfInstance,
     onLockedAction: handleLockedAction,
@@ -532,7 +863,7 @@ export const AppContent: React.FC<AppContentProps> = ({
       isLocked: isInteractionLocked,
       customNodes: state.customNodes,
       defaultNode: state.defaultNode,
-      nodes: graphNodes
+      getNodes: getGraphNodes
     },
     onEdgeCreated: graphHandlers.handleEdgeCreated,
     onNodeCreated: graphHandlers.handleNodeCreatedCallback,
@@ -587,7 +918,10 @@ export const AppContent: React.FC<AppContentProps> = ({
     },
     undoRedo,
     graphHandlers,
-    annotations,
+    annotations: {
+      handleAddGroup: annotationActions.handleAddGroup,
+      getGroups: getAnnotationGroups
+    },
     graphCreation,
     layoutControls,
     rfInstance
@@ -618,7 +952,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     annotationUiActions.closeGroupEditor();
   }, [topoActions, annotationUiActions]);
 
-  const hasContextContent = hasContextContentState(state, annotations);
+  const hasContextContent = hasContextContentState(state, annotationUiState);
 
   const handleEmptyCanvasClick = React.useCallback(() => {
     // When dismissing any context (editors/info) via empty canvas click, close the context panel
@@ -653,7 +987,11 @@ export const AppContent: React.FC<AppContentProps> = ({
   }, [annotationUiActions, clearAllEditingState, isProcessing, panelVisibility]);
 
   const clipboardHandlers = useClipboardHandlers({
-    annotations,
+    annotations: {
+      getNodeMembership: annotationActions.getNodeMembership,
+      addNodeToGroup: annotationActions.addNodeToGroup,
+      deleteAllSelected: annotationActions.deleteAllSelected
+    },
     rfInstance,
     handleNodeCreatedCallback: graphHandlers.handleNodeCreatedCallback,
     handleEdgeCreated: graphHandlers.handleEdgeCreated,
@@ -677,7 +1015,7 @@ export const AppContent: React.FC<AppContentProps> = ({
 
     applyGraphDeletions(graphActions, menuHandlers, graphNodeIds, edgeIds);
 
-    const annotationResult = annotations.deleteSelectedForBatch({
+    const annotationResult = annotationActions.deleteSelectedForBatch({
       groupIds,
       textIds,
       shapeIds
@@ -698,7 +1036,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     ).catch((err) => {
       console.error("[TopoViewer] Failed to batch delete", err);
     });
-  }, [annotations, graphActions, menuHandlers, state.selectedNode, state.selectedEdge]);
+  }, [annotationActions, graphActions, menuHandlers, state.selectedNode, state.selectedEdge]);
 
   useAppKeyboardShortcuts({
     state: {
@@ -709,11 +1047,11 @@ export const AppContent: React.FC<AppContentProps> = ({
     },
     undoRedo,
     annotations: {
-      selectedTextIds: annotations.selectedTextIds,
-      selectedShapeIds: annotations.selectedShapeIds,
-      selectedGroupIds: annotations.selectedGroupIds,
-      clearAllSelections: annotations.clearAllSelections,
-      handleAddGroup: annotations.handleAddGroup
+      selectedTextIds: annotationUiState.selectedTextIds,
+      selectedShapeIds: annotationUiState.selectedShapeIds,
+      selectedGroupIds: annotationUiState.selectedGroupIds,
+      clearAllSelections: annotationUiActions.clearAllSelections,
+      handleAddGroup: annotationActions.handleAddGroup
     },
     clipboardHandlers,
     deleteHandlers: {
@@ -725,9 +1063,6 @@ export const AppContent: React.FC<AppContentProps> = ({
   });
 
   const easterEgg = useEasterEgg({});
-
-  // Track used custom icons and copy them to workspace .clab-icons/ folder
-  useIconReconciliation(nodes);
 
   // Auto-open context panel when selection/editing state changes
   React.useEffect(() => {
@@ -754,6 +1089,65 @@ export const AppContent: React.FC<AppContentProps> = ({
       /* ignore */
     });
   }, [reactFlowRef, rfInstance]);
+
+  const handleOpenNodePalette = React.useCallback(() => {
+    handleContextPanelBack();
+    panelVisibility.handleOpenContextPanel();
+  }, [handleContextPanelBack, panelVisibility]);
+
+  const canvasProps = React.useMemo<CanvasPropsWithoutGraph>(
+    () => ({
+      isContextPanelOpen: panelVisibility.isContextPanelOpen,
+      onPaneClick: handleEmptyCanvasClick,
+      layout: layoutControls.layout,
+      isGeoLayout: layoutControls.isGeoLayout,
+      gridLineWidth: layoutControls.gridLineWidth,
+      gridStyle: layoutControls.gridStyle,
+      gridColor: layoutControls.gridColor,
+      gridBgColor: layoutControls.gridBgColor,
+      annotationMode,
+      annotationHandlers: canvasAnnotationHandlers,
+      linkLabelMode: state.linkLabelMode,
+      onInit,
+      onEdgeCreated: graphHandlers.handleEdgeCreated,
+      onShiftClickCreate: graphCreation.createNodeAtPosition,
+      onNodeDelete: graphHandlers.handleDeleteNode,
+      onEdgeDelete: graphHandlers.handleDeleteLink,
+      onOpenNodePalette: handleOpenNodePalette,
+      onAddGroup: annotationActions.handleAddGroup,
+      onAddText: annotationActions.handleAddText,
+      onAddShapes: annotationActions.handleAddShapes,
+      onAddTextAtPosition: annotationActions.createTextAtPosition,
+      onAddGroupAtPosition: annotationActions.createGroupAtPosition,
+      onAddShapeAtPosition: annotationActions.createShapeAtPosition,
+      onDropCreateNode: handleDropCreateNode,
+      onDropCreateNetwork: handleDropCreateNetwork,
+      onLockedAction: handleLockedAction
+    }),
+    [
+      panelVisibility.isContextPanelOpen,
+      handleEmptyCanvasClick,
+      layoutControls.layout,
+      layoutControls.isGeoLayout,
+      layoutControls.gridLineWidth,
+      layoutControls.gridStyle,
+      layoutControls.gridColor,
+      layoutControls.gridBgColor,
+      annotationMode,
+      canvasAnnotationHandlers,
+      state.linkLabelMode,
+      onInit,
+      graphHandlers.handleEdgeCreated,
+      graphCreation.createNodeAtPosition,
+      graphHandlers.handleDeleteNode,
+      graphHandlers.handleDeleteLink,
+      handleOpenNodePalette,
+      annotationActions,
+      handleDropCreateNode,
+      handleDropCreateNetwork,
+      handleLockedAction
+    ]
+  );
 
   const handleNetworkSave = React.useCallback(
     (data: Parameters<typeof networkEditorHandlers.handleSave>[0]) => {
@@ -791,6 +1185,11 @@ export const AppContent: React.FC<AppContentProps> = ({
         width="100%"
         overflow="hidden"
       >
+        <AnnotationRuntimeBridge
+          rfInstance={rfInstance}
+          onLockedAction={handleLockedAction}
+          runtimeRef={annotationRuntimeRef}
+        />
         <Navbar
           onZoomToFit={handleZoomToFit}
           layout={layoutControls.layout}
@@ -914,24 +1313,24 @@ export const AppContent: React.FC<AppContentProps> = ({
                 onSave: handleLinkImpairmentSave,
                 onClose: () => topoActions.editImpairment(null)
               },
-              editingTextAnnotation: annotations.editingTextAnnotation,
+              editingTextAnnotation: annotationUiState.editingTextAnnotation,
               textAnnotationHandlers: {
-                onSave: annotations.saveTextAnnotation,
-                onClose: annotations.closeTextEditor,
-                onDelete: annotations.deleteTextAnnotation
+                onSave: annotationActions.saveTextAnnotation,
+                onClose: annotationUiActions.closeTextEditor,
+                onDelete: annotationActions.deleteTextAnnotation
               },
-              editingShapeAnnotation: annotations.editingShapeAnnotation,
+              editingShapeAnnotation: annotationUiState.editingShapeAnnotation,
               shapeAnnotationHandlers: {
-                onSave: annotations.saveShapeAnnotation,
-                onClose: annotations.closeShapeEditor,
-                onDelete: annotations.deleteShapeAnnotation
+                onSave: annotationActions.saveShapeAnnotation,
+                onClose: annotationUiActions.closeShapeEditor,
+                onDelete: annotationActions.deleteShapeAnnotation
               },
-              editingGroup: annotations.editingGroup,
+              editingGroup: annotationUiState.editingGroup,
               groupHandlers: {
-                onSave: annotations.saveGroup,
-                onClose: annotations.closeGroupEditor,
-                onDelete: annotations.deleteGroup,
-                onStylePreview: annotations.updateGroup
+                onSave: annotationActions.saveGroup,
+                onClose: annotationUiActions.closeGroupEditor,
+                onDelete: annotationActions.deleteGroup,
+                onStylePreview: annotationActions.updateGroup
               }
             }}
           />
@@ -943,39 +1342,13 @@ export const AppContent: React.FC<AppContentProps> = ({
               position: "relative"
             }}
           >
-            <ReactFlowCanvas
-              ref={reactFlowRef}
-              nodes={filteredNodes}
-              edges={renderedEdges}
-              isContextPanelOpen={panelVisibility.isContextPanelOpen}
-              onPaneClick={handleEmptyCanvasClick}
-              layout={layoutControls.layout}
-              isGeoLayout={layoutControls.isGeoLayout}
-              gridLineWidth={layoutControls.gridLineWidth}
-              gridStyle={layoutControls.gridStyle}
-              gridColor={layoutControls.gridColor}
-              gridBgColor={layoutControls.gridBgColor}
-              annotationMode={annotationMode}
-              annotationHandlers={canvasAnnotationHandlers}
-              linkLabelMode={state.linkLabelMode}
-              onInit={onInit}
-              onEdgeCreated={graphHandlers.handleEdgeCreated}
-              onShiftClickCreate={graphCreation.createNodeAtPosition}
-              onNodeDelete={graphHandlers.handleDeleteNode}
-              onEdgeDelete={graphHandlers.handleDeleteLink}
-              onOpenNodePalette={() => {
-                handleContextPanelBack();
-                panelVisibility.handleOpenContextPanel();
-              }}
-              onAddGroup={annotations.handleAddGroup}
-              onAddText={annotations.handleAddText}
-              onAddShapes={annotations.handleAddShapes}
-              onAddTextAtPosition={annotations.createTextAtPosition}
-              onAddGroupAtPosition={annotations.createGroupAtPosition}
-              onAddShapeAtPosition={annotations.createShapeAtPosition}
-              onDropCreateNode={handleDropCreateNode}
-              onDropCreateNetwork={handleDropCreateNetwork}
-              onLockedAction={handleLockedAction}
+            <GraphCanvasMain
+              canvasRef={reactFlowRef}
+              canvasProps={canvasProps}
+              showDummyLinks={state.showDummyLinks}
+              edgeAnnotationLookup={edgeAnnotationLookup}
+              endpointLabelOffset={state.endpointLabelOffset}
+              endpointLabelOffsetEnabled={state.endpointLabelOffsetEnabled}
             />
             <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
             <EasterEggRenderer easterEgg={easterEgg} />
@@ -1006,15 +1379,13 @@ export const AppContent: React.FC<AppContentProps> = ({
           isOpen={panelVisibility.showShortcutsModal}
           onClose={panelVisibility.handleCloseShortcuts}
         />
-        <SvgExportModal
-          isOpen={panelVisibility.showSvgExportModal}
-          onClose={panelVisibility.handleCloseSvgExport}
-          textAnnotations={annotations.textAnnotations}
-          shapeAnnotations={annotations.shapeAnnotations}
-          groups={annotations.groups}
-          rfInstance={rfInstance}
-          customIcons={getCustomIconMap(state.customIcons)}
-        />
+        {panelVisibility.showSvgExportModal ? (
+          <SvgExportModalContainer
+            onClose={panelVisibility.handleCloseSvgExport}
+            rfInstance={rfInstance}
+            customIcons={getCustomIconMap(state.customIcons)}
+          />
+        ) : null}
         <BulkLinkModal
           isOpen={panelVisibility.showBulkLinkModal && !isProcessing}
           mode={interactionMode}

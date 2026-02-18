@@ -39,6 +39,35 @@ function getEdgeRawData(edgeId: string | null, edges: TopoEdge[]): EdgeRawData |
   };
 }
 
+function getAnnotationHandlerSnapshot(annotations: AnnotationContextValue) {
+  return {
+    handleTextCanvasClick: annotations.handleTextCanvasClick,
+    handleShapeCanvasClick: annotations.handleShapeCanvasClick,
+    disableAddTextMode: annotations.disableAddTextMode,
+    disableAddShapeMode: annotations.disableAddShapeMode,
+    editTextAnnotation: annotations.editTextAnnotation,
+    editShapeAnnotation: annotations.editShapeAnnotation,
+    deleteTextAnnotation: annotations.deleteTextAnnotation,
+    deleteShapeAnnotation: annotations.deleteShapeAnnotation,
+    updateTextSize: annotations.updateTextSize,
+    updateShapeSize: annotations.updateShapeSize,
+    updateTextRotation: annotations.updateTextRotation,
+    updateShapeRotation: annotations.updateShapeRotation,
+    onTextRotationStart: annotations.onTextRotationStart,
+    onTextRotationEnd: annotations.onTextRotationEnd,
+    onShapeRotationStart: annotations.onShapeRotationStart,
+    onShapeRotationEnd: annotations.onShapeRotationEnd,
+    updateShapeStartPosition: annotations.updateShapeStartPosition,
+    updateShapeEndPosition: annotations.updateShapeEndPosition,
+    persistAnnotations: annotations.persistAnnotations,
+    onNodeDropped: annotations.onNodeDropped,
+    updateGroupSize: annotations.updateGroupSize,
+    editGroup: annotations.editGroup,
+    deleteGroup: annotations.deleteGroup,
+    getGroupMembers: annotations.getGroupMembers
+  };
+}
+
 export function useCustomNodeErrorToast(
   customNodeError: unknown,
   addToast: (message: string, type?: "success" | "error" | "info", duration?: number) => void,
@@ -173,107 +202,162 @@ export function useAnnotationCanvasHandlers(annotations: AnnotationContextValue)
   };
   canvasAnnotationHandlers: AnnotationHandlers;
 } {
-  const {
-    isAddTextMode,
-    isAddShapeMode,
-    pendingShapeType,
-    handleTextCanvasClick,
-    handleShapeCanvasClick,
-    disableAddTextMode,
-    disableAddShapeMode,
-    editTextAnnotation,
-    editShapeAnnotation,
-    deleteTextAnnotation,
-    deleteShapeAnnotation,
-    updateTextSize,
-    updateShapeSize,
-    updateTextRotation,
-    updateShapeRotation,
-    onTextRotationStart,
-    onTextRotationEnd,
-    onShapeRotationStart,
-    onShapeRotationEnd,
-    updateShapeStartPosition,
-    updateShapeEndPosition,
-    persistAnnotations,
-    onNodeDropped,
-    updateGroupSize,
-    editGroup,
-    deleteGroup,
-    getGroupMembers
-  } = annotations;
-
   const annotationMode = React.useMemo(
     () => ({
-      isAddTextMode,
-      isAddShapeMode,
-      pendingShapeType: isAddShapeMode ? pendingShapeType : undefined
+      isAddTextMode: annotations.isAddTextMode,
+      isAddShapeMode: annotations.isAddShapeMode,
+      pendingShapeType: annotations.isAddShapeMode ? annotations.pendingShapeType : undefined
     }),
-    [isAddTextMode, isAddShapeMode, pendingShapeType]
+    [annotations.isAddTextMode, annotations.isAddShapeMode, annotations.pendingShapeType]
+  );
+
+  // Keep a stable handlers object for ReactFlow/canvas store subscribers.
+  const latestAnnotationsRef = React.useRef(getAnnotationHandlerSnapshot(annotations));
+  latestAnnotationsRef.current = getAnnotationHandlerSnapshot(annotations);
+
+  const onAddTextClick = React.useCallback((position: { x: number; y: number }) => {
+    latestAnnotationsRef.current.handleTextCanvasClick(position);
+  }, []);
+  const onAddShapeClick = React.useCallback((position: { x: number; y: number }) => {
+    latestAnnotationsRef.current.handleShapeCanvasClick(position);
+  }, []);
+  const disableAddTextMode = React.useCallback(() => {
+    latestAnnotationsRef.current.disableAddTextMode();
+  }, []);
+  const disableAddShapeMode = React.useCallback(() => {
+    latestAnnotationsRef.current.disableAddShapeMode();
+  }, []);
+  const onEditFreeText = React.useCallback((id: string) => {
+    latestAnnotationsRef.current.editTextAnnotation(id);
+  }, []);
+  const onEditFreeShape = React.useCallback((id: string) => {
+    latestAnnotationsRef.current.editShapeAnnotation(id);
+  }, []);
+  const onDeleteFreeText = React.useCallback((id: string) => {
+    latestAnnotationsRef.current.deleteTextAnnotation(id);
+  }, []);
+  const onDeleteFreeShape = React.useCallback((id: string) => {
+    latestAnnotationsRef.current.deleteShapeAnnotation(id);
+  }, []);
+  const onUpdateFreeTextSize = React.useCallback((id: string, width: number, height: number) => {
+    latestAnnotationsRef.current.updateTextSize(id, width, height);
+  }, []);
+  const onUpdateFreeShapeSize = React.useCallback((id: string, width: number, height: number) => {
+    latestAnnotationsRef.current.updateShapeSize(id, width, height);
+  }, []);
+  const onUpdateFreeTextRotation = React.useCallback((id: string, rotation: number) => {
+    latestAnnotationsRef.current.updateTextRotation(id, rotation);
+  }, []);
+  const onUpdateFreeShapeRotation = React.useCallback((id: string, rotation: number) => {
+    latestAnnotationsRef.current.updateShapeRotation(id, rotation);
+  }, []);
+  const onFreeTextRotationStart = React.useCallback((id: string) => {
+    latestAnnotationsRef.current.onTextRotationStart(id);
+  }, []);
+  const onFreeTextRotationEnd = React.useCallback((id: string) => {
+    latestAnnotationsRef.current.onTextRotationEnd(id);
+  }, []);
+  const onFreeShapeRotationStart = React.useCallback((id: string) => {
+    latestAnnotationsRef.current.onShapeRotationStart(id);
+  }, []);
+  const onFreeShapeRotationEnd = React.useCallback((id: string) => {
+    latestAnnotationsRef.current.onShapeRotationEnd(id);
+  }, []);
+  const onUpdateFreeShapeStartPosition = React.useCallback(
+    (id: string, startPosition: { x: number; y: number }) => {
+      latestAnnotationsRef.current.updateShapeStartPosition(id, startPosition);
+    },
+    []
+  );
+  const onUpdateFreeShapeEndPosition = React.useCallback(
+    (id: string, endPosition: { x: number; y: number }) => {
+      latestAnnotationsRef.current.updateShapeEndPosition(id, endPosition);
+    },
+    []
+  );
+  const onPersistAnnotations = React.useCallback(() => {
+    latestAnnotationsRef.current.persistAnnotations();
+  }, []);
+  const onNodeDropped = React.useCallback((nodeId: string, position: { x: number; y: number }) => {
+    latestAnnotationsRef.current.onNodeDropped(nodeId, position);
+  }, []);
+  const onUpdateGroupSize = React.useCallback((id: string, width: number, height: number) => {
+    latestAnnotationsRef.current.updateGroupSize(id, width, height);
+  }, []);
+  const onEditGroup = React.useCallback((id: string) => {
+    latestAnnotationsRef.current.editGroup(id);
+  }, []);
+  const onDeleteGroup = React.useCallback((id: string) => {
+    latestAnnotationsRef.current.deleteGroup(id);
+  }, []);
+  const getGroupMembers = React.useCallback(
+    (groupId: string, options?: { includeNested?: boolean }) =>
+      latestAnnotationsRef.current.getGroupMembers(groupId, options),
+    []
   );
 
   const canvasAnnotationHandlers: AnnotationHandlers = React.useMemo(
     () => ({
       // Add mode handlers
-      onAddTextClick: handleTextCanvasClick,
-      onAddShapeClick: handleShapeCanvasClick,
+      onAddTextClick,
+      onAddShapeClick,
       disableAddTextMode,
       disableAddShapeMode,
       // Edit handlers
-      onEditFreeText: editTextAnnotation,
-      onEditFreeShape: editShapeAnnotation,
+      onEditFreeText,
+      onEditFreeShape,
       // Delete handlers
-      onDeleteFreeText: deleteTextAnnotation,
-      onDeleteFreeShape: deleteShapeAnnotation,
+      onDeleteFreeText,
+      onDeleteFreeShape,
       // Size update handlers (for resize)
-      onUpdateFreeTextSize: updateTextSize,
-      onUpdateFreeShapeSize: updateShapeSize,
+      onUpdateFreeTextSize,
+      onUpdateFreeShapeSize,
       // Rotation handlers (live updates during drag)
-      onUpdateFreeTextRotation: updateTextRotation,
-      onUpdateFreeShapeRotation: updateShapeRotation,
+      onUpdateFreeTextRotation,
+      onUpdateFreeShapeRotation,
       // Rotation start/end handlers (for undo/redo)
-      onFreeTextRotationStart: onTextRotationStart,
-      onFreeTextRotationEnd: onTextRotationEnd,
-      onFreeShapeRotationStart: onShapeRotationStart,
-      onFreeShapeRotationEnd: onShapeRotationEnd,
+      onFreeTextRotationStart,
+      onFreeTextRotationEnd,
+      onFreeShapeRotationStart,
+      onFreeShapeRotationEnd,
       // Line-specific handlers
-      onUpdateFreeShapeStartPosition: updateShapeStartPosition,
-      onUpdateFreeShapeEndPosition: updateShapeEndPosition,
+      onUpdateFreeShapeStartPosition,
+      onUpdateFreeShapeEndPosition,
       // Persist annotations (call on drag end)
-      onPersistAnnotations: persistAnnotations,
+      onPersistAnnotations,
       // Node dropped handler (for group membership)
       onNodeDropped,
       // Group handlers
-      onUpdateGroupSize: updateGroupSize,
-      onEditGroup: editGroup,
-      onDeleteGroup: deleteGroup,
+      onUpdateGroupSize,
+      onEditGroup,
+      onDeleteGroup,
       // Get group members (for group dragging)
       getGroupMembers
     }),
     [
-      handleTextCanvasClick,
-      handleShapeCanvasClick,
+      onAddTextClick,
+      onAddShapeClick,
       disableAddTextMode,
       disableAddShapeMode,
-      editTextAnnotation,
-      editShapeAnnotation,
-      deleteTextAnnotation,
-      deleteShapeAnnotation,
-      updateTextSize,
-      updateShapeSize,
-      updateTextRotation,
-      updateShapeRotation,
-      onTextRotationStart,
-      onTextRotationEnd,
-      onShapeRotationStart,
-      onShapeRotationEnd,
-      updateShapeStartPosition,
-      updateShapeEndPosition,
-      persistAnnotations,
+      onEditFreeText,
+      onEditFreeShape,
+      onDeleteFreeText,
+      onDeleteFreeShape,
+      onUpdateFreeTextSize,
+      onUpdateFreeShapeSize,
+      onUpdateFreeTextRotation,
+      onUpdateFreeShapeRotation,
+      onFreeTextRotationStart,
+      onFreeTextRotationEnd,
+      onFreeShapeRotationStart,
+      onFreeShapeRotationEnd,
+      onUpdateFreeShapeStartPosition,
+      onUpdateFreeShapeEndPosition,
+      onPersistAnnotations,
       onNodeDropped,
-      updateGroupSize,
-      editGroup,
-      deleteGroup,
+      onUpdateGroupSize,
+      onEditGroup,
+      onDeleteGroup,
       getGroupMembers
     ]
   );

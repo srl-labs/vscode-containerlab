@@ -3,36 +3,61 @@
  * This ensures custom icons used by nodes are copied to the workspace .clab-icons/ folder.
  */
 import { useEffect, useRef } from "react";
-import type { Node } from "@xyflow/react";
 
 import { extractUsedCustomIcons } from "../../../shared/types/icons";
 import { sendIconReconcile } from "../../messaging/extensionMessaging";
+import { useGraphStore } from "../../stores/graphStore";
+
+interface IconUsageEntry {
+  id: string;
+  topoViewerRole: string | null;
+}
+
+function selectIconUsageEntries(state: { nodes: Array<{ id: string; data?: unknown }> }): IconUsageEntry[] {
+  const entries: IconUsageEntry[] = [];
+  for (const node of state.nodes) {
+    const data = node.data as Record<string, unknown> | undefined;
+    const extraData = (data?.extraData as Record<string, unknown> | undefined) ?? {};
+    const role = data?.role;
+    const fallbackRole = extraData.topoViewerRole;
+    let topoViewerRole: string | null = null;
+    if (typeof role === "string" && role.length > 0) {
+      topoViewerRole = role;
+    } else if (typeof fallbackRole === "string" && fallbackRole.length > 0) {
+      topoViewerRole = fallbackRole;
+    }
+    entries.push({ id: node.id, topoViewerRole });
+  }
+  return entries;
+}
+
+function areIconUsageEntriesEqual(left: IconUsageEntry[], right: IconUsageEntry[]): boolean {
+  if (left === right) return true;
+  if (left.length !== right.length) return false;
+  for (let i = 0; i < left.length; i++) {
+    if (left[i].id !== right[i].id || left[i].topoViewerRole !== right[i].topoViewerRole) {
+      return false;
+    }
+  }
+  return true;
+}
 
 /**
  * Tracks custom icons used by nodes and triggers reconciliation when usage changes.
  * Reconciliation copies used icons from global (~/.clab/icons/) to workspace (.clab-icons/).
  *
- * @param nodes - Current graph nodes
+ * Subscribes only to icon-relevant node fields so drag position updates do not trigger work.
  */
-export function useIconReconciliation(nodes: Node[]): void {
+export function useIconReconciliation(): void {
+  const iconUsageEntries = useGraphStore(selectIconUsageEntries, areIconUsageEntriesEqual);
   const prevUsedIconsRef = useRef<string[]>([]);
 
   useEffect(() => {
-    // Extract custom icons currently used by nodes
-    // The function expects objects with data.topoViewerRole, which matches our node structure
-    // (TopologyNode stores role in data.role, but we need to check data.topoViewerRole in extraData)
-    const nodeDataForExtraction = nodes.map((node) => {
-      const data = node.data as Record<string, unknown>;
-      const extraData = (data.extraData as Record<string, unknown>) || {};
-      return {
-        data: {
-          // Check both role (canvas data) and topoViewerRole (extraData) for the icon name
-          topoViewerRole: (data.role as string) || (extraData.topoViewerRole as string)
-        }
-      };
-    });
-
-    const usedIcons = extractUsedCustomIcons(nodeDataForExtraction);
+    const usedIcons = extractUsedCustomIcons(
+      iconUsageEntries.map((entry) => ({
+        data: { topoViewerRole: entry.topoViewerRole ?? undefined }
+      }))
+    );
     const prevUsedIcons = prevUsedIconsRef.current;
 
     // Check if the set of used icons has changed
@@ -43,10 +68,10 @@ export function useIconReconciliation(nodes: Node[]): void {
       usedIcons.some((icon) => !prevSet.has(icon)) ||
       prevUsedIcons.some((icon) => !usedSet.has(icon));
 
-    if (hasChanged && nodes.length > 0) {
+    if (hasChanged && iconUsageEntries.length > 0) {
       prevUsedIconsRef.current = usedIcons;
       // Trigger icon reconciliation on extension side
       sendIconReconcile(usedIcons);
     }
-  }, [nodes]);
+  }, [iconUsageEntries]);
 }

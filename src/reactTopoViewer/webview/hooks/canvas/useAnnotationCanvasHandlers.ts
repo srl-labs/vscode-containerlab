@@ -114,12 +114,17 @@ function useWrappedPaneClick(
         return;
       }
 
-      // Explicitly deselect all nodes when clicking on the pane
-      // This ensures annotation nodes are properly deselected
+      // Explicitly deselect all nodes/edges when clicking on the pane
+      // so selection clears even when React Flow doesn't do it implicitly.
       const nodes = rfInstance.getNodes();
       const hasSelectedNodes = nodes.some((n) => n.selected);
       if (hasSelectedNodes) {
         rfInstance.setNodes(nodes.map((n) => ({ ...n, selected: false })));
+      }
+      const edges = rfInstance.getEdges();
+      const hasSelectedEdges = edges.some((e) => e.selected);
+      if (hasSelectedEdges) {
+        rfInstance.setEdges(edges.map((e) => ({ ...e, selected: false })));
       }
 
       baseOnPaneClick(event);

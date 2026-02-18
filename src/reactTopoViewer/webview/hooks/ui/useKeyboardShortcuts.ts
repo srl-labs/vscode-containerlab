@@ -43,6 +43,8 @@ interface KeyboardShortcutsOptions {
   onClearAnnotationSelection?: () => void;
   /** Check if annotation clipboard has content */
   hasAnnotationClipboard?: () => boolean;
+  /** Check if graph clipboard has content */
+  hasGraphClipboard?: () => boolean;
   /** Create group from selected nodes (Ctrl+G) */
   onCreateGroup?: () => void;
 }
@@ -51,9 +53,25 @@ interface KeyboardShortcutsOptions {
  * Check if target is an input field
  */
 function isInputElement(target: EventTarget | null): boolean {
-  if (!target) return false;
-  const el = target as HTMLElement;
-  return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable;
+  if (!(target instanceof Element)) return false;
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return true;
+  if (target instanceof HTMLElement && target.isContentEditable) return true;
+
+  return Boolean(
+    target.closest(
+      [
+        "input",
+        "textarea",
+        "[contenteditable='']",
+        "[contenteditable='true']",
+        "[contenteditable='plaintext-only']",
+        "[role='textbox']",
+        ".monaco-editor",
+        ".monaco-inputbox",
+        ".monaco-findInput"
+      ].join(",")
+    )
+  );
 }
 
 /**
@@ -436,6 +454,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     onDeleteAnnotations,
     onClearAnnotationSelection,
     hasAnnotationClipboard,
+    hasGraphClipboard,
     onCreateGroup
   } = options;
 
@@ -448,7 +467,17 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
       if (handleRedo(event, mode, canRedo, onRedo)) return;
       // Copy/Paste/Duplicate (with annotation support)
       if (handleCopy(event, onCopy, selectedAnnotationIds, onCopyAnnotations)) return;
-      if (handlePaste(event, mode, isLocked, onPaste, onPasteAnnotations, hasAnnotationClipboard))
+      if (
+        handlePaste(
+          event,
+          mode,
+          isLocked,
+          onPaste,
+          onPasteAnnotations,
+          hasAnnotationClipboard,
+          hasGraphClipboard
+        )
+      )
         return;
       if (
         handleDuplicate(
@@ -512,6 +541,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
       onDeleteAnnotations,
       onClearAnnotationSelection,
       hasAnnotationClipboard,
+      hasGraphClipboard,
       onCreateGroup
     ]
   );

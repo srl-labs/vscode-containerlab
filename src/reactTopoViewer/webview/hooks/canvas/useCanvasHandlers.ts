@@ -271,9 +271,11 @@ function isNodePositionChange(change: NodeChange): change is NodePositionChange 
 function cleanupGroupRefs(
   nodeId: string,
   groupMembersRef: React.RefObject<Map<string, string[]>>,
+  groupMemberIdSetsRef: React.RefObject<Map<string, Set<string>>>,
   groupLastPositionRef: React.RefObject<Map<string, XYPosition>>
 ): void {
   groupMembersRef.current?.delete(nodeId);
+  groupMemberIdSetsRef.current?.delete(nodeId);
   groupLastPositionRef.current?.delete(nodeId);
 }
 
@@ -369,12 +371,24 @@ function finalizeGroupChanges(
   node: Node,
   nodes: Node[] | undefined,
   groupMembersRef: React.RefObject<Map<string, string[]>>,
+  groupMemberIdSetsRef: React.RefObject<Map<string, Set<string>>>,
   groupLastPositionRef: React.RefObject<Map<string, XYPosition>>
 ): NodeChange[] {
   const memberIds = groupMembersRef.current.get(node.id) ?? [];
   const memberChanges = buildGroupMemberChanges(node, memberIds, nodes);
-  cleanupGroupRefs(node.id, groupMembersRef, groupLastPositionRef);
+  cleanupGroupRefs(node.id, groupMembersRef, groupMemberIdSetsRef, groupLastPositionRef);
   return memberChanges;
+}
+
+function flushScheduledGroupMove(
+  groupMoveRafIdRef: React.RefObject<number | null>,
+  flushPendingGroupMove: () => void
+): void {
+  if (groupMoveRafIdRef.current !== null) {
+    window.cancelAnimationFrame(groupMoveRafIdRef.current);
+    groupMoveRafIdRef.current = null;
+  }
+  flushPendingGroupMove();
 }
 
 function persistPositionChanges(changes: NodeChange[]) {
@@ -424,7 +438,45 @@ function useNodeDragHandlers(
   const groupLastPositionRef = useRef<Map<string, XYPosition>>(new Map());
   // Track member IDs that are being moved with a group
   const groupMembersRef = useRef<Map<string, string[]>>(new Map());
+  const groupMemberIdSetsRef = useRef<Map<string, Set<string>>>(new Map());
+  const pendingGroupMoveRef = useRef<{
+    nodeId: string;
+    dx: number;
+    dy: number;
+    memberIdSet: Set<string>;
+  } | null>(null);
+  const groupMoveRafIdRef = useRef<number | null>(null);
   const lineDragStartRef = useRef<Map<string, LineDragSnapshot>>(new Map());
+
+  const flushPendingGroupMove = useCallback(() => {
+    const pending = pendingGroupMoveRef.current;
+    pendingGroupMoveRef.current = null;
+    if (!pending || !setNodes) return;
+    if ((pending.dx === 0 && pending.dy === 0) || pending.memberIdSet.size === 0) return;
+
+    setNodes((currentNodes) =>
+      currentNodes.map((n) => {
+        if (!pending.memberIdSet.has(n.id)) {
+          return n;
+        }
+        return {
+          ...n,
+          position: {
+            x: n.position.x + pending.dx,
+            y: n.position.y + pending.dy
+          }
+        };
+      })
+    );
+  }, [setNodes]);
+
+  const scheduleGroupMoveFlush = useCallback(() => {
+    if (groupMoveRafIdRef.current !== null) return;
+    groupMoveRafIdRef.current = window.requestAnimationFrame(() => {
+      groupMoveRafIdRef.current = null;
+      flushPendingGroupMove();
+    });
+  }, [flushPendingGroupMove]);
 
   const onNodeDragStart: NodeMouseHandler = useCallback(
     (_event, node) => {
@@ -434,6 +486,7 @@ function useNodeDragHandlers(
       if (node.type === GROUP_NODE_TYPE && groupMemberHandlers?.getGroupMembers) {
         const memberIds = groupMemberHandlers.getGroupMembers(node.id, { includeNested: true });
         groupMembersRef.current.set(node.id, memberIds);
+        groupMemberIdSetsRef.current.set(node.id, new Set(memberIds));
         groupLastPositionRef.current.set(node.id, { ...node.position });
       }
 
@@ -454,32 +507,23 @@ function useNodeDragHandlers(
       // Handle group member movement during drag
       if (node.type === GROUP_NODE_TYPE) {
         const lastPos = groupLastPositionRef.current.get(node.id);
-        const memberIds = groupMembersRef.current.get(node.id);
+        const memberIdSet = groupMemberIdSetsRef.current.get(node.id);
 
-        if (lastPos && memberIds && memberIds.length > 0) {
+        if (lastPos && memberIdSet && memberIdSet.size > 0) {
           // Calculate delta
           const dx = node.position.x - lastPos.x;
           const dy = node.position.y - lastPos.y;
 
           if (dx !== 0 || dy !== 0) {
-            // Build a set for fast lookup
-            const memberIdSet = new Set(memberIds);
-
-            // Update member positions directly via setNodes (bypasses React Flow drag tracking)
-            setNodes((currentNodes) =>
-              currentNodes.map((n) => {
-                if (memberIdSet.has(n.id)) {
-                  return {
-                    ...n,
-                    position: {
-                      x: n.position.x + dx,
-                      y: n.position.y + dy
-                    }
-                  };
-                }
-                return n;
-              })
-            );
+            const pending = pendingGroupMoveRef.current;
+            if (pending && pending.nodeId === node.id) {
+              pending.dx += dx;
+              pending.dy += dy;
+            } else {
+              flushPendingGroupMove();
+              pendingGroupMoveRef.current = { nodeId: node.id, dx, dy, memberIdSet };
+            }
+            scheduleGroupMoveFlush();
           }
         }
 
@@ -487,12 +531,14 @@ function useNodeDragHandlers(
         groupLastPositionRef.current.set(node.id, { ...node.position });
       }
     },
-    [isLockedRef, setNodes]
+    [isLockedRef, flushPendingGroupMove, scheduleGroupMoveFlush]
   );
 
   const onNodeDragStop: NodeMouseHandler = useCallback(
     (_event, node) => {
       if (isLockedRef.current) return;
+
+      flushScheduledGroupMove(groupMoveRafIdRef, flushPendingGroupMove);
 
       // Skip for shape nodes with active line handle
       if (node.type === FREE_SHAPE_NODE_TYPE && isLineHandleActive()) {
@@ -521,7 +567,15 @@ function useNodeDragHandlers(
 
       // Handle group node members
       if (isGroupNode) {
-        changes.push(...finalizeGroupChanges(node, nodes, groupMembersRef, groupLastPositionRef));
+        changes.push(
+          ...finalizeGroupChanges(
+            node,
+            nodes,
+            groupMembersRef,
+            groupMemberIdSetsRef,
+            groupLastPositionRef
+          )
+        );
       }
 
       // Include other selected nodes for multi-drag persistence (and snap with same delta)
@@ -548,7 +602,7 @@ function useNodeDragHandlers(
       applyLineDragSnapshots(lineDragStartRef.current);
       persistPositionChanges(changes);
     },
-    [isLockedRef, nodes, onNodesChangeBase, groupMemberHandlers, geoLayout, setNodes]
+    [isLockedRef, nodes, onNodesChangeBase, groupMemberHandlers, geoLayout, setNodes, flushPendingGroupMove]
   );
 
   return { onNodeDragStart, onNodeDrag, onNodeDragStop };

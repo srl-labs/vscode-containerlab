@@ -86,6 +86,7 @@ export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): voi
     onDeleteAnnotations: clipboardHandlers.handleUnifiedDelete,
     onClearAnnotationSelection: annotations.clearAllSelections,
     hasAnnotationClipboard: clipboardHandlers.hasClipboardData,
+    hasGraphClipboard: clipboardHandlers.hasClipboardData,
     onCreateGroup: annotations.handleAddGroup
   });
 }

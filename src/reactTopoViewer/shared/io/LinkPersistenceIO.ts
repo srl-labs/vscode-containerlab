@@ -52,6 +52,10 @@ export interface LinkSaveData {
     extSrcPort?: string | number;
     extSourceMac?: string;
     extTargetMac?: string;
+    extSourceIpv4?: string;
+    extSourceIpv6?: string;
+    extTargetIpv4?: string;
+    extTargetIpv6?: string;
     extVars?: Record<string, unknown>;
     extLabels?: Record<string, unknown>;
     [key: string]: unknown;
@@ -113,6 +117,21 @@ function isSpecialNode(nodeId: string): boolean {
   return SPECIAL_NODE_PREFIXES.some((prefix) => nodeId.startsWith(prefix));
 }
 
+function pickEndpointValue<T>(useTarget: boolean, sourceValue: T, targetValue: T): T {
+  return useTarget ? targetValue : sourceValue;
+}
+
+function setEndpointField(
+  doc: YAML.Document,
+  epMap: YAML.YAMLMap,
+  key: string,
+  value: string | undefined,
+  quoted = false
+): void {
+  if (!value) return;
+  epMap.set(key, quoted ? createQuotedScalar(doc, value) : doc.createNode(value));
+}
+
 /**
  * Creates a single endpoint map for special link types.
  * The endpoint should reference the REAL containerlab node, not the visualization node.
@@ -131,17 +150,17 @@ function createSingleEndpointMap(
   const sourceIsSpecial = isSpecialNode(linkData.source);
   const useTarget = sourceIsSpecial;
 
-  const node = useTarget ? linkData.target : linkData.source;
-  const iface = useTarget ? linkData.targetEndpoint : linkData.sourceEndpoint;
-  const mac = useTarget ? extra?.extTargetMac : extra?.extSourceMac;
+  const node = pickEndpointValue(useTarget, linkData.source, linkData.target);
+  const iface = pickEndpointValue(useTarget, linkData.sourceEndpoint, linkData.targetEndpoint);
+  const mac = pickEndpointValue(useTarget, extra?.extSourceMac, extra?.extTargetMac);
+  const ipv4 = pickEndpointValue(useTarget, extra?.extSourceIpv4, extra?.extTargetIpv4);
+  const ipv6 = pickEndpointValue(useTarget, extra?.extSourceIpv6, extra?.extTargetIpv6);
 
   epMap.set("node", createQuotedScalar(doc, node));
-  if (iface) {
-    epMap.set("interface", createQuotedScalar(doc, iface));
-  }
-  if (mac) {
-    epMap.set("mac", doc.createNode(mac));
-  }
+  setEndpointField(doc, epMap, "interface", iface, true);
+  setEndpointField(doc, epMap, "mac", mac);
+  setEndpointField(doc, epMap, "ipv4", ipv4);
+  setEndpointField(doc, epMap, "ipv6", ipv6);
   return epMap;
 }
 
@@ -284,6 +303,12 @@ function createDualEndpointSeq(
   if (extra?.extSourceMac) {
     srcEp.set("mac", doc.createNode(extra.extSourceMac));
   }
+  if (extra?.extSourceIpv4) {
+    srcEp.set("ipv4", doc.createNode(extra.extSourceIpv4));
+  }
+  if (extra?.extSourceIpv6) {
+    srcEp.set("ipv6", doc.createNode(extra.extSourceIpv6));
+  }
 
   const dstEp = new YAML.YAMLMap();
   dstEp.flow = false;
@@ -293,6 +318,12 @@ function createDualEndpointSeq(
   }
   if (extra?.extTargetMac) {
     dstEp.set("mac", doc.createNode(extra.extTargetMac));
+  }
+  if (extra?.extTargetIpv4) {
+    dstEp.set("ipv4", doc.createNode(extra.extTargetIpv4));
+  }
+  if (extra?.extTargetIpv6) {
+    dstEp.set("ipv6", doc.createNode(extra.extTargetIpv6));
   }
 
   endpointsSeq.add(srcEp);
@@ -338,6 +369,10 @@ function hasExtendedProperties(linkData: LinkSaveData): boolean {
     "extMtu",
     "extSourceMac",
     "extTargetMac",
+    "extSourceIpv4",
+    "extSourceIpv6",
+    "extTargetIpv4",
+    "extTargetIpv6",
     "extHostInterface",
     "extMode",
     "extRemote",

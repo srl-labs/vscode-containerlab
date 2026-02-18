@@ -156,32 +156,6 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onPreviewOffs
             onChange={(value) => onChange({ targetEndpoint: value })}
           />
         </Box>
-
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-          <InputField
-            id="link-source-mac"
-            label={`${sourceName} MAC`}
-            value={data.sourceMac ?? ""}
-            onChange={(value) => onChange({ sourceMac: value })}
-            placeholder="e.g., 02:42:ac:11:00:01"
-          />
-          <InputField
-            id="link-target-mac"
-            label={`${targetName} MAC`}
-            value={data.targetMac ?? ""}
-            onChange={(value) => onChange({ targetMac: value })}
-            placeholder="e.g., 02:42:ac:11:00:02"
-          />
-        </Box>
-
-        <InputField
-          id="link-mtu"
-          label="MTU"
-          value={data.mtu?.toString() || ""}
-          onChange={(value) => onChange({ mtu: value ? parseInt(value, 10) : undefined })}
-          placeholder="e.g., 1500"
-          type="number"
-        />
       </PanelSection>
 
       <LabelOffsetSection
