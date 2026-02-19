@@ -47,6 +47,28 @@ describe("TopologyHostCore empty YAML fallback lab name", () => {
     expect(snapshot.edges).to.deep.equal([]);
   });
 
+  it("prefers YAML lab name over filename when they differ", async () => {
+    const yamlPath = path.join(tempDir, "test.clab.yml");
+    await fs.writeFile(
+      yamlPath,
+      `name: atest
+topology:
+  nodes: {}
+`,
+      "utf8"
+    );
+
+    const host = new TopologyHostCore({
+      fs: new NodeFsAdapter(),
+      yamlFilePath: yamlPath,
+      mode: "edit",
+      deploymentState: "unknown"
+    });
+
+    const snapshot = await host.getSnapshot();
+    expect(snapshot.labName).to.equal("atest");
+  });
+
   it("persists addNode into an empty YAML file", async () => {
     const yamlPath = path.join(tempDir, "atest.clab.yml");
     await fs.writeFile(yamlPath, "", "utf8");
