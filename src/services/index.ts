@@ -6,7 +6,8 @@ export { refreshSshxSessions, refreshGottySessions } from "./sessionRefresh";
 // Re-export with renamed conflicting functions
 export {
   onDataChanged as onEventsDataChanged,
-  onContainerStateChanged
+  onContainerStateChanged,
+  stopEventStream
 } from "./containerlabEvents";
 
 export {
