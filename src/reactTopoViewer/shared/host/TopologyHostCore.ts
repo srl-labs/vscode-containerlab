@@ -692,18 +692,18 @@ export class TopologyHostCore implements TopologyHost {
     pendingMigrations: Array<{ nodeId: string; interfacePattern: string }>;
     graphLabelMigrations: GraphLabelMigration[];
   } {
-    const fallbackLabName = this.getFallbackLabName();
+    const parserLabName = this.getParserLabName(parsed);
     if (this.mode === "view") {
       return parsed
         ? TopologyParser.parseToReactFlowFromParsed(parsed, {
             annotations,
-            labName: fallbackLabName,
+            labName: parserLabName,
             containerDataProvider: this.containerDataProvider,
             logger: this.parserLogger
           })
         : TopologyParser.parseToReactFlow(yamlContent, {
             annotations,
-            labName: fallbackLabName,
+            labName: parserLabName,
             containerDataProvider: this.containerDataProvider,
             logger: this.parserLogger
           });
@@ -711,12 +711,20 @@ export class TopologyHostCore implements TopologyHost {
     return parsed
       ? TopologyParser.parseToReactFlowFromParsed(parsed, {
           annotations,
-          labName: fallbackLabName
+          labName: parserLabName
         })
       : TopologyParser.parseToReactFlow(yamlContent, {
           annotations,
-          labName: fallbackLabName
+          labName: parserLabName
         });
+  }
+
+  private getParserLabName(parsed?: ClabTopology): string {
+    const yamlLabName = parsed?.name;
+    if (typeof yamlLabName === "string" && yamlLabName.trim().length > 0) {
+      return yamlLabName.trim();
+    }
+    return this.getFallbackLabName();
   }
 
   private getFallbackLabName(): string {
