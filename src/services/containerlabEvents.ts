@@ -1262,6 +1262,10 @@ export async function ensureEventStream(runtime: string): Promise<void> {
   return initialLoadPromise;
 }
 
+export function stopEventStream(): void {
+  stopProcess();
+}
+
 export function getGroupedContainers(): Record<string, ClabDetailedJSON[]> {
   const result: Record<string, ClabDetailedJSON[]> = {};
 

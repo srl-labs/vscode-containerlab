@@ -40,11 +40,45 @@ import {
   onEventsDataChanged,
   onContainerStateChanged,
   onFallbackDataChanged,
-  stopFallbackPolling
+  stopFallbackPolling,
+  stopEventStream
 } from "./services";
 import { ContainerlabExplorerViewProvider } from "./webviews/explorer/containerlabExplorerViewProvider";
 
 let explorerViewProvider: ContainerlabExplorerViewProvider | undefined;
+
+function stopRealtimeBackgroundWorkers(): void {
+  stopEventStream();
+  stopFallbackPolling();
+}
+
+function registerProcessShutdownHooks(context: vscode.ExtensionContext): void {
+  const handleBeforeExit = () => stopRealtimeBackgroundWorkers();
+  const handleExit = () => stopRealtimeBackgroundWorkers();
+  const handleDisconnect = () => stopRealtimeBackgroundWorkers();
+  const handleSigterm = () => stopRealtimeBackgroundWorkers();
+  const handleSigint = () => stopRealtimeBackgroundWorkers();
+  const handleSighup = () => stopRealtimeBackgroundWorkers();
+
+  process.once("beforeExit", handleBeforeExit);
+  process.once("exit", handleExit);
+  process.once("disconnect", handleDisconnect);
+  process.once("SIGTERM", handleSigterm);
+  process.once("SIGINT", handleSigint);
+  process.once("SIGHUP", handleSighup);
+
+  context.subscriptions.push({
+    dispose: () => {
+      process.removeListener("beforeExit", handleBeforeExit);
+      process.removeListener("exit", handleExit);
+      process.removeListener("disconnect", handleDisconnect);
+      process.removeListener("SIGTERM", handleSigterm);
+      process.removeListener("SIGINT", handleSigint);
+      process.removeListener("SIGHUP", handleSighup);
+      stopRealtimeBackgroundWorkers();
+    }
+  });
+}
 
 function registerUnsupportedViews(context: vscode.ExtensionContext) {
   let warningShown = false;
@@ -369,10 +403,10 @@ function registerRealtimeUpdates(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push({ dispose: disposeStateChange });
 
-  // Stop fallback polling on deactivate
+  // Stop realtime background workers on deactivate
   context.subscriptions.push({
     dispose: () => {
-      stopFallbackPolling();
+      stopRealtimeBackgroundWorkers();
     }
   });
 
@@ -613,6 +647,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   registerRealtimeUpdates(context);
+  registerProcessShutdownHooks(context);
 
   // Language features (YAML completion)
   registerClabImageCompletion(context);
@@ -630,6 +665,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
   explorerViewProvider = undefined;
+  stopRealtimeBackgroundWorkers();
   if (outputChannel) {
     outputChannel.info("Deactivating Containerlab extension.");
   }
