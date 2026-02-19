@@ -148,15 +148,26 @@ function lookupEdgeInterfaces(
     edgeData?.targetEndpoint
   );
 
+  const sourceNodeIdentifier = normalizeNodeIdentifier(
+    extraData.yamlSourceNodeId,
+    extraData.clabSourceLongName,
+    _edge.source
+  );
+  const targetNodeIdentifier = normalizeNodeIdentifier(
+    extraData.yamlTargetNodeId,
+    extraData.clabTargetLongName,
+    _edge.target
+  );
+
   const sourceIface = findInterfaceNode(
     labs,
-    (extraData.clabSourceLongName as string) ?? "",
+    sourceNodeIdentifier,
     sourceIfaceName,
     currentLabName
   );
   const targetIface = findInterfaceNode(
     labs,
-    (extraData.clabTargetLongName as string) ?? "",
+    targetNodeIdentifier,
     targetIfaceName,
     currentLabName
   );
@@ -227,6 +238,15 @@ function normalizeInterfaceName(value: unknown, fallback: unknown): string {
   }
   if (typeof fallback === "string" && fallback.trim()) {
     return fallback;
+  }
+  return "";
+}
+
+function normalizeNodeIdentifier(...values: unknown[]): string {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
   }
   return "";
 }
