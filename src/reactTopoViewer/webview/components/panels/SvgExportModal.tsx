@@ -951,6 +951,13 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
             <Box sx={{ px: 2, pb: 2 }}>
               <Alert
                 severity={exportStatus.type === "success" ? "success" : "error"}
+                variant="outlined"
+                sx={{
+                  color: "text.primary",
+                  "& .MuiAlert-message": {
+                    color: "text.primary",
+                  },
+                }}
               >
                 {exportStatus.message}
               </Alert>

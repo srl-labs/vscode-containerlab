@@ -230,7 +230,9 @@ export class NodeCommandService {
 
       case "clab-node-view-logs": {
         try {
-          const node = createDefaultContainerNode(nodeName);
+          const node =
+            (await this.getContainerNode(nodeName, yamlFilePath)) ??
+            createDefaultContainerNode(nodeName);
           await vscode.commands.executeCommand("containerlab.node.showLogs", node);
           result = `Show logs executed for ${nodeName}`;
         } catch (innerError) {
