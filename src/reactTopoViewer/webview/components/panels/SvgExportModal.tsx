@@ -80,6 +80,7 @@ export interface SvgExportModalProps {
   groups?: GroupStyleAnnotation[];
   rfInstance: ReactFlowInstance | null;
   customIcons?: CustomIconMap;
+  defaultFilename?: string;
 }
 
 const ANNOTATION_NODE_TYPES: Set<string> = new Set([
@@ -367,6 +368,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   groups = [],
   rfInstance,
   customIcons,
+  defaultFilename,
 }) => {
   const [borderZoom, setBorderZoom] = useState(100);
   const [borderPadding, setBorderPadding] = useState(0);
@@ -405,7 +407,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   const [backgroundOption, setBackgroundOption] =
     useState<BackgroundOption>("transparent");
   const [customBackgroundColor, setCustomBackgroundColor] = useState("#1e1e1e");
-  const [filename, setFilename] = useState("topology");
+  const [filename, setFilename] = useState(defaultFilename ?? "topology");
 
   const isExportAvailable = rfInstance ? Boolean(getViewportSize()) : false;
   const totalAnnotations =

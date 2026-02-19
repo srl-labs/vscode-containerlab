@@ -441,11 +441,11 @@ const AnnotationRuntimeBridge: React.FC<AnnotationRuntimeBridgeProps> = ({
 
 type SvgExportModalContainerProps = Pick<
   React.ComponentPropsWithoutRef<typeof SvgExportModal>,
-  "onClose" | "rfInstance" | "customIcons"
+  "onClose" | "rfInstance" | "customIcons" | "defaultFilename"
 >;
 
 const SvgExportModalContainer: React.FC<SvgExportModalContainerProps> = React.memo(
-  ({ onClose, rfInstance, customIcons }) => {
+  ({ onClose, rfInstance, customIcons, defaultFilename }) => {
     const { textAnnotations, shapeAnnotations, groups } = useDerivedAnnotations();
 
     return (
@@ -457,6 +457,7 @@ const SvgExportModalContainer: React.FC<SvgExportModalContainerProps> = React.me
         groups={groups}
         rfInstance={rfInstance}
         customIcons={customIcons}
+        defaultFilename={defaultFilename}
       />
     );
   }
@@ -1384,6 +1385,7 @@ export const AppContent: React.FC<AppContentProps> = ({
             onClose={panelVisibility.handleCloseSvgExport}
             rfInstance={rfInstance}
             customIcons={getCustomIconMap(state.customIcons)}
+            defaultFilename={state.labName || undefined}
           />
         ) : null}
         <BulkLinkModal
