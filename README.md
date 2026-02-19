@@ -29,11 +29,11 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
   Capture traffic (via tcpdump/Wireshark or Edgeshark) and set link impairments such as delay, jitter, packet loss, rate-limit, and corruption. You can also copy an interface’s MAC address.
 
 - **Graphing & Visualization:**
-  Generate network graphs in multiple modes:
-  - **Draw.io (Horizontal):** Generates a `.drawio` file in a horizontal layout. (pos labels will overwrite the layout)
-  - **Draw.io (Vertical):** Generates a `.drawio` file in a vertical layout. (pos labels will overwrite the layout)
-  - **Interactive TopoViewer:** Launches a dynamic, web-based view of your topology.
-  - **Interactive TopoEditor:** Let's your create in a graphical way network topologies
+  Generate network graphs in multiple modes, with the UI-first workflow in TopoViewer:
+  - **Interactive TopoViewer:** Launches a dynamic, web-based topology UI (view/edit mode depends on lab state).
+  - **Draw.io (Horizontal):** Generates a `.drawio` file in a horizontal layout. (`pos` labels override the layout.)
+  - **Draw.io (Vertical):** Generates a `.drawio` file in a vertical layout. (`pos` labels override the layout.)
+  - **Draw.io (Interactive):** Runs containerlab graph generation in interactive Draw.io mode.
 
 - **Clone Labs from Git:**
   Easily clone labs from any Git repository or choose from a list of popular labs directly within the extension.
@@ -108,7 +108,7 @@ The Containerlab Explorer listens to the containerlab event stream, so running l
 | `node.sshUserMapping`     | object | `{}`    | Map node kind to SSH user<br/>Example: `{ "nokia_srlinux": "clab" }`       |
 | `node.telnetPort`         | number | `5000`  | Port for telnet connections                                                |
 
-### 🎨 TopoViewer/Editor
+### 🎨 TopoViewer
 
 | Setting                                  | Type    | Default        | Description                                                |
 | ---------------------------------------- | ------- | -------------- | ---------------------------------------------------------- |

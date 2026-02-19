@@ -37,7 +37,14 @@
           "type": "string",
           "description": "policy for pulling the referenced container image",
           "markdownDescription": "container [image-pull-policy](https://containerlab.dev/manual/nodes/#image-pull-policy) to use for this node",
-          "enum": ["always", "Always", "never", "Never", "ifnotpresent", "IfNotPresent"]
+          "enum": [
+            "always",
+            "Always",
+            "never",
+            "Never",
+            "ifnotpresent",
+            "IfNotPresent"
+          ]
         },
         "restart-policy": {
           "type": "string",
@@ -99,6 +106,7 @@
             "cisco_cat9kv",
             "cisco_iol",
             "cisco_asav",
+            "cisco_vios",
             "cumulus_cvx",
             "huawei_vrp",
             "openbsd",
@@ -109,7 +117,8 @@
             "fdio_vpp",
             "vyosnetworks_vyos",
             "juniper_cjunosevolved",
-            "arrcus_arcos"
+            "arrcus_arcos",
+            "f5_bigip-ve"
           ]
         },
         "license": {
@@ -202,11 +211,11 @@
           "anyOf": [
             {
               "type": "string",
-              "minItems": 1
+              "minLength": 1
             },
             {
               "type": "number",
-              "minItems": 1
+              "minimum": 0
             }
           ]
         },
@@ -227,7 +236,10 @@
           "type": "string",
           "description": "Runtime used to launch the container node",
           "markdownDescription": "[Runtime](https://containerlab.dev/manual/nodes/#runtime) for the node",
-          "enum": ["docker", "ignite"]
+          "enum": [
+            "docker",
+            "podman"
+          ]
         },
         "mgmt-ipv4": {
           "description": "IPv4 management address of the node (e.g. 172.10.10.11)",
@@ -260,14 +272,6 @@
           "type": "string",
           "description": "CPU cores to use by this node/container",
           "markdownDescription": "[CPU cores](https://containerlab.dev/manual/nodes/#cpu-set) to be used by the node/container"
-        },
-        "sandbox": {
-          "type": "string",
-          "description": "ignite's sandbox image name"
-        },
-        "kernel": {
-          "type": "string",
-          "description": "ignite's kernel image name"
         },
         "extras": {
           "type": "object",
@@ -344,12 +348,18 @@
                             "$ref": "#/definitions/sros-xiom-mda-types"
                           }
                         },
-                        "required": ["slot", "type"],
+                        "required": [
+                          "slot",
+                          "type"
+                        ],
                         "additionalProperties": false
                       }
                     }
                   },
-                  "required": ["slot", "type"],
+                  "required": [
+                    "slot",
+                    "type"
+                  ],
                   "additionalProperties": false
                 },
                 "uniqueItems": true
@@ -369,7 +379,10 @@
                       "$ref": "#/definitions/sros-mda-types"
                     }
                   },
-                  "required": ["slot", "type"],
+                  "required": [
+                    "slot",
+                    "type"
+                  ],
                   "additionalProperties": false
                 }
               },
@@ -477,7 +490,9 @@
                 "pattern": "(nokia_srlinux)"
               }
             },
-            "required": ["kind"]
+            "required": [
+              "kind"
+            ]
           },
           "then": {
             "properties": {
@@ -544,7 +559,9 @@
                 "pattern": "(nokia_sros)"
               }
             },
-            "required": ["kind"]
+            "required": [
+              "kind"
+            ]
           },
           "then": {
             "properties": {
@@ -587,7 +604,9 @@
                 "pattern": "(nokia_srsim)"
               }
             },
-            "required": ["kind"]
+            "required": [
+              "kind"
+            ]
           },
           "then": {
             "properties": {
@@ -653,13 +672,18 @@
                 "pattern": "(cisco_iol)"
               }
             },
-            "required": ["kind"]
+            "required": [
+              "kind"
+            ]
           },
           "then": {
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["iol", "l2"]
+                "enum": [
+                  "iol",
+                  "l2"
+                ]
               }
             }
           }
@@ -764,7 +788,10 @@
           "$ref": "#/definitions/labels"
         }
       },
-      "required": ["type", "endpoints"],
+      "required": [
+        "type",
+        "endpoints"
+      ],
       "additionalItems": false
     },
     "link-type-mgmt-net": {
@@ -791,7 +818,11 @@
           "$ref": "#/definitions/labels"
         }
       },
-      "required": ["type", "endpoint", "host-interface"],
+      "required": [
+        "type",
+        "endpoint",
+        "host-interface"
+      ],
       "additionalProperties": false
     },
     "link-type-macvlan": {
@@ -821,7 +852,11 @@
           "$ref": "#/definitions/labels"
         }
       },
-      "required": ["type", "endpoint", "host-interface"],
+      "required": [
+        "type",
+        "endpoint",
+        "host-interface"
+      ],
       "additionalProperties": false
     },
     "link-type-host": {
@@ -848,7 +883,11 @@
           "$ref": "#/definitions/labels"
         }
       },
-      "required": ["type", "endpoint", "host-interface"],
+      "required": [
+        "type",
+        "endpoint",
+        "host-interface"
+      ],
       "additionalProperties": false
     },
     "link-type-vxlan": {
@@ -884,7 +923,13 @@
           "$ref": "#/definitions/labels"
         }
       },
-      "required": ["type", "endpoint", "remote", "vni", "dst-port"],
+      "required": [
+        "type",
+        "endpoint",
+        "remote",
+        "vni",
+        "dst-port"
+      ],
       "additionalProperties": false
     },
     "link-type-vxlan-stitched": {
@@ -920,7 +965,13 @@
           "$ref": "#/definitions/labels"
         }
       },
-      "required": ["type", "endpoint", "remote", "vni", "dst-port"],
+      "required": [
+        "type",
+        "endpoint",
+        "remote",
+        "vni",
+        "dst-port"
+      ],
       "additionalProperties": false
     },
     "link-type-dummy": {
@@ -944,7 +995,10 @@
           "$ref": "#/definitions/labels"
         }
       },
-      "required": ["type", "endpoint"],
+      "required": [
+        "type",
+        "endpoint"
+      ],
       "additionalProperties": false
     },
     "link-endpoint": {
@@ -978,7 +1032,10 @@
           "$ref": "#/definitions/endpoint-vars"
         }
       },
-      "required": ["node", "interface"],
+      "required": [
+        "node",
+        "interface"
+      ],
       "additionalProperties": false
     },
     "endpoint-vars": {
@@ -1029,11 +1086,11 @@
           "anyOf": [
             {
               "type": "string",
-              "minItems": 1
+              "minLength": 1
             },
             {
               "type": "number",
-              "minItems": 1
+              "minimum": 0
             }
           ]
         }
@@ -1048,7 +1105,13 @@
       "type": "string",
       "description": "MACVLAN operating mode",
       "markdownDescription": "MACVLAN operating mode",
-      "enum": ["private", "vepa", "bridge", "passthru", "source"]
+      "enum": [
+        "private",
+        "vepa",
+        "bridge",
+        "passthru",
+        "source"
+      ]
     },
     "extras-config": {
       "type": "object",
@@ -1205,14 +1268,21 @@
       "additionalProperties": false,
       "oneOf": [
         {
-          "required": ["cert", "key"],
+          "required": [
+            "cert",
+            "key"
+          ],
           "not": {
             "anyOf": [
               {
-                "required": ["key-size"]
+                "required": [
+                  "key-size"
+                ]
               },
               {
-                "required": ["validity-duration"]
+                "required": [
+                  "validity-duration"
+                ]
               }
             ]
           }
@@ -1220,19 +1290,27 @@
         {
           "anyOf": [
             {
-              "required": ["key-size"]
+              "required": [
+                "key-size"
+              ]
             },
             {
-              "required": ["validity-duration"]
+              "required": [
+                "validity-duration"
+              ]
             }
           ],
           "not": {
             "anyOf": [
               {
-                "required": ["cert"]
+                "required": [
+                  "cert"
+                ]
               },
               {
-                "required": ["key"]
+                "required": [
+                  "key"
+                ]
               }
             ]
           }
@@ -1335,7 +1413,13 @@
     },
     "stages-enum": {
       "type": "string",
-      "enum": ["create", "create-links", "configure", "healthy", "exit"]
+      "enum": [
+        "create",
+        "create-links",
+        "configure",
+        "healthy",
+        "exit"
+      ]
     },
     "stage-exec": {
       "description": "per-stage exec configuration",
@@ -1370,11 +1454,17 @@
               },
               "phase": {
                 "type": "string",
-                "enum": ["on-enter", "on-exit"],
+                "enum": [
+                  "on-enter",
+                  "on-exit"
+                ],
                 "description": "Phase to execute this command (on-enter or on-exit)"
               }
             },
-            "required": ["command", "phase"]
+            "required": [
+              "command",
+              "phase"
+            ]
           }
         }
       ]
@@ -1667,7 +1757,10 @@
         "sfm-x20-b",
         "sfm-x20s-b",
         "sfm2-s",
-        "sfm2-x20s"
+        "sfm2-x20s",
+        "sfm-ixr-6",
+        "sfm-ixr-10",
+        "m-sfm6-12e"
       ]
     }
   },
@@ -1675,11 +1768,13 @@
   "properties": {
     "name": {
       "description": "topology name",
-      "type": "string"
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-._]*$"
     },
     "prefix": {
       "description": "lab prefix",
       "type": "string",
+      "pattern": "^$|^__lab-name$|^[a-zA-Z0-9][a-zA-Z0-9-._]*$",
       "markdownDescription": "[lab prefix](https://containerlab.dev/manual/topo-def-file/#prefix)"
     },
     "mgmt": {
@@ -1776,7 +1871,7 @@
           "markdownDescription": "topology [nodes](https://containerlab.dev/manual/nodes/) configuration container",
           "type": "object",
           "patternProperties": {
-            ".*": {
+            "^[a-zA-Z0-9][a-zA-Z0-9-._|]*$": {
               "oneOf": [
                 {
                   "type": "null"
@@ -1786,7 +1881,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "groups": {
           "description": "topology groups configuration container",
@@ -1992,7 +2088,9 @@
         }
       },
       "additionalProperties": false,
-      "required": ["nodes"]
+      "required": [
+        "nodes"
+      ]
     },
     "settings": {
       "description": "Global containerlab settings",
@@ -2007,5 +2105,8 @@
     }
   },
   "additionalProperties": false,
-  "required": ["name", "topology"]
+  "required": [
+    "name",
+    "topology"
+  ]
 }
