@@ -9,11 +9,14 @@ import {
   type ClabInterfaceTreeNode,
   flattenContainers
 } from "../../../treeView/common";
+import { mapSrosInterfaceName } from "../../shared/parsing/DistributedSrosMapper";
 import type {
   ContainerDataProvider,
   ContainerInfo,
   InterfaceInfo
 } from "../../shared/parsing/types";
+
+import { sortContainersByInterfacePriority } from "./TreeUtils";
 
 /**
  * Adapts VS Code tree nodes to the ContainerDataProvider interface.
@@ -71,6 +74,121 @@ export class ContainerDataAdapter implements ContainerDataProvider {
     );
   }
 
+  private normalizeName(value: string | undefined): string {
+    return (value ?? "").trim().toLowerCase();
+  }
+
+  private extractDistributedBaseFromName(value: string | undefined): string | undefined {
+    const trimmed = (value ?? "").trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    const idx = trimmed.lastIndexOf("-");
+    if (idx <= 0 || idx >= trimmed.length - 1) {
+      return undefined;
+    }
+    return trimmed.slice(0, idx);
+  }
+
+  private containerMatchesDistributedNode(
+    container: ClabContainerTreeNode,
+    normalizedBase: string
+  ): boolean {
+    if (container.kind !== "nokia_srsim" || !normalizedBase) {
+      return false;
+    }
+
+    const root = this.normalizeName(container.rootNodeName);
+    if (root && root === normalizedBase) {
+      return true;
+    }
+
+    const shortName = this.normalizeName(container.name_short);
+    if (shortName.startsWith(`${normalizedBase}-`)) {
+      return true;
+    }
+
+    const shortBase = this.normalizeName(this.extractDistributedBaseFromName(container.name_short));
+    if (shortBase && shortBase === normalizedBase) {
+      return true;
+    }
+
+    const label =
+      typeof container.label === "string"
+        ? this.normalizeName(container.label)
+        : this.normalizeName((container.label as { label?: string } | undefined)?.label);
+    if (label.startsWith(`${normalizedBase}-`)) {
+      return true;
+    }
+
+    const labelBase = this.normalizeName(
+      this.extractDistributedBaseFromName(typeof container.label === "string" ? container.label : "")
+    );
+    if (labelBase && labelBase === normalizedBase) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private findDistributedContainerNodes(
+    baseNodeName: string,
+    labName: string
+  ): ClabContainerTreeNode[] {
+    const labNode = this.findLabNode(labName);
+    if (!labNode?.containers) {
+      return [];
+    }
+
+    const normalizedBase = this.normalizeName(baseNodeName);
+    if (!normalizedBase) {
+      return [];
+    }
+
+    const candidates = flattenContainers(labNode.containers).filter((container) =>
+      this.containerMatchesDistributedNode(container, normalizedBase)
+    );
+
+    return sortContainersByInterfacePriority(candidates);
+  }
+
+  private getSrosInterfaceCandidates(ifaceName: string): Set<string> {
+    const candidates = new Set<string>();
+    const normalized = ifaceName.trim();
+    if (normalized) {
+      candidates.add(normalized);
+    }
+
+    const mapped = mapSrosInterfaceName(normalized);
+    if (mapped) {
+      candidates.add(mapped);
+    }
+
+    return candidates;
+  }
+
+  private findMatchingInterface(
+    container: ClabContainerTreeNode,
+    ifaceName: string
+  ): ClabInterfaceTreeNode | undefined {
+    const candidates = this.getSrosInterfaceCandidates(ifaceName);
+    if (candidates.size === 0) {
+      return undefined;
+    }
+
+    return container.interfaces.find((iface) => {
+      const label =
+        typeof iface.label === "string"
+          ? iface.label
+          : (iface.label as { label?: string } | undefined)?.label ?? "";
+      return (
+        candidates.has(iface.name) ||
+        candidates.has(iface.alias) ||
+        (label ? candidates.has(label) : false)
+      );
+    });
+  }
+
   /**
    * Finds a container by name within a lab.
    */
@@ -93,6 +211,37 @@ export class ContainerDataAdapter implements ContainerDataProvider {
     const iface = container.interfaces.find((i) => i.name === ifaceName || i.alias === ifaceName);
 
     return iface ? this.toInterfaceInfo(iface) : undefined;
+  }
+
+  findDistributedSrosInterface(params: {
+    baseNodeName: string;
+    ifaceName: string;
+    fullPrefix: string;
+    labName: string;
+    components: unknown[];
+  }): { containerName: string; ifaceData?: InterfaceInfo } | undefined {
+    const candidates = this.findDistributedContainerNodes(params.baseNodeName, params.labName);
+    for (const container of candidates) {
+      const iface = this.findMatchingInterface(container, params.ifaceName);
+      if (iface) {
+        return {
+          containerName: container.name,
+          ifaceData: this.toInterfaceInfo(iface)
+        };
+      }
+    }
+    return undefined;
+  }
+
+  findDistributedSrosContainer(params: {
+    baseNodeName: string;
+    fullPrefix: string;
+    labName: string;
+    components: unknown[];
+  }): ContainerInfo | undefined {
+    const candidates = this.findDistributedContainerNodes(params.baseNodeName, params.labName);
+    const preferred = candidates[0];
+    return preferred ? this.toContainerInfo(preferred) : undefined;
   }
 
   /**
@@ -128,6 +277,7 @@ export class ContainerDataAdapter implements ContainerDataProvider {
     return {
       name: container.name,
       name_short: container.name_short,
+      rootNodeName: container.rootNodeName,
       state: container.state,
       kind: container.kind,
       image: container.image,

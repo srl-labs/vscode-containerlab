@@ -71,11 +71,32 @@ function buildEdgeWithExtraData(
   extraData: Record<string, unknown>,
   classes?: string
 ): Edge {
+  const currentData = (edge.data ?? {}) as Record<string, unknown>;
+  const currentStatus = currentData.linkStatus;
+  const nextStatus = resolveLinkStatusFromClasses(classes, currentStatus);
+
   return {
     ...edge,
-    data: { ...edge.data, extraData },
+    data: { ...currentData, extraData, linkStatus: nextStatus },
     className: classes ?? edge.className
   };
+}
+
+function resolveLinkStatusFromClasses(
+  classes: string | undefined,
+  fallback: unknown
+): "up" | "down" | "unknown" | undefined {
+  if (typeof classes === "string") {
+    if (classes.includes("link-up")) return "up";
+    if (classes.includes("link-down")) return "down";
+    if (classes.trim().length === 0) return "unknown";
+  }
+
+  if (fallback === "up" || fallback === "down" || fallback === "unknown") {
+    return fallback;
+  }
+
+  return undefined;
 }
 
 function mergeExtraData(

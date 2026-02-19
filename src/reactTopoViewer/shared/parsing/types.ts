@@ -127,6 +127,8 @@ export interface ContainerInfo {
   name: string;
   /** Short name without prefix (e.g., "node1") */
   name_short: string;
+  /** Root node name for grouped/distributed containers */
+  rootNodeName?: string;
   /** Container state (e.g., "running", "stopped") */
   state: string;
   /** Node kind (e.g., "nokia_srlinux") */
