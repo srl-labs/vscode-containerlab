@@ -197,6 +197,15 @@ The extension includes a suite of unit tests located in the `test` folder. To ru
 
 See `test/README.md` for a short overview of the test setup and stub utilities.
 
+## Developer Setup
+
+This repository consumes `@srl-labs/containerlab-gui` from GitHub Packages.
+
+Before running `npm install`, authenticate package access:
+
+1. `export GITHUB_TOKEN="$(gh auth token)"`
+2. `npm install`
+
 ---
 
 ## Feedback and Contributions
