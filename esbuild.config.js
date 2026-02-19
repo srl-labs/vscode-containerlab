@@ -1,7 +1,8 @@
 const esbuild = require("esbuild");
 const path = require("path");
 const fs = require("fs");
-const { execSync } = require("child_process");
+
+const GUI_PACKAGE_NAME = "@srl-labs/containerlab-gui";
 
 // Plugin to stub native .node files - ssh2 has JS fallbacks
 const nativeNodeModulesPlugin = {
@@ -17,78 +18,86 @@ const nativeNodeModulesPlugin = {
   }
 };
 
-// Plugin to ignore CSS imports (we handle CSS separately with PostCSS)
-const ignoreCssPlugin = {
-  name: "ignore-css",
-  setup(build) {
-    build.onResolve({ filter: /\.css$/ }, () => ({
-      path: "css-stub",
-      namespace: "css-stub"
-    }));
-    build.onLoad({ filter: /.*/, namespace: "css-stub" }, () => ({
-      contents: "",
-      loader: "js"
-    }));
-  }
-};
-
-// Copy font files to dist
-async function copyFonts() {
-  const fontDir = path.join(__dirname, "dist/webfonts");
-  await fs.promises.mkdir(fontDir, { recursive: true });
-
-  // Copy wireshark SVG
-  const wiresharkSrc = path.join(
-    __dirname,
-    "src/reactTopoViewer/webview/assets/images/wireshark_bold.svg"
-  );
-  if (fs.existsSync(wiresharkSrc)) {
-    await fs.promises.copyFile(wiresharkSrc, path.join(fontDir, "wireshark_bold.svg"));
+function resolveGuiDistDir() {
+  let packageJsonPath;
+  try {
+    packageJsonPath = require.resolve(`${GUI_PACKAGE_NAME}/package.json`, {
+      paths: [__dirname]
+    });
+  } catch {
+    throw new Error(
+      `${GUI_PACKAGE_NAME} is not installed. Run \`npm install\` in vscode-containerlab first.`
+    );
   }
 
-  // Monaco codicon font (used by Monaco UI widgets)
-  const codiconSrc = path.join(
-    __dirname,
-    "node_modules/monaco-editor/min/vs/base/browser/ui/codicons/codicon/codicon.ttf"
-  );
-  if (fs.existsSync(codiconSrc)) {
-    await fs.promises.copyFile(codiconSrc, path.join(fontDir, "codicon.ttf"));
+  const guiDistDir = path.join(path.dirname(packageJsonPath), "dist");
+  if (!fs.existsSync(guiDistDir)) {
+    throw new Error(
+      `${GUI_PACKAGE_NAME} dist assets are missing at ${guiDistDir}. Build the package first.`
+    );
+  }
+  return guiDistDir;
+}
+
+async function copyFile(sourcePath, destinationPath) {
+  await fs.promises.mkdir(path.dirname(destinationPath), { recursive: true });
+  await fs.promises.copyFile(sourcePath, destinationPath);
+}
+
+async function copyDirectoryRecursive(sourceDir, destinationDir) {
+  await fs.promises.mkdir(destinationDir, { recursive: true });
+  const entries = await fs.promises.readdir(sourceDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const sourcePath = path.join(sourceDir, entry.name);
+    const destinationPath = path.join(destinationDir, entry.name);
+
+    if (entry.isDirectory()) {
+      await copyDirectoryRecursive(sourcePath, destinationPath);
+      continue;
+    }
+
+    await copyFile(sourcePath, destinationPath);
   }
 }
 
-// Copy MapLibre CSP worker to dist for webview CSP compatibility
-async function copyMapLibreWorker() {
-  const srcPath = path.join(__dirname, "node_modules/maplibre-gl/dist/maplibre-gl-csp-worker.js");
-  const destPath = path.join(__dirname, "dist/maplibre-gl-csp-worker.js");
-  if (!fs.existsSync(srcPath)) return;
-  await fs.promises.copyFile(srcPath, destPath);
+async function syncGuiAssetsFromPackage() {
+  const guiDistDir = resolveGuiDistDir();
+  const manifestPath = path.join(guiDistDir, "manifest.json");
+  if (!fs.existsSync(manifestPath)) {
+    throw new Error(`Missing GUI manifest at ${manifestPath}`);
+  }
+
+  const manifestRaw = await fs.promises.readFile(manifestPath, "utf8");
+  const manifest = JSON.parse(manifestRaw);
+  const manifestValues = Object.values(manifest).filter((value) => typeof value === "string");
+
+  const filesToCopy = new Set([...manifestValues, "manifest.json"]);
+  for (const relativeFilePath of filesToCopy) {
+    const sourcePath = path.join(guiDistDir, relativeFilePath);
+    if (!fs.existsSync(sourcePath)) {
+      throw new Error(`Expected GUI asset missing: ${sourcePath}`);
+    }
+    const destinationPath = path.join(__dirname, "dist", relativeFilePath);
+    await copyFile(sourcePath, destinationPath);
+  }
+
+  const webfontsSourceDir = path.join(guiDistDir, "webfonts");
+  if (fs.existsSync(webfontsSourceDir)) {
+    await copyDirectoryRecursive(webfontsSourceDir, path.join(__dirname, "dist", "webfonts"));
+  }
 }
 
-// Build CSS with PostCSS
-async function buildCss() {
-  console.log("Building CSS with PostCSS...");
-  execSync(
-    "npx postcss src/reactTopoViewer/webview/styles/global.css -o dist/reactTopoViewerStyles.css",
-    { stdio: "inherit" }
-  );
-
-  // Fix font paths - rewrite node_modules paths to webfonts/
-  const cssPath = path.join(__dirname, "dist/reactTopoViewerStyles.css");
-  let css = await fs.promises.readFile(cssPath, "utf8");
-
-  // Handle maplibre-gl font references if any
-  css = css.replace(
-    /url\([^)]*node_modules\/maplibre-gl\/[^)]*\/([^/)]+\.(woff2?|ttf|eot))\)/g,
-    "url(webfonts/$1)"
-  );
-
-  // Monaco codicon font reference (relative to editor.main.css)
-  css = css.replace(
-    /url\((\"|')?\.\.\/base\/browser\/ui\/codicons\/codicon\/codicon\.ttf(\")?\)/g,
-    "url(webfonts/codicon.ttf)"
-  );
-
-  await fs.promises.writeFile(cssPath, css);
+async function createExtensionBuildContext(commonOptions) {
+  return esbuild.context({
+    ...commonOptions,
+    entryPoints: ["src/extension.ts"],
+    platform: "node",
+    format: "cjs",
+    external: ["vscode"],
+    outfile: "dist/extension.js",
+    plugins: [nativeNodeModulesPlugin]
+  });
 }
 
 async function build() {
@@ -107,321 +116,66 @@ async function build() {
     logLevel: "info"
   };
 
-  // Build extension (Node.js)
-  const extensionBuild = esbuild.build({
-    ...commonOptions,
-    entryPoints: ["src/extension.ts"],
-    platform: "node",
-    format: "cjs",
-    external: ["vscode"],
-    outfile: "dist/extension.js",
-    plugins: [nativeNodeModulesPlugin]
-  });
+  const extensionBuildContext = await createExtensionBuildContext(commonOptions);
 
-  // Build webview (Browser) - CSS handled separately
-  const webviewBuild = esbuild.build({
-    ...commonOptions,
-    entryPoints: ["src/reactTopoViewer/webview/index.tsx"],
-    platform: "browser",
-    format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
-    outfile: "dist/reactTopoViewerWebview.js",
-    plugins: [ignoreCssPlugin],
-    jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
-    define: {
-      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
-    }
-  });
-
-  const explorerWebviewBuild = esbuild.build({
-    ...commonOptions,
-    entryPoints: ["src/webviews/explorer/containerlabExplorerView.webview.tsx"],
-    platform: "browser",
-    format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
-    outfile: "dist/containerlabExplorerView.js",
-    plugins: [ignoreCssPlugin],
-    jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
-    define: {
-      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
-    }
-  });
-
-  const welcomeWebviewBuild = esbuild.build({
-    ...commonOptions,
-    entryPoints: ["src/webviews/welcome/welcomePage.webview.tsx"],
-    platform: "browser",
-    format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
-    outfile: "dist/welcomePageWebview.js",
-    plugins: [ignoreCssPlugin],
-    jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
-    define: {
-      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
-    }
-  });
-
-  const inspectWebviewBuild = esbuild.build({
-    ...commonOptions,
-    entryPoints: ["src/webviews/inspect/inspect.webview.tsx"],
-    platform: "browser",
-    format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
-    outfile: "dist/inspectWebview.js",
-    plugins: [ignoreCssPlugin],
-    jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
-    define: {
-      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
-    }
-  });
-
-  const nodeImpairmentsWebviewBuild = esbuild.build({
-    ...commonOptions,
-    entryPoints: ["src/webviews/nodeImpairments/nodeImpairments.webview.tsx"],
-    platform: "browser",
-    format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
-    outfile: "dist/nodeImpairmentsWebview.js",
-    plugins: [ignoreCssPlugin],
-    jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
-    define: {
-      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
-    }
-  });
-
-  const wiresharkVncWebviewBuild = esbuild.build({
-    ...commonOptions,
-    entryPoints: ["src/webviews/wiresharkVnc/wiresharkVnc.webview.tsx"],
-    platform: "browser",
-    format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
-    outfile: "dist/wiresharkVncWebview.js",
-    plugins: [ignoreCssPlugin],
-    jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
-    define: {
-      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
-    }
-  });
-
-  // Build Monaco workers for webview (separate files for CSP-friendly worker-src)
-  const monacoWorkersBuild = esbuild.build({
-    ...commonOptions,
-    entryPoints: {
-      "monaco-editor-worker": "node_modules/monaco-editor/esm/vs/editor/editor.worker.js",
-      "monaco-json-worker": "node_modules/monaco-editor/esm/vs/language/json/json.worker.js"
-    },
-    platform: "browser",
-    format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
-    outdir: "dist",
-    plugins: [ignoreCssPlugin]
-  });
-
-  // Run all builds in parallel
-  await Promise.all([
-    extensionBuild,
-    webviewBuild,
-    explorerWebviewBuild,
-    welcomeWebviewBuild,
-    inspectWebviewBuild,
-    nodeImpairmentsWebviewBuild,
-    wiresharkVncWebviewBuild,
-    monacoWorkersBuild,
-    copyFonts(),
-    copyMapLibreWorker(),
-    buildCss()
-  ]);
-
-  console.log("Build complete!");
-
-  // Watch mode
   if (isWatch) {
+    await extensionBuildContext.watch();
+    await syncGuiAssetsFromPackage();
+
     const { watch } = require("chokidar");
-
-    // Watch extension and webview with esbuild
-    const extCtx = await esbuild.context({
-      ...commonOptions,
-      entryPoints: ["src/extension.ts"],
-      platform: "node",
-      format: "cjs",
-      external: ["vscode"],
-      outfile: "dist/extension.js",
-      plugins: [nativeNodeModulesPlugin]
-    });
-
-    const webCtx = await esbuild.context({
-      ...commonOptions,
-      entryPoints: ["src/reactTopoViewer/webview/index.tsx"],
-      platform: "browser",
-      format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
-      outfile: "dist/reactTopoViewerWebview.js",
-      plugins: [ignoreCssPlugin],
-      jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
-    });
-
-    const explorerWebCtx = await esbuild.context({
-      ...commonOptions,
-      entryPoints: ["src/webviews/explorer/containerlabExplorerView.webview.tsx"],
-      platform: "browser",
-      format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
-      outfile: "dist/containerlabExplorerView.js",
-      plugins: [ignoreCssPlugin],
-      jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
-    });
-
-    const welcomeWebCtx = await esbuild.context({
-      ...commonOptions,
-      entryPoints: ["src/webviews/welcome/welcomePage.webview.tsx"],
-      platform: "browser",
-      format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
-      outfile: "dist/welcomePageWebview.js",
-      plugins: [ignoreCssPlugin],
-      jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
-    });
-
-    const inspectWebCtx = await esbuild.context({
-      ...commonOptions,
-      entryPoints: ["src/webviews/inspect/inspect.webview.tsx"],
-      platform: "browser",
-      format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
-      outfile: "dist/inspectWebview.js",
-      plugins: [ignoreCssPlugin],
-      jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
-    });
-
-    const nodeImpairmentsWebCtx = await esbuild.context({
-      ...commonOptions,
-      entryPoints: ["src/webviews/nodeImpairments/nodeImpairments.webview.tsx"],
-      platform: "browser",
-      format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
-      outfile: "dist/nodeImpairmentsWebview.js",
-      plugins: [ignoreCssPlugin],
-      jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
-    });
-
-    const wiresharkVncWebCtx = await esbuild.context({
-      ...commonOptions,
-      entryPoints: ["src/webviews/wiresharkVnc/wiresharkVnc.webview.tsx"],
-      platform: "browser",
-      format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
-      outfile: "dist/wiresharkVncWebview.js",
-      plugins: [ignoreCssPlugin],
-      jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
-    });
-
-    const monacoWorkersCtx = await esbuild.context({
-      ...commonOptions,
-      entryPoints: {
-        "monaco-editor-worker": "node_modules/monaco-editor/esm/vs/editor/editor.worker.js",
-        "monaco-json-worker": "node_modules/monaco-editor/esm/vs/language/json/json.worker.js"
-      },
-      platform: "browser",
-      format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
-      outdir: "dist",
-      plugins: [ignoreCssPlugin]
-    });
-
-    await Promise.all([
-      extCtx.watch(),
-      webCtx.watch(),
-      explorerWebCtx.watch(),
-      welcomeWebCtx.watch(),
-      inspectWebCtx.watch(),
-      nodeImpairmentsWebCtx.watch(),
-      wiresharkVncWebCtx.watch(),
-      monacoWorkersCtx.watch()
-    ]);
-
-    // Watch CSS files and rebuild
-    const cssWatcher = watch("src/reactTopoViewer/webview/styles/**/*.css", {
+    const guiDistDir = resolveGuiDistDir();
+    const guiAssetsWatcher = watch(path.join(guiDistDir, "**/*"), {
       ignoreInitial: true
     });
-    cssWatcher.on("change", () => {
-      console.log("CSS changed, rebuilding...");
-      buildCss();
+
+    let syncInProgress = false;
+    let syncQueued = false;
+
+    const syncAssets = async () => {
+      if (syncInProgress) {
+        syncQueued = true;
+        return;
+      }
+
+      syncInProgress = true;
+      try {
+        await syncGuiAssetsFromPackage();
+        console.log("Synced GUI assets from npm package");
+      } catch (error) {
+        console.error("Failed syncing GUI assets:", error);
+      } finally {
+        syncInProgress = false;
+        if (syncQueued) {
+          syncQueued = false;
+          void syncAssets();
+        }
+      }
+    };
+
+    guiAssetsWatcher.on("add", () => void syncAssets());
+    guiAssetsWatcher.on("change", () => void syncAssets());
+    guiAssetsWatcher.on("unlink", () => void syncAssets());
+
+    process.on("SIGINT", async () => {
+      await guiAssetsWatcher.close();
+      await extensionBuildContext.dispose();
+      process.exit(0);
+    });
+
+    process.on("SIGTERM", async () => {
+      await guiAssetsWatcher.close();
+      await extensionBuildContext.dispose();
+      process.exit(0);
     });
 
     console.log("Watching for changes...");
+    return;
   }
+
+  await Promise.all([extensionBuildContext.rebuild(), syncGuiAssetsFromPackage()]);
+  await extensionBuildContext.dispose();
+
+  console.log("Build complete!");
 }
 
 build().catch((err) => {

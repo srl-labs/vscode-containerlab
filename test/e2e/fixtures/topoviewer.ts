@@ -12,8 +12,8 @@ const CANVAS_SELECTOR = ".react-flow";
 const TOPOLOGY_NODE_TYPE = "topology-node";
 const NETWORK_NODE_TYPE = "network-node";
 
-// Topologies directory path (must match dev server config)
-const TOPOLOGIES_DIR = path.resolve(__dirname, "../../../dev/topologies");
+// Virtual topologies path used by the in-memory dev API.
+const TOPOLOGIES_DIR = "topologies";
 
 /**
  * Generate a unique session ID for test isolation
@@ -179,7 +179,7 @@ function browserGetGroupDebugInfo(): GroupDebugInfo {
 }
 
 /**
- * Topology files available in dev/topologies/ (file-based)
+ * Topology files available from the in-memory dev API.
  */
 type TopologyFileName =
   | "simple.clab.yml"
