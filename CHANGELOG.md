@@ -1,5 +1,23 @@
 # Change Log
 
+## [0.23.0] - 2026-02-19
+
+- Major TopoViewer/editor architecture refresh:
+  - Continued migration from legacy Cytoscape internals to React Flow (xyflow) with Zustand-based state domains.
+  - Improved processing-state handling and overall UI responsiveness.
+- TopoViewer/editor improvements:
+  - New SVG-to-Grafana export flow with advanced options.
+  - Expanded editing UX for groups/annotations, context actions, lock-state behavior, and undo/redo reliability.
+  - Added and refined link/network editing (including IPv4/IPv6 link fields and persisted link-based edits across node-id rename).
+  - GeoMap improvements with better details and city initialization.
+  - Performance and stability fixes across editor interactions.
+- UI and webviews:
+  - Material UI rollout across extension webviews for a more consistent look and behavior.
+  - Better deploy/destroy transition and multiple panel/style refinements.
+- Explorer and compatibility:
+  - Treeview tweaks (lazy loading, scan safeguards, SR-SIM grouping, and context menu cleanup).
+  - Better compatibility handling for labs created with earlier extension versions.
+
 ## [0.22.3] - 2026-01-13
 
 - Fixes
