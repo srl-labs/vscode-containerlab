@@ -247,13 +247,16 @@ describe("grafanaExport helpers", () => {
     ]);
 
     const textCoordMatches = Array.from(
-      withCells.matchAll(/<text x="([^"]+)" y="([^"]+)"[^>]*> <\/text>/g),
+      withCells.matchAll(
+        /<text x="([^"]+)" y="([^"]+)"[^>]*>([^<]+)<\/text>/g,
+      ),
     );
+    expect(textCoordMatches.length).to.equal(4);
+    expect(textCoordMatches.every((match) => match[3] === "rate")).to.equal(true);
     const uniqueCoords = new Set(
       textCoordMatches.map((match) => `${match[1]}:${match[2]}`),
     );
 
-    expect(textCoordMatches.length).to.equal(4);
     expect(uniqueCoords.size).to.equal(4);
   });
 });
