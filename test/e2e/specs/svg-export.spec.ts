@@ -65,7 +65,7 @@ test.describe("SVG Export Modal", () => {
     await page.locator(SEL_SVG_EXPORT_BTN).click();
 
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toBe("topology.svg");
+    expect(download.suggestedFilename()).toBe("simple.svg");
 
     // Read and verify SVG content
     const svgString = await readDownloadAsString(download);
