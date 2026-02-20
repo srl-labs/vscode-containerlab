@@ -108,6 +108,8 @@ export interface FreeShapeNodeData {
 export interface TrafficRateNodeData {
   nodeId?: string;
   interfaceName?: string;
+  mode?: "chart" | "text";
+  textMetric?: "combined" | "rx" | "tx";
   showLegend?: boolean;
   width?: number;
   height?: number;

@@ -75,6 +75,8 @@ export function useTrafficRateAnnotations(
         position,
         nodeId: defaults.nodeId,
         interfaceName: defaults.interfaceName,
+        mode: "chart",
+        textMetric: "combined",
         width: 280,
         height: 170,
         groupId: parentGroup?.id

@@ -27,6 +27,8 @@ export interface TrafficRateEditorFooterRef {
 
 const DEFAULT_WIDTH = 280;
 const DEFAULT_HEIGHT = 170;
+const DEFAULT_TEXT_WIDTH = 112;
+const DEFAULT_TEXT_HEIGHT = 36;
 
 function canSave(annotation: TrafficRateAnnotation): boolean {
   return (
@@ -191,8 +193,13 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
 
   if (!formData) return null;
 
-  const width = formData.width ?? DEFAULT_WIDTH;
-  const height = formData.height ?? DEFAULT_HEIGHT;
+  const mode = formData.mode === "text" ? "text" : "chart";
+  const textMetric =
+    formData.textMetric === "rx" || formData.textMetric === "tx" ? formData.textMetric : "combined";
+  const width = formData.width ?? (mode === "text" ? DEFAULT_TEXT_WIDTH : DEFAULT_WIDTH);
+  const height = formData.height ?? (mode === "text" ? DEFAULT_TEXT_HEIGHT : DEFAULT_HEIGHT);
+  const widthMin = mode === "text" ? 1 : 180;
+  const heightMin = mode === "text" ? 1 : 120;
   const opacityValue =
     formData.backgroundOpacity !== undefined ? String(formData.backgroundOpacity) : "";
   const borderWidthValue = formData.borderWidth !== undefined ? String(formData.borderWidth) : "";
@@ -205,6 +212,31 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
         <Box sx={{ display: "flex", flexDirection: "column" }}>
           <PanelSection title="Monitor" withTopDivider={false}>
             <>
+              <SelectField
+                id="traffic-rate-mode"
+                label="Mode"
+                value={mode}
+                onChange={(value) => updateField("mode", value as TrafficRateAnnotation["mode"])}
+                options={[
+                  { value: "chart", label: "Chart" },
+                  { value: "text", label: "Text" }
+                ]}
+              />
+              {mode === "text" && (
+                <SelectField
+                  id="traffic-rate-text-metric"
+                  label="Text value"
+                  value={textMetric}
+                  onChange={(value) =>
+                    updateField("textMetric", value as TrafficRateAnnotation["textMetric"])
+                  }
+                  options={[
+                    { value: "combined", label: "Combined (RX + TX)" },
+                    { value: "rx", label: "RX only" },
+                    { value: "tx", label: "TX only" }
+                  ]}
+                />
+              )}
               <SelectField
                 id="traffic-rate-node"
                 label="Node"
@@ -232,9 +264,12 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                 value={String(width)}
                 onChange={(value) => {
                   const parsed = parseOptionalNumber(value);
-                  updateField("width", parsed === undefined ? undefined : clamp(parsed, 120, 2000));
+                  updateField(
+                    "width",
+                    parsed === undefined ? undefined : clamp(parsed, widthMin, 2000)
+                  );
                 }}
-                min={120}
+                min={widthMin}
                 max={2000}
                 suffix="px"
               />
@@ -245,9 +280,12 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                 value={String(height)}
                 onChange={(value) => {
                   const parsed = parseOptionalNumber(value);
-                  updateField("height", parsed === undefined ? undefined : clamp(parsed, 90, 1200));
+                  updateField(
+                    "height",
+                    parsed === undefined ? undefined : clamp(parsed, heightMin, 1200)
+                  );
                 }}
-                min={90}
+                min={heightMin}
                 max={1200}
                 suffix="px"
               />
@@ -353,14 +391,16 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
             />
           </PanelSection>
 
-          <PanelSection title="Chart" bodySx={{ p: 2 }}>
-            <CheckboxField
-              id="traffic-rate-show-legend"
-              label="Show legend"
-              checked={formData.showLegend !== false}
-              onChange={(checked) => updateField("showLegend", checked ? undefined : false)}
-            />
-          </PanelSection>
+          {mode === "chart" && (
+            <PanelSection title="Chart" bodySx={{ p: 2 }}>
+              <CheckboxField
+                id="traffic-rate-show-legend"
+                label="Show legend"
+                checked={formData.showLegend !== false}
+                onChange={(checked) => updateField("showLegend", checked ? undefined : false)}
+              />
+            </PanelSection>
+          )}
         </Box>
       </fieldset>
     </Box>

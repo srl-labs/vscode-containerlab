@@ -159,6 +159,21 @@ function normalizeFreeShapeAnnotations(annotations: FreeShapeAnnotation[]): Free
   });
 }
 
+function normalizeTrafficRateModeValue(
+  value: unknown
+): TrafficRateAnnotation["mode"] | undefined {
+  if (value === "text") return "text";
+  if (value === "chart" || value === "current") return "chart";
+  return undefined;
+}
+
+function normalizeTrafficRateTextMetricValue(
+  value: unknown
+): TrafficRateAnnotation["textMetric"] | undefined {
+  if (value === "combined" || value === "rx" || value === "tx") return value;
+  return undefined;
+}
+
 function normalizeTrafficRateAnnotations(
   annotations: TrafficRateAnnotation[]
 ): TrafficRateAnnotation[] {
@@ -166,6 +181,8 @@ function normalizeTrafficRateAnnotations(
     const width = toFiniteNumber(annotation.width);
     const height = toFiniteNumber(annotation.height);
     const showLegendDisabled = annotation.showLegend === false;
+    const mode = normalizeTrafficRateModeValue(annotation.mode);
+    const textMetric = normalizeTrafficRateTextMetricValue(annotation.textMetric);
     const backgroundOpacity = toFiniteNumber(annotation.backgroundOpacity);
     const borderWidth = toFiniteNumber(annotation.borderWidth);
     const borderRadius = toFiniteNumber(annotation.borderRadius);
@@ -174,6 +191,16 @@ function normalizeTrafficRateAnnotations(
       ...annotation,
       position: toPosition(annotation.position) ?? { x: 0, y: 0 }
     };
+    if (mode !== undefined) {
+      normalized.mode = mode;
+    } else {
+      delete normalized.mode;
+    }
+    if (textMetric !== undefined) {
+      normalized.textMetric = textMetric;
+    } else {
+      delete normalized.textMetric;
+    }
     if (width !== undefined) {
       normalized.width = width;
     } else {

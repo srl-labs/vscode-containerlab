@@ -176,6 +176,24 @@ export function formatBitsPerSecond(value: number | undefined): string {
 }
 
 /**
+ * Format bits-per-second as Mbit/s (fixed unit).
+ */
+export function formatMegabitsPerSecond(value: number | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return "-- Mbit/s";
+  }
+
+  const valueInMbit = value / 1_000_000;
+  let digits = 2;
+  if (valueInMbit >= 100) {
+    digits = 0;
+  } else if (valueInMbit >= 10) {
+    digits = 1;
+  }
+  return `${valueInMbit.toFixed(digits)} Mbit/s`;
+}
+
+/**
  * Format a packets-per-second metric with adaptive units.
  */
 export function formatPacketsPerSecond(value: number | undefined): string {

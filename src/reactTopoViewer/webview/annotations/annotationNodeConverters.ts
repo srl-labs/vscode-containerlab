@@ -57,8 +57,10 @@ const LINE_PADDING = 20;
 const DEFAULT_SHAPE_Z_INDEX = -1;
 const DEFAULT_GROUP_WIDTH = 200;
 const DEFAULT_GROUP_HEIGHT = 150;
-const DEFAULT_TRAFFIC_RATE_WIDTH = 280;
-const DEFAULT_TRAFFIC_RATE_HEIGHT = 170;
+const DEFAULT_TRAFFIC_RATE_CHART_WIDTH = 280;
+const DEFAULT_TRAFFIC_RATE_CHART_HEIGHT = 170;
+const DEFAULT_TRAFFIC_RATE_TEXT_WIDTH = 112;
+const DEFAULT_TRAFFIC_RATE_TEXT_HEIGHT = 36;
 
 // ============================================================================
 // Helper Functions
@@ -81,6 +83,19 @@ export function resolveGroupParentId(
 ): string | undefined {
   if (typeof parentId === "string") return parentId;
   if (typeof groupId === "string") return groupId;
+  return undefined;
+}
+
+function normalizeTrafficRateMode(value: unknown): TrafficRateAnnotation["mode"] | undefined {
+  if (value === "text") return "text";
+  if (value === "chart" || value === "current") return "chart";
+  return undefined;
+}
+
+function normalizeTrafficRateTextMetric(
+  value: unknown
+): TrafficRateAnnotation["textMetric"] | undefined {
+  if (value === "combined" || value === "rx" || value === "tx") return value;
   return undefined;
 }
 
@@ -256,8 +271,15 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
  */
 export function trafficRateToNode(annotation: TrafficRateAnnotation): Node<TrafficRateNodeData> {
   const position = normalizePosition(annotation.position);
-  const resolvedWidth = toFiniteNumber(annotation.width) ?? DEFAULT_TRAFFIC_RATE_WIDTH;
-  const resolvedHeight = toFiniteNumber(annotation.height) ?? DEFAULT_TRAFFIC_RATE_HEIGHT;
+  const modeRaw = annotation.mode as unknown;
+  const resolvedMode = normalizeTrafficRateMode(modeRaw);
+  const resolvedTextMetric = normalizeTrafficRateTextMetric(annotation.textMetric);
+  const resolvedWidth =
+    toFiniteNumber(annotation.width) ??
+    (resolvedMode === "text" ? DEFAULT_TRAFFIC_RATE_TEXT_WIDTH : DEFAULT_TRAFFIC_RATE_CHART_WIDTH);
+  const resolvedHeight =
+    toFiniteNumber(annotation.height) ??
+    (resolvedMode === "text" ? DEFAULT_TRAFFIC_RATE_TEXT_HEIGHT : DEFAULT_TRAFFIC_RATE_CHART_HEIGHT);
   const resolvedZIndex = toFiniteNumber(annotation.zIndex);
 
   return {
@@ -272,6 +294,8 @@ export function trafficRateToNode(annotation: TrafficRateAnnotation): Node<Traff
     data: {
       nodeId: isNonEmptyString(annotation.nodeId) ? annotation.nodeId : undefined,
       interfaceName: isNonEmptyString(annotation.interfaceName) ? annotation.interfaceName : undefined,
+      ...(resolvedMode !== undefined ? { mode: resolvedMode } : {}),
+      ...(resolvedTextMetric !== undefined ? { textMetric: resolvedTextMetric } : {}),
       showLegend: annotation.showLegend === false ? false : undefined,
       width: resolvedWidth,
       height: resolvedHeight,
@@ -435,12 +459,16 @@ export function nodeToTrafficRate(node: Node<TrafficRateNodeData>): TrafficRateA
   const width = node.width ?? data.width;
   const height = node.height ?? data.height;
   const zIndex = typeof node.zIndex === "number" ? node.zIndex : toFiniteNumber(data.zIndex);
+  const mode = normalizeTrafficRateMode(data.mode);
+  const textMetric = normalizeTrafficRateTextMetric(data.textMetric);
 
   const annotation: TrafficRateAnnotation = {
     id: node.id,
     position: node.position,
     nodeId: isNonEmptyString(data.nodeId) ? data.nodeId : undefined,
     interfaceName: isNonEmptyString(data.interfaceName) ? data.interfaceName : undefined,
+    ...(mode !== undefined ? { mode } : {}),
+    ...(textMetric !== undefined ? { textMetric } : {}),
     showLegend: data.showLegend === false ? false : undefined,
     groupId: isNonEmptyString(data.groupId) ? data.groupId : undefined,
     geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined,

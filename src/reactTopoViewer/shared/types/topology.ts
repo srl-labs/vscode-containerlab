@@ -138,6 +138,8 @@ export interface TrafficRateAnnotation {
   groupId?: string; // Parent group ID for hierarchy membership
   nodeId?: string;
   interfaceName?: string;
+  mode?: "chart" | "text";
+  textMetric?: "combined" | "rx" | "tx";
   showLegend?: boolean;
   width?: number;
   height?: number;
