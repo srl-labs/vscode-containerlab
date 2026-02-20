@@ -26,12 +26,12 @@ jobs:
       - name: Update local schema when changed
         id: schema
         run: |
-          if cmp -s /tmp/clab.schema.json schema/clab.schema.json; then
+          if diff -q /tmp/clab.schema.json schema/clab.schema.json > /dev/null; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          cp /tmp/clab.schema.json schema/clab.schema.json
+          mv /tmp/clab.schema.json schema/clab.schema.json
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Open pull request
