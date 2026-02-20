@@ -939,6 +939,8 @@ function createTrafficHalfCell(
   occupiedLabelPoints: Point[],
   graphScale: number,
 ): Element {
+  const trafficLabelPlaceholder = "rate";
+
   const group = doc.createElementNS(SVG_NS, "g");
   group.setAttribute("class", "grafana-traffic-half");
   setCellIdAttributes(group, shortCellId);
@@ -966,7 +968,7 @@ function createTrafficHalfCell(
   text.setAttribute("stroke-width", "0.75");
   text.setAttribute("paint-order", "stroke");
   text.setAttribute("stroke-linejoin", "round");
-  text.textContent = " ";
+  text.textContent = trafficLabelPlaceholder;
   group.appendChild(text);
 
   return group;

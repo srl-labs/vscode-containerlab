@@ -75,6 +75,7 @@ import type {
 export interface SvgExportModalProps {
   isOpen: boolean;
   onClose: () => void;
+  labName?: string;
   textAnnotations?: FreeTextAnnotation[];
   shapeAnnotations?: FreeShapeAnnotation[];
   groups?: GroupStyleAnnotation[];
@@ -206,6 +207,11 @@ function asNonEmptyString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function resolveDefaultExportBaseName(labName?: string): string {
+  const trimmed = labName?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : "topology";
 }
 
 function extractEdgeInterfaceRows(
@@ -362,6 +368,7 @@ function requestGrafanaBundleExport(
 export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   isOpen,
   onClose,
+  labName,
   textAnnotations = [],
   shapeAnnotations = [],
   groups = [],
@@ -405,7 +412,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   const [backgroundOption, setBackgroundOption] =
     useState<BackgroundOption>("transparent");
   const [customBackgroundColor, setCustomBackgroundColor] = useState("#1e1e1e");
-  const [filename, setFilename] = useState("topology");
+  const defaultBaseName = useMemo(() => resolveDefaultExportBaseName(labName), [labName]);
+  const [filename, setFilename] = useState(defaultBaseName);
 
   const isExportAvailable = rfInstance ? Boolean(getViewportSize()) : false;
   const totalAnnotations =
@@ -538,7 +546,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       finalSvg = addBackgroundRect(finalSvg, customBackgroundColor);
     }
 
-    const baseName = (filename || "topology").trim() || "topology";
+    const baseName = filename.trim() || defaultBaseName;
     return { baseName, finalSvg, graphSvg };
   }, [
     exportGrafanaBundle,
@@ -558,6 +566,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     backgroundOption,
     customBackgroundColor,
     filename,
+    defaultBaseName,
   ]);
 
   const exportPlainSvg = useCallback((prepared: PreparedSvgExport): void => {
@@ -706,7 +715,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
               fullWidth
               value={filename}
               onChange={(e) => setFilename(e.target.value)}
-              placeholder="topology"
+              placeholder={defaultBaseName}
               data-testid="svg-export-filename"
               slotProps={{
                 input: {
