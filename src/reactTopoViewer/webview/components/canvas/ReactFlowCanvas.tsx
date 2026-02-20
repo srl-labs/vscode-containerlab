@@ -172,8 +172,8 @@ function useWrappedNodeClick(
         clearContextForAnnotationEdit,
         annotationHandlers
       );
-      onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
       if (didOpenAnnotationEditor) return;
+      onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
     },
     [
       linkSourceNode,

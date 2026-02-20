@@ -16,9 +16,11 @@ interface BpsUnit {
 interface TrafficChartProps {
   stats: InterfaceStatsPayload | undefined;
   endpointKey: string;
-  height?: number;
+  height?: number | "100%";
   compact?: boolean;
   showLegend?: boolean;
+  /** Scale factor for compact legend sizing (1 = default). */
+  scale?: number;
   emptyMessage?: string | null;
 }
 
@@ -49,19 +51,17 @@ function createEmptyHistory(): EndpointStatsHistory {
   };
 }
 
-function resolveChartMargin(compact: boolean, showLegend: boolean) {
+function resolveChartMargin(compact: boolean, showLegend: boolean, scale: number) {
   if (!compact) {
-    return { top: 8, right: 48, bottom: 4, left: 48 };
+    return { top: 8, right: 48, bottom: 24, left: 48 };
   }
 
-  if (showLegend) {
-    return { top: 4, right: 8, bottom: 22, left: 8 };
-  }
-
-  return { top: 4, right: 8, bottom: 0, left: 8 };
+  // The legend is rendered inside the SVG bottom margin.
+  const legendHeight = showLegend ? Math.round(14 * scale) : 0;
+  return { top: 6, right: 2, bottom: legendHeight, left: 0 };
 }
 
-function resolveLegendSlotProps(compact: boolean, showLegend: boolean) {
+function resolveLegendSlotProps(compact: boolean, showLegend: boolean, scale: number) {
   if (!showLegend) {
     return undefined;
   }
@@ -75,20 +75,23 @@ function resolveLegendSlotProps(compact: boolean, showLegend: boolean) {
     };
   }
 
+  const fontSize = `${(0.6 * scale).toFixed(3)}rem`;
+  const markSize = `${(0.65 * scale).toFixed(2)}em`;
+
   return {
     legend: {
       direction: "horizontal" as const,
-      position: { vertical: "bottom" as const, horizontal: "start" as const },
+      position: { vertical: "bottom" as const, horizontal: "center" as const },
       sx: {
-        fontSize: "0.625rem",
-        gap: 0.5,
-        marginBlock: 0.25,
-        marginInline: 0.25,
+        fontSize,
+        lineHeight: 1,
+        padding: 0,
+        gap: 0.25,
         "& .MuiChartsLegend-series": {
-          gap: 0.5
+          gap: 0.25
         },
         "& .MuiChartsLegend-mark": {
-          fontSize: "0.7em"
+          fontSize: markSize
         }
       }
     }
@@ -101,11 +104,13 @@ const historyStore = new Map<string, EndpointStatsHistory>();
 export const TrafficChart: React.FC<TrafficChartProps> = ({
   stats,
   endpointKey,
-  height = 240,
+  height,
   compact = false,
   showLegend = !compact,
+  scale = 1,
   emptyMessage = "No traffic data available"
 }) => {
+  const resolvedHeight = height ?? (compact ? "100%" : 240);
   // Track last-seen stats to avoid double-push in Strict Mode
   const lastStatsRef = useRef<InterfaceStatsPayload | undefined>(undefined);
 
@@ -145,8 +150,8 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
     const rxScaled = history.rxBps.map((v) => v / divisor);
     const txScaled = history.txBps.map((v) => v / divisor);
 
-    // Sequential x-axis indices
-    const x = history.timestamps.map((_, i) => i);
+    // Convert epoch seconds to Date objects for the time axis
+    const x = history.timestamps.map((ts) => new Date(ts * 1000));
 
     return {
       xData: x,
@@ -157,8 +162,8 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
       unitLabel: unit.label
     };
   }, [stats, endpointKey]);
-  const margin = resolveChartMargin(compact, showLegend);
-  const legendSlotProps = resolveLegendSlotProps(compact, showLegend);
+  const margin = resolveChartMargin(compact, showLegend, scale);
+  const legendSlotProps = resolveLegendSlotProps(compact, showLegend, scale);
 
   if (xData.length === 0) {
     if (emptyMessage === null) return null;
@@ -173,29 +178,37 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
   }
 
   return (
-    <Box sx={{ width: "100%", height }}>
+    <Box sx={{ width: "100%", height: resolvedHeight }}>
       <LineChart
         xAxis={[
           {
             data: xData,
-            scaleType: "linear",
+            scaleType: "time",
             disableLine: true,
             disableTicks: true,
-            tickLabelStyle: { display: "none" }
+            valueFormatter: (v: Date) => v.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+            ...(compact
+              ? { position: "none" as const, height: 0 }
+              : { tickLabelStyle: { fontSize: 10, fill: "#cccccc" }, height: 20 })
           }
         ]}
         yAxis={[
           {
             id: "bps",
-            label: compact ? undefined : unitLabel,
-            labelStyle: compact ? { display: "none" } : { fontSize: 11 },
-            tickLabelStyle: compact ? { display: "none" } : { fontSize: 10, fill: "#cccccc" }
+            ...(compact
+              ? {
+                  position: "left" as const,
+                  disableTicks: true,
+                  tickLabelStyle: { fontSize: Math.round(8 * scale), fill: "#9aa0a6" },
+                  valueFormatter: (v: number) => `${v} ${unitLabel}`
+                }
+              : { label: unitLabel, labelStyle: { fontSize: 11 }, tickLabelStyle: { fontSize: 10, fill: "#cccccc" } })
           },
           {
             id: "pps",
-            label: compact ? undefined : "PPS",
-            labelStyle: compact ? { display: "none" } : { fontSize: 11 },
-            tickLabelStyle: compact ? { display: "none" } : { fontSize: 10, fill: "#cccccc" }
+            ...(compact
+              ? { position: "none" as const, width: 0 }
+              : { label: "PPS", labelStyle: { fontSize: 11 }, tickLabelStyle: { fontSize: 10, fill: "#cccccc" } })
           }
         ]}
         series={[
@@ -237,10 +250,14 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
         slotProps={legendSlotProps}
         sx={{
           "& .MuiChartsGrid-line": { stroke: "#3e3e42" },
-          "& .MuiChartsAxis-line": { stroke: "#cccccc" },
-          "& .MuiChartsAxis-tick": { stroke: "#3e3e42" },
-          "& .MuiChartsAxisHighlight-root": { stroke: "#cccccc" },
-          "& .MuiChartsAxis-label": { fill: "#cccccc" }
+          ...(compact ? {
+            "& .MuiChartsAxis-line": { stroke: "#3e3e42" }
+          } : {
+            "& .MuiChartsAxis-line": { stroke: "#cccccc" },
+            "& .MuiChartsAxis-tick": { stroke: "#3e3e42" },
+            "& .MuiChartsAxisHighlight-root": { stroke: "#cccccc" },
+            "& .MuiChartsAxis-label": { fill: "#cccccc" }
+          })
         }}
       />
     </Box>

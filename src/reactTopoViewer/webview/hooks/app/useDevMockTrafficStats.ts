@@ -134,7 +134,8 @@ function buildMockStats(state: MockEndpointState, stepSeconds: number): Interfac
     rxBytes: state.rxBytes,
     txBytes: state.txBytes,
     rxPackets: state.rxPackets,
-    txPackets: state.txPackets
+    txPackets: state.txPackets,
+    statsIntervalSeconds: stepSeconds
   };
 }
 

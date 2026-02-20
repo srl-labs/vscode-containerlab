@@ -400,10 +400,17 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
 
   // Fall back to "nodes" when current tab is no longer visible
   useEffect(() => {
-    if (!visibleTabs.some((t) => t.id === userTab)) {
-      setUserTab("nodes");
+    if (visibleTabs.some((t) => t.id === userTab)) return;
+    if (showEditTab) {
+      setUserTab("edit");
+      return;
     }
-  }, [visibleTabs, userTab]);
+    if (showInfoTab) {
+      setUserTab("info");
+      return;
+    }
+    setUserTab("nodes");
+  }, [visibleTabs, userTab, showEditTab, showInfoTab]);
 
   const activeTab = userTab;
 

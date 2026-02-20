@@ -698,17 +698,26 @@ export const AppContent: React.FC<AppContentProps> = ({
       onEditFreeShape: (id) => {
         annotationRuntimeRef.current?.editShapeAnnotation(id);
       },
+      onEditTrafficRate: (id) => {
+        annotationRuntimeRef.current?.editTrafficRateAnnotation(id);
+      },
       onDeleteFreeText: (id) => {
         annotationRuntimeRef.current?.deleteTextAnnotation(id);
       },
       onDeleteFreeShape: (id) => {
         annotationRuntimeRef.current?.deleteShapeAnnotation(id);
       },
+      onDeleteTrafficRate: (id) => {
+        annotationRuntimeRef.current?.deleteTrafficRateAnnotation(id);
+      },
       onUpdateFreeTextSize: (id, width, height) => {
         annotationRuntimeRef.current?.updateTextSize(id, width, height);
       },
       onUpdateFreeShapeSize: (id, width, height) => {
         annotationRuntimeRef.current?.updateShapeSize(id, width, height);
+      },
+      onUpdateTrafficRateSize: (id, width, height) => {
+        annotationRuntimeRef.current?.updateTrafficRateSize(id, width, height);
       },
       onUpdateFreeTextRotation: (id, rotation) => {
         annotationRuntimeRef.current?.updateTextRotation(id, rotation);
