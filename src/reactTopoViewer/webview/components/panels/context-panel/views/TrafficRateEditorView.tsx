@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 import type { TrafficRateAnnotation } from "../../../../../shared/types/topology";
 import { useGenericFormState, useEditorHandlersWithFooterRef } from "../../../../hooks/editor";
 import { useGraphStore } from "../../../../stores/graphStore";
+import { resolveComputedColor } from "../../../../utils/color";
 import { getTrafficMonitorOptions } from "../../../../utils/trafficRateAnnotation";
 import { CheckboxField, ColorField, InputField, PanelSection, SelectField } from "../../../ui/form";
 import { FIELDSET_RESET_STYLE } from "../ContextPanelScrollArea";
@@ -27,8 +28,23 @@ export interface TrafficRateEditorFooterRef {
 
 const DEFAULT_WIDTH = 280;
 const DEFAULT_HEIGHT = 170;
-const DEFAULT_TEXT_WIDTH = 112;
-const DEFAULT_TEXT_HEIGHT = 36;
+const DEFAULT_TEXT_WIDTH = 100;
+const DEFAULT_TEXT_HEIGHT = 30;
+const DEFAULT_BACKGROUND_OPACITY = 20;
+const DEFAULT_BORDER_WIDTH = 1;
+const DEFAULT_BORDER_RADIUS_CHART = 8;
+const DEFAULT_BORDER_RADIUS_TEXT = 4;
+const FALLBACK_BACKGROUND_COLOR = "#1e1e1e";
+const FALLBACK_BORDER_COLOR = "#3f3f46";
+const FALLBACK_TEXT_COLOR = "#9aa0a6";
+
+function getThemeTrafficRateDefaults(): { backgroundColor: string; borderColor: string; textColor: string } {
+  return {
+    backgroundColor: resolveComputedColor("--vscode-editor-background", FALLBACK_BACKGROUND_COLOR),
+    borderColor: resolveComputedColor("--vscode-panel-border", FALLBACK_BORDER_COLOR),
+    textColor: resolveComputedColor("--vscode-descriptionForeground", FALLBACK_TEXT_COLOR)
+  };
+}
 
 function canSave(annotation: TrafficRateAnnotation): boolean {
   return (
@@ -159,6 +175,44 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
     [formData, updateField, trafficOptions.interfacesByNode]
   );
 
+  const handleModeChange = useCallback(
+    (value: string) => {
+      if (!formData) return;
+      const nextMode = value === "text" ? "text" : "chart";
+      updateField("mode", nextMode);
+
+      // Apply mode defaults when the current value is unset or still on the previous mode's default.
+      if (nextMode === "text") {
+        if (formData.width === undefined || formData.width === DEFAULT_WIDTH) {
+          updateField("width", DEFAULT_TEXT_WIDTH);
+        }
+        if (formData.height === undefined || formData.height === DEFAULT_HEIGHT) {
+          updateField("height", DEFAULT_TEXT_HEIGHT);
+        }
+        if (
+          formData.borderRadius === undefined ||
+          formData.borderRadius === DEFAULT_BORDER_RADIUS_CHART
+        ) {
+          updateField("borderRadius", DEFAULT_BORDER_RADIUS_TEXT);
+        }
+      } else {
+        if (formData.width === undefined || formData.width === DEFAULT_TEXT_WIDTH) {
+          updateField("width", DEFAULT_WIDTH);
+        }
+        if (formData.height === undefined || formData.height === DEFAULT_TEXT_HEIGHT) {
+          updateField("height", DEFAULT_HEIGHT);
+        }
+        if (
+          formData.borderRadius === undefined ||
+          formData.borderRadius === DEFAULT_BORDER_RADIUS_TEXT
+        ) {
+          updateField("borderRadius", DEFAULT_BORDER_RADIUS_CHART);
+        }
+      }
+    },
+    [formData, updateField]
+  );
+
   const canSaveNow = formData ? canSave(formData) : false;
 
   const saveWithCommit = useCallback(
@@ -196,15 +250,18 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
   const mode = formData.mode === "text" ? "text" : "chart";
   const textMetric =
     formData.textMetric === "rx" || formData.textMetric === "tx" ? formData.textMetric : "combined";
-  const width = formData.width ?? (mode === "text" ? DEFAULT_TEXT_WIDTH : DEFAULT_WIDTH);
-  const height = formData.height ?? (mode === "text" ? DEFAULT_TEXT_HEIGHT : DEFAULT_HEIGHT);
+  const themeDefaults = getThemeTrafficRateDefaults();
+  const defaultWidthForMode = mode === "text" ? DEFAULT_TEXT_WIDTH : DEFAULT_WIDTH;
+  const defaultHeightForMode = mode === "text" ? DEFAULT_TEXT_HEIGHT : DEFAULT_HEIGHT;
+  const defaultBorderRadiusForMode =
+    mode === "text" ? DEFAULT_BORDER_RADIUS_TEXT : DEFAULT_BORDER_RADIUS_CHART;
+  const width = formData.width ?? defaultWidthForMode;
+  const height = formData.height ?? defaultHeightForMode;
   const widthMin = mode === "text" ? 1 : 180;
   const heightMin = mode === "text" ? 1 : 120;
-  const opacityValue =
-    formData.backgroundOpacity !== undefined ? String(formData.backgroundOpacity) : "";
-  const borderWidthValue = formData.borderWidth !== undefined ? String(formData.borderWidth) : "";
-  const borderRadiusValue =
-    formData.borderRadius !== undefined ? String(formData.borderRadius) : "";
+  const opacityValue = String(formData.backgroundOpacity ?? DEFAULT_BACKGROUND_OPACITY);
+  const borderWidthValue = String(formData.borderWidth ?? DEFAULT_BORDER_WIDTH);
+  const borderRadiusValue = String(formData.borderRadius ?? defaultBorderRadiusForMode);
 
   return (
     <Box sx={{ flex: 1, overflow: "auto" }}>
@@ -216,7 +273,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                 id="traffic-rate-mode"
                 label="Mode"
                 value={mode}
-                onChange={(value) => updateField("mode", value as TrafficRateAnnotation["mode"])}
+                onChange={handleModeChange}
                 options={[
                   { value: "chart", label: "Chart" },
                   { value: "text", label: "Text" }
@@ -266,7 +323,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                   const parsed = parseOptionalNumber(value);
                   updateField(
                     "width",
-                    parsed === undefined ? undefined : clamp(parsed, widthMin, 2000)
+                    parsed === undefined ? defaultWidthForMode : clamp(parsed, widthMin, 2000)
                   );
                 }}
                 min={widthMin}
@@ -282,7 +339,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                   const parsed = parseOptionalNumber(value);
                   updateField(
                     "height",
-                    parsed === undefined ? undefined : clamp(parsed, heightMin, 1200)
+                    parsed === undefined ? defaultHeightForMode : clamp(parsed, heightMin, 1200)
                   );
                 }}
                 min={heightMin}
@@ -299,7 +356,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
             <>
               <ColorField
                 label="Color"
-                value={formData.backgroundColor ?? "#1e1e1e"}
+                value={formData.backgroundColor ?? themeDefaults.backgroundColor}
                 onChange={(value) => updateField("backgroundColor", value)}
               />
               <InputField
@@ -311,7 +368,9 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                   const parsed = parseOptionalNumber(value);
                   updateField(
                     "backgroundOpacity",
-                    parsed === undefined ? undefined : clamp(parsed, 0, 100)
+                    parsed === undefined
+                      ? DEFAULT_BACKGROUND_OPACITY
+                      : clamp(parsed, 0, 100)
                   );
                 }}
                 min={0}
@@ -326,7 +385,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
             <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
               <ColorField
                 label="Color"
-                value={formData.borderColor ?? "#3f3f46"}
+                value={formData.borderColor ?? themeDefaults.borderColor}
                 onChange={(value) => updateField("borderColor", value)}
               />
               <InputField
@@ -338,7 +397,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                   const parsed = parseOptionalNumber(value);
                   updateField(
                     "borderWidth",
-                    parsed === undefined ? undefined : clamp(parsed, 0, 20)
+                    parsed === undefined ? DEFAULT_BORDER_WIDTH : clamp(parsed, 0, 20)
                   );
                 }}
                 min={0}
@@ -372,7 +431,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                   const parsed = parseOptionalNumber(value);
                   updateField(
                     "borderRadius",
-                    parsed === undefined ? undefined : clamp(parsed, 0, 50)
+                    parsed === undefined ? defaultBorderRadiusForMode : clamp(parsed, 0, 50)
                   );
                 }}
                 min={0}
@@ -386,7 +445,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
           <PanelSection title="Text" bodySx={{ p: 2 }}>
             <ColorField
               label="Text Color"
-              value={formData.textColor ?? "#9aa0a6"}
+              value={formData.textColor ?? themeDefaults.textColor}
               onChange={(value) => updateField("textColor", value)}
             />
           </PanelSection>

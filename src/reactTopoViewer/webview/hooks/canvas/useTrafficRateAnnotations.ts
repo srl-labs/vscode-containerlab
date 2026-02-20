@@ -79,6 +79,9 @@ export function useTrafficRateAnnotations(
         textMetric: "combined",
         width: 280,
         height: 170,
+        backgroundOpacity: 20,
+        borderWidth: 1,
+        borderRadius: 8,
         groupId: parentGroup?.id
       };
 

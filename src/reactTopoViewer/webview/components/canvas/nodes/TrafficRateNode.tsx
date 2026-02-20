@@ -7,6 +7,7 @@ import { TrafficChart } from "../../panels/TrafficChart";
 import { useAnnotationHandlers } from "../../../stores/canvasStore";
 import { useGraphStore } from "../../../stores/graphStore";
 import { useIsLocked } from "../../../stores/topoViewerStore";
+import { resolveComputedColor } from "../../../utils/color";
 import { formatMegabitsPerSecond, resolveTrafficRateStats } from "../../../utils/trafficRateAnnotation";
 
 const CHART_MIN_WIDTH = 180;
@@ -15,14 +16,15 @@ const TEXT_MIN_WIDTH = 1;
 const TEXT_MIN_HEIGHT = 1;
 const REF_WIDTH = 260;
 const REF_HEIGHT = 180;
-const TEXT_REF_WIDTH = 112;
-const TEXT_REF_HEIGHT = 36;
-const DEFAULT_BACKGROUND = "#1e1e1e";
-const DEFAULT_BORDER_COLOR = "#3f3f46";
+const TEXT_REF_WIDTH = 100;
+const TEXT_REF_HEIGHT = 30;
+const FALLBACK_BACKGROUND = "#1e1e1e";
+const FALLBACK_BORDER_COLOR = "#3f3f46";
 const DEFAULT_BORDER_WIDTH = 1;
 const DEFAULT_BORDER_STYLE: NonNullable<TrafficRateNodeData["borderStyle"]> = "solid";
 const DEFAULT_BORDER_RADIUS = 8;
-const DEFAULT_TEXT_COLOR = "#9aa0a6";
+const DEFAULT_BACKGROUND_OPACITY = 20;
+const FALLBACK_TEXT_COLOR = "#9aa0a6";
 
 /** Compute a scale factor from current dimensions relative to reference size. */
 function computeScale(width: number, height: number, minScale = 0.65, maxScale = 2.0): number {
@@ -95,11 +97,14 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
   const subtitle = isConfigured
     ? `${nodeData.nodeId}:${nodeData.interfaceName}`
     : "Double-click to configure";
+  const defaultBackgroundColor = resolveComputedColor("--vscode-editor-background", FALLBACK_BACKGROUND);
+  const defaultBorderColor = resolveComputedColor("--vscode-panel-border", FALLBACK_BORDER_COLOR);
+  const defaultTextColor = resolveComputedColor("--vscode-descriptionForeground", FALLBACK_TEXT_COLOR);
   const background = getBackgroundWithOpacity(
-    nodeData.backgroundColor ?? DEFAULT_BACKGROUND,
-    nodeData.backgroundOpacity
+    nodeData.backgroundColor ?? defaultBackgroundColor,
+    nodeData.backgroundOpacity ?? DEFAULT_BACKGROUND_OPACITY
   );
-  const borderColor = nodeData.borderColor ?? DEFAULT_BORDER_COLOR;
+  const borderColor = nodeData.borderColor ?? defaultBorderColor;
   const borderWidth = nodeData.borderWidth ?? DEFAULT_BORDER_WIDTH;
   const borderStyle = nodeData.borderStyle ?? DEFAULT_BORDER_STYLE;
   const mode = nodeData.mode === "text" ? "text" : "chart";
@@ -107,8 +112,8 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
   const showLegend = nodeData.showLegend !== false;
   const textMetric =
     nodeData.textMetric === "rx" || nodeData.textMetric === "tx" ? nodeData.textMetric : "combined";
-  const textColor = nodeData.textColor ?? DEFAULT_TEXT_COLOR;
-  const hintColor = nodeData.textColor ?? "#8b949e";
+  const textColor = nodeData.textColor ?? defaultTextColor;
+  const hintColor = nodeData.textColor ?? defaultTextColor;
   const minWidth = mode === "text" ? TEXT_MIN_WIDTH : CHART_MIN_WIDTH;
   const minHeight = mode === "text" ? TEXT_MIN_HEIGHT : CHART_MIN_HEIGHT;
   const defaultWidth = mode === "text" ? TEXT_REF_WIDTH : REF_WIDTH;

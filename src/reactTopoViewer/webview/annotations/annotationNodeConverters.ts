@@ -59,8 +59,8 @@ const DEFAULT_GROUP_WIDTH = 200;
 const DEFAULT_GROUP_HEIGHT = 150;
 const DEFAULT_TRAFFIC_RATE_CHART_WIDTH = 280;
 const DEFAULT_TRAFFIC_RATE_CHART_HEIGHT = 170;
-const DEFAULT_TRAFFIC_RATE_TEXT_WIDTH = 112;
-const DEFAULT_TRAFFIC_RATE_TEXT_HEIGHT = 36;
+const DEFAULT_TRAFFIC_RATE_TEXT_WIDTH = 100;
+const DEFAULT_TRAFFIC_RATE_TEXT_HEIGHT = 30;
 
 // ============================================================================
 // Helper Functions
