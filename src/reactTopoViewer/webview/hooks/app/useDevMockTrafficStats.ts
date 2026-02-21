@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Edge } from "@xyflow/react";
 
 import type { InterfaceStatsPayload } from "../../../shared/types/topology";
+import { getRecordUnknown } from "../../../shared/utilities/typeHelpers";
 import { useGraphStore } from "../../stores/graphStore";
 
 const UPDATE_INTERVAL_MS = 1000;
@@ -20,17 +21,6 @@ interface MockEndpointState {
   txPackets: number;
   avgPacketBits: number;
   phase: number;
-}
-
-function toRecord(value: unknown): Record<string, unknown> {
-  if (typeof value !== "object" || value === null) {
-    return {};
-  }
-  const record: Record<string, unknown> = {};
-  for (const [key, entryValue] of Object.entries(value)) {
-    record[key] = entryValue;
-  }
-  return record;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -168,8 +158,8 @@ function applyMockStatsToEdge(
   const sourceStats = buildMockStats(sourceState, stepSeconds);
   const targetStats = buildMockStats(targetState, stepSeconds);
 
-  const data = toRecord(edge.data);
-  const extraData = toRecord(data.extraData);
+  const data = getRecordUnknown(edge.data) ?? {};
+  const extraData = getRecordUnknown(data.extraData) ?? {};
 
   return {
     ...edge,

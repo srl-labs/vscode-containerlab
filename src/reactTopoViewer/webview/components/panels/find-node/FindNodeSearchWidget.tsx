@@ -9,8 +9,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 
 import { useGraphStore } from "../../../stores/graphStore";
-import { getNodesBoundingBox } from "../../../utils/graphQueryUtils";
-import type { TopoNode } from "../../../../shared/types/graph";
+import { getNodesBoundingBox, isTopoNodeLike } from "../../../utils/graphQueryUtils";
 
 import { formatMatchCountText, getCombinedMatches } from "./findNodeSearchUtils";
 
@@ -29,22 +28,12 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
   dense = false,
   showTipsHeader = false,
 }) => {
-  const isTopoNode = useCallback((value: unknown): value is TopoNode => {
-    if (typeof value !== "object" || value === null) return false;
-    const id: unknown = Reflect.get(value, "id");
-    const position: unknown = Reflect.get(value, "position");
-    if (typeof id !== "string" || typeof position !== "object" || position === null) return false;
-    const x: unknown = Reflect.get(position, "x");
-    const y: unknown = Reflect.get(position, "y");
-    return typeof x === "number" && typeof y === "number";
-  }, []);
-
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [matchCount, setMatchCount] = useState<number | null>(null);
   const getCurrentNodes = useCallback(
-    () => useGraphStore.getState().nodes.filter((node) => isTopoNode(node)),
-    [isTopoNode]
+    () => useGraphStore.getState().nodes.filter((node) => isTopoNodeLike(node)),
+    []
   );
 
   useEffect(() => {
@@ -67,7 +56,7 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
     }
 
     const currentNodes = rfInstance
-      ? rfInstance.getNodes().filter((node) => isTopoNode(node))
+      ? rfInstance.getNodes().filter((node) => isTopoNodeLike(node))
       : getCurrentNodes();
     const combinedMatches = getCombinedMatches(currentNodes, searchTerm);
     setMatchCount(combinedMatches.length);
@@ -85,7 +74,7 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
           });
       }
     }
-  }, [searchTerm, rfInstance, getCurrentNodes, isTopoNode]);
+  }, [searchTerm, rfInstance, getCurrentNodes]);
 
   const handleClear = useCallback(() => {
     setSearchTerm("");

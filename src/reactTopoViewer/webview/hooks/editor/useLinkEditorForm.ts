@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { LinkEditorData, LinkEditorTabId } from "../../components/panels/link-editor/types";
 
 import { applyFormUpdates } from "./formState";
+import { discardFormChanges, hasFormChanges } from "./formChangeTracking";
 
 export interface UseLinkEditorFormReturn {
   activeTab: LinkEditorTabId;
@@ -72,13 +73,10 @@ export function useLinkEditorForm(
   }, [formData]);
 
   const discardChanges = useCallback(() => {
-    if (initialData !== null) setFormData({ ...initialData });
+    discardFormChanges(initialData, setFormData);
   }, [initialData]);
 
-  const hasChanges =
-    formData !== null && initialData !== null
-      ? JSON.stringify(formData) !== JSON.stringify(initialData)
-      : false;
+  const hasChanges = hasFormChanges(formData, initialData);
 
   return {
     activeTab,

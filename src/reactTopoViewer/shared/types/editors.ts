@@ -90,28 +90,9 @@ export interface AdvancedNodeFields {
 }
 
 /**
- * Node editor data structure
+ * Fields shared by node editor and custom template representations.
  */
-export interface NodeEditorData extends AdvancedNodeFields {
-  id: string;
-  name: string;
-  /** Whether this is a custom node template (temp-custom-node or edit-custom-node) */
-  isCustomTemplate?: boolean;
-  kind?: string;
-  type?: string;
-  image?: string;
-  version?: string;
-  icon?: string;
-  iconColor?: string;
-  iconCornerRadius?: number;
-  labelPosition?: string;
-  direction?: string;
-  labelBackgroundColor?: string;
-  // Custom node settings
-  customName?: string;
-  baseName?: string;
-  interfacePattern?: string;
-  isDefaultCustomNode?: boolean;
+interface SharedTemplateFields extends AdvancedNodeFields {
   // Configuration
   startupConfig?: string;
   enforceStartupConfig?: boolean;
@@ -139,6 +120,31 @@ export interface NodeEditorData extends AdvancedNodeFields {
   // Components (SROS)
   isDistributed?: boolean;
   components?: SrosComponent[];
+}
+
+/**
+ * Node editor data structure
+ */
+export interface NodeEditorData extends SharedTemplateFields {
+  id: string;
+  name: string;
+  /** Whether this is a custom node template (temp-custom-node or edit-custom-node) */
+  isCustomTemplate?: boolean;
+  kind?: string;
+  type?: string;
+  image?: string;
+  version?: string;
+  icon?: string;
+  iconColor?: string;
+  iconCornerRadius?: number;
+  labelPosition?: string;
+  direction?: string;
+  labelBackgroundColor?: string;
+  // Custom node settings
+  customName?: string;
+  baseName?: string;
+  interfacePattern?: string;
+  isDefaultCustomNode?: boolean;
 }
 
 // ============================================================================
@@ -313,7 +319,7 @@ export interface LinkEditorData {
 /**
  * Custom node template definition - stored configuration for reusable node types
  */
-export interface CustomNodeTemplate extends AdvancedNodeFields {
+export interface CustomNodeTemplate extends SharedTemplateFields {
   name: string;
   kind: string;
   type?: string;
@@ -323,33 +329,6 @@ export interface CustomNodeTemplate extends AdvancedNodeFields {
   iconCornerRadius?: number;
   baseName?: string;
   interfacePattern?: string;
-  // Configuration
-  startupConfig?: string;
-  enforceStartupConfig?: boolean;
-  suppressStartupConfig?: boolean;
-  license?: string;
-  binds?: string[];
-  env?: Record<string, string>;
-  envFiles?: string[];
-  labels?: Record<string, string>;
-  // Runtime
-  user?: string;
-  entrypoint?: string;
-  cmd?: string;
-  exec?: string[];
-  restartPolicy?: string;
-  autoRemove?: boolean;
-  startupDelay?: number;
-  // Network
-  mgmtIpv4?: string;
-  mgmtIpv6?: string;
-  networkMode?: string;
-  ports?: string[];
-  dnsServers?: string[];
-  aliases?: string[];
-  // Components (SROS)
-  isDistributed?: boolean;
-  components?: SrosComponent[];
   setDefault?: boolean;
   [key: string]: unknown;
 }
@@ -360,7 +339,7 @@ export interface CustomNodeTemplate extends AdvancedNodeFields {
  * Includes all NodeEditorData fields so templates can have default values
  * for license, startup-config, env, binds, etc.
  */
-export interface CustomTemplateEditorData extends AdvancedNodeFields {
+export interface CustomTemplateEditorData extends SharedTemplateFields {
   id: string; // 'temp-custom-node' for new, 'edit-custom-node' for editing
   isCustomTemplate: true;
   customName: string;
@@ -379,35 +358,4 @@ export interface CustomTemplateEditorData extends AdvancedNodeFields {
   baseName?: string;
   interfacePattern?: string;
   isDefaultCustomNode?: boolean;
-
-  // Configuration tab fields
-  license?: string;
-  startupConfig?: string;
-  enforceStartupConfig?: boolean;
-  suppressStartupConfig?: boolean;
-  binds?: string[];
-  env?: Record<string, string>;
-  envFiles?: string[];
-  labels?: Record<string, string>;
-
-  // Runtime tab fields
-  user?: string;
-  entrypoint?: string;
-  cmd?: string;
-  exec?: string[];
-  restartPolicy?: string;
-  autoRemove?: boolean;
-  startupDelay?: number;
-
-  // Network tab fields
-  mgmtIpv4?: string;
-  mgmtIpv6?: string;
-  networkMode?: string;
-  ports?: string[];
-  dnsServers?: string[];
-  aliases?: string[];
-
-  // Components tab fields (SROS)
-  isDistributed?: boolean;
-  components?: SrosComponent[];
 }

@@ -15,8 +15,8 @@ import {
 } from "@mui/material";
 import { Close as CloseIcon } from "@mui/icons-material";
 
-import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 import { useGraphActions, useGraphStore } from "../../stores/graphStore";
+import { isTopoEdgeLike, isTopoNodeLike } from "../../utils/graphQueryUtils";
 
 import { CopyableCode } from "./bulk-link/CopyableCode";
 import { ConfirmBulkLinksModal } from "./bulk-link/ConfirmBulkLinksModal";
@@ -31,24 +31,6 @@ interface BulkLinkModalProps {
 }
 
 const FLEX_START = "flex-start";
-
-function isTopoNode(value: unknown): value is TopoNode {
-  if (typeof value !== "object" || value === null) return false;
-  const id: unknown = Reflect.get(value, "id");
-  const position: unknown = Reflect.get(value, "position");
-  if (typeof id !== "string" || typeof position !== "object" || position === null) return false;
-  const x: unknown = Reflect.get(position, "x");
-  const y: unknown = Reflect.get(position, "y");
-  return typeof x === "number" && typeof y === "number";
-}
-
-function isTopoEdge(value: unknown): value is TopoEdge {
-  if (typeof value !== "object" || value === null) return false;
-  const id: unknown = Reflect.get(value, "id");
-  const source: unknown = Reflect.get(value, "source");
-  const target: unknown = Reflect.get(value, "target");
-  return typeof id === "string" && typeof source === "string" && typeof target === "string";
-}
 
 type ExampleDefinition = {
   title: string;
@@ -128,11 +110,11 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
 }) => {
   const { addEdge } = useGraphActions();
   const getCurrentNodes = React.useCallback(
-    () => useGraphStore.getState().nodes.filter((node) => isTopoNode(node)),
+    () => useGraphStore.getState().nodes.filter((node) => isTopoNodeLike(node)),
     []
   );
   const getCurrentEdges = React.useCallback(
-    () => useGraphStore.getState().edges.filter((edge) => isTopoEdge(edge)),
+    () => useGraphStore.getState().edges.filter((edge) => isTopoEdgeLike(edge)),
     []
   );
 

@@ -12,6 +12,7 @@ import type {
   EdgeCreatedHandler,
   NodeCreatedHandler,
 } from "../../../shared/types/graph";
+import { getRecordUnknown } from "../../../shared/utilities/typeHelpers";
 import type { GraphActions } from "../../stores/graphStore";
 import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
 import { useGraphHandlersWithContext } from "../state";
@@ -38,19 +39,8 @@ interface AppGraphHandlersConfig {
   actions: GraphActionSubset;
 }
 
-function toRecord(value: unknown): Record<string, unknown> {
-  if (typeof value !== "object" || value === null) {
-    return {};
-  }
-  const record: Record<string, unknown> = {};
-  for (const [key, entryValue] of Object.entries(value)) {
-    record[key] = entryValue;
-  }
-  return record;
-}
-
 function isTopologyEdgeData(value: unknown): value is TopologyEdgeData {
-  const record = toRecord(value);
+  const record = getRecordUnknown(value) ?? {};
   const sourceEndpoint = record.sourceEndpoint;
   const targetEndpoint = record.targetEndpoint;
   return typeof sourceEndpoint === "string" && typeof targetEndpoint === "string";

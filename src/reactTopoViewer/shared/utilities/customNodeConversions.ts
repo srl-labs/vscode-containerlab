@@ -83,16 +83,20 @@ function buildCommonTemplateFields(data: NodeEditorData) {
  * Convert CustomTemplateEditorData to NodeEditorData for the node editor panel.
  * Includes all configurable fields so they appear in the editor.
  */
-export function convertCustomTemplateToEditorData(
-  template: CustomTemplateEditorData
-): NodeEditorData {
-  return {
-    id: template.id,
-    name: "", // Not used for custom templates
-    isCustomTemplate: true,
-    customName: template.customName,
-    kind: template.kind,
+function buildTemplateEditorFields(
+  template: CustomTemplateEditorData | CustomNodeTemplate
+): Partial<NodeEditorData> {
+  const fromEditorData =
+    "isDefaultCustomNode" in template && typeof template.isDefaultCustomNode === "boolean"
+      ? template.isDefaultCustomNode
+      : undefined;
+  const fromTemplateData =
+    "setDefault" in template && typeof template.setDefault === "boolean"
+      ? template.setDefault
+      : undefined;
+  const isDefaultCustomNode = fromEditorData ?? fromTemplateData;
 
+  return {
     // Basic tab fields
     type: template.type,
     image: template.image,
@@ -103,7 +107,7 @@ export function convertCustomTemplateToEditorData(
     // Custom template specific
     baseName: template.baseName,
     interfacePattern: template.interfacePattern,
-    isDefaultCustomNode: template.isDefaultCustomNode,
+    isDefaultCustomNode,
 
     // Configuration tab fields
     license: template.license,
@@ -151,6 +155,19 @@ export function convertCustomTemplateToEditorData(
     // Components tab fields (SROS)
     isDistributed: template.isDistributed,
     components: template.components,
+  };
+}
+
+export function convertCustomTemplateToEditorData(
+  template: CustomTemplateEditorData
+): NodeEditorData {
+  return {
+    id: template.id,
+    name: "", // Not used for custom templates
+    isCustomTemplate: true,
+    customName: template.customName,
+    kind: template.kind,
+    ...buildTemplateEditorFields(template),
   };
 }
 
@@ -202,69 +219,11 @@ export function convertTemplateToEditorData(
 ): CustomTemplateEditorData {
   return {
     id: "edit-custom-node",
+    ...buildTemplateEditorFields(template),
     isCustomTemplate: true,
     customName: template.name,
     kind: template.kind,
     originalName: template.name,
-
-    // Basic tab fields
-    type: template.type,
-    image: template.image,
-    icon: template.icon,
-    iconColor: template.iconColor,
-    iconCornerRadius: template.iconCornerRadius,
-
-    // Custom template specific
-    baseName: template.baseName,
-    interfacePattern: template.interfacePattern,
-    isDefaultCustomNode: template.setDefault,
-
-    // Configuration tab fields
-    license: template.license,
-    startupConfig: template.startupConfig,
-    enforceStartupConfig: template.enforceStartupConfig,
-    suppressStartupConfig: template.suppressStartupConfig,
-    binds: template.binds,
-    env: template.env,
-    envFiles: template.envFiles,
-    labels: template.labels,
-
-    // Runtime tab fields
-    user: template.user,
-    entrypoint: template.entrypoint,
-    cmd: template.cmd,
-    exec: template.exec,
-    restartPolicy: template.restartPolicy,
-    autoRemove: template.autoRemove,
-    startupDelay: template.startupDelay,
-
-    // Network tab fields
-    mgmtIpv4: template.mgmtIpv4,
-    mgmtIpv6: template.mgmtIpv6,
-    networkMode: template.networkMode,
-    ports: template.ports,
-    dnsServers: template.dnsServers,
-    aliases: template.aliases,
-
-    // Advanced tab fields
-    cpu: template.cpu,
-    cpuSet: template.cpuSet,
-    memory: template.memory,
-    shmSize: template.shmSize,
-    capAdd: template.capAdd,
-    sysctls: template.sysctls,
-    devices: template.devices,
-    certIssue: template.certIssue,
-    certKeySize: template.certKeySize,
-    certValidity: template.certValidity,
-    sans: template.sans,
-    healthCheck: template.healthCheck,
-    imagePullPolicy: template.imagePullPolicy,
-    runtime: template.runtime,
-
-    // Components tab fields (SROS)
-    isDistributed: template.isDistributed,
-    components: template.components,
   };
 }
 

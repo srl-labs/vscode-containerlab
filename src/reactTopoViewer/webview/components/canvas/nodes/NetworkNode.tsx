@@ -4,7 +4,6 @@
 import React, { useMemo, memo, useState, useCallback } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 
-import type { NetworkNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 import { generateEncodedSVG } from "../../../icons/SvgGenerator";
 import {
@@ -14,27 +13,7 @@ import {
 } from "../../../stores/canvasStore";
 
 import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE, getNodeDirectionRotation } from "./nodeStyles";
-
-/**
- * Get icon color based on node type
- */
-function getNodeTypeColor(nodeType: string): string {
-  switch (nodeType) {
-    case "host":
-      return "#6B7280"; // Gray
-    case "mgmt-net":
-      return "#3B82F6"; // Blue
-    case "macvlan":
-      return "#10B981"; // Green
-    case "vxlan":
-      return "#8B5CF6"; // Purple
-    case "bridge":
-    case "ovs-bridge":
-      return "#F59E0B"; // Amber
-    default:
-      return "#6B7280"; // Gray
-  }
-}
+import { getNetworkNodeTypeColor, toNetworkNodeData } from "./networkNodeShared";
 
 const ICON_SIZE = 40;
 
@@ -44,14 +23,6 @@ const HANDLE_POSITIONS = [
   { position: Position.Bottom, id: "bottom" },
   { position: Position.Left, id: "left" },
 ] as const;
-
-function toNetworkNodeData(data: NodeProps["data"]): NetworkNodeData {
-  return {
-    ...data,
-    label: typeof data.label === "string" ? data.label : "",
-    nodeType: typeof data.nodeType === "string" ? data.nodeType : "host",
-  };
-}
 
 /**
  * NetworkNode component renders network endpoint nodes (host, mgmt-net, etc.)
@@ -78,7 +49,7 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
 
   // Generate the SVG icon URL (cloud icon for all network nodes)
   const svgUrl = useMemo(() => {
-    const color = getNodeTypeColor(nodeType);
+    const color = getNetworkNodeTypeColor(nodeType);
     return generateEncodedSVG("cloud", color);
   }, [nodeType]);
 

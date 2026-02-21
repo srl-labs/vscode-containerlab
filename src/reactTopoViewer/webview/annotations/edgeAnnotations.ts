@@ -32,6 +32,27 @@ function buildEdgeKey(identity: EdgeIdentity): string | null {
   return `${identity.source}|${sourceEndpoint}|${identity.target}|${targetEndpoint}`;
 }
 
+function resolveEdgeAnnotationMatch(
+  identity: EdgeIdentity,
+  getByKey: (key: string) => EdgeAnnotation | undefined,
+  getById: (id: string) => EdgeAnnotation | undefined
+): EdgeAnnotation | undefined {
+  const key = buildEdgeKey(identity);
+  if (key !== null) {
+    const byKey = getByKey(key);
+    if (byKey) return byKey;
+    if (hasNonEmptyString(identity.id)) {
+      const byId = getById(identity.id);
+      if (!byId) return undefined;
+      const byIdKey = buildEdgeKey(byId);
+      return byIdKey !== null && byIdKey === key ? byId : undefined;
+    }
+    return undefined;
+  }
+  if (!hasNonEmptyString(identity.id)) return undefined;
+  return getById(identity.id);
+}
+
 /**
  * Extract edge identity from a ReactFlow edge
  */
@@ -92,40 +113,22 @@ export function findEdgeAnnotation(
   identity: EdgeIdentity
 ): EdgeAnnotation | undefined {
   if (!annotations || annotations.length === 0) return undefined;
-  const key = buildEdgeKey(identity);
-  if (key !== null) {
-    const byKey = annotations.find((annotation) => buildEdgeKey(annotation) === key);
-    if (byKey) return byKey;
-    if (hasNonEmptyString(identity.id)) {
-      const byId = annotations.find((annotation) => annotation.id === identity.id);
-      if (!byId) return undefined;
-      const byIdKey = buildEdgeKey(byId);
-      return byIdKey !== null && byIdKey === key ? byId : undefined;
-    }
-    return undefined;
-  }
-  if (!hasNonEmptyString(identity.id)) return undefined;
-  return annotations.find((annotation) => annotation.id === identity.id);
+  return resolveEdgeAnnotationMatch(
+    identity,
+    (key) => annotations.find((annotation) => buildEdgeKey(annotation) === key),
+    (id) => annotations.find((annotation) => annotation.id === id)
+  );
 }
 
 export function findEdgeAnnotationInLookup(
   lookup: EdgeAnnotationLookup,
   identity: EdgeIdentity
 ): EdgeAnnotation | undefined {
-  const key = buildEdgeKey(identity);
-  if (key !== null) {
-    const byKey = lookup.byKey.get(key);
-    if (byKey) return byKey;
-    if (hasNonEmptyString(identity.id)) {
-      const byId = lookup.byId.get(identity.id);
-      if (!byId) return undefined;
-      const byIdKey = buildEdgeKey(byId);
-      return byIdKey !== null && byIdKey === key ? byId : undefined;
-    }
-    return undefined;
-  }
-  if (!hasNonEmptyString(identity.id)) return undefined;
-  return lookup.byId.get(identity.id);
+  return resolveEdgeAnnotationMatch(
+    identity,
+    (key) => lookup.byKey.get(key),
+    (id) => lookup.byId.get(id)
+  );
 }
 
 export function upsertEdgeAnnotation(

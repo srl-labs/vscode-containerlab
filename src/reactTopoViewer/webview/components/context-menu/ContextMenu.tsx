@@ -244,6 +244,45 @@ function submenuItemSx(compact: boolean, openToLeft: boolean) {
   };
 }
 
+function compactPrimarySlotProps(compact: boolean) {
+  if (!compact) {
+    return undefined;
+  }
+  return {
+    primary: {
+      noWrap: true,
+      sx: {
+        fontSize: 12.5,
+        lineHeight: 1.25,
+      },
+    },
+  };
+}
+
+function renderMenuItemLabel(params: {
+  item: ContextMenuItem;
+  compact: boolean;
+  isDanger?: boolean;
+}): React.ReactElement {
+  const { item, compact, isDanger = false } = params;
+  const hasIcon = item.icon !== undefined && item.icon !== null;
+  return (
+    <>
+      {hasIcon && (
+        <ListItemIcon
+          sx={{
+            ...(compact ? { minWidth: 22 } : {}),
+            ...(isDanger ? { color: "error.main" } : {}),
+          }}
+        >
+          {item.icon}
+        </ListItemIcon>
+      )}
+      <ListItemText slotProps={compactPrimarySlotProps(compact)}>{item.label}</ListItemText>
+    </>
+  );
+}
+
 const MenuItemButton: React.FC<MenuItemComponentProps> = ({
   item,
   onClose,
@@ -251,7 +290,6 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({
   openToLeft = false,
 }) => {
   const handleClick = useMenuItemClick(item, onClose);
-  const hasIcon = item.icon !== undefined && item.icon !== null;
   const isDanger = item.danger === true;
 
   return (
@@ -266,33 +304,7 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({
       }}
     >
       {openToLeft && <Box sx={submenuGutterSx(compact)} />}
-      {hasIcon && (
-        <ListItemIcon
-          sx={{
-            ...(compact ? { minWidth: 22 } : {}),
-            ...(isDanger ? { color: "error.main" } : {}),
-          }}
-        >
-          {item.icon}
-        </ListItemIcon>
-      )}
-      <ListItemText
-        slotProps={
-          compact
-            ? {
-                primary: {
-                  noWrap: true,
-                  sx: {
-                    fontSize: 12.5,
-                    lineHeight: 1.25,
-                  },
-                },
-              }
-            : undefined
-        }
-      >
-        {item.label}
-      </ListItemText>
+      {renderMenuItemLabel({ item, compact, isDanger })}
     </MenuItem>
   );
 };
@@ -374,7 +386,6 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
   );
   const anchorHorizontal = openToLeft ? "left" : "right";
   const transformHorizontal = openToLeft ? "right" : "left";
-  const hasIcon = item.icon !== undefined && item.icon !== null;
 
   return (
     <>
@@ -392,26 +403,7 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
             <ChevronLeftIcon fontSize="small" />
           </Box>
         )}
-        {hasIcon && (
-          <ListItemIcon sx={compact ? { minWidth: 22 } : undefined}>{item.icon}</ListItemIcon>
-        )}
-        <ListItemText
-          slotProps={
-            compact
-              ? {
-                  primary: {
-                    noWrap: true,
-                    sx: {
-                      fontSize: 12.5,
-                      lineHeight: 1.25,
-                    },
-                  },
-                }
-              : undefined
-          }
-        >
-          {item.label}
-        </ListItemText>
+        {renderMenuItemLabel({ item, compact })}
         {!openToLeft && <ChevronRightIcon fontSize="small" sx={{ ml: compact ? 0.45 : 1 }} />}
       </MenuItem>
       <Menu

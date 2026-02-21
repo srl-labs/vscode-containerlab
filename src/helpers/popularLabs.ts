@@ -2,6 +2,8 @@ import * as https from "https";
 
 import * as vscode from "vscode";
 
+import { getRecordUnknown } from "../reactTopoViewer/shared/utilities/typeHelpers";
+
 export interface PopularRepo {
   name: string;
   html_url: string;
@@ -20,24 +22,13 @@ interface GitHubSearchResponse {
   items?: PopularRepo[];
 }
 
-function toRecord(value: unknown): Record<string, unknown> {
-  if (typeof value !== "object" || value === null) {
-    return {};
-  }
-  const record: Record<string, unknown> = {};
-  for (const [key, entryValue] of Object.entries(value)) {
-    record[key] = entryValue;
-  }
-  return record;
-}
-
 function parseGitHubSearchResponse(value: unknown): GitHubSearchResponse {
-  const items = toRecord(value).items;
+  const items = (getRecordUnknown(value) ?? {}).items;
   if (!Array.isArray(items)) {
     return {};
   }
   const parsedItems: PopularRepo[] = items
-    .map((item) => toRecord(item))
+    .map((item) => getRecordUnknown(item) ?? {})
     .map((item) => ({
       name: typeof item.name === "string" ? item.name : "",
       html_url: typeof item.html_url === "string" ? item.html_url : "",

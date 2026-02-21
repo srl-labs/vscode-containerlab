@@ -13,6 +13,7 @@ import { useNodeCreation, useNetworkCreation, type NetworkType } from "../canvas
 import { useNodeCreationHandlers, type NodeCreationState } from "../editor";
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
 import type { TopoNode } from "../../../shared/types/graph";
+import { getRecordUnknown } from "../../../shared/utilities/typeHelpers";
 import { getViewportCenter } from "../../utils/viewportUtils";
 
 /** Edge data structure for edge creation callback */
@@ -80,17 +81,6 @@ export interface GraphCreationReturn {
   handleAddNetworkFromPanel: (networkType?: string) => void;
 }
 
-function toRecord(value: unknown): Record<string, unknown> | undefined {
-  if (typeof value !== "object" || value === null) {
-    return undefined;
-  }
-  const record: Record<string, unknown> = {};
-  for (const [key, entryValue] of Object.entries(value)) {
-    record[key] = entryValue;
-  }
-  return record;
-}
-
 function isNetworkType(value: unknown): value is NetworkType {
   switch (value) {
     case "host":
@@ -138,7 +128,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     const nodes: Array<{ id: string; kind: NetworkType }> = [];
     for (const node of currentNodes) {
       if (node.type !== "network-node") continue;
-      const data = toRecord(node.data);
+      const data = getRecordUnknown(node.data);
       const kind = data?.kind ?? data?.nodeType;
       if (isNetworkType(kind)) {
         nodes.push({ id: node.id, kind });
