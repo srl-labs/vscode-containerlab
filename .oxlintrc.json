@@ -69,9 +69,16 @@
     "no-unused-labels": "error",
     "no-unused-private-class-members": "error",
     "no-unused-vars": "error",
+    "no-unreachable": "error",
+    "no-unused-expressions": "error",
     "no-useless-backreference": "error",
     "no-useless-catch": "error",
+    "no-useless-computed-key": "error",
+    "no-useless-concat": "warn",
+    "no-useless-constructor": "error",
     "no-useless-escape": "error",
+    "no-useless-rename": "error",
+    "no-useless-return": "error",
     "no-with": "error",
     "require-yield": "error",
     "use-isnan": "error",
@@ -85,6 +92,8 @@
       ],
       "rules": {
         "no-unused-vars": "off",
+        "@typescript-eslint/no-unused-vars": "error",
+        "@typescript-eslint/no-useless-empty-export": "error",
         "complexity": [
           "warn",
           {

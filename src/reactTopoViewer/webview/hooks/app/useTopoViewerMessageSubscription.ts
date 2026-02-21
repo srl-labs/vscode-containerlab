@@ -98,7 +98,7 @@ function handlePanelAction(msg: WebviewMessageBase): void {
       return;
     case "link-info":
       if (edgeId !== undefined) selectEdge(edgeId);
-      return;
+      break;
   }
 }
 

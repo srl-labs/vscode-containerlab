@@ -197,7 +197,8 @@ function mergeExtraDataWithPending(
   }
 
   if (!matchesPendingNetem(updateExtraData, pending)) {
-    const { clabSourceNetem, clabTargetNetem, ...rest } = updateExtraData;
+    const { clabSourceNetem: _clabSourceNetem, clabTargetNetem: _clabTargetNetem, ...rest } =
+      updateExtraData;
     return mergeExtraData(oldExtraData, rest);
   }
 

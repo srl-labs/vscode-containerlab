@@ -539,7 +539,11 @@ function enableLinkEndpointOffset(data: LinkEditorData): LinkEditorData {
 function stripLinkOffsetFields(
   data: LinkEditorData
 ): Omit<LinkEditorData, "endpointLabelOffset" | "endpointLabelOffsetEnabled"> {
-  const { endpointLabelOffset, endpointLabelOffsetEnabled, ...rest } = data;
+  const {
+    endpointLabelOffset: _endpointLabelOffset,
+    endpointLabelOffsetEnabled: _endpointLabelOffsetEnabled,
+    ...rest
+  } = data;
   return rest;
 }
 

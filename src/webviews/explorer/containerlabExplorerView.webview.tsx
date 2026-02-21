@@ -1761,7 +1761,7 @@ export function ContainerlabExplorerView() {
           handleErrorMessage(message);
           return;
         default:
-          return;
+          break;
       }
     }, [handleErrorMessage, handleFilterStateMessage, handleSnapshotMessage, handleUiStateMessage])
   );

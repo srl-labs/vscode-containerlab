@@ -719,8 +719,6 @@ export class MessageRouter {
     }
 
     // Handle TopologyHost protocol messages
-    if (await this.handleTopologyHostMessage(message, panel)) {
-      return;
-    }
+    await this.handleTopologyHostMessage(message, panel);
   }
 }
