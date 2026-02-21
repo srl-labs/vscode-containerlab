@@ -2,6 +2,7 @@
 import React from "react";
 import Box from "@mui/material/Box";
 
+import { getRecordUnknown, getString } from "../../../../../shared/utilities/typeHelpers";
 import type { NodeData } from "../../../../hooks/ui";
 import { PanelSectionHeader, ReadOnlyCopyField } from "../../../ui/form";
 
@@ -10,18 +11,36 @@ export interface NodeInfoViewProps {
 }
 
 function getNodeProperty(
-  extraData: Record<string, unknown>,
+  extraData: Record<string, unknown> | undefined,
   nodeData: NodeData,
   extraKey: string,
   topLevelKey: keyof NodeData
 ): string {
-  return (extraData[extraKey] as string) || (nodeData[topLevelKey] as string) || "";
+  const fromExtra = getString(extraData?.[extraKey]);
+  if (fromExtra !== undefined && fromExtra.length > 0) return fromExtra;
+
+  const fromTopLevel = getString(nodeData[topLevelKey]);
+  if (fromTopLevel !== undefined && fromTopLevel.length > 0) return fromTopLevel;
+
+  return "";
 }
 
 function extractNodeDisplayProps(nodeData: NodeData) {
-  const extraData = (nodeData.extraData as Record<string, unknown>) || {};
+  const extraData = getRecordUnknown(nodeData.extraData);
+  const label = getString(nodeData.label);
+  const name = getString(nodeData.name);
+  const nodeId = nodeData.id;
+  let nodeName = "Unknown";
+  if (label !== undefined && label.length > 0) {
+    nodeName = label;
+  } else if (name !== undefined && name.length > 0) {
+    nodeName = name;
+  } else if (nodeId.length > 0) {
+    nodeName = nodeId;
+  }
+
   return {
-    nodeName: nodeData.label || nodeData.name || nodeData.id || "Unknown",
+    nodeName,
     kind: getNodeProperty(extraData, nodeData, "kind", "kind"),
     state: getNodeProperty(extraData, nodeData, "state", "state"),
     image: getNodeProperty(extraData, nodeData, "image", "image"),

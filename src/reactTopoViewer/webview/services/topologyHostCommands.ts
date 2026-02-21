@@ -22,10 +22,33 @@ interface ExecuteOptions {
   applySnapshot?: boolean;
 }
 
+function toRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null) {
+    return {};
+  }
+  const record: Record<string, unknown> = {};
+  for (const [key, entryValue] of Object.entries(value)) {
+    record[key] = entryValue;
+  }
+  return record;
+}
+
+function isVoidCallback(value: unknown): value is () => void {
+  return typeof value === "function";
+}
+
+function getDevHostUpdateHandler(): (() => void) | undefined {
+  if (typeof window === "undefined") return undefined;
+  const dev = toRecord(toRecord(window).__DEV__);
+  const handler = dev.onHostUpdate;
+  if (!isVoidCallback(handler)) {
+    return undefined;
+  }
+  return handler;
+}
+
 function notifyDevHostUpdate(): void {
-  if (typeof window === "undefined") return;
-  const dev = (window as unknown as { __DEV__?: { onHostUpdate?: () => void } }).__DEV__;
-  dev?.onHostUpdate?.();
+  getDevHostUpdateHandler()?.();
 }
 
 async function handleHostResponse(

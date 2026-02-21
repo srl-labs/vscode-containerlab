@@ -88,10 +88,10 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
 
       while (stack.length > 0) {
         const current = stack.pop();
-        if (!current) continue;
+        if (current === undefined || current.length === 0) continue;
         for (const group of derived.groups) {
           const parentId = getGroupParentId(group);
-          if (!parentId || parentId !== current) continue;
+          if (parentId === null || parentId !== current) continue;
           if (!descendants.has(group.id)) {
             descendants.add(group.id);
             stack.push(group.id);
@@ -109,8 +109,8 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       const bounds = {
         x: position.x,
         y: position.y,
-        width: droppedGroup.width ?? 200,
-        height: droppedGroup.height ?? 150
+        width: droppedGroup.width,
+        height: droppedGroup.height
       };
       const excluded = getGroupDescendants(nodeId);
       excluded.add(nodeId);

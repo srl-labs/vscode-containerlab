@@ -3,9 +3,7 @@
  */
 import { isSpecialEndpointId } from "../../shared/utilities/LinkTypes";
 import { DEFAULT_INTERFACE_PATTERNS } from "../../shared/constants/interfacePatterns";
-import type { TopoNode, TopoEdge } from "../../shared/types/graph";
-
-import { getNodeById, getConnectedEdges } from "./graphQueryUtils";
+import type { Node, Edge } from "@xyflow/react";
 
 const DEFAULT_INTERFACE_PATTERN = "eth{n}";
 const INTERFACE_PATTERN_REGEX = /^(.+)?\{n(?::(\d+)(?:-(\d+))?)?\}(.+)?$/;
@@ -30,6 +28,20 @@ type PatternAllocator = {
 export type EndpointAllocator = {
   patterns: PatternAllocator[];
 };
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null) return {};
+  return Object.fromEntries(Object.entries(value));
+}
+
+function toNodeExtraData(value: unknown): NodeExtraData | undefined {
+  const record = asRecord(value);
+  const interfacePattern =
+    typeof record.interfacePattern === "string" ? record.interfacePattern : undefined;
+  const kind = typeof record.kind === "string" ? record.kind : undefined;
+  if (interfacePattern === undefined && kind === undefined) return undefined;
+  return { interfacePattern, kind };
+}
 
 function splitInterfacePatterns(patternList: string): string[] {
   const patterns: string[] = [];
@@ -97,32 +109,38 @@ function getNodeInterfacePattern(
   extraData: NodeExtraData | undefined,
   interfacePatternMapping: Record<string, string> = DEFAULT_INTERFACE_PATTERNS
 ): string {
-  if (extraData?.interfacePattern) {
+  if (
+    extraData?.interfacePattern !== undefined &&
+    extraData.interfacePattern.length > 0
+  ) {
     return extraData.interfacePattern;
   }
 
   const kind = extraData?.kind;
-  if (kind && interfacePatternMapping[kind]) {
-    return interfacePatternMapping[kind];
+  if (kind !== undefined && kind.length > 0) {
+    const mappedPattern = interfacePatternMapping[kind];
+    if (typeof mappedPattern === "string" && mappedPattern.length > 0) {
+      return mappedPattern;
+    }
   }
 
   return DEFAULT_INTERFACE_PATTERN;
 }
 
 function readEndpointFromEdge(
-  edge: TopoEdge,
+  edge: Edge,
   key: "sourceEndpoint" | "targetEndpoint"
 ): string | undefined {
-  const data = edge.data as Record<string, unknown> | undefined;
+  const data = edge.data;
   const fromData = data?.[key];
   if (typeof fromData === "string" && fromData.length > 0) return fromData;
 
-  const fromTopLevel = (edge as Record<string, unknown>)[key];
+  const fromTopLevel = asRecord(edge)[key];
   return typeof fromTopLevel === "string" && fromTopLevel.length > 0 ? fromTopLevel : undefined;
 }
 
 function tryAddIndexForEndpoint(patterns: PatternAllocator[], endpoint: string | undefined) {
-  if (!endpoint) return;
+  if (endpoint === undefined || endpoint.length === 0) return;
   for (const pattern of patterns) {
     const idx = extractInterfaceIndex(endpoint, pattern.parsed);
     if (idx >= 0) {
@@ -132,7 +150,7 @@ function tryAddIndexForEndpoint(patterns: PatternAllocator[], endpoint: string |
   }
 }
 
-function collectUsedIndices(edges: TopoEdge[], nodeId: string, patterns: PatternAllocator[]): void {
+function collectUsedIndices(edges: Edge[], nodeId: string, patterns: PatternAllocator[]): void {
   for (const edge of edges) {
     if (edge.source === nodeId) {
       const sourceEndpoint = readEndpointFromEdge(edge, "sourceEndpoint");
@@ -147,14 +165,14 @@ function collectUsedIndices(edges: TopoEdge[], nodeId: string, patterns: Pattern
 
 export function getOrCreateAllocator(
   allocators: Map<string, EndpointAllocator>,
-  nodes: TopoNode[],
-  edges: TopoEdge[],
+  nodes: Node[],
+  edges: Edge[],
   nodeId: string
 ): EndpointAllocator {
   const cached = allocators.get(nodeId);
   if (cached) return cached;
 
-  const node = getNodeById(nodes, nodeId);
+  const node = nodes.find((candidate) => candidate.id === nodeId);
   if (!node) {
     const parsedPatterns = parseInterfacePatternList(DEFAULT_INTERFACE_PATTERN);
     const patterns = parsedPatterns.map((parsed) => ({ parsed, usedIndices: new Set<number>() }));
@@ -163,13 +181,13 @@ export function getOrCreateAllocator(
     return createdFallback;
   }
 
-  const data = node.data as Record<string, unknown>;
-  const extraData = data.extraData as { interfacePattern?: string; kind?: string } | undefined;
+  const data = node.data;
+  const extraData = toNodeExtraData(data.extraData);
   const pattern = getNodeInterfacePattern(extraData);
   const parsedPatterns = parseInterfacePatternList(pattern);
   const patterns = parsedPatterns.map((parsed) => ({ parsed, usedIndices: new Set<number>() }));
 
-  const connectedEdges = getConnectedEdges(edges, nodeId);
+  const connectedEdges = edges.filter((edge) => edge.source === nodeId || edge.target === nodeId);
   collectUsedIndices(connectedEdges, nodeId, patterns);
 
   const created = { patterns };
@@ -194,8 +212,8 @@ function getNextAvailableIndex(
 
 export function allocateEndpoint(
   allocators: Map<string, EndpointAllocator>,
-  nodes: TopoNode[],
-  edges: TopoEdge[],
+  nodes: Node[],
+  edges: Edge[],
   nodeId: string
 ): string {
   if (isSpecialEndpointId(nodeId)) return "";
@@ -216,8 +234,8 @@ export function allocateEndpoint(
 }
 
 export function allocateEndpointsForLink(
-  nodes: TopoNode[],
-  edges: TopoEdge[],
+  nodes: Node[],
+  edges: Edge[],
   sourceId: string,
   targetId: string
 ): { sourceEndpoint: string; targetEndpoint: string } {

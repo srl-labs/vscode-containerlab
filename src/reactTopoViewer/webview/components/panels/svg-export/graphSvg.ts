@@ -20,7 +20,7 @@ export interface GraphSvgResult {
 export interface GraphSvgRenderOptions extends EdgeSvgRenderOptions, NodeSvgRenderOptions {}
 
 export function getViewportSize(): ViewportSize | null {
-  const container = document.querySelector(".react-flow") as HTMLElement | null;
+  const container = document.querySelector(".react-flow");
   if (!container) return null;
   const rect = container.getBoundingClientRect();
   if (!Number.isFinite(rect.width) || !Number.isFinite(rect.height)) return null;
@@ -48,12 +48,12 @@ export function buildGraphSvg(
   nodeProximateLabels = false,
   renderOptions?: GraphSvgRenderOptions
 ): GraphSvgResult | null {
-  const viewport = rfInstance.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+  const viewport = rfInstance.getViewport();
   const size = getViewportSize();
   if (!size) return null;
   const { width, height, transform } = buildViewportTransform(viewport, size, zoomPercent);
-  const nodes = (rfInstance.getNodes?.() ?? []) as Node[];
-  const edges = (rfInstance.getEdges?.() ?? []) as Edge[];
+  const nodes = rfInstance.getNodes();
+  const edges = rfInstance.getEdges();
 
   const edgesSvg = renderEdgesToSvg(
     edges,
@@ -81,11 +81,11 @@ export function applyPadding(svgContent: string, padding: number): string {
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgContent, "image/svg+xml");
   const svgEl = doc.documentElement;
-  const width = parseFloat(svgEl.getAttribute("width") || "0");
-  const height = parseFloat(svgEl.getAttribute("height") || "0");
+  const width = parseFloat(svgEl.getAttribute("width") ?? "0");
+  const height = parseFloat(svgEl.getAttribute("height") ?? "0");
   const newWidth = width + 2 * padding;
   const newHeight = height + 2 * padding;
-  const viewBox = svgEl.getAttribute("viewBox") || `0 0 ${width} ${height}`;
+  const viewBox = svgEl.getAttribute("viewBox") ?? `0 0 ${width} ${height}`;
   const [x, y, vWidth, vHeight] = viewBox.split(" ").map(parseFloat);
   const paddingX = padding * (vWidth / width);
   const paddingY = padding * (vHeight / height);

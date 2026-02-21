@@ -45,13 +45,34 @@ interface NetworkNodeData {
   [key: string]: unknown;
 }
 
+const NODE_TYPE_SET: ReadonlySet<string> = new Set([
+  "pe",
+  "dcgw",
+  "leaf",
+  "switch",
+  "spine",
+  "super-spine",
+  "server",
+  "pon",
+  "controller",
+  "rgw",
+  "ue",
+  "cloud",
+  "client",
+  "bridge"
+]);
+
+function isNodeType(value: string): value is NodeType {
+  return NODE_TYPE_SET.has(value);
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
 function resolveNodeIconSize(nodeIconSize: number | undefined): number {
-  if (!Number.isFinite(nodeIconSize)) return NODE_ICON_SIZE;
-  return clamp(nodeIconSize as number, 12, 240);
+  if (typeof nodeIconSize !== "number" || !Number.isFinite(nodeIconSize)) return NODE_ICON_SIZE;
+  return clamp(nodeIconSize, 12, 240);
 }
 
 // ============================================================================
@@ -254,13 +275,14 @@ export function topologyNodeToSvg(
   let iconSvgContent = "";
   const customDataUri = customIconMap?.get(role);
 
-  if (customDataUri) {
+  if (customDataUri !== undefined && customDataUri.length > 0) {
     // Custom icon - decode and embed
     const svgString = decodeSvgDataUri(customDataUri);
     iconSvgContent = extractSvgContent(svgString, iconSize);
   } else {
     // Built-in icon
-    const svgType = getRoleSvgType(role) as NodeType;
+    const roleSvgType = getRoleSvgType(role);
+    const svgType = isNodeType(roleSvgType) ? roleSvgType : "pe";
     const dataUri = generateEncodedSVG(svgType, iconColor);
     const svgString = decodeSvgDataUri(dataUri);
     iconSvgContent = extractSvgContent(svgString, iconSize);

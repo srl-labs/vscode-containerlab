@@ -6,6 +6,7 @@ import type { ReactFlowInstance } from "@xyflow/react";
 
 import type { LinkEditorData } from "../../../shared/types/editors";
 import type {
+  TopologyEdgeData,
   TopoEdge,
   TopoNode,
   EdgeCreatedHandler,
@@ -35,6 +36,24 @@ interface AppGraphHandlersConfig {
   rfInstance: ReactFlowInstance | null;
   menuHandlers: MenuHandlers;
   actions: GraphActionSubset;
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null) {
+    return {};
+  }
+  const record: Record<string, unknown> = {};
+  for (const [key, entryValue] of Object.entries(value)) {
+    record[key] = entryValue;
+  }
+  return record;
+}
+
+function isTopologyEdgeData(value: unknown): value is TopologyEdgeData {
+  const record = toRecord(value);
+  const sourceEndpoint = record.sourceEndpoint;
+  const targetEndpoint = record.targetEndpoint;
+  return typeof sourceEndpoint === "string" && typeof targetEndpoint === "string";
 }
 
 export interface AppGraphHandlers {
@@ -80,10 +99,10 @@ export function useAppGraphHandlers({
   );
 
   const getNodes = React.useCallback(() => rfInstance?.getNodes() ?? [], [rfInstance]);
-  const getEdges = React.useCallback(
-    (): TopoEdge[] => (rfInstance?.getEdges() ?? []) as TopoEdge[],
-    [rfInstance]
-  );
+  const getEdges = React.useCallback((): TopoEdge[] => {
+    const edges = rfInstance?.getEdges() ?? [];
+    return edges.filter((edge): edge is TopoEdge => isTopologyEdgeData(edge.data));
+  }, [rfInstance]);
 
   const {
     handleEdgeCreated,

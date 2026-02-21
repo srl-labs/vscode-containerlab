@@ -30,7 +30,7 @@ import { INTEGRATED_SROS_TYPES } from "./types";
 
 /** Check if type is integrated mode (simpler chassis) */
 const isIntegratedType = (type: string | undefined): boolean => {
-  if (!type) return false;
+  if (type === undefined || type.length === 0) return false;
   return INTEGRATED_SROS_TYPES.has(type.toLowerCase());
 };
 
@@ -108,7 +108,7 @@ const MdaEntry: React.FC<MdaEntryProps> = ({
       <FilterableDropdown
         id={`mda-type-${index}`}
         label="Type"
-        value={mda.type || ""}
+        value={mda.type ?? ""}
         onChange={(v) => onUpdate(index, { type: v })}
         options={toOptions(mdaTypes)}
         allowFreeText
@@ -220,7 +220,7 @@ const XiomTabContent: React.FC<{
         <FilterableDropdown
           id={`xiom-type-${index}`}
           label="Type"
-          value={xiom.type || ""}
+          value={xiom.type ?? ""}
           onChange={(v) => onUpdate(index, { type: v })}
           options={toOptions(srosTypes.xiom)}
           allowFreeText
@@ -228,7 +228,7 @@ const XiomTabContent: React.FC<{
       </Box>
       <Divider />
       <MdaSectionWrapper
-        mdas={xiom.mda || []}
+        mdas={xiom.mda ?? []}
         mdaTypes={srosTypes.xiomMda}
         slotPrefix={`${slotLabel}\u00A0/\u00A0`}
         parentIndex={index}
@@ -296,12 +296,12 @@ const ComponentHeader: React.FC<{
       {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
       <Chip label={slot} size="small" />
       <Typography variant="body2">{isCpm ? "Control Processing Module" : "Line Card"}</Typography>
-      {!isCpm && type && (
+      {!isCpm && type !== undefined && type.length > 0 && (
         <Typography variant="caption" color="text.secondary">
           ({type})
         </Typography>
       )}
-      {!isCpm && !type && (mdaCount > 0 || xiomCount > 0) && (
+      {!isCpm && (type === undefined || type.length === 0) && (mdaCount > 0 || xiomCount > 0) && (
         <Typography variant="caption" color="text.secondary">
           ({mdaCount} MDA, {xiomCount} XIOM)
         </Typography>
@@ -330,7 +330,7 @@ const ComponentMdaSection: React.FC<
   } & Pick<ComponentCallbacks, "onAddMda" | "onUpdateMda" | "onRemoveMda">
 > = ({ component, index, srosTypes, onAddMda, onUpdateMda, onRemoveMda }) => (
   <MdaSectionWrapper
-    mdas={component.mda || []}
+    mdas={component.mda ?? []}
     mdaTypes={srosTypes.mda}
     slotPrefix={`${component.slot}\u00A0/\u00A0`}
     parentIndex={index}
@@ -366,7 +366,7 @@ const ComponentXiomSection: React.FC<
   onUpdateXiomMda,
   onRemoveXiomMda
 }) => {
-  const xioms = component.xiom || [];
+  const xioms = component.xiom ?? [];
   const [activeXiomTab, setActiveXiomTab] = useState(0);
 
   // Clamp active tab if a XIOM was removed
@@ -395,7 +395,7 @@ const ComponentXiomSection: React.FC<
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <Tabs
               value={clampedTab}
-              onChange={(_, v) => setActiveXiomTab(v)}
+              onChange={(_, v: number) => setActiveXiomTab(v)}
               variant="scrollable"
               scrollButtons="auto"
               sx={{ flex: 1 }}
@@ -421,20 +421,18 @@ const ComponentXiomSection: React.FC<
             </IconButton>
           </Box>
           <Divider />
-          {activeXiom && (
-            <Box>
-              <XiomTabContent
-                xiom={activeXiom}
-                index={clampedTab}
-                cardSlot={component.slot ?? ""}
-                srosTypes={srosTypes}
-                onUpdate={(idx, updates) => onUpdateXiom(index, idx, updates)}
-                onAddMda={(xIdx) => onAddXiomMda(index, xIdx)}
-                onUpdateMda={(xIdx, mIdx, updates) => onUpdateXiomMda(index, xIdx, mIdx, updates)}
-                onRemoveMda={(xIdx, mIdx) => onRemoveXiomMda(index, xIdx, mIdx)}
-              />
-            </Box>
-          )}
+          <Box>
+            <XiomTabContent
+              xiom={activeXiom}
+              index={clampedTab}
+              cardSlot={component.slot ?? ""}
+              srosTypes={srosTypes}
+              onUpdate={(idx, updates) => onUpdateXiom(index, idx, updates)}
+              onAddMda={(xIdx) => onAddXiomMda(index, xIdx)}
+              onUpdateMda={(xIdx, mIdx, updates) => onUpdateXiomMda(index, xIdx, mIdx, updates)}
+              onRemoveMda={(xIdx, mIdx) => onRemoveXiomMda(index, xIdx, mIdx)}
+            />
+          </Box>
         </>
       )}
     </>
@@ -503,7 +501,7 @@ const ComponentSection: React.FC<ComponentSectionProps> = ({
         startIcon={<AddIcon />}
         onClick={onAdd}
         disabled={addDisabled}
-        title={addDisabled ? addDisabledTitle : undefined}
+        title={addDisabled === true ? addDisabledTitle : undefined}
         sx={{ py: 0 }}
       >
         Add
@@ -579,7 +577,7 @@ const ComponentSlotTypeRow: React.FC<ComponentSlotTypeRowProps> = ({
     <FilterableDropdown
       id={`comp-type-${index}`}
       label="Type"
-      value={component.type || ""}
+      value={component.type ?? ""}
       onChange={(v) => onUpdate(index, { type: v })}
       options={toOptions(typeOptions)}
       allowFreeText
@@ -614,8 +612,8 @@ const ComponentEntry: React.FC<ComponentEntryProps> = (props) => {
     );
   }
 
-  const mdaCount = component.mda?.length || 0;
-  const xiomCount = component.xiom?.length || 0;
+  const mdaCount = component.mda?.length ?? 0;
+  const xiomCount = component.xiom?.length ?? 0;
 
   return (
     <Paper variant="outlined" sx={{ overflow: "hidden" }}>
@@ -666,10 +664,10 @@ const IntegratedModeSection: React.FC<IntegratedModeSectionProps> = ({
   srosTypes,
   onChange
 }) => {
-  const integratedComp = components.find((c) => c.slot === undefined || c.slot === "") || {
+  const integratedComp = components.find((c) => c.slot === undefined || c.slot === "") ?? {
     mda: []
   };
-  const mdas = integratedComp.mda || [];
+  const mdas = integratedComp.mda ?? [];
 
   const updateMda = (index: number, updates: Partial<SrosMda>) => {
     const newMdas = [...mdas];
@@ -771,7 +769,7 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
     } else if (!usedSlots.includes("B")) {
       newSlot = "B";
     }
-    if (newSlot) {
+    if (newSlot !== null) {
       onComponentsChange([...components, { slot: newSlot }]);
     }
   };
@@ -785,27 +783,27 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
   // MDA operations
   const addMda = (compIndex: number) => {
     const comp = components[compIndex];
-    const mdas = comp.mda || [];
+    const mdas = comp.mda ?? [];
     const nextSlot = mdas.length > 0 ? Math.max(...mdas.map((m) => m.slot ?? 0)) + 1 : 1;
     updateComponent(compIndex, { mda: [...mdas, { slot: nextSlot }] });
   };
 
   const updateMda = (compIndex: number, mdaIndex: number, updates: Partial<SrosMda>) => {
     const comp = components[compIndex];
-    const mdas = [...(comp.mda || [])];
+    const mdas = [...(comp.mda ?? [])];
     mdas[mdaIndex] = { ...mdas[mdaIndex], ...updates };
     updateComponent(compIndex, { mda: mdas });
   };
 
   const removeMda = (compIndex: number, mdaIndex: number) => {
     const comp = components[compIndex];
-    updateComponent(compIndex, { mda: (comp.mda || []).filter((_, i) => i !== mdaIndex) });
+    updateComponent(compIndex, { mda: (comp.mda ?? []).filter((_, i) => i !== mdaIndex) });
   };
 
   // XIOM operations
   const addXiom = (compIndex: number) => {
     const comp = components[compIndex];
-    const xioms = comp.xiom || [];
+    const xioms = comp.xiom ?? [];
     const usedSlots = xioms.map((x) => x.slot ?? 0);
     const nextSlot = usedSlots.includes(1) && !usedSlots.includes(2) ? 2 : 1;
     updateComponent(compIndex, { xiom: [...xioms, { slot: nextSlot }] });
@@ -813,24 +811,24 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
 
   const updateXiom = (compIndex: number, xiomIndex: number, updates: Partial<SrosXiom>) => {
     const comp = components[compIndex];
-    const xioms = [...(comp.xiom || [])];
+    const xioms = [...(comp.xiom ?? [])];
     xioms[xiomIndex] = { ...xioms[xiomIndex], ...updates };
     updateComponent(compIndex, { xiom: xioms });
   };
 
   const removeXiom = (compIndex: number, xiomIndex: number) => {
     const comp = components[compIndex];
-    updateComponent(compIndex, { xiom: (comp.xiom || []).filter((_, i) => i !== xiomIndex) });
+    updateComponent(compIndex, { xiom: (comp.xiom ?? []).filter((_, i) => i !== xiomIndex) });
   };
 
   // XIOM MDA operations
   const addXiomMda = (compIndex: number, xiomIndex: number) => {
     const comp = components[compIndex];
-    const xiom = (comp.xiom || [])[xiomIndex];
-    if (!xiom) return;
-    const mdas = xiom.mda || [];
+    const xiom = comp.xiom?.at(xiomIndex);
+    if (xiom === undefined) return;
+    const mdas = xiom.mda ?? [];
     const nextSlot = mdas.length > 0 ? Math.max(...mdas.map((m) => m.slot ?? 0)) + 1 : 1;
-    const newXioms = [...(comp.xiom || [])];
+    const newXioms = [...(comp.xiom ?? [])];
     newXioms[xiomIndex] = { ...xiom, mda: [...mdas, { slot: nextSlot }] };
     updateComponent(compIndex, { xiom: newXioms });
   };
@@ -842,21 +840,21 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
     updates: Partial<SrosMda>
   ) => {
     const comp = components[compIndex];
-    const xiom = (comp.xiom || [])[xiomIndex];
-    if (!xiom) return;
-    const mdas = [...(xiom.mda || [])];
+    const xiom = comp.xiom?.at(xiomIndex);
+    if (xiom === undefined) return;
+    const mdas = [...(xiom.mda ?? [])];
     mdas[mdaIndex] = { ...mdas[mdaIndex], ...updates };
-    const newXioms = [...(comp.xiom || [])];
+    const newXioms = [...(comp.xiom ?? [])];
     newXioms[xiomIndex] = { ...xiom, mda: mdas };
     updateComponent(compIndex, { xiom: newXioms });
   };
 
   const removeXiomMda = (compIndex: number, xiomIndex: number, mdaIndex: number) => {
     const comp = components[compIndex];
-    const xiom = (comp.xiom || [])[xiomIndex];
-    if (!xiom) return;
-    const newXioms = [...(comp.xiom || [])];
-    newXioms[xiomIndex] = { ...xiom, mda: (xiom.mda || []).filter((_, i) => i !== mdaIndex) };
+    const xiom = comp.xiom?.at(xiomIndex);
+    if (xiom === undefined) return;
+    const newXioms = [...(comp.xiom ?? [])];
+    newXioms[xiomIndex] = { ...xiom, mda: (xiom.mda ?? []).filter((_, i) => i !== mdaIndex) };
     updateComponent(compIndex, { xiom: newXioms });
   };
 
@@ -928,10 +926,11 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
 export const ComponentsTab: React.FC<TabProps> = ({ data, onChange }) => {
   const { srosComponentTypes } = useSchema();
   const isIntegrated = isIntegratedType(data.type);
-  const components = data.components || [];
+  const components = data.components ?? [];
 
   // Extract shared SFM value from first component that has it
-  const sfmValue = components.find((c) => c.sfm)?.sfm || "";
+  const sfmValue =
+    components.find((c) => typeof c.sfm === "string" && c.sfm.length > 0)?.sfm ?? "";
 
   const handleComponentsChange = (newComponents: SrosComponent[]) => {
     onChange({ components: newComponents });

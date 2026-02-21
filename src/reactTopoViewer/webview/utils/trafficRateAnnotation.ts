@@ -24,10 +24,13 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function toStatsPayload(value: unknown): InterfaceStatsPayload | undefined {
-  if (!value || typeof value !== "object") return undefined;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
-  const source = value as Record<string, unknown>;
+function toStatsPayload(value: unknown): InterfaceStatsPayload | undefined {
+  if (!isRecord(value)) return undefined;
+  const source = value;
   const stats: InterfaceStatsPayload = {};
 
   for (const key of TRAFFIC_STAT_KEYS) {

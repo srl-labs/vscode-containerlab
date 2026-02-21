@@ -109,6 +109,19 @@ interface PaneMenuBuilderContext extends PaneMenuActions {
   menuPosition?: { x: number; y: number };
 }
 
+function isNonEmptyString(value: string | undefined | null): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+function getExtraDataString(
+  extraData: Record<string, unknown> | undefined,
+  key: string
+): string | undefined {
+  if (extraData === undefined) return undefined;
+  const value = extraData[key];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
 /**
  * Build context menu for free text annotations
  */
@@ -343,7 +356,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
   const isNetworkNode = targetNodeType === "network-node";
 
   // If in link creation mode, show cancel option
-  if (linkSourceNode) {
+  if (isNonEmptyString(linkSourceNode)) {
     items.push({
       id: "cancel-link",
       label: "Cancel Link Creation",
@@ -357,12 +370,12 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
   }
 
   // Show "Create Link" if not already in link creation mode
-  if (!linkSourceNode) {
+  if (!isNonEmptyString(linkSourceNode)) {
     items.push({
       id: "create-link",
       label: "Create Link",
       icon: React.createElement(LinkIcon, { fontSize: "small" }),
-      disabled: !isEditMode || isLocked,
+      disabled: isLocked,
       onClick: () => {
         startLinkCreation?.(targetId);
         closeContextMenu();
@@ -377,7 +390,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     icon: isNetworkNode
       ? React.createElement(LanIcon, { fontSize: "small" })
       : React.createElement(EditIcon, { fontSize: "small" }),
-    disabled: !isEditMode || isLocked,
+    disabled: isLocked,
     onClick: () => {
       if (isNetworkNode) {
         editNetwork?.(targetId);
@@ -394,7 +407,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     id: "delete-node",
     label: "Delete Node",
     icon: React.createElement(DeleteIcon, { fontSize: "small" }),
-    disabled: !isEditMode || isLocked,
+    disabled: isLocked,
     danger: true,
     onClick: () => handleDeleteNode(targetId)
   });
@@ -424,9 +437,9 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
 
   // Build capture items for each endpoint
   const captureItems: ContextMenuItem[] = [];
-  const srcName = (extraData?.clabSourceLongName as string) ?? sourceNode;
-  const dstName = (extraData?.clabTargetLongName as string) ?? targetNode;
-  if (srcName && sourceEndpoint) {
+  const srcName = getExtraDataString(extraData, "clabSourceLongName") ?? sourceNode;
+  const dstName = getExtraDataString(extraData, "clabTargetLongName") ?? targetNode;
+  if (isNonEmptyString(srcName) && isNonEmptyString(sourceEndpoint)) {
     captureItems.push({
       id: "capture-source",
       label: `${srcName} - ${sourceEndpoint}`,
@@ -440,7 +453,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
       }
     });
   }
-  if (dstName && targetEndpoint) {
+  if (isNonEmptyString(dstName) && isNonEmptyString(targetEndpoint)) {
     captureItems.push({
       id: "capture-target",
       label: `${dstName} - ${targetEndpoint}`,
@@ -487,7 +500,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
       id: "edit-edge",
       label: "Edit Link",
       icon: React.createElement(EditIcon, { fontSize: "small" }),
-      disabled: !isEditMode || isLocked,
+      disabled: isLocked,
       onClick: () => {
         editEdge(targetId);
         closeContextMenu();
@@ -498,7 +511,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
       id: "delete-edge",
       label: "Delete Link",
       icon: React.createElement(DeleteIcon, { fontSize: "small" }),
-      disabled: !isEditMode || isLocked,
+      disabled: isLocked,
       danger: true,
       onClick: () => handleDeleteEdge(targetId)
     }

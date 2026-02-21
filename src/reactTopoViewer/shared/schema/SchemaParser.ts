@@ -26,21 +26,33 @@ export interface SchemaData {
   srosComponentTypes: SrosComponentTypes;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function toRecord(value: unknown): Record<string, unknown> | undefined {
+  return isRecord(value) ? value : undefined;
+}
+
+function toString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+}
+
 /**
  * Extract sorted kinds from schema (Nokia first, then alphabetical)
  */
 export function extractKindsFromSchema(schema: Record<string, unknown>): string[] {
-  const nodeConfig = (schema.definitions as Record<string, unknown>)?.["node-config"] as Record<
-    string,
-    unknown
-  >;
-  const kindProp = (nodeConfig?.properties as Record<string, unknown>)?.kind as Record<
-    string,
-    unknown
-  >;
-  const kindsEnum = (kindProp?.enum as string[]) || [];
-  const nokiaKinds = kindsEnum.filter((k: string) => k.startsWith("nokia_")).sort();
-  const otherKinds = kindsEnum.filter((k: string) => !k.startsWith("nokia_")).sort();
+  const definitions = toRecord(schema.definitions);
+  const nodeConfig = definitions ? toRecord(definitions["node-config"]) : undefined;
+  const properties = nodeConfig ? toRecord(nodeConfig.properties) : undefined;
+  const kindProp = properties ? toRecord(properties.kind) : undefined;
+  const kindsEnum = toStringArray(kindProp?.enum);
+  const nokiaKinds = kindsEnum.filter((k) => k.startsWith("nokia_")).sort();
+  const otherKinds = kindsEnum.filter((k) => !k.startsWith("nokia_")).sort();
   return [...nokiaKinds, ...otherKinds];
 }
 
@@ -49,7 +61,7 @@ export function extractKindsFromSchema(schema: Record<string, unknown>): string[
  * Patterns can be "(nokia_srlinux)" or "^(nokia_srlinux)$"
  */
 function getKindFromPattern(pattern: string | undefined): string | null {
-  if (!pattern) return null;
+  if (pattern === undefined || pattern === "") return null;
   const start = pattern.indexOf("(");
   const end = pattern.indexOf(")", start + 1);
   if (start < 0 || end < 0) return null;
@@ -60,11 +72,12 @@ function getKindFromPattern(pattern: string | undefined): string | null {
  * Extract type enum values from schema type property
  */
 function getTypeEnumValues(typeProp: Record<string, unknown>): string[] {
-  if (typeProp.enum) return typeProp.enum as string[];
-  if (!typeProp.anyOf) return [];
-  return (typeProp.anyOf as Record<string, unknown>[])
-    .filter((opt) => opt.enum)
-    .flatMap((opt) => opt.enum as string[]);
+  const enumValues = toStringArray(typeProp.enum);
+  if (enumValues.length > 0) return enumValues;
+  if (!Array.isArray(typeProp.anyOf)) return [];
+  return typeProp.anyOf
+    .filter(isRecord)
+    .flatMap((opt) => toStringArray(opt.enum));
 }
 
 /**
@@ -73,14 +86,17 @@ function getTypeEnumValues(typeProp: Record<string, unknown>): string[] {
 function extractTypesFromCondition(
   item: Record<string, unknown>
 ): { kind: string; types: string[] } | null {
-  const ifProps = (item?.if as Record<string, unknown>)?.properties as Record<string, unknown>;
-  const kindPattern = (ifProps?.kind as Record<string, unknown>)?.pattern as string | undefined;
+  const ifConfig = toRecord(item.if);
+  const ifProps = ifConfig ? toRecord(ifConfig.properties) : undefined;
+  const kindConfig = ifProps ? toRecord(ifProps.kind) : undefined;
+  const kindPattern = toString(kindConfig?.pattern);
   const kind = getKindFromPattern(kindPattern);
-  if (!kind) return null;
+  if (kind === null) return null;
 
-  const thenProps = (item?.then as Record<string, unknown>)?.properties as Record<string, unknown>;
-  const typeProp = thenProps?.type as Record<string, unknown>;
-  if (!typeProp) return null;
+  const thenConfig = toRecord(item.then);
+  const thenProps = thenConfig ? toRecord(thenConfig.properties) : undefined;
+  const typeProp = thenProps ? toRecord(thenProps.type) : undefined;
+  if (typeProp === undefined) return null;
 
   const types = getTypeEnumValues(typeProp);
   return types.length > 0 ? { kind, types } : null;
@@ -93,15 +109,15 @@ export function extractTypesByKindFromSchema(
   schema: Record<string, unknown>
 ): Record<string, string[]> {
   const typesByKind: Record<string, string[]> = {};
-  const nodeConfig = (schema.definitions as Record<string, unknown>)?.["node-config"] as Record<
-    string,
-    unknown
-  >;
-  const allOf = (nodeConfig?.allOf as Record<string, unknown>[]) || [];
+  const definitions = toRecord(schema.definitions);
+  const nodeConfig = definitions ? toRecord(definitions["node-config"]) : undefined;
+  const allOf = Array.isArray(nodeConfig?.allOf)
+    ? nodeConfig.allOf.filter(isRecord)
+    : [];
 
   for (const item of allOf) {
     const result = extractTypesFromCondition(item);
-    if (result) {
+    if (result !== null) {
       typesByKind[result.kind] = result.types;
     }
   }
@@ -112,11 +128,11 @@ export function extractTypesByKindFromSchema(
  * Extract SROS component types from schema definitions
  */
 export function extractSrosComponentTypes(schema: Record<string, unknown>): SrosComponentTypes {
-  const defs = (schema.definitions as Record<string, unknown>) || {};
+  const defs = toRecord(schema.definitions) ?? {};
 
   const getEnumFromDef = (defName: string): string[] => {
-    const def = defs[defName] as Record<string, unknown> | undefined;
-    return (def?.enum as string[]) || [];
+    const def = toRecord(defs[defName]);
+    return toStringArray(def?.enum);
   };
 
   return {

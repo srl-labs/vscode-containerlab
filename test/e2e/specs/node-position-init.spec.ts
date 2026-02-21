@@ -11,20 +11,25 @@ const SIMPLE_TOPOLOGY = "simple.clab.yml";
 const POSITION_TOLERANCE = 50;
 
 // Type for position records
-type PositionMap = Record<string, { x: number; y: number }>;
+type PositionMap = Partial<Record<string, { x: number; y: number }>>;
 
 /** Get node positions from React Flow */
 async function getReactFlowPositions(page: Page): Promise<PositionMap> {
   return page.evaluate(() => {
     const dev = (window as any).__DEV__;
     const rf = dev?.rfInstance;
-    if (!rf) return {};
+    if (rf === undefined || rf === null) return {};
 
     const positions: Record<string, { x: number; y: number }> = {};
     const nodes = rf.getNodes?.() ?? [];
     nodes.forEach((n: any) => {
       const role = n.data?.topoViewerRole;
-      if (role && role !== "freeText" && role !== "freeShape" && role !== "group") {
+      if (
+        typeof role === "string" &&
+        role !== "freeText" &&
+        role !== "freeShape" &&
+        role !== "group"
+      ) {
         positions[n.id] = { x: Math.round(n.position.x), y: Math.round(n.position.y) };
       }
     });
@@ -45,10 +50,10 @@ async function pollNodePosition(
     const pos = await page.evaluate((id) => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
-      if (!rf) return null;
+      if (rf === undefined || rf === null) return null;
       const nodes = rf.getNodes?.() ?? [];
       const node = nodes.find((n: any) => n.id === id);
-      if (!node) return null;
+      if (node === undefined || node === null) return null;
       return { x: Math.round(node.position.x), y: Math.round(node.position.y) };
     }, nodeId);
 
@@ -77,7 +82,7 @@ function detectDrift(
     const atT2 = positionsT2[nodeId];
     const inReact = reactPositions[nodeId];
 
-    if (!atT0 || !atT2) continue;
+    if (atT0 === undefined || atT2 === undefined) continue;
 
     // Check if positions changed between T0 and T2
     const deltaT0T2 = Math.abs(atT0.x - atT2.x) + Math.abs(atT0.y - atT2.y);
@@ -98,7 +103,7 @@ function detectDrift(
     }
 
     // Check if React state differs from React Flow instance
-    if (inReact) {
+    if (inReact !== undefined) {
       const deltaReactRf = Math.abs(atT2.x - inReact.x) + Math.abs(atT2.y - inReact.y);
       if (deltaReactRf > 5) {
         console.log(
@@ -295,12 +300,17 @@ test.describe("Node Position Initialization", () => {
     const initInfo = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
-      if (!rf) return { error: "No React Flow instance" };
+      if (rf === undefined || rf === null) return { error: "No React Flow instance" };
 
       const allNodes = rf.getNodes?.() ?? [];
       const nodes = allNodes.filter((n: any) => {
         const role = n.data?.topoViewerRole;
-        return role && role !== "freeText" && role !== "freeShape" && role !== "group";
+        return (
+          typeof role === "string" &&
+          role !== "freeText" &&
+          role !== "freeShape" &&
+          role !== "group"
+        );
       });
 
       const positions: Record<string, { x: number; y: number }> = {};
@@ -323,7 +333,7 @@ test.describe("Node Position Initialization", () => {
     let driftDetected = false;
     const tolerance = 50;
 
-    for (const ann of annotations.nodeAnnotations || []) {
+    for (const ann of annotations.nodeAnnotations ?? []) {
       if (!ann.position) continue;
 
       const actual = initInfo.positions?.[ann.id];
@@ -363,13 +373,18 @@ test.describe("Node Position Initialization", () => {
     // Get React state positions
     const reactPositions = (await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      const elements = dev?.getElements?.() || [];
+      const elements = dev?.getElements?.() ?? [];
       const positions: Record<string, { x: number; y: number } | null> = {};
 
       for (const el of elements) {
-        if (el.group === "nodes" && el.position) {
+        if (el.group === "nodes" && el.position !== undefined && el.position !== null) {
           const role = el.data?.topoViewerRole;
-          if (role && role !== "freeText" && role !== "freeShape" && role !== "group") {
+          if (
+            typeof role === "string" &&
+            role !== "freeText" &&
+            role !== "freeShape" &&
+            role !== "group"
+          ) {
             positions[el.data.id] = {
               x: Math.round(el.position.x),
               y: Math.round(el.position.y)
@@ -385,7 +400,7 @@ test.describe("Node Position Initialization", () => {
     // Get annotations file positions
     const annotations = await topoViewerPage.getAnnotationsFromFile(DATACENTER_TOPOLOGY);
     const annotationPositions: PositionMap = {};
-    for (const ann of annotations.nodeAnnotations || []) {
+    for (const ann of annotations.nodeAnnotations ?? []) {
       if (ann.position) {
         annotationPositions[ann.id] = ann.position;
       }

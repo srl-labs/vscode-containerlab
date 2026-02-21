@@ -14,11 +14,6 @@ export function getDockerImages(): string[] {
 
 // Internal func to fetch all docker images
 async function fetchDockerImages(): Promise<string[]> {
-  if (!dockerClient) {
-    outputChannel.debug("getDockerImages() failed: docker client unavailable.");
-    return [];
-  }
-
   const images = await dockerClient.listImages();
   type TagEntry = { tag: string; created: number };
   const entries: TagEntry[] = [];
@@ -27,7 +22,11 @@ async function fetchDockerImages(): Promise<string[]> {
   for (const img of images) {
     const repoTags = Array.isArray(img.RepoTags) ? img.RepoTags : [];
     for (const tag of repoTags) {
-      const isValid = tag && !tag.endsWith(":<none>") && !tag.startsWith("<none>");
+      const isValid =
+        typeof tag === "string" &&
+        tag.length > 0 &&
+        !tag.endsWith(":<none>") &&
+        !tag.startsWith("<none>");
       if (isValid && !seen.has(tag)) {
         seen.add(tag);
         entries.push({ tag, created: typeof img.Created === "number" ? img.Created : 0 });
@@ -66,7 +65,7 @@ export async function refreshDockerImages() {
 let monitorHandle: vscode.Disposable | undefined;
 
 export function startDockerImageEventMonitor(context: vscode.ExtensionContext) {
-  if (monitorHandle || !dockerClient) {
+  if (monitorHandle !== undefined) {
     return;
   }
 

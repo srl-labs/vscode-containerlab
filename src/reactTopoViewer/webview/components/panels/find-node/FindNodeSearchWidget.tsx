@@ -29,10 +29,23 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
   dense = false,
   showTipsHeader = false
 }) => {
+  const isTopoNode = useCallback((value: unknown): value is TopoNode => {
+    if (typeof value !== "object" || value === null) return false;
+    const id: unknown = Reflect.get(value, "id");
+    const position: unknown = Reflect.get(value, "position");
+    if (typeof id !== "string" || typeof position !== "object" || position === null) return false;
+    const x: unknown = Reflect.get(position, "x");
+    const y: unknown = Reflect.get(position, "y");
+    return typeof x === "number" && typeof y === "number";
+  }, []);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [matchCount, setMatchCount] = useState<number | null>(null);
-  const getCurrentNodes = useCallback(() => useGraphStore.getState().nodes as TopoNode[], []);
+  const getCurrentNodes = useCallback(
+    () => useGraphStore.getState().nodes.filter((node) => isTopoNode(node)),
+    [isTopoNode]
+  );
 
   useEffect(() => {
     if (isActive) {
@@ -53,7 +66,9 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
       return;
     }
 
-    const currentNodes = (rfInstance?.getNodes() ?? getCurrentNodes()) as TopoNode[];
+    const currentNodes = rfInstance
+      ? rfInstance.getNodes().filter((node) => isTopoNode(node))
+      : getCurrentNodes();
     const combinedMatches = getCombinedMatches(currentNodes, searchTerm);
     setMatchCount(combinedMatches.length);
 
@@ -70,7 +85,7 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
           });
       }
     }
-  }, [searchTerm, rfInstance, getCurrentNodes]);
+  }, [searchTerm, rfInstance, getCurrentNodes, isTopoNode]);
 
   const handleClear = useCallback(() => {
     setSearchTerm("");
@@ -90,6 +105,7 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
 
   const mbInput = dense ? 1.5 : 2;
   const mbActions = dense ? 1.5 : 2;
+  const hasDescription = description !== undefined && description !== null;
 
   return (
     <>
@@ -97,7 +113,7 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
         Find Node
       </Typography>
 
-      {description ? (
+      {hasDescription ? (
         <Typography variant="body2" color="text.secondary" sx={{ mb: mbInput }}>
           {description}
         </Typography>

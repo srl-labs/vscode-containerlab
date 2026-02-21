@@ -61,6 +61,15 @@ const ICON_LABELS: Record<string, string> = {
 const DEFAULT_COLOR = "#1a73e8";
 const MAX_RADIUS = 40;
 const COLOR_DEBOUNCE_MS = 50;
+const NODE_TYPE_SET: ReadonlySet<string> = new Set(AVAILABLE_ICONS);
+
+function isNodeType(value: string): value is NodeType {
+  return NODE_TYPE_SET.has(value);
+}
+
+function isIconTab(value: unknown): value is "built-in" | "custom" {
+  return value === "built-in" || value === "custom";
+}
 
 const IconsGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Box
@@ -83,12 +92,12 @@ const IconsGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
  */
 function getIconSrc(icon: string, color: string, customIconDataUri?: string): string {
   // Custom icons render as-is (no color tinting)
-  if (customIconDataUri) {
+  if (customIconDataUri !== undefined && customIconDataUri.length > 0) {
     return customIconDataUri;
   }
   // Built-in icons with color
   try {
-    return generateEncodedSVG(icon as NodeType, color);
+    return generateEncodedSVG(isNodeType(icon) ? icon : "pe", color);
   } catch {
     return generateEncodedSVG("pe", color);
   }
@@ -128,13 +137,13 @@ function useIconSelectorState(
   initialCornerRadius: number
 ): UseIconSelectorStateReturn {
   const [icon, setIcon] = useState(initialIcon);
-  const [color, setColor] = useState(initialColor || DEFAULT_COLOR);
+  const [color, setColor] = useState(initialColor ?? DEFAULT_COLOR);
   const [radius, setRadius] = useState(initialCornerRadius);
 
   useEffect(() => {
     if (isOpen) {
       setIcon(initialIcon);
-      setColor(initialColor || DEFAULT_COLOR);
+      setColor(initialColor ?? DEFAULT_COLOR);
       setRadius(initialCornerRadius);
     }
   }, [isOpen, initialIcon, initialColor, initialCornerRadius]);
@@ -182,6 +191,8 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
   isCustom,
   source
 }) {
+  const showDeleteButton = isCustom === true && source === "global" && onDelete !== undefined;
+  const handleDelete = onDelete ?? (() => undefined);
   return (
     <Box sx={{ position: "relative", minWidth: 0, "&:hover .icon-delete-btn": { opacity: 1 } }}>
       <Box
@@ -227,12 +238,12 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
         </Box>
       </Box>
       {/* Delete button for global custom icons */}
-      {isCustom && source === "global" && onDelete && (
+      {showDeleteButton && (
         <MuiIconButton
           size="small"
           onClick={(e) => {
             e.stopPropagation();
-            onDelete();
+            handleDelete();
           }}
           title={`Delete ${icon}`}
           sx={{
@@ -358,7 +369,11 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
           {/* Icon tabs */}
           <Tabs
             value={iconTab}
-            onChange={(_e, v) => setIconTab(v)}
+            onChange={(_e, v: unknown) => {
+              if (isIconTab(v)) {
+                setIconTab(v);
+              }
+            }}
             variant="fullWidth"
           >
             <Tab value="built-in" label="Built-in" />

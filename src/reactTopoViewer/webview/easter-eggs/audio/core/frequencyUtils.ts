@@ -6,6 +6,11 @@
 
 import type { ScaleDefinition } from "./types";
 
+function getFiniteNumberAt(values: unknown[], index: number): number | undefined {
+  const value = values[index];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
 /**
  * Get frequency for a scale degree in the given scale
  *
@@ -22,16 +27,21 @@ export function getScaleFrequency(
   fallbackFreq = 440
 ): number {
   const scaleIndex = scaleDegree - 1; // Convert 1-7 to 0-6
-  const frequencies = scale[octave];
-  if (!frequencies || scaleIndex < 0 || scaleIndex >= 7) {
+  const frequenciesRaw: unknown = Reflect.get(scale, octave);
+  const frequencies = Array.isArray(frequenciesRaw) ? frequenciesRaw : undefined;
+  if (frequencies === undefined || scaleIndex < 0 || scaleIndex >= 7) {
     // Try base octave as fallback
-    const baseFreqs = scale[0];
-    if (baseFreqs && scaleIndex >= 0 && scaleIndex < 7) {
-      return baseFreqs[scaleIndex];
+    const baseFreqsRaw: unknown = Reflect.get(scale, 0);
+    const baseFreqs = Array.isArray(baseFreqsRaw) ? baseFreqsRaw : undefined;
+    if (baseFreqs !== undefined && scaleIndex >= 0 && scaleIndex < 7) {
+      const freq = getFiniteNumberAt(baseFreqs, scaleIndex);
+      if (freq !== undefined) {
+        return freq;
+      }
     }
     return fallbackFreq;
   }
-  return frequencies[scaleIndex];
+  return getFiniteNumberAt(frequencies, scaleIndex) ?? fallbackFreq;
 }
 
 /**

@@ -141,6 +141,10 @@ interface PreparedSvgExport {
   graphSvg: GraphSvgResult;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function createRequestId(): string {
   const bytes = new Uint8Array(8);
   globalThis.crypto.getRandomValues(bytes);
@@ -211,7 +215,7 @@ function asNonEmptyString(value: unknown): string | null {
 
 function resolveDefaultExportBaseName(labName?: string): string {
   const trimmed = labName?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : "topology";
+  return trimmed !== undefined && trimmed.length > 0 ? trimmed : "topology";
 }
 
 function extractEdgeInterfaceRows(
@@ -219,14 +223,14 @@ function extractEdgeInterfaceRows(
 ): EdgeInterfaceRow[] {
   if (!rfInstance) return [];
 
-  const edges = rfInstance.getEdges?.() ?? [];
+  const edges = rfInstance.getEdges();
   const rows: EdgeInterfaceRow[] = [];
 
   for (const edge of edges) {
-    const data = edge.data as Record<string, unknown> | undefined;
+    const data = edge.data;
     const sourceEndpoint = asNonEmptyString(data?.sourceEndpoint);
     const targetEndpoint = asNonEmptyString(data?.targetEndpoint);
-    if (!sourceEndpoint || !targetEndpoint) continue;
+    if (sourceEndpoint === null || targetEndpoint === null) continue;
 
     rows.push({
       edgeId: edge.id,
@@ -272,9 +276,32 @@ function getInterfaceSelectionValue(
   interfaceLabelOverrides: Record<string, string>,
 ): string {
   const override = interfaceLabelOverrides[endpoint];
-  if (!override) return INTERFACE_SELECT_AUTO;
+  if (override.length === 0) return INTERFACE_SELECT_AUTO;
   if (override === endpoint) return INTERFACE_SELECT_FULL;
   return `${INTERFACE_SELECT_TOKEN_PREFIX}${override}`;
+}
+
+function parseBackgroundOption(value: string): BackgroundOption {
+  return value === "custom" ? "custom" : "transparent";
+}
+
+function parseGrafanaSettingsTab(value: unknown): GrafanaSettingsTab {
+  return value === "interface-names" ? "interface-names" : "general";
+}
+
+function parseTrafficThresholdUnit(value: string): TrafficThresholdUnit {
+  if (value === "kbit" || value === "mbit" || value === "gbit") return value;
+  return DEFAULT_TRAFFIC_THRESHOLD_UNIT;
+}
+
+function isSvgExportResultMessage(value: unknown): value is SvgExportResultMessage {
+  if (!isRecord(value)) return false;
+  if (value.type !== MSG_SVG_EXPORT_RESULT) return false;
+  if (asNonEmptyString(value.requestId) === null) return false;
+  if (typeof value.success !== "boolean") return false;
+  if (value.error !== undefined && typeof value.error !== "string") return false;
+  if (value.files !== undefined && !Array.isArray(value.files)) return false;
+  return true;
 }
 
 function resolveInterfaceOverrideValue(
@@ -338,15 +365,15 @@ function requestGrafanaBundleExport(
     }, 30_000);
 
     unsubscribe = subscribeToWebviewMessages((event) => {
-      const message = event.data as SvgExportResultMessage | undefined;
-      if (!message || message.type !== MSG_SVG_EXPORT_RESULT) return;
+      const message = event.data;
+      if (!isSvgExportResultMessage(message)) return;
       if (message.requestId !== payload.requestId) return;
 
       unsubscribe();
       window.clearTimeout(timeoutId);
 
       if (!message.success) {
-        reject(new Error(message.error || "Grafana bundle export failed"));
+        reject(new Error(message.error ?? "Grafana bundle export failed"));
         return;
       }
 
@@ -360,7 +387,13 @@ function requestGrafanaBundleExport(
 
     sendCommandToExtension(
       EXPORT_COMMANDS.EXPORT_SVG_GRAFANA_BUNDLE,
-      payload as unknown as Record<string, unknown>,
+      {
+        requestId: payload.requestId,
+        baseName: payload.baseName,
+        svgContent: payload.svgContent,
+        dashboardJson: payload.dashboardJson,
+        panelYaml: payload.panelYaml,
+      },
     );
   });
 }
@@ -459,7 +492,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         endpoint,
         globalInterfaceOverrideSelection,
       );
-      if (globalOverride) {
+      if (globalOverride !== null) {
         merged[endpoint] = globalOverride;
       }
     }
@@ -494,7 +527,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     (endpoint: string, selectedValue: string) => {
       const override = resolveInterfaceOverrideValue(endpoint, selectedValue);
       setInterfaceLabelOverrides((prev) => {
-        if (!override) {
+        if (override === null) {
           if (!(endpoint in prev)) return prev;
           const next = { ...prev };
           delete next[endpoint];
@@ -662,8 +695,9 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       }
       await exportGrafanaBundleFiles(prepared);
     } catch (error) {
-      log.error(`[SvgExport] Export failed: ${error}`);
-      setExportStatus({ type: "error", message: `Export failed: ${error}` });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      log.error(`[SvgExport] Export failed: ${errorMessage}`);
+      setExportStatus({ type: "error", message: `Export failed: ${errorMessage}` });
     } finally {
       setIsExporting(false);
     }
@@ -791,7 +825,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
             <RadioGroup
               value={backgroundOption}
               onChange={(e) =>
-                setBackgroundOption(e.target.value as BackgroundOption)
+                setBackgroundOption(parseBackgroundOption(e.target.value))
               }
             >
               <FormControlLabel
@@ -1010,7 +1044,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
           <Tabs
             value={grafanaSettingsTab}
             onChange={(_event, value) =>
-              setGrafanaSettingsTab(value as GrafanaSettingsTab)
+              setGrafanaSettingsTab(parseGrafanaSettingsTab(value))
             }
             variant="fullWidth"
           >
@@ -1086,7 +1120,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                 size="small"
                 value={trafficThresholdUnit}
                 onChange={(e) =>
-                  setTrafficThresholdUnit(e.target.value as TrafficThresholdUnit)
+                  setTrafficThresholdUnit(parseTrafficThresholdUnit(e.target.value))
                 }
               >
                 <MenuItem value="kbit">kbit/s</MenuItem>

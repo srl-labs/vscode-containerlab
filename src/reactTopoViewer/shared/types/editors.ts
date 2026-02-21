@@ -313,7 +313,7 @@ export interface LinkEditorData {
 /**
  * Custom node template definition - stored configuration for reusable node types
  */
-export interface CustomNodeTemplate {
+export interface CustomNodeTemplate extends AdvancedNodeFields {
   name: string;
   kind: string;
   type?: string;
@@ -323,6 +323,33 @@ export interface CustomNodeTemplate {
   iconCornerRadius?: number;
   baseName?: string;
   interfacePattern?: string;
+  // Configuration
+  startupConfig?: string;
+  enforceStartupConfig?: boolean;
+  suppressStartupConfig?: boolean;
+  license?: string;
+  binds?: string[];
+  env?: Record<string, string>;
+  envFiles?: string[];
+  labels?: Record<string, string>;
+  // Runtime
+  user?: string;
+  entrypoint?: string;
+  cmd?: string;
+  exec?: string[];
+  restartPolicy?: string;
+  autoRemove?: boolean;
+  startupDelay?: number;
+  // Network
+  mgmtIpv4?: string;
+  mgmtIpv6?: string;
+  networkMode?: string;
+  ports?: string[];
+  dnsServers?: string[];
+  aliases?: string[];
+  // Components (SROS)
+  isDistributed?: boolean;
+  components?: SrosComponent[];
   setDefault?: boolean;
   [key: string]: unknown;
 }

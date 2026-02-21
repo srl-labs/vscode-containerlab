@@ -5,7 +5,6 @@ import type { ConnectionLineComponentProps, Edge, Node } from "@xyflow/react";
 import { useEdges } from "../../stores/graphStore";
 import { allocateEndpointsForLink } from "../../utils/endpointAllocator";
 import { buildEdgeId } from "../../utils/edgeId";
-import type { TopoEdge, TopoNode } from "../../../shared/types/graph";
 
 import { calculateControlPoint, getEdgePoints, getLabelPosition } from "./edgeGeometry";
 
@@ -17,15 +16,13 @@ function rafThrottle<Args extends unknown[]>(func: (...args: Args) => void): Raf
 
   const throttled = (...args: Args) => {
     lastArgs = args;
-    if (rafId === null) {
-      rafId = window.requestAnimationFrame(() => {
+    rafId ??= window.requestAnimationFrame(() => {
         if (lastArgs) {
           func(...lastArgs);
           lastArgs = null;
         }
         rafId = null;
       });
-    }
   };
 
   throttled.cancel = () => {
@@ -119,7 +116,7 @@ function getPreviewParallelInfo(
     .filter((edge) => edge.source !== edge.target && isSameEdgePair(edge, sourceId, targetId))
     .map((edge) => edge.id);
 
-  if (previewId) {
+  if (previewId !== undefined && previewId !== null && previewId.length > 0) {
     const ids = [...existingIds, previewId].sort((a, b) => a.localeCompare(b));
     const index = Math.max(0, ids.indexOf(previewId));
     return {
@@ -196,7 +193,7 @@ export const CustomConnectionLine: React.FC<ConnectionLineComponentProps> = ({
     const iconSize = LINK_PREVIEW_ICON_SIZE;
 
     if (sourceId === targetId) {
-      const nodeWidth = fromNode.measured?.width ?? iconSize;
+      const nodeWidth = fromNode.measured.width ?? iconSize;
       const nodePos = getNodePosition(fromNode);
       const nodeX = nodePos.x + (nodeWidth - iconSize) / 2;
       const nodeY = nodePos.y;
@@ -205,8 +202,8 @@ export const CustomConnectionLine: React.FC<ConnectionLineComponentProps> = ({
       ).length;
       path = calculateLoopEdgeGeometry(nodeX, nodeY, iconSize, loopIndex, 1).path;
     } else {
-      const sourceWidth = fromNode.measured?.width ?? iconSize;
-      const targetWidth = toNode.measured?.width ?? iconSize;
+      const sourceWidth = fromNode.measured.width ?? iconSize;
+      const targetWidth = toNode.measured.width ?? iconSize;
       const sourcePos = getNodePosition(fromNode);
       const targetPos = getNodePosition(toNode);
 
@@ -272,12 +269,12 @@ function buildPreviewLinkInfo(
   if (!targetNode) return null;
 
   const { sourceEndpoint, targetEndpoint } = allocateEndpointsForLink(
-    nodes as TopoNode[],
-    edges as TopoEdge[],
+    nodes,
+    edges,
     linkSourceNodeId,
     targetNode.id
   );
-  const previewId = linkCreationSeed
+  const previewId = linkCreationSeed !== null && linkCreationSeed !== undefined
     ? buildEdgeId(linkSourceNodeId, targetNode.id, sourceEndpoint, targetEndpoint, linkCreationSeed)
     : null;
 
@@ -555,7 +552,9 @@ export const LinkCreationLine = React.memo<LinkCreationLineProps>(
     );
     const targetNode = useMemo(
       () =>
-        linkTargetNodeId ? (nodes.find((node) => node.id === linkTargetNodeId) ?? null) : null,
+        linkTargetNodeId !== null && linkTargetNodeId.length > 0
+          ? (nodes.find((node) => node.id === linkTargetNodeId) ?? null)
+          : null,
       [nodes, linkTargetNodeId]
     );
     const viewport = useMemo(

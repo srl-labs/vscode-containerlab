@@ -49,6 +49,10 @@ export const GROUP_LABEL_POSITIONS = [
 
 /** Convert GroupStyleAnnotation to GroupEditorData */
 export function groupToEditorData(group: GroupStyleAnnotation): GroupEditorData {
+  const members = Array.isArray(group.members)
+    ? group.members.filter((member): member is string => typeof member === "string")
+    : undefined;
+
   return {
     id: group.id,
     name: group.name,
@@ -56,12 +60,12 @@ export function groupToEditorData(group: GroupStyleAnnotation): GroupEditorData 
     position: group.position,
     width: group.width,
     height: group.height,
-    members: group.members as string[] | undefined,
+    members,
     parentId: group.parentId,
-    zIndex: group.zIndex as number | undefined,
+    zIndex: group.zIndex,
     style: {
       backgroundColor: group.backgroundColor,
-      backgroundOpacity: group.backgroundOpacity as number | undefined,
+      backgroundOpacity: group.backgroundOpacity,
       borderColor: group.borderColor,
       borderWidth: group.borderWidth,
       borderStyle: group.borderStyle,

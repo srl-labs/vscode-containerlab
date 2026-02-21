@@ -19,17 +19,34 @@ import { log } from "./logger";
 /**
  * Type guard to check if a value is a valid ClabLabTreeNode.
  */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? Object.fromEntries(Object.entries(value)) : {};
+}
+
 function isClabLabTreeNode(value: unknown): value is ClabLabTreeNode {
-  if (typeof value !== "object" || value === null) {
+  if (!isRecord(value)) {
     return false;
   }
-  const obj = value as Record<string, unknown>;
+  const obj = asRecord(value);
+  const labPath = obj.labPath;
+  if (!isRecord(labPath)) {
+    return false;
+  }
+  const labPathRecord = asRecord(labPath);
   return (
-    "labPath" in obj &&
-    typeof obj.labPath === "object" &&
-    obj.labPath !== null &&
-    "absolute" in obj.labPath
+    typeof labPathRecord.absolute === "string" &&
+    labPathRecord.absolute.length > 0
   );
+}
+
+function labelToString(label: vscode.TreeItemLabel | string | undefined): string {
+  if (typeof label === "string") return label;
+  if (label !== undefined && typeof label.label === "string") return label.label;
+  return "";
 }
 
 /**
@@ -65,7 +82,7 @@ function createInterfaceObject(
     cID: nodeName,
     name: interfaceName,
     type: "",
-    alias: alias || "",
+    alias: alias ?? "",
     mac: "",
     mtu: 0,
     ifIndex: 0,
@@ -85,8 +102,8 @@ export class NodeCommandService {
     nodeName: string,
     yamlFilePath: string
   ): Promise<ClabContainerTreeNode | undefined> {
-    const labsData = await runningLabsProvider?.discoverInspectLabs();
-    if (!labsData || !yamlFilePath) {
+    const labsData = await runningLabsProvider.discoverInspectLabs();
+    if (labsData === undefined || yamlFilePath.length === 0) {
       return undefined;
     }
 
@@ -98,14 +115,14 @@ export class NodeCommandService {
       return lab.labPath.absolute === yamlFilePath;
     });
 
-    if (!currentLab || !isClabLabTreeNode(currentLab)) {
+    if (currentLab === undefined || !isClabLabTreeNode(currentLab)) {
       return undefined;
     }
 
     const containers: ClabContainerTreeNode[] = flattenContainers(currentLab.containers);
     const directMatch = containers.find(
       (c: ClabContainerTreeNode) =>
-        c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
+        c.name === nodeName || c.name_short === nodeName || labelToString(c.label) === nodeName
     );
     if (directMatch) {
       return directMatch;
@@ -259,7 +276,6 @@ export class NodeCommandService {
     interfaceName: string,
     yamlFilePath: string
   ): Promise<string> {
-    if (!runningLabsProvider) return interfaceName;
     const treeData = await runningLabsProvider.discoverInspectLabs();
     if (!treeData) return interfaceName;
 
@@ -270,14 +286,14 @@ export class NodeCommandService {
       return lab.labPath.absolute === yamlFilePath;
     });
 
-    if (!currentLab || !isClabLabTreeNode(currentLab)) {
+    if (currentLab === undefined || !isClabLabTreeNode(currentLab)) {
       return interfaceName;
     }
 
     const container = flattenContainers(currentLab.containers).find(
-      (c) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
+      (c) => c.name === nodeName || c.name_short === nodeName || labelToString(c.label) === nodeName
     );
-    const intf = container?.interfaces?.find(
+    const intf = container?.interfaces.find(
       (i: ClabInterfaceTreeNode) => i.name === interfaceName || i.alias === interfaceName
     );
     if (intf) return intf.name;

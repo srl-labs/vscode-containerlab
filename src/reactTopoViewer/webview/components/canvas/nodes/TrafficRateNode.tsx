@@ -198,7 +198,7 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
   const isLocked = useIsLocked();
   const annotationHandlers = useAnnotationHandlers();
   const canEditAnnotations = !isLocked;
-  const isSelected = selected ?? false;
+  const isSelected = selected;
   const showResizer = isSelected && canEditAnnotations;
 
   const resolution = useMemo(
@@ -208,8 +208,11 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
 
   const handleResizeEnd = useCallback(
     (_event: unknown, params: ResizeParams) => {
-      annotationHandlers?.onUpdateTrafficRateSize?.(id, params.width, params.height);
-      annotationHandlers?.onPersistAnnotations?.();
+      if (annotationHandlers === null) {
+        return;
+      }
+      annotationHandlers.onUpdateTrafficRateSize?.(id, params.width, params.height);
+      annotationHandlers.onPersistAnnotations?.();
     },
     [annotationHandlers, id]
   );
@@ -217,8 +220,10 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
   const mode = resolveMode(nodeData.mode);
   const textMetric = resolveTextMetric(nodeData.textMetric);
   const layout = resolveLayout(nodeData, mode);
-  const isConfigured = Boolean(nodeData.nodeId && nodeData.interfaceName);
-  const subtitle = isConfigured ? `${nodeData.nodeId}:${nodeData.interfaceName}` : "Double-click to configure";
+  const nodeId = nodeData.nodeId ?? "";
+  const interfaceName = nodeData.interfaceName ?? "";
+  const isConfigured = nodeId.length > 0 && interfaceName.length > 0;
+  const subtitle = isConfigured ? `${nodeId}:${interfaceName}` : "Double-click to configure";
   const showSubtitle = !isConfigured || mode === "chart";
   const defaultBackgroundColor = resolveComputedColor("--vscode-editor-background", FALLBACK_BACKGROUND);
   const defaultBorderColor = resolveComputedColor("--vscode-panel-border", FALLBACK_BORDER_COLOR);

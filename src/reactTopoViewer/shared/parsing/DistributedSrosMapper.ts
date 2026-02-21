@@ -7,13 +7,18 @@ import type { ClabNode } from "../types/topology";
 
 import type { ContainerDataProvider, ContainerInfo, InterfaceInfo } from "./types";
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value));
+}
+
 /**
  * Checks if a node is a distributed SROS node (nokia_srsim with components).
  */
 export function isDistributedSrosNode(node: ClabNode | undefined): boolean {
-  if (!node) return false;
+  if (node === undefined) return false;
   if (node.kind !== "nokia_srsim") return false;
-  const components = (node as Record<string, unknown>).components;
+  const components = asRecord(node).components;
   return Array.isArray(components) && components.length > 0;
 }
 
@@ -54,11 +59,11 @@ export function mapSrosInterfaceName(ifaceName: string): string | undefined {
  */
 export function getCandidateInterfaceNames(ifaceName: string): string[] {
   const unique = new Set<string>();
-  if (ifaceName) {
+  if (ifaceName.length > 0) {
     unique.add(ifaceName);
   }
   const mapped = mapSrosInterfaceName(ifaceName);
-  if (mapped) {
+  if (mapped !== undefined && mapped.length > 0) {
     unique.add(mapped);
   }
   return Array.from(unique);
@@ -71,10 +76,9 @@ export function matchInterfaceInContainer(
   container: ContainerInfo,
   ifaceName: string
 ): InterfaceInfo | undefined {
-  if (!container.interfaces) return undefined;
   const candidates = getCandidateInterfaceNames(ifaceName);
   for (const iface of container.interfaces) {
-    const labelStr = container.label || "";
+    const labelStr = container.label ?? "";
     if (
       candidates.includes(iface.name) ||
       candidates.includes(iface.alias) ||
@@ -113,8 +117,8 @@ export function buildDistributedCandidateNames(
 ): string[] {
   const names: string[] = [];
   for (const comp of components) {
-    const compObj = comp as Record<string, unknown>;
-    const slotRaw = typeof compObj?.slot === "string" ? compObj.slot.trim() : "";
+    const compObj = asRecord(comp);
+    const slotRaw = typeof compObj.slot === "string" ? compObj.slot.trim() : "";
     if (!slotRaw) continue;
     const suffix = slotRaw.toLowerCase();
     const longName = fullPrefix
@@ -131,7 +135,7 @@ export function buildDistributedCandidateNames(
 export function extractSrosComponentInfo(
   container: ContainerInfo
 ): { base: string; slot: string } | undefined {
-  const candidateNames = [container.name_short, container.name].filter(Boolean) as string[];
+  const candidateNames = [container.name_short, container.name].filter(Boolean);
   for (const raw of candidateNames) {
     const trimmed = raw.trim();
     if (!trimmed) {

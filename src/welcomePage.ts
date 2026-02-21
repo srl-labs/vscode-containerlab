@@ -54,7 +54,7 @@ export class WelcomePage {
           this.createExampleTopology();
           break;
         case "dontShowAgain":
-          this.saveWelcomePageSetting(!message.value);
+          this.saveWelcomePageSetting(message.value !== true);
           break;
         case "getRepos":
           void this.fetchGitHubRepos();

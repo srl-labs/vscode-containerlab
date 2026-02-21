@@ -5,6 +5,7 @@ import type { Node } from "@xyflow/react";
 
 import type { TopoNode } from "../../shared/types/graph";
 import type { GroupStyleAnnotation, NodeAnnotation } from "../../shared/types/topology";
+import { getRecordUnknown, getString } from "../../shared/utilities/typeHelpers";
 
 import { isAnnotationNodeType } from "./annotationNodeConverters";
 
@@ -25,11 +26,23 @@ function resolveGroupId(
   annotation: NodeAnnotation,
   lookup: { ids: Set<string>; nameToId: Map<string, string> }
 ): string | null {
-  if (annotation.groupId) return annotation.groupId;
-  if (!annotation.group) return null;
-  const legacy = annotation.group;
+  const groupId = getString(annotation.groupId);
+  if (groupId !== undefined && groupId.length > 0) return groupId;
+
+  const legacy = getString(annotation.group);
+  if (legacy === undefined || legacy.length === 0) return null;
   if (lookup.ids.has(legacy)) return legacy;
   return lookup.nameToId.get(legacy) ?? null;
+}
+
+function withGroupId<T extends TopoNode>(node: T, groupId: string): T {
+  return {
+    ...node,
+    data: {
+      ...node.data,
+      groupId
+    }
+  };
 }
 
 export function applyGroupMembershipToNodes(
@@ -44,7 +57,7 @@ export function applyGroupMembershipToNodes(
 
   for (const annotation of nodeAnnotations) {
     const groupId = resolveGroupId(annotation, lookup);
-    if (groupId) {
+    if (groupId !== null) {
       membership.set(annotation.id, groupId);
     }
   }
@@ -54,12 +67,8 @@ export function applyGroupMembershipToNodes(
   return nodes.map((node) => {
     if (isAnnotationNodeType(node.type)) return node;
     const groupId = membership.get(node.id);
-    if (!groupId) return node;
-    const data = node.data as Record<string, unknown> | undefined;
-    return {
-      ...node,
-      data: { ...(data ?? {}), groupId }
-    } as unknown as TopoNode;
+    if (groupId === undefined) return node;
+    return withGroupId(node, groupId);
   });
 }
 
@@ -72,9 +81,10 @@ export function collectNodeGroupMemberships(nodes: Node[]): NodeGroupMembership[
   return nodes
     .filter((node) => !isAnnotationNodeType(node.type))
     .map((node) => {
-      const data = node.data as Record<string, unknown> | undefined;
-      const groupId = data?.groupId as string | undefined;
-      return groupId ? { id: node.id, groupId } : null;
+      const data = getRecordUnknown(node.data);
+      const groupId = getString(data?.groupId);
+      if (groupId === undefined || groupId.length === 0) return null;
+      return { id: node.id, groupId };
     })
-    .filter((entry): entry is NodeGroupMembership => Boolean(entry));
+    .filter((entry): entry is NodeGroupMembership => entry !== null);
 }

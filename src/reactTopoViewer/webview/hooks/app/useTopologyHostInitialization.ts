@@ -11,13 +11,15 @@ import { log } from "../../utils/logger";
 export function useTopologyHostInitialization(): void {
   useEffect(() => {
     let disposed = false;
+    const isDisposed = () => disposed;
     void (async () => {
       try {
         const snapshot = await requestSnapshot();
-        if (!disposed) {
-          // Pass isInitialLoad: true to apply auto-layout if nodes have no preset positions
-          applySnapshotToStores(snapshot, { isInitialLoad: true });
+        if (isDisposed()) {
+          return;
         }
+        // Pass isInitialLoad: true to apply auto-layout if nodes have no preset positions
+        applySnapshotToStores(snapshot, { isInitialLoad: true });
       } catch (err) {
         log.error(
           `[TopologyHost] Failed to load snapshot: ${err instanceof Error ? err.message : String(err)}`

@@ -10,6 +10,13 @@ export function getString(val: unknown): string | undefined {
 }
 
 /**
+ * Runtime guard for plain objects.
+ */
+export function isRecord(val: unknown): val is Record<string, unknown> {
+  return val !== null && typeof val === "object" && !Array.isArray(val);
+}
+
+/**
  * Safely get string value with empty string default.
  * Also converts numbers to strings for fields that may be stored as numbers.
  */
@@ -41,10 +48,18 @@ export function getStringArray(val: unknown): string[] | undefined {
 }
 
 /**
- * Safely get record (object) value
+ * Safely get record (object) value with unknown values.
+ */
+export function getRecordUnknown(val: unknown): Record<string, unknown> | undefined {
+  return isRecord(val) ? val : undefined;
+}
+
+/**
+ * Safely get record (object) value with only string values.
  */
 export function getRecord(val: unknown): Record<string, string> | undefined {
-  return val && typeof val === "object" && !Array.isArray(val)
-    ? (val as Record<string, string>)
-    : undefined;
+  if (!isRecord(val)) return undefined;
+  return Object.fromEntries(
+    Object.entries(val).filter((entry): entry is [string, string] => typeof entry[1] === "string")
+  );
 }

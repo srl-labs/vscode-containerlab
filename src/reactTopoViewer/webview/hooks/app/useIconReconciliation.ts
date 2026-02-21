@@ -13,11 +13,22 @@ interface IconUsageEntry {
   topoViewerRole: string | null;
 }
 
+function toRecord(value: unknown): Record<string, unknown> | undefined {
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+  const record: Record<string, unknown> = {};
+  for (const [key, entryValue] of Object.entries(value)) {
+    record[key] = entryValue;
+  }
+  return record;
+}
+
 function selectIconUsageEntries(state: { nodes: Array<{ id: string; data?: unknown }> }): IconUsageEntry[] {
   const entries: IconUsageEntry[] = [];
   for (const node of state.nodes) {
-    const data = node.data as Record<string, unknown> | undefined;
-    const extraData = (data?.extraData as Record<string, unknown> | undefined) ?? {};
+    const data = toRecord(node.data);
+    const extraData = toRecord(data?.extraData) ?? {};
     const role = data?.role;
     const fallbackRole = extraData.topoViewerRole;
     let topoViewerRole: string | null = null;

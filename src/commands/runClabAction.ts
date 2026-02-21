@@ -24,7 +24,7 @@ export async function runClabAction(
   const execute = async () => {
     const cmd = new ClabCommand(
       action,
-      node as ClabLabTreeNode,
+      node,
       undefined,
       undefined,
       undefined,

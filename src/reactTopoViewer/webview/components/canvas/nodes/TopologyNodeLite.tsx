@@ -10,9 +10,17 @@ import { SELECTION_COLOR, DEFAULT_ICON_COLOR } from "../types";
 import { ICON_SIZE, LiteNodeShell } from "./NodeLiteBase";
 import { getNodeDirectionRotation } from "./nodeStyles";
 
+function toTopologyNodeData(data: NodeProps["data"]): TopologyNodeData {
+  return {
+    ...data,
+    label: typeof data.label === "string" ? data.label : "",
+    role: typeof data.role === "string" ? data.role : ""
+  };
+}
+
 const TopologyNodeLiteComponent: React.FC<NodeProps> = ({ data, selected }) => {
-  const nodeData = data as TopologyNodeData;
-  const color = nodeData.iconColor || DEFAULT_ICON_COLOR;
+  const nodeData = toTopologyNodeData(data);
+  const color = nodeData.iconColor ?? DEFAULT_ICON_COLOR;
   const corner = nodeData.iconCornerRadius ?? 4;
   const rotation = getNodeDirectionRotation(nodeData.direction);
 

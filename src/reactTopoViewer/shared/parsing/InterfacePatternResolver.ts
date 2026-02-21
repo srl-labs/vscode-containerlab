@@ -101,7 +101,7 @@ export function collectInterfacePatternMigrations(
   }
 
   for (const [nodeId, node] of Object.entries(nodes)) {
-    const kind = node.kind || "";
+    const kind = node.kind ?? "";
     const ann = annotationMap.get(nodeId);
 
     if (needsInterfacePatternMigration(ann, kind)) {

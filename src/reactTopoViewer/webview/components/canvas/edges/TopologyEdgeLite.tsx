@@ -4,7 +4,6 @@
 import React, { memo } from "react";
 import { getStraightPath, type EdgeProps } from "@xyflow/react";
 
-import type { TopologyEdgeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 
 const EDGE_COLOR_DEFAULT = "#969799";
@@ -14,6 +13,15 @@ const EDGE_WIDTH_NORMAL = 3.5;
 const EDGE_WIDTH_SELECTED = 4.5;
 const EDGE_OPACITY_NORMAL = 0.4;
 const EDGE_OPACITY_SELECTED = 0.9;
+
+function getLinkStatus(value: unknown): string | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const linkStatus: unknown = Reflect.get(value, "linkStatus");
+  if (linkStatus === "up" || linkStatus === "down" || linkStatus === "unknown") {
+    return linkStatus;
+  }
+  return undefined;
+}
 
 function getStrokeColor(linkStatus: string | undefined, selected: boolean): string {
   if (selected) return SELECTION_COLOR;
@@ -36,9 +44,10 @@ const TopologyEdgeLiteComponent: React.FC<EdgeProps> = ({
   selected,
   data
 }) => {
-  const edgeData = data as TopologyEdgeData | undefined;
+  const isSelected = selected === true;
+  const linkStatus = getLinkStatus(data);
   const [path] = getStraightPath({ sourceX, sourceY, targetX, targetY });
-  const stroke = getStrokeColor(edgeData?.linkStatus, selected ?? false);
+  const stroke = getStrokeColor(linkStatus, isSelected);
 
   return (
     <path
@@ -47,8 +56,8 @@ const TopologyEdgeLiteComponent: React.FC<EdgeProps> = ({
       fill="none"
       style={{
         cursor: "pointer",
-        opacity: selected ? EDGE_OPACITY_SELECTED : EDGE_OPACITY_NORMAL,
-        strokeWidth: selected ? EDGE_WIDTH_SELECTED : EDGE_WIDTH_NORMAL,
+        opacity: isSelected ? EDGE_OPACITY_SELECTED : EDGE_OPACITY_NORMAL,
+        strokeWidth: isSelected ? EDGE_WIDTH_SELECTED : EDGE_WIDTH_NORMAL,
         stroke
       }}
       className="react-flow__edge-path"

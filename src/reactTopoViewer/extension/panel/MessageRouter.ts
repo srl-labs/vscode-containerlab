@@ -33,7 +33,6 @@ import type {
   NodeCommand
 } from "../../shared/messages/extension";
 import {
-  EXPORT_COMMANDS,
   isCustomNodeCommand,
   isExportCommand,
   isIconCommand,
@@ -46,10 +45,10 @@ import {
 import { cancelActiveCommand } from "../../../commands/command";
 
 type WebviewMessage = Record<string, unknown> & {
-  type?: string;
-  command?: string;
-  requestId?: string;
-  endpointName?: string;
+  type?: unknown;
+  command?: unknown;
+  requestId?: unknown;
+  endpointName?: unknown;
 };
 
 interface GrafanaBundleExportPayload {
@@ -67,6 +66,20 @@ const TOPOLOGY_HOST_ACK = "topology-host:ack";
 const TOPOLOGY_HOST_REJECT = "topology-host:reject";
 const TOPOLOGY_HOST_ERROR = "topology-host:error";
 const SNAPSHOT_ERROR_MODAL_COOLDOWN_MS = 5000;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isTopologyHostCommand(value: unknown): value is TopologyHostCommand {
+  if (!isRecord(value)) return false;
+  return typeof value.command === "string" && "payload" in value;
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
 /**
  * Context required by the message router
  */
@@ -145,28 +158,23 @@ export class MessageRouter {
   }
 
   private getTopologyHostProtocolVersion(message: WebviewMessage): number | undefined {
-    return typeof (message as { protocolVersion?: unknown }).protocolVersion === "number"
-      ? (message as { protocolVersion?: number }).protocolVersion
-      : undefined;
+    const protocolVersion = message.protocolVersion;
+    return typeof protocolVersion === "number" ? protocolVersion : undefined;
   }
 
   private parseTopologyHostCommand(
     message: WebviewMessage
   ): { command: TopologyHostCommand; baseRevision: number } | null {
-    const baseRevisionRaw = (message as { baseRevision?: unknown }).baseRevision;
-    const commandPayload = (message as { command?: unknown }).command;
+    const baseRevisionRaw = message.baseRevision;
+    const commandPayload = message.command;
     const baseRevision =
       typeof baseRevisionRaw === "number" && Number.isFinite(baseRevisionRaw)
         ? baseRevisionRaw
         : NaN;
-    if (
-      !commandPayload ||
-      typeof (commandPayload as { command?: unknown }).command !== "string" ||
-      !Number.isFinite(baseRevision)
-    ) {
+    if (!isTopologyHostCommand(commandPayload) || !Number.isFinite(baseRevision)) {
       return null;
     }
-    return { command: commandPayload as TopologyHostCommand, baseRevision };
+    return { command: commandPayload, baseRevision };
   }
 
   private async sendTopologySnapshot(
@@ -268,9 +276,9 @@ export class MessageRouter {
       return;
     }
     const res = await labLifecycleService.handleLabLifecycleEndpoint(command, yamlFilePath);
-    if (res.error) {
+    if (res.error != null && res.error.length > 0) {
       log.error(`[MessageRouter] ${res.error}`);
-    } else if (res.result) {
+    } else if (res.result != null) {
       log.info(`[MessageRouter] ${String(res.result)}`);
     }
   }
@@ -320,7 +328,7 @@ export class MessageRouter {
     const res = await this.executeCustomNodeCommand(command, message);
     if (!res) return;
 
-    if (res.error) {
+    if (res.error != null && res.error.length > 0) {
       log.error(`[MessageRouter] ${res.error}`);
       // Send error back to webview so user can see the failure
       panel.webview.postMessage({
@@ -330,15 +338,14 @@ export class MessageRouter {
       return;
     }
 
-    const payload = res.result as
-      | { customNodes?: unknown[]; defaultNode?: string }
-      | null
-      | undefined;
-    if (payload?.customNodes) {
+    const payload = isRecord(res.result) ? res.result : null;
+    const customNodes = Array.isArray(payload?.customNodes) ? payload.customNodes : undefined;
+    const defaultNode = typeof payload?.defaultNode === "string" ? payload.defaultNode : "";
+    if (customNodes !== undefined) {
       panel.webview.postMessage({
         type: MSG_CUSTOM_NODE_UPDATED,
-        customNodes: payload.customNodes,
-        defaultNode: payload.defaultNode ?? ""
+        customNodes,
+        defaultNode
       });
     }
   }
@@ -347,31 +354,37 @@ export class MessageRouter {
     command: CustomNodeCommand,
     message: WebviewMessage
   ): Promise<{ result?: unknown; error?: string | null } | undefined> {
-    let res: { result?: unknown; error?: string | null } | undefined;
-    if (command === "save-custom-node") {
-      const data = this.parseCustomNodeSavePayload(message);
-      if (data) {
-        res = await customNodeConfigManager.saveCustomNode(data);
+    switch (command) {
+      case "save-custom-node": {
+        const data = this.parseCustomNodeSavePayload(message);
+        if (!data) return undefined;
+        return customNodeConfigManager.saveCustomNode(data);
       }
-    } else if (command === "delete-custom-node") {
-      const name = this.getCustomNodeName(message);
-      res = await customNodeConfigManager.deleteCustomNode(name);
-    } else if (command === "set-default-custom-node") {
-      const name = this.getCustomNodeName(message);
-      res = await customNodeConfigManager.setDefaultCustomNode(name);
+      case "delete-custom-node": {
+        const name = this.getCustomNodeName(message);
+        return customNodeConfigManager.deleteCustomNode(name);
+      }
+      case "set-default-custom-node": {
+        const name = this.getCustomNodeName(message);
+        return customNodeConfigManager.setDefaultCustomNode(name);
+      }
     }
-    return res;
   }
 
   private parseCustomNodeSavePayload(message: WebviewMessage): CustomNodeConfig | null {
-    const payload = message as Record<string, unknown>;
+    const payload = message;
     const name = typeof payload.name === "string" ? payload.name : "";
     const kind = typeof payload.kind === "string" ? payload.kind : "";
     if (!name || !kind) {
       log.error(`[MessageRouter] Invalid custom node payload: ${JSON.stringify(message)}`);
       return null;
     }
-    return { ...(payload as CustomNodeConfig), name, kind };
+    const config: CustomNodeConfig = { name, kind };
+    for (const [key, value] of Object.entries(payload)) {
+      if (key === "name" || key === "kind") continue;
+      config[key] = value;
+    }
+    return config;
   }
 
   private getYamlFilePath(command: string): string | null {
@@ -413,8 +426,8 @@ export class MessageRouter {
       type: MSG_SVG_EXPORT_RESULT,
       requestId: payload.requestId,
       success: payload.success,
-      ...(payload.error ? { error: payload.error } : {}),
-      ...(payload.files ? { files: payload.files } : {})
+      ...(payload.error != null && payload.error.length > 0 ? { error: payload.error } : {}),
+      ...(Array.isArray(payload.files) && payload.files.length > 0 ? { files: payload.files } : {})
     });
   }
 
@@ -455,7 +468,10 @@ export class MessageRouter {
 
     const yamlDir = this.context.yamlFilePath ? path.dirname(this.context.yamlFilePath) : undefined;
     const defaultFile = `${payload.baseName}.svg`;
-    const defaultUri = yamlDir ? vscode.Uri.file(path.join(yamlDir, defaultFile)) : undefined;
+    const defaultUri =
+      yamlDir != null && yamlDir.length > 0
+        ? vscode.Uri.file(path.join(yamlDir, defaultFile))
+        : undefined;
 
     try {
       const selectedUri = await vscode.window.showSaveDialog({
@@ -507,26 +523,24 @@ export class MessageRouter {
   }
 
   private async handleExportCommand(
-    command: ExportCommand,
+    _command: ExportCommand,
     message: WebviewMessage,
     panel: vscode.WebviewPanel
   ): Promise<void> {
-    if (command === EXPORT_COMMANDS.EXPORT_SVG_GRAFANA_BUNDLE) {
-      await this.handleGrafanaBundleExport(message, panel);
-    }
+    await this.handleGrafanaBundleExport(message, panel);
   }
 
   private async handleNodeCommand(command: NodeCommand, message: WebviewMessage): Promise<void> {
     const yamlFilePath = this.getYamlFilePath(command);
-    if (!yamlFilePath) return;
+    if (yamlFilePath == null || yamlFilePath.length === 0) return;
     const nodeName = typeof message.nodeName === "string" ? message.nodeName : "";
     if (!nodeName) {
       log.warn(`[MessageRouter] Invalid node command payload: ${JSON.stringify(message)}`);
       return;
     }
     const res = await nodeCommandService.handleNodeEndpoint(command, nodeName, yamlFilePath);
-    if (res.error) log.error(`[MessageRouter] ${res.error}`);
-    else if (res.result) log.info(`[MessageRouter] ${res.result}`);
+    if (res.error != null && res.error.length > 0) log.error(`[MessageRouter] ${res.error}`);
+    else if (res.result != null) log.info(`[MessageRouter] ${String(res.result)}`);
   }
 
   private async handleInterfaceCommand(
@@ -534,11 +548,10 @@ export class MessageRouter {
     message: WebviewMessage
   ): Promise<void> {
     const yamlFilePath = this.getYamlFilePath(command);
-    if (!yamlFilePath) return;
+    if (yamlFilePath == null || yamlFilePath.length === 0) return;
     const nodeName = typeof message.nodeName === "string" ? message.nodeName : "";
     const interfaceName = typeof message.interfaceName === "string" ? message.interfaceName : "";
-    const data =
-      typeof message.data === "object" ? (message.data as Record<string, unknown>) : undefined;
+    const data = isRecord(message.data) ? message.data : undefined;
     if (!nodeName || !interfaceName) {
       log.warn(`[MessageRouter] Invalid interface command payload: ${JSON.stringify(message)}`);
       return;
@@ -548,8 +561,8 @@ export class MessageRouter {
       { nodeName, interfaceName, data },
       yamlFilePath
     );
-    if (res.error) log.error(`[MessageRouter] ${res.error}`);
-    else if (res.result) log.info(`[MessageRouter] ${res.result}`);
+    if (res.error != null && res.error.length > 0) log.error(`[MessageRouter] ${res.error}`);
+    else if (res.result != null) log.info(`[MessageRouter] ${String(res.result)}`);
   }
 
   private async handleIconList(panel: vscode.WebviewPanel): Promise<void> {
@@ -591,7 +604,7 @@ export class MessageRouter {
   private async handleIconReconcile(message: WebviewMessage): Promise<void> {
     const yamlFilePath = this.context.yamlFilePath;
     if (!yamlFilePath) return;
-    const usedIcons = Array.isArray(message.usedIcons) ? (message.usedIcons as string[]) : [];
+    const usedIcons = asStringArray(message.usedIcons);
     await iconService.reconcileWorkspaceIcons(yamlFilePath, usedIcons);
   }
 
@@ -601,14 +614,13 @@ export class MessageRouter {
     panel: vscode.WebviewPanel
   ): Promise<void> {
     try {
-      const handlers: Record<string, () => Promise<void>> = {
+      const handlers: Record<IconCommand, () => Promise<void>> = {
         "icon-list": () => this.handleIconList(panel),
         "icon-upload": () => this.handleIconUpload(panel),
         "icon-delete": () => this.handleIconDelete(message, panel),
         "icon-reconcile": () => this.handleIconReconcile(message)
       };
-      const handler = handlers[command];
-      if (handler) await handler();
+      await handlers[command]();
     } catch (err) {
       log.error(`[MessageRouter] Icon command error: ${err}`);
     }
@@ -678,7 +690,7 @@ export class MessageRouter {
 
   private async handleDumpCssVars(message: WebviewMessage): Promise<void> {
     const vars = message.vars;
-    if (!vars || typeof vars !== "object") {
+    if (!isRecord(vars)) {
       log.warn("[MessageRouter] dump-css-vars: no vars payload");
       return;
     }
@@ -696,10 +708,6 @@ export class MessageRouter {
    * Handle messages from the webview
    */
   async handleMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
-    if (!message || typeof message !== "object") {
-      return;
-    }
-
     // Handle log commands locally (production-specific logging)
     if (this.handleLogCommand(message)) {
       return;

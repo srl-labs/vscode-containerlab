@@ -1,12 +1,12 @@
 // App content — UI composition for the React TopoViewer.
 /* eslint-disable import-x/max-dependencies */
 import React from "react";
-import type { ReactFlowInstance } from "@xyflow/react";
+import type { Edge, Node, ReactFlowInstance } from "@xyflow/react";
 import Box from "@mui/material/Box";
 
 import { ContainerlabExplorerView } from "../../webviews/explorer/containerlabExplorerView.webview";
 import type { NetemState } from "../shared/parsing";
-import type { TopoEdge, TopoNode, TopologyEdgeData, TopologyHostCommand } from "../shared/types";
+import type { TopoEdge, TopoNode, TopologyHostCommand } from "../shared/types";
 
 import { MuiThemeProvider } from "./theme";
 import {
@@ -75,9 +75,65 @@ import {
 } from "./utils/netemOverrides";
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;
-const DUMP_CSS_VARS = false;
 const DEV_EXPLORER_MIN_WIDTH = 280;
 const DEV_EXPLORER_DEFAULT_WIDTH = 360;
+
+const TOPO_NODE_TYPES = new Set<string>([
+  "topology-node",
+  "network-node",
+  GROUP_NODE_TYPE,
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE,
+  TRAFFIC_RATE_NODE_TYPE
+]);
+const NETWORK_TYPE_VALUES = new Set<string>([
+  "host",
+  "mgmt-net",
+  "macvlan",
+  "vxlan",
+  "vxlan-stitch",
+  "dummy",
+  "bridge",
+  "ovs-bridge"
+]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? value : {};
+}
+
+function toNetemState(value: unknown): NetemState | undefined {
+  if (!isRecord(value)) return undefined;
+  const state: NetemState = {};
+  if (typeof value.delay === "string") state.delay = value.delay;
+  if (typeof value.jitter === "string") state.jitter = value.jitter;
+  if (typeof value.loss === "string") state.loss = value.loss;
+  if (typeof value.rate === "string") state.rate = value.rate;
+  if (typeof value.corruption === "string") state.corruption = value.corruption;
+  return Object.keys(state).length > 0 ? state : undefined;
+}
+
+function isTopoNode(node: Node): node is TopoNode {
+  return TOPO_NODE_TYPES.has(node.type ?? "");
+}
+
+function isTopoEdge(edge: Edge): edge is TopoEdge {
+  const data = edge.data;
+  return (
+    isRecord(data) &&
+    typeof data.sourceEndpoint === "string" &&
+    typeof data.targetEndpoint === "string"
+  );
+}
+
+function isNetworkTypeValue(
+  value: string
+): value is Parameters<ReturnType<typeof useGraphCreation>["createNetworkAtPosition"]>[1] {
+  return NETWORK_TYPE_VALUES.has(value);
+}
 
 function getDevExplorerMaxWidth(): number {
   return Math.max(DEV_EXPLORER_MIN_WIDTH, Math.floor(window.innerWidth / 2));
@@ -99,11 +155,11 @@ function collectSelectedIds(
   selectedNodeId?: string | null,
   selectedEdgeId?: string | null
 ): { nodeIds: Set<string>; edgeIds: Set<string> } {
-  const nodeIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id));
-  const edgeIds = new Set(edges.filter((edge) => edge.selected).map((edge) => edge.id));
+  const nodeIds = new Set(nodes.filter((node) => node.selected === true).map((node) => node.id));
+  const edgeIds = new Set(edges.filter((edge) => edge.selected === true).map((edge) => edge.id));
 
-  if (selectedNodeId) nodeIds.add(selectedNodeId);
-  if (selectedEdgeId) edgeIds.add(selectedEdgeId);
+  if (selectedNodeId != null && selectedNodeId.length > 0) nodeIds.add(selectedNodeId);
+  if (selectedEdgeId != null && selectedEdgeId.length > 0) edgeIds.add(selectedEdgeId);
 
   return { nodeIds, edgeIds };
 }
@@ -217,16 +273,23 @@ function getInteractionLockState(isLocked: boolean, isProcessing: boolean): bool
 }
 
 function isDevMockWebview(): boolean {
-  const maybeVscode = (window as unknown as { vscode?: { __isDevMock__?: boolean } }).vscode;
-  return Boolean(maybeVscode?.__isDevMock__);
+  return window.vscode?.__isDevMock__ === true;
 }
 
 function isDevExplorerDisabledByUrl(): boolean {
   const params = new URLSearchParams(window.location.search);
   const rawValue = params.get("devExplorer");
-  if (!rawValue) return false;
+  if (rawValue == null || rawValue.length === 0) return false;
   const normalized = rawValue.trim().toLowerCase();
   return normalized === "0" || normalized === "false" || normalized === "off";
+}
+
+function shouldDumpCssVars(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  const rawValue = params.get("dumpCssVars");
+  if (rawValue == null || rawValue.length === 0) return false;
+  const normalized = rawValue.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "on";
 }
 
 interface ContextSelectionState {
@@ -249,18 +312,19 @@ function hasContextContentState(
   state: ContextSelectionState,
   annotations: ContextAnnotationState
 ): boolean {
-  return Boolean(
-    state.selectedNode ||
-      state.selectedEdge ||
-      state.editingNode ||
-      state.editingEdge ||
-      state.editingNetwork ||
-      state.editingImpairment ||
-      annotations.editingTextAnnotation ||
-      annotations.editingShapeAnnotation ||
-      annotations.editingTrafficRateAnnotation ||
-      annotations.editingGroup
-  );
+  const candidates = [
+    state.selectedNode,
+    state.selectedEdge,
+    state.editingNode,
+    state.editingEdge,
+    state.editingNetwork,
+    state.editingImpairment,
+    annotations.editingTextAnnotation,
+    annotations.editingShapeAnnotation,
+    annotations.editingTrafficRateAnnotation,
+    annotations.editingGroup
+  ];
+  return candidates.some((value) => value !== null && value !== undefined);
 }
 
 export interface AppContentProps {
@@ -315,8 +379,9 @@ function useGraphNodeById(nodeId: string | null): TopoNode | null {
   return useGraphStore(
     React.useCallback(
       (graphState) =>
-        nodeId
-          ? ((graphState.nodes.find((node) => node.id === nodeId) as TopoNode | undefined) ?? null)
+        nodeId != null && nodeId.length > 0
+          ? (graphState.nodes.find((node): node is TopoNode => node.id === nodeId && isTopoNode(node)) ??
+            null)
           : null,
       [nodeId]
     ),
@@ -328,7 +393,10 @@ function useGraphEdgeById(edgeId: string | null): TopoEdge | null {
   return useGraphStore(
     React.useCallback(
       (graphState) =>
-        edgeId ? ((graphState.edges.find((edge) => edge.id === edgeId) as TopoEdge | undefined) ?? null) : null,
+        edgeId != null && edgeId.length > 0
+          ? (graphState.edges.find((edge): edge is TopoEdge => edge.id === edgeId && isTopoEdge(edge)) ??
+            null)
+          : null,
       [edgeId]
     ),
     areSelectedEdgesEqual
@@ -377,8 +445,8 @@ const GraphCanvasMain: React.FC<GraphCanvasMainProps> = React.memo(
     endpointLabelOffset
   }) => {
     const { nodes, edges } = useGraphState();
-    const graphNodes = nodes as TopoNode[];
-    const graphEdges = edges as TopoEdge[];
+    const graphNodes = React.useMemo(() => nodes.filter(isTopoNode), [nodes]);
+    const graphEdges = React.useMemo(() => edges.filter(isTopoEdge), [edges]);
     useIconReconciliation();
 
     const { filteredNodes, filteredEdges } = useFilteredGraphElements(
@@ -390,7 +458,8 @@ const GraphCanvasMain: React.FC<GraphCanvasMainProps> = React.memo(
     const renderedEdges = React.useMemo(() => {
       if (filteredEdges.length === 0) return filteredEdges;
       return filteredEdges.map((edge) => {
-        const data = (edge.data ?? {}) as TopologyEdgeData;
+        const data = edge.data;
+        if (data == null) return edge;
         const sourceEndpoint = data.sourceEndpoint;
         const targetEndpoint = data.targetEndpoint;
         const annotation = findEdgeAnnotationInLookup(edgeAnnotationLookup, {
@@ -558,9 +627,9 @@ export const AppContent: React.FC<AppContentProps> = ({
   }, [showDevExplorer]);
 
   React.useEffect(() => {
-    if (!DUMP_CSS_VARS) return;
+    if (!shouldDumpCssVars()) return;
     const htmlStyle = document.querySelector("html")?.getAttribute("style");
-    if (!htmlStyle) return;
+    if (htmlStyle == null || htmlStyle.length === 0) return;
     const vars: Record<string, string> = {};
     for (const part of htmlStyle.split(";")) {
       const trimmed = part.trim();
@@ -824,10 +893,10 @@ export const AppContent: React.FC<AppContentProps> = ({
       const { edges } = useGraphStore.getState();
       const edge = edges.find((item) => item.id === data.id);
       if (!edge) return;
-      const edgeData = edge.data as Record<string, unknown> | undefined;
-      const extraData = (edgeData?.extraData ?? {}) as Record<string, unknown>;
-      const currentSourceNetem = extraData.clabSourceNetem as NetemState | undefined;
-      const currentTargetNetem = extraData.clabTargetNetem as NetemState | undefined;
+      const edgeData = edge.data;
+      const extraData = toRecord(edgeData?.extraData);
+      const currentSourceNetem = toNetemState(extraData.clabSourceNetem);
+      const currentTargetNetem = toNetemState(extraData.clabTargetNetem);
       const hasNetemChanges =
         !areNetemEquivalent(currentSourceNetem, data.sourceNetem) ||
         !areNetemEquivalent(currentTargetNetem, data.targetNetem);
@@ -892,7 +961,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     handleUpdateEdgeData: graphHandlers.handleUpdateEdgeData
   });
 
-  const getGraphNodes = React.useCallback(() => useGraphStore.getState().nodes as TopoNode[], []);
+  const getGraphNodes = React.useCallback(() => useGraphStore.getState().nodes.filter(isTopoNode), []);
 
   const graphCreation = useGraphCreation({
     rfInstance,
@@ -932,10 +1001,8 @@ export const AppContent: React.FC<AppContentProps> = ({
         handleLockedAction();
         return;
       }
-      graphCreation.createNetworkAtPosition(
-        position,
-        networkType as Parameters<typeof graphCreation.createNetworkAtPosition>[1]
-      );
+      if (!isNetworkTypeValue(networkType)) return;
+      graphCreation.createNetworkAtPosition(position, networkType);
     },
     [isInteractionLocked, graphCreation, handleLockedAction]
   );
@@ -1049,7 +1116,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     if (nodeIds.size === 0 && edgeIds.size === 0) return;
 
     const nodesById = new Map(currentNodes.map((node) => [node.id, node]));
-    const edgesById = new Map(currentEdges.map((edge) => [edge.id, edge as TopoEdge]));
+    const edgesById = new Map(currentEdges.filter(isTopoEdge).map((edge) => [edge.id, edge]));
 
     const { graphNodeIds, groupIds, textIds, shapeIds, trafficRateIds } = splitNodeIdsByType(
       nodeIds,
@@ -1068,8 +1135,8 @@ export const AppContent: React.FC<AppContentProps> = ({
     const commands = buildDeleteCommands(graphNodeIds, edgeIds, edgesById);
 
     if (annotationResult.didDelete || annotationResult.membersCleared) {
-      const graphNodesForSave = useGraphStore.getState().nodes;
-      commands.push(buildAnnotationSaveCommand(graphNodesForSave as TopoNode[]));
+      const graphNodesForSave = useGraphStore.getState().nodes.filter(isTopoNode);
+      commands.push(buildAnnotationSaveCommand(graphNodesForSave));
     }
 
     if (commands.length === 0) return;

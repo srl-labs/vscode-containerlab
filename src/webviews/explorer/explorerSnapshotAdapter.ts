@@ -136,7 +136,7 @@ const SECTION_BUILD_TIMEOUT_MS = 4000;
 const TREE_ITEM_COLLAPSIBLE_NONE = 0;
 
 function labelToText(label: string | vscode.TreeItemLabel | undefined): string {
-  if (!label) {
+  if (label === undefined) {
     return "";
   }
   return typeof label === "string" ? label : label.label;
@@ -165,7 +165,7 @@ function tooltipToText(tooltip: vscode.MarkdownString | string | undefined): str
 }
 
 function commandLabel(commandId: string, fallback?: string): string {
-  return fallback || COMMAND_LABELS[commandId] || commandId;
+  return (fallback ?? COMMAND_LABELS[commandId]) || commandId;
 }
 
 function isLabContext(contextValue: string | undefined): boolean {
@@ -332,10 +332,10 @@ function getLabShareInfo(childrenItems: ExplorerTreeItemLike[]): LabShareInfo | 
     }
   }
 
-  if (sshxUrl) {
+  if (sshxUrl !== undefined && sshxUrl.length > 0) {
     return { kind: "sshx", url: sshxUrl };
   }
-  if (gottyUrl) {
+  if (gottyUrl !== undefined && gottyUrl.length > 0) {
     return { kind: "gotty", url: gottyUrl };
   }
   return undefined;
@@ -475,9 +475,17 @@ function appendLinkActions(
   item: ExplorerTreeItemLike
 ): void {
   const linkArg = getLinkArgument(item);
-  if (item.contextValue === "containerlabSSHXLink" && linkArg) {
+  if (
+    item.contextValue === "containerlabSSHXLink" &&
+    linkArg !== undefined &&
+    linkArg.length > 0
+  ) {
     pushAction(actions, seen, registry, "containerlab.lab.sshx.copyLink", [linkArg]);
-  } else if (item.contextValue === "containerlabGottyLink" && linkArg) {
+  } else if (
+    item.contextValue === "containerlabGottyLink" &&
+    linkArg !== undefined &&
+    linkArg.length > 0
+  ) {
     pushAction(actions, seen, registry, "containerlab.lab.gotty.copyLink", [linkArg]);
   }
 }
@@ -489,7 +497,7 @@ function appendHelpFeedbackActions(
   item: ExplorerTreeItemLike
 ): void {
   const linkArg = getLinkArgument(item);
-  if (!linkArg) {
+  if (linkArg === undefined || linkArg.length === 0) {
     return;
   }
   pushAction(actions, seen, registry, "containerlab.openLink", [linkArg], "Open Link");
@@ -625,7 +633,7 @@ async function buildNode(
       : getStatusIndicator(item);
 
   return {
-    id: item.id || pathId,
+    id: item.id ?? pathId,
     label,
     description,
     tooltip,

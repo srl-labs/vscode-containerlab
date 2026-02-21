@@ -72,15 +72,38 @@ function resolveTemplate(
 }
 
 function resolveBaseName(template: CustomNodeTemplate): string | null {
-  const baseName = (template.baseName || template.name).trim();
+  const baseName = (template.baseName ?? template.name).trim();
   return baseName ? baseName : null;
+}
+
+function toNonEmptyString(value: string | undefined): string | undefined {
+  if (value === undefined || value.length === 0) return undefined;
+  return value;
+}
+
+function resolveTemplateRole(template: CustomNodeTemplate | undefined): string {
+  return toNonEmptyString(template?.icon) ?? "pe";
+}
+
+function applyOptionalNodeStyle(nodeData: NodeData, template: CustomNodeTemplate | undefined): void {
+  const iconColor = toNonEmptyString(template?.iconColor);
+  if (iconColor !== undefined) {
+    nodeData.iconColor = iconColor;
+  }
+  if (template?.iconCornerRadius !== undefined) {
+    nodeData.iconCornerRadius = template.iconCornerRadius;
+  }
+}
+
+function getResolvedKind(template: CustomNodeTemplate): string {
+  return template.kind.length > 0 ? template.kind : "nokia_srlinux";
 }
 
 /**
  * Determine the type for a node
  */
 function determineType(kind: string, template?: CustomNodeTemplate): string | undefined {
-  if (template?.type) {
+  if (template?.type !== undefined && template.type.length > 0) {
     return template.type;
   }
 
@@ -91,7 +114,7 @@ function determineType(kind: string, template?: CustomNodeTemplate): string | un
 
   // If this template represents a custom node (has a name) but no explicit type,
   // avoid assigning a default type.
-  if (template?.name) {
+  if (template?.name !== undefined && template.name.length > 0) {
     return undefined;
   }
 
@@ -151,23 +174,21 @@ function createNodeData(
   template: CustomNodeTemplate | undefined,
   kind: string
 ): NodeData {
+  const interfacePattern = toNonEmptyString(template?.interfacePattern);
+
   const extraData: NodeExtraData = {
     kind,
     longname: "",
-    image: template?.image || "",
+    image: template?.image ?? "",
     mgmtIpv4Address: "",
     fromCustomTemplate: Boolean(template?.name),
+    ...(interfacePattern !== undefined ? { interfacePattern } : {}),
     ...extractExtraTemplate(template)
   };
 
   const type = determineType(kind, template);
-  if (type) {
+  if (type !== undefined && type.length > 0) {
     extraData.type = type;
-  }
-
-  // Include interfacePattern in extraData for edge creation
-  if (template?.interfacePattern) {
-    extraData.interfacePattern = template.interfacePattern;
   }
 
   const nodeData: NodeData = {
@@ -176,20 +197,14 @@ function createNodeData(
     weight: "30",
     name: nodeName,
     parent: "",
-    topoViewerRole: template?.icon || "pe",
+    topoViewerRole: resolveTemplateRole(template),
     sourceEndpoint: "",
     targetEndpoint: "",
     containerDockerExtraAttribute: { state: "", status: "" },
     extraData
   };
 
-  // Add icon styling properties if provided
-  if (template?.iconColor) {
-    (nodeData as Record<string, unknown>).iconColor = template.iconColor;
-  }
-  if (template?.iconCornerRadius !== undefined) {
-    (nodeData as Record<string, unknown>).iconCornerRadius = template.iconCornerRadius;
-  }
+  applyOptionalNodeStyle(nodeData, template);
 
   return nodeData;
 }
@@ -200,7 +215,7 @@ function createNodeData(
 function nodeDataToTopoNode(data: NodeData, position: { x: number; y: number }): TopoNode {
   const nodeData: TopologyNodeData = {
     label: data.name,
-    role: data.topoViewerRole || "pe",
+    role: data.topoViewerRole.length > 0 ? data.topoViewerRole : "pe",
     kind: data.extraData.kind,
     image: data.extraData.image,
     iconColor: data.iconColor,
@@ -262,14 +277,14 @@ export function useNodeCreation(
       }
 
       const baseName = resolveBaseName(resolvedTemplate);
-      if (!baseName) {
+      if (baseName === null) {
         log.warn(`[NodeCreation] Custom node template '${resolvedTemplate.name}' has no base name`);
         return;
       }
 
       const nodeId = generateNodeName(baseName, getUsedIds());
       const nodeName = nodeId;
-      const kind = resolvedTemplate.kind || "nokia_srlinux";
+      const kind = getResolvedKind(resolvedTemplate);
       const nodeData = createNodeData(nodeId, nodeName, resolvedTemplate, kind);
 
       // Create TopoNode for state update

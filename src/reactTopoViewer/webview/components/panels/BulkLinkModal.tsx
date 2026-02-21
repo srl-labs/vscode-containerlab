@@ -32,6 +32,24 @@ interface BulkLinkModalProps {
 
 const FLEX_START = "flex-start";
 
+function isTopoNode(value: unknown): value is TopoNode {
+  if (typeof value !== "object" || value === null) return false;
+  const id: unknown = Reflect.get(value, "id");
+  const position: unknown = Reflect.get(value, "position");
+  if (typeof id !== "string" || typeof position !== "object" || position === null) return false;
+  const x: unknown = Reflect.get(position, "x");
+  const y: unknown = Reflect.get(position, "y");
+  return typeof x === "number" && typeof y === "number";
+}
+
+function isTopoEdge(value: unknown): value is TopoEdge {
+  if (typeof value !== "object" || value === null) return false;
+  const id: unknown = Reflect.get(value, "id");
+  const source: unknown = Reflect.get(value, "source");
+  const target: unknown = Reflect.get(value, "target");
+  return typeof id === "string" && typeof source === "string" && typeof target === "string";
+}
+
 type ExampleDefinition = {
   title: string;
   source: React.ReactNode;
@@ -109,8 +127,14 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
   onClose
 }) => {
   const { addEdge } = useGraphActions();
-  const getCurrentNodes = React.useCallback(() => useGraphStore.getState().nodes as TopoNode[], []);
-  const getCurrentEdges = React.useCallback(() => useGraphStore.getState().edges as TopoEdge[], []);
+  const getCurrentNodes = React.useCallback(
+    () => useGraphStore.getState().nodes.filter((node) => isTopoNode(node)),
+    []
+  );
+  const getCurrentEdges = React.useCallback(
+    () => useGraphStore.getState().edges.filter((edge) => isTopoEdge(edge)),
+    []
+  );
 
   const [sourcePattern, setSourcePattern] = React.useState("");
   const [targetPattern, setTargetPattern] = React.useState("");
@@ -210,7 +234,7 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
               />
             </Box>
             <ExamplesSection />
-            {status && (
+            {status !== null && status.length > 0 && (
               <Alert severity="info" variant="outlined">
                 {status}
               </Alert>

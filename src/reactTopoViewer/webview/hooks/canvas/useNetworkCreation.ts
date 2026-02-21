@@ -73,8 +73,9 @@ function extractCounterFromMatch(match: RegExpExecArray | null): number | null {
   if (!match) return null;
   // Find the first captured group that has a value
   for (let i = 1; i < match.length; i++) {
-    if (match[i] != null) {
-      return parseInt(match[i], 10);
+    const value = Number.parseInt(match[i], 10);
+    if (!Number.isNaN(value)) {
+      return value;
     }
   }
   return null;
@@ -133,7 +134,7 @@ function initializeNetworkCounters(networkNodes: Array<{ id: string; kind: Netwo
       processInterfaceNetwork(nodeId, kind);
     } else if (kind === "dummy" || kind === "bridge" || kind === "ovs-bridge") {
       processTrailingNumberNetwork(nodeId, kind);
-    } else if (kind === "vxlan" || kind === "vxlan-stitch") {
+    } else {
       processVxlanNetwork(nodeId, kind);
     }
   });

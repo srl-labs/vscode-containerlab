@@ -18,9 +18,7 @@ let outputChannel: vscode.LogOutputChannel | undefined;
  * Get or create the log output channel for React TopoViewer.
  */
 function getLogChannel(): vscode.LogOutputChannel {
-  if (!outputChannel) {
-    outputChannel = vscode.window.createOutputChannel("TopoViewer React", { log: true });
-  }
+  outputChannel ??= vscode.window.createOutputChannel("TopoViewer React", { log: true });
   return outputChannel;
 }
 
@@ -44,6 +42,18 @@ function writeToChannel(level: LogLevel, text: string): void {
   }
 }
 
+function toLogLevel(level: string): LogLevel {
+  switch (level) {
+    case "debug":
+    case "warn":
+    case "error":
+    case "info":
+      return level;
+    default:
+      return "info";
+  }
+}
+
 /**
  * Core logging function that writes to VS Code output channel.
  */
@@ -64,6 +74,6 @@ export const log = createLogger(logMessage);
  * Used by MessageRouter to handle log messages from the webview.
  */
 export function logWithLocation(level: string, message: string, fileLine?: string): void {
-  const text = fileLine ? `${fileLine} - ${message}` : message;
-  writeToChannel(level as LogLevel, text);
+  const text = fileLine === undefined || fileLine.length === 0 ? message : `${fileLine} - ${message}`;
+  writeToChannel(toLogLevel(level), text);
 }

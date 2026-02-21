@@ -19,12 +19,13 @@ export function useNetworkEditorForm(
   readOnly = false
 ): UseNetworkEditorFormReturn {
   const [formData, setFormData] = useState<NetworkEditorData | null>(null);
-  const [initialData, setInitialData] = useState<string | null>(null);
+  const [initialData, setInitialData] = useState<NetworkEditorData | null>(null);
 
   useEffect(() => {
     if (nodeData) {
-      setFormData({ ...nodeData });
-      setInitialData(JSON.stringify(nodeData));
+      const nextData = { ...nodeData };
+      setFormData(nextData);
+      setInitialData(nextData);
     }
   }, [nodeData]);
 
@@ -37,14 +38,17 @@ export function useNetworkEditorForm(
   );
 
   const resetInitialData = useCallback(() => {
-    if (formData) setInitialData(JSON.stringify(formData));
+    if (formData) setInitialData({ ...formData });
   }, [formData]);
 
   const discardChanges = useCallback(() => {
-    if (initialData) setFormData(JSON.parse(initialData) as NetworkEditorData);
+    if (initialData !== null) setFormData({ ...initialData });
   }, [initialData]);
 
-  const hasChanges = formData && initialData ? JSON.stringify(formData) !== initialData : false;
+  const hasChanges =
+    formData !== null && initialData !== null
+      ? JSON.stringify(formData) !== JSON.stringify(initialData)
+      : false;
 
   return { formData, handleChange, hasChanges, resetInitialData, discardChanges };
 }

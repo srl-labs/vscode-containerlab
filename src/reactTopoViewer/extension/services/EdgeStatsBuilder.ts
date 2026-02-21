@@ -75,10 +75,10 @@ export function buildNodeRuntimeUpdates(
       updates.push({
         containerLongName: container.name,
         containerShortName: container.name_short,
-        state: container.state ?? "",
+        state: container.state,
         status: container.status,
-        mgmtIpv4Address: container.IPv4Address ?? "",
-        mgmtIpv6Address: container.IPv6Address ?? ""
+        mgmtIpv4Address: container.IPv4Address,
+        mgmtIpv6Address: container.IPv6Address
       });
     }
   }
@@ -94,8 +94,8 @@ function buildSingleEdgeUpdate(
   labs: Record<string, ClabLabTreeNode>,
   context: EdgeStatsBuilderContext
 ): EdgeStatsUpdate | null {
-  const edgeData = edge.data as TopologyEdgeData | undefined;
-  const extraData = (edgeData?.extraData ?? {}) as Record<string, unknown>;
+  const edgeData = edge.data;
+  const extraData = (edgeData?.extraData ?? {});
 
   // Look up fresh interface data
   const { sourceIface, targetIface } = lookupEdgeInterfaces(
@@ -203,9 +203,9 @@ function applyInterfaceToExtraData(
   iface: NonNullable<ReturnType<typeof findInterfaceNode>>
 ): void {
   extraData[`clab${prefix}InterfaceState`] = iface.state || "";
-  extraData[`clab${prefix}MacAddress`] = iface.mac ?? "";
-  extraData[`clab${prefix}Mtu`] = iface.mtu ?? "";
-  extraData[`clab${prefix}Type`] = iface.type ?? "";
+  extraData[`clab${prefix}MacAddress`] = iface.mac;
+  extraData[`clab${prefix}Mtu`] = iface.mtu;
+  extraData[`clab${prefix}Type`] = iface.type;
   extraData[`clab${prefix}Netem`] = iface.netemState ?? undefined;
   const stats = extractEdgeInterfaceStats(iface);
   if (stats) {
@@ -224,8 +224,8 @@ function computeEdgeClassForUpdate(
   targetState?: string
 ): string | undefined {
   if (!topology) return undefined;
-  const sourceNodeId = (extraData.yamlSourceNodeId as string) || edge.source;
-  const targetNodeId = (extraData.yamlTargetNodeId as string) || edge.target;
+  const sourceNodeId = normalizeNodeIdentifier(extraData.yamlSourceNodeId, edge.source);
+  const targetNodeId = normalizeNodeIdentifier(extraData.yamlTargetNodeId, edge.target);
   return computeEdgeClassFromStates(topology, sourceNodeId, targetNodeId, sourceState, targetState);
 }
 
@@ -233,10 +233,10 @@ function computeEdgeClassForUpdate(
  * Normalize interface name, using fallback if primary is empty.
  */
 function normalizeInterfaceName(value: unknown, fallback: unknown): string {
-  if (typeof value === "string" && value.trim()) {
+  if (typeof value === "string" && value.trim().length > 0) {
     return value;
   }
-  if (typeof fallback === "string" && fallback.trim()) {
+  if (typeof fallback === "string" && fallback.trim().length > 0) {
     return fallback;
   }
   return "";
@@ -244,7 +244,7 @@ function normalizeInterfaceName(value: unknown, fallback: unknown): string {
 
 function normalizeNodeIdentifier(...values: unknown[]): string {
   for (const value of values) {
-    if (typeof value === "string" && value.trim()) {
+    if (typeof value === "string" && value.trim().length > 0) {
       return value;
     }
   }

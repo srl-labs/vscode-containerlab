@@ -17,166 +17,139 @@ import type { CustomNodeTemplate } from "../../../shared/types/editors";
 import type { CustomIconInfo } from "../../../shared/types/icons";
 import {
   subscribeToWebviewMessages,
-  type TypedMessageEvent
+  type TypedMessageEvent,
+  type WebviewMessageBase
 } from "../../messaging/webviewMessageBus";
 import { useCanvasStore } from "../../stores/canvasStore";
 import { useTopoViewerStore, type DeploymentState } from "../../stores/topoViewerStore";
 
 // ============================================================================
-// Message Types
+// Message Helpers
 // ============================================================================
 
-interface TopoModeChangedMessage {
-  type: "topo-mode-changed";
-  data?: {
-    mode?: string;
-    deploymentState?: DeploymentState;
-  };
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
-interface PanelActionMessage {
-  type: "panel-action";
-  action?: string;
-  nodeId?: string;
-  edgeId?: string;
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
 }
 
-interface CustomNodesUpdatedMessage {
-  type: "custom-nodes-updated";
-  customNodes?: CustomNodeTemplate[];
-  defaultNode?: string;
+function getMessageData(message: WebviewMessageBase): Record<string, unknown> | undefined {
+  return isRecord(message.data) ? message.data : undefined;
 }
 
-interface CustomNodeErrorMessage {
-  type: "custom-node-error";
-  error?: string;
+function isDeploymentState(value: unknown): value is DeploymentState {
+  return value === "deployed" || value === "undeployed" || value === "unknown";
 }
 
-interface IconListResponseMessage {
-  type: "icon-list-response";
-  icons?: CustomIconInfo[];
+function isCustomNodeTemplate(value: unknown): value is CustomNodeTemplate {
+  return isRecord(value) && isNonEmptyString(value.name) && isNonEmptyString(value.kind);
 }
 
-interface LabLifecycleStatusMessage {
-  type: "lab-lifecycle-status";
-  data?: {
-    commandType?: "deploy" | "destroy" | "redeploy";
-    status?: "success" | "error";
-    errorMessage?: string;
-  };
+function isCustomIconInfo(value: unknown): value is CustomIconInfo {
+  return (
+    isRecord(value) &&
+    isNonEmptyString(value.name) &&
+    (value.source === "workspace" || value.source === "global") &&
+    isNonEmptyString(value.dataUri) &&
+    (value.format === "svg" || value.format === "png")
+  );
 }
-
-interface LabLifecycleLogMessage {
-  type: "lab-lifecycle-log";
-  data?: {
-    commandType?: "deploy" | "destroy" | "redeploy";
-    line?: string;
-    stream?: "stdout" | "stderr";
-  };
-}
-
-interface FitViewportMessage {
-  type: "fit-viewport";
-}
-
-type ExtensionMessage =
-  | TopoModeChangedMessage
-  | PanelActionMessage
-  | CustomNodesUpdatedMessage
-  | CustomNodeErrorMessage
-  | IconListResponseMessage
-  | LabLifecycleLogMessage
-  | LabLifecycleStatusMessage
-  | FitViewportMessage
-  | { type: string; data?: Record<string, unknown> };
 
 // ============================================================================
 // Message Handlers
 // ============================================================================
 
-function handleTopoModeChanged(msg: TopoModeChangedMessage): void {
+function handleTopoModeChanged(msg: WebviewMessageBase): void {
   const { setMode, setDeploymentState } = useTopoViewerStore.getState();
+  const data = getMessageData(msg);
 
-  if (msg.data?.mode) {
-    const modeValue = msg.data.mode;
+  if (isNonEmptyString(data?.mode)) {
+    const modeValue = data.mode;
     const normalizedMode = modeValue === "viewer" || modeValue === "view" ? "view" : "edit";
     setMode(normalizedMode);
   }
 
-  if (msg.data?.deploymentState) {
-    setDeploymentState(msg.data.deploymentState);
+  if (isDeploymentState(data?.deploymentState)) {
+    setDeploymentState(data.deploymentState);
   }
 }
 
-function handlePanelAction(msg: PanelActionMessage): void {
+function handlePanelAction(msg: WebviewMessageBase): void {
   const { selectNode, selectEdge, editNode, editEdge, isProcessing } =
     useTopoViewerStore.getState();
   if (isProcessing) return;
-  const action = msg.action;
-  const nodeId = msg.nodeId;
-  const edgeId = msg.edgeId;
+  const action = isNonEmptyString(msg.action) ? msg.action : undefined;
+  const nodeId = isNonEmptyString(msg.nodeId) ? msg.nodeId : undefined;
+  const edgeId = isNonEmptyString(msg.edgeId) ? msg.edgeId : undefined;
 
-  if (!action) return;
+  if (action === undefined) return;
 
-  if (action === "edit-node" && nodeId) {
-    editNode(nodeId);
-    return;
-  }
-  if (action === "edit-link" && edgeId) {
-    editEdge(edgeId);
-    return;
-  }
-  if (action === "node-info" && nodeId) {
-    selectNode(nodeId);
-    return;
-  }
-  if (action === "link-info" && edgeId) {
-    selectEdge(edgeId);
+  switch (action) {
+    case "edit-node":
+      if (nodeId !== undefined) editNode(nodeId);
+      return;
+    case "edit-link":
+      if (edgeId !== undefined) editEdge(edgeId);
+      return;
+    case "node-info":
+      if (nodeId !== undefined) selectNode(nodeId);
+      return;
+    case "link-info":
+      if (edgeId !== undefined) selectEdge(edgeId);
+      return;
   }
 }
 
-function handleCustomNodesUpdated(msg: CustomNodesUpdatedMessage): void {
+function handleCustomNodesUpdated(msg: WebviewMessageBase): void {
   const { setCustomNodes } = useTopoViewerStore.getState();
-  if (msg.customNodes !== undefined) {
-    setCustomNodes(msg.customNodes, msg.defaultNode || "");
-  }
+  if (!Array.isArray(msg.customNodes)) return;
+  const customNodes = msg.customNodes.filter(isCustomNodeTemplate);
+  const defaultNode = isNonEmptyString(msg.defaultNode) ? msg.defaultNode : "";
+  setCustomNodes(customNodes, defaultNode);
 }
 
-function handleCustomNodeError(msg: CustomNodeErrorMessage): void {
+function handleCustomNodeError(msg: WebviewMessageBase): void {
   const { setCustomNodeError } = useTopoViewerStore.getState();
-  if (msg.error) {
+  if (isNonEmptyString(msg.error)) {
     setCustomNodeError(msg.error);
   }
 }
 
-function handleIconListResponse(msg: IconListResponseMessage): void {
+function handleIconListResponse(msg: WebviewMessageBase): void {
   const { setCustomIcons } = useTopoViewerStore.getState();
-  if (msg.icons !== undefined) {
-    setCustomIcons(msg.icons);
-  }
+  if (!Array.isArray(msg.icons)) return;
+  setCustomIcons(msg.icons.filter(isCustomIconInfo));
 }
 
-function handleLabLifecycleLog(msg: LabLifecycleLogMessage): void {
+function handleLabLifecycleLog(msg: WebviewMessageBase): void {
   const { appendLifecycleLog, isProcessing } = useTopoViewerStore.getState();
   if (!isProcessing) {
     return;
   }
-  const line = msg.data?.line;
-  if (!line) {
+  const data = getMessageData(msg);
+  const line = data?.line;
+  if (!isNonEmptyString(line)) {
     return;
   }
-  appendLifecycleLog(line, msg.data?.stream ?? "stdout");
+  const stream = data?.stream === "stderr" ? "stderr" : "stdout";
+  appendLifecycleLog(line, stream);
 }
 
-function handleLabLifecycleStatus(msg: LabLifecycleStatusMessage): void {
+function handleLabLifecycleStatus(msg: WebviewMessageBase): void {
   const { appendLifecycleLog, setLifecycleStatus, setProcessing } = useTopoViewerStore.getState();
-  if (msg.data?.status === "error" && msg.data.errorMessage) {
-    appendLifecycleLog(`[error] ${msg.data.errorMessage}`, "stderr");
-    setLifecycleStatus("error", msg.data.errorMessage);
-  } else if (msg.data?.status === "error") {
+  const data = getMessageData(msg);
+  const status = data?.status;
+  const errorMessage = data?.errorMessage;
+
+  if (status === "error" && isNonEmptyString(errorMessage)) {
+    appendLifecycleLog(`[error] ${errorMessage}`, "stderr");
+    setLifecycleStatus("error", errorMessage);
+  } else if (status === "error") {
     setLifecycleStatus("error", "Lifecycle command failed.");
   }
-  if (msg.data?.status === "success") {
+  if (status === "success") {
     appendLifecycleLog("Command completed successfully.", "stdout");
     setLifecycleStatus("success");
   }
@@ -187,6 +160,19 @@ function handleFitViewport(): void {
   const { requestFitView } = useCanvasStore.getState();
   requestFitView();
 }
+
+const MESSAGE_HANDLERS: Partial<Record<string, (message: WebviewMessageBase) => void>> = {
+  "topo-mode-changed": handleTopoModeChanged,
+  "panel-action": handlePanelAction,
+  "custom-nodes-updated": handleCustomNodesUpdated,
+  "custom-node-error": handleCustomNodeError,
+  "icon-list-response": handleIconListResponse,
+  "lab-lifecycle-log": handleLabLifecycleLog,
+  "lab-lifecycle-status": handleLabLifecycleStatus,
+  "fit-viewport": () => {
+    handleFitViewport();
+  }
+};
 
 // ============================================================================
 // Hook
@@ -199,34 +185,11 @@ function handleFitViewport(): void {
 export function useTopoViewerMessageSubscription(): void {
   useEffect(() => {
     const handleMessage = (event: TypedMessageEvent) => {
-      const message = event.data as ExtensionMessage | undefined;
-      if (!message?.type) return;
-
-      switch (message.type) {
-        case "topo-mode-changed":
-          handleTopoModeChanged(message as TopoModeChangedMessage);
-          break;
-        case "panel-action":
-          handlePanelAction(message as PanelActionMessage);
-          break;
-        case "custom-nodes-updated":
-          handleCustomNodesUpdated(message as CustomNodesUpdatedMessage);
-          break;
-        case "custom-node-error":
-          handleCustomNodeError(message as CustomNodeErrorMessage);
-          break;
-        case "icon-list-response":
-          handleIconListResponse(message as IconListResponseMessage);
-          break;
-        case "lab-lifecycle-log":
-          handleLabLifecycleLog(message as LabLifecycleLogMessage);
-          break;
-        case "lab-lifecycle-status":
-          handleLabLifecycleStatus(message as LabLifecycleStatusMessage);
-          break;
-        case "fit-viewport":
-          handleFitViewport();
-          break;
+      const message = event.data;
+      if (message === undefined || !isNonEmptyString(message.type)) return;
+      const handler = MESSAGE_HANDLERS[message.type];
+      if (handler !== undefined) {
+        handler(message);
       }
     };
 

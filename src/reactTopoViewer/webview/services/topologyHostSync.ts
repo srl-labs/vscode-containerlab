@@ -2,7 +2,7 @@
  * TopologyHost snapshot application helpers.
  */
 
-import type { Node, Edge } from "@xyflow/react";
+import type { Node } from "@xyflow/react";
 
 import type { TopologySnapshot } from "../../shared/types/messages";
 import type {
@@ -14,7 +14,7 @@ import type {
   NetworkNodeAnnotation,
   TopologyAnnotations
 } from "../../shared/types/topology";
-import type { TopoNode, TopoEdge } from "../../shared/types/graph";
+import type { TopoNode } from "../../shared/types/graph";
 import {
   annotationsToNodes,
   applyGroupMembershipToNodes,
@@ -386,12 +386,12 @@ function buildMergedNodes(
   freeShapeAnnotations: FreeShapeAnnotation[],
   trafficRateAnnotations: TrafficRateAnnotation[]
 ): Node[] {
-  let topoWithMembership = applyGroupMembershipToNodes(
+  const topoWithMembership = applyGroupMembershipToNodes(
     newNodes,
     nodeAnnotations,
     groupStyleAnnotations
   );
-  topoWithMembership = applyGeoCoordinatesToNodes(
+  const topoWithGeoCoordinates = applyGeoCoordinatesToNodes(
     topoWithMembership,
     nodeAnnotations,
     networkNodeAnnotations
@@ -402,7 +402,7 @@ function buildMergedNodes(
     groupStyleAnnotations,
     trafficRateAnnotations
   );
-  const mergedNodes = [...(topoWithMembership as Node[]), ...(annotationNodes as Node[])];
+  const mergedNodes = [...topoWithGeoCoordinates, ...annotationNodes];
   return Array.from(new Map(mergedNodes.map((n) => [n.id, n])).values());
 }
 
@@ -440,7 +440,7 @@ function applyGeoCoordinatesToNodes(
   nodes: TopoNode[],
   nodeAnnotations: NodeAnnotation[] | undefined,
   networkNodeAnnotations: NetworkNodeAnnotation[] | undefined
-): TopoNode[] {
+): Node[] {
   if (
     (!nodeAnnotations || nodeAnnotations.length === 0) &&
     (!networkNodeAnnotations || networkNodeAnnotations.length === 0)
@@ -465,11 +465,11 @@ function applyGeoCoordinatesToNodes(
   return nodes.map((node) => {
     const geo = geoMap.get(node.id);
     if (!geo) return node;
-    const data = (node.data ?? {}) as Record<string, unknown>;
+    const data = node.data;
     return {
       ...node,
       data: { ...data, geoCoordinates: geo }
-    } as TopoNode;
+    };
   });
 }
 
@@ -484,13 +484,11 @@ export function applySnapshotToStores(
   snapshot: TopologySnapshot,
   options: ApplySnapshotOptions = {}
 ): void {
-  if (!snapshot) return;
-
   setHostRevision(snapshot.revision);
 
   const annotations = normalizeAnnotations(snapshot.annotations);
-  const edges = (snapshot.edges ?? []) as TopoEdge[];
-  const nodes = (snapshot.nodes ?? []) as TopoNode[];
+  const edges = snapshot.edges;
+  const nodes = snapshot.nodes;
 
   let mergedNodes = buildMergedNodes(
     nodes,
@@ -505,7 +503,7 @@ export function applySnapshotToStores(
   // Apply force layout when no preset positions exist and geo coordinates are not driving layout.
   // This handles the case when annotation.json doesn't exist or positions were cleared (e.g. undo).
   if (!hasPresetPositions(mergedNodes) && !hasGeoCoordinates(annotations)) {
-    const layoutNodes = applyForceLayout(mergedNodes, edges as unknown as Edge[]);
+    const layoutNodes = applyForceLayout(mergedNodes, edges);
     const { nodes: snappedNodes, positions } = snapLayoutPositions(layoutNodes);
     mergedNodes = snappedNodes;
     void persistLayoutPositions(positions);
@@ -514,7 +512,7 @@ export function applySnapshotToStores(
   const cleanedEdgeAnnotations = pruneEdgeAnnotations(annotations.edgeAnnotations, edges);
 
   const graphStore = useGraphStore.getState();
-  graphStore.setGraph(mergedNodes, edges as unknown as Edge[]);
+  graphStore.setGraph(mergedNodes, edges);
 
   const offset = parseEndpointLabelOffset(annotations.viewerSettings.endpointLabelOffset);
   const { gridColor, gridBgColor } = annotations.viewerSettings;
@@ -536,7 +534,7 @@ export function applySnapshotToStores(
     canRedo: snapshot.canRedo
   });
 
-  if (options.isInitialLoad) {
+  if (options.isInitialLoad === true) {
     useCanvasStore.getState().requestFitView();
   }
 }

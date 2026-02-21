@@ -17,7 +17,7 @@ interface TabNavigationProps {
 }
 
 export const TabNavigation: React.FC<TabNavigationProps> = ({ tabs, activeTab, onTabChange }) => {
-  const visibleTabs = tabs.filter((t) => !t.hidden);
+  const visibleTabs = tabs.filter((t) => t.hidden !== true);
 
   const handleChange = (_event: React.SyntheticEvent, newValue: string) => {
     onTabChange(newValue);

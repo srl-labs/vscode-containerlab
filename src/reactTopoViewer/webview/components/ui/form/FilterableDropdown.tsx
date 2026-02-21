@@ -38,7 +38,7 @@ export const FilterableDropdown: React.FC<FilterableDropdownProps> = ({
   helperText,
   required
 }) => {
-  const selectedOption = options.find((opt) => opt.value === value) || null;
+  const selectedOption = options.find((opt) => opt.value === value) ?? null;
 
   return (
     <Autocomplete
@@ -46,7 +46,7 @@ export const FilterableDropdown: React.FC<FilterableDropdownProps> = ({
       options={options}
       value={selectedOption}
       onChange={(_event, newValue) => {
-        if (newValue) {
+        if (newValue !== null) {
           onChange(typeof newValue === "string" ? newValue : newValue.value);
         } else {
           onChange("");

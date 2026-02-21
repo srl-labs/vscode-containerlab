@@ -21,8 +21,12 @@ export type EdgeOffsetUpdateInput = EdgeIdentity & {
   endpointLabelOffset?: number;
 };
 
+function hasNonEmptyString(value: string | undefined): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
 function buildEdgeKey(identity: EdgeIdentity): string | null {
-  if (!identity.source || !identity.target) return null;
+  if (!hasNonEmptyString(identity.source) || !hasNonEmptyString(identity.target)) return null;
   const sourceEndpoint = identity.sourceEndpoint ?? "";
   const targetEndpoint = identity.targetEndpoint ?? "";
   return `${identity.source}|${sourceEndpoint}|${identity.target}|${targetEndpoint}`;
@@ -46,11 +50,11 @@ export function buildEdgeAnnotationLookup(
   const byKey = new Map<string, EdgeAnnotation>();
 
   (annotations ?? []).forEach((annotation) => {
-    if (annotation.id) {
+    if (hasNonEmptyString(annotation.id)) {
       byId.set(annotation.id, annotation);
     }
     const key = buildEdgeKey(annotation);
-    if (key) {
+    if (key !== null) {
       byKey.set(key, annotation);
     }
   });
@@ -70,15 +74,15 @@ export function pruneEdgeAnnotations(
   edges.forEach((edge) => {
     const identity = getEdgeIdentityFromEdge(edge);
     if (!identity) return;
-    if (identity.id) edgeIds.add(identity.id);
+    if (hasNonEmptyString(identity.id)) edgeIds.add(identity.id);
     const key = buildEdgeKey(identity);
-    if (key) edgeKeys.add(key);
+    if (key !== null) edgeKeys.add(key);
   });
 
   return annotations.filter((annotation) => {
     const key = buildEdgeKey(annotation);
-    if (key) return edgeKeys.has(key);
-    if (!annotation.id) return false;
+    if (key !== null) return edgeKeys.has(key);
+    if (!hasNonEmptyString(annotation.id)) return false;
     return edgeIds.has(annotation.id);
   });
 }
@@ -89,18 +93,18 @@ export function findEdgeAnnotation(
 ): EdgeAnnotation | undefined {
   if (!annotations || annotations.length === 0) return undefined;
   const key = buildEdgeKey(identity);
-  if (key) {
+  if (key !== null) {
     const byKey = annotations.find((annotation) => buildEdgeKey(annotation) === key);
     if (byKey) return byKey;
-    if (identity.id) {
+    if (hasNonEmptyString(identity.id)) {
       const byId = annotations.find((annotation) => annotation.id === identity.id);
       if (!byId) return undefined;
       const byIdKey = buildEdgeKey(byId);
-      return byIdKey && byIdKey === key ? byId : undefined;
+      return byIdKey !== null && byIdKey === key ? byId : undefined;
     }
     return undefined;
   }
-  if (!identity.id) return undefined;
+  if (!hasNonEmptyString(identity.id)) return undefined;
   return annotations.find((annotation) => annotation.id === identity.id);
 }
 
@@ -109,18 +113,18 @@ export function findEdgeAnnotationInLookup(
   identity: EdgeIdentity
 ): EdgeAnnotation | undefined {
   const key = buildEdgeKey(identity);
-  if (key) {
+  if (key !== null) {
     const byKey = lookup.byKey.get(key);
     if (byKey) return byKey;
-    if (identity.id) {
+    if (hasNonEmptyString(identity.id)) {
       const byId = lookup.byId.get(identity.id);
       if (!byId) return undefined;
       const byIdKey = buildEdgeKey(byId);
-      return byIdKey && byIdKey === key ? byId : undefined;
+      return byIdKey !== null && byIdKey === key ? byId : undefined;
     }
     return undefined;
   }
-  if (!identity.id) return undefined;
+  if (!hasNonEmptyString(identity.id)) return undefined;
   return lookup.byId.get(identity.id);
 }
 
@@ -130,22 +134,18 @@ export function upsertEdgeAnnotation(
 ): EdgeAnnotation[] {
   const nextId = next.id;
   const nextKey = buildEdgeKey(next);
-  let updated = false;
-
-  const updatedList = annotations.map((existing) => {
+  const matchIndex = annotations.findIndex((existing) => {
     const existingKey = buildEdgeKey(existing);
     const keyMatches = nextKey !== null && existingKey === nextKey;
     const idMatches = nextId !== undefined && existing.id === nextId;
     const shouldUpdateById = idMatches && (nextKey === null || existingKey === nextKey);
-
-    if (keyMatches || shouldUpdateById) {
-      updated = true;
-      return { ...existing, ...next };
-    }
-    return existing;
+    return keyMatches || shouldUpdateById;
   });
-
-  if (updated) return updatedList;
+  if (matchIndex >= 0) {
+    return annotations.map((existing, index) =>
+      index === matchIndex ? { ...existing, ...next } : existing
+    );
+  }
   return [...annotations, next];
 }
 

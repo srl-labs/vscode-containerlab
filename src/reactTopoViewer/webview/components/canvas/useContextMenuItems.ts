@@ -123,11 +123,11 @@ function buildPaneItems(params: ResolveContextMenuItemsParams): ContextMenuItem[
 }
 
 function resolveContextMenuItems(params: ResolveContextMenuItemsParams): ContextMenuItem[] {
-  if (params.type === "node" && params.targetId) {
+  if (params.type === "node" && params.targetId !== null && params.targetId.length > 0) {
     return buildNodeItems({ ...params, targetId: params.targetId });
   }
 
-  if (params.type === "edge" && params.targetId) {
+  if (params.type === "edge" && params.targetId !== null && params.targetId.length > 0) {
     return buildEdgeItems({ ...params, targetId: params.targetId });
   }
 
@@ -176,8 +176,8 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
       type,
       targetId,
       menuPosition,
-      nodes: nodesRef.current ?? [],
-      edges: edgesRef.current ?? [],
+      nodes: nodesRef.current,
+      edges: edgesRef.current,
       isEditMode: state.mode === "edit",
       isLocked: state.isLocked
     });

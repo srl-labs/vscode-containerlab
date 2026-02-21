@@ -35,7 +35,7 @@ export class ContainerDataAdapter implements ContainerDataProvider {
         // Store by path (the original key)
         this.labByPath.set(pathKey, labNode);
         // Also store by lab name for easier lookup
-        if (labNode.name) {
+        if (labNode.name !== undefined && labNode.name.length > 0) {
           this.labByName.set(labNode.name, labNode);
         }
       }
@@ -160,7 +160,7 @@ export class ContainerDataAdapter implements ContainerDataProvider {
     }
 
     const mapped = mapSrosInterfaceName(normalized);
-    if (mapped) {
+    if (mapped !== undefined && mapped.length > 0) {
       candidates.add(mapped);
     }
 
@@ -240,8 +240,8 @@ export class ContainerDataAdapter implements ContainerDataProvider {
     components: unknown[];
   }): ContainerInfo | undefined {
     const candidates = this.findDistributedContainerNodes(params.baseNodeName, params.labName);
-    const preferred = candidates[0];
-    return preferred ? this.toContainerInfo(preferred) : undefined;
+    if (candidates.length === 0) return undefined;
+    return this.toContainerInfo(candidates[0]);
   }
 
   /**
@@ -282,11 +282,11 @@ export class ContainerDataAdapter implements ContainerDataProvider {
       kind: container.kind,
       image: container.image,
       // Use the getter methods that remove CIDR mask, default to empty string
-      IPv4Address: container.IPv4Address ?? "",
-      IPv6Address: container.IPv6Address ?? "",
+      IPv4Address: container.IPv4Address,
+      IPv6Address: container.IPv6Address,
       nodeType: container.nodeType,
       nodeGroup: container.nodeGroup,
-      interfaces: container.interfaces?.map((i) => this.toInterfaceInfo(i)) ?? [],
+      interfaces: container.interfaces.map((i) => this.toInterfaceInfo(i)),
       label
     };
   }

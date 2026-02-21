@@ -20,6 +20,34 @@ interface GitHubSearchResponse {
   items?: PopularRepo[];
 }
 
+function toRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null) {
+    return {};
+  }
+  const record: Record<string, unknown> = {};
+  for (const [key, entryValue] of Object.entries(value)) {
+    record[key] = entryValue;
+  }
+  return record;
+}
+
+function parseGitHubSearchResponse(value: unknown): GitHubSearchResponse {
+  const items = toRecord(value).items;
+  if (!Array.isArray(items)) {
+    return {};
+  }
+  const parsedItems: PopularRepo[] = items
+    .map((item) => toRecord(item))
+    .map((item) => ({
+      name: typeof item.name === "string" ? item.name : "",
+      html_url: typeof item.html_url === "string" ? item.html_url : "",
+      description: typeof item.description === "string" ? item.description : "",
+      stargazers_count: typeof item.stargazers_count === "number" ? item.stargazers_count : 0
+    }))
+    .filter((repo) => repo.name.length > 0 && repo.html_url.length > 0);
+  return { items: parsedItems };
+}
+
 export const fallbackRepos: PopularRepo[] = [
   {
     name: "srl-telemetry-lab",
@@ -73,7 +101,7 @@ export function fetchPopularRepos(): Promise<PopularRepo[]> {
         });
         res.on("end", () => {
           try {
-            const parsed = JSON.parse(data) as GitHubSearchResponse;
+            const parsed = parseGitHubSearchResponse(JSON.parse(data) as unknown);
             resolve(parsed.items ?? []);
           } catch (e) {
             reject(e);

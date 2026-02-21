@@ -187,10 +187,6 @@ export class ContainerlabExplorerViewProvider
   }
 
   private async handleMessage(message: ExplorerOutgoingMessage): Promise<void> {
-    if (!message || typeof message.command !== "string") {
-      return;
-    }
-
     if (message.command === "ready") {
       this.isReady = true;
       this.postFilterState();
@@ -223,7 +219,7 @@ export class ContainerlabExplorerViewProvider
     }
 
     try {
-      await vscode.commands.executeCommand(binding.commandId, ...(binding.args || []));
+      await vscode.commands.executeCommand(binding.commandId, ...binding.args);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.postError(`Failed to execute command: ${errorMessage}`);

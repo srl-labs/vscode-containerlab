@@ -43,7 +43,7 @@ export function buildNodeAnnotationIndex(
   const nodeAnns = annotations?.nodeAnnotations;
   if (!Array.isArray(nodeAnns)) return m;
   for (const na of nodeAnns) {
-    if (na && typeof na.id === "string") m.set(na.id, na);
+    if (typeof na.id === "string") m.set(na.id, na);
   }
   return m;
 }
@@ -75,10 +75,9 @@ export function toPosition(ann: NodeAnnotation | undefined): { x: number; y: num
  */
 export function collectAliasEntriesNew(annotations?: TopologyAnnotations): AliasEntry[] {
   const nodeAnns = annotations?.nodeAnnotations;
-  if (!nodeAnns || !Array.isArray(nodeAnns)) return [];
+  if (!Array.isArray(nodeAnns)) return [];
   const out: AliasEntry[] = [];
   for (const na of nodeAnns) {
-    if (!na) continue;
     const aliasId = asTrimmedString(na.id);
     const yamlId = asTrimmedString(na.yamlNodeId);
     const iface = asTrimmedString(na.yamlInterface);
@@ -190,13 +189,13 @@ export function buildBridgeAliasElement(
  * Creates an alias element.
  */
 export function createAliasElement(
-  nodeMap: Record<string, { kind?: string }>,
+  nodeMap: Partial<Record<string, { kind?: string }>>,
   aliasId: string,
   yamlRefId: string,
   nodeAnnById: Map<string, NodeAnnotation>
 ): ParsedElement | null {
   const refNode = nodeMap[yamlRefId];
-  if (!refNode || !isBridgeKind(refNode?.kind)) return null;
+  if (refNode === undefined || !isBridgeKind(refNode.kind)) return null;
   const aliasAnn = nodeAnnById.get(aliasId);
   const baseAnn = nodeAnnById.get(yamlRefId);
   const { position } = deriveAliasPlacement(aliasAnn, baseAnn);
@@ -206,7 +205,7 @@ export function createAliasElement(
       : aliasId;
   return buildBridgeAliasElement(
     aliasId,
-    (refNode.kind || NODE_KIND_BRIDGE) as string,
+    (refNode.kind ?? NODE_KIND_BRIDGE),
     position,
     yamlRefId,
     aliasDisplayName
@@ -216,7 +215,7 @@ export function createAliasElement(
 function getAliasElementFromEntry(
   entry: AliasEntry,
   created: Set<string>,
-  nodeMap: Record<string, { kind?: string }>,
+  nodeMap: Partial<Record<string, { kind?: string }>>,
   nodeAnnById: Map<string, NodeAnnotation>
 ): { aliasId: string; element: ParsedElement } | null {
   const aliasId = String(entry.aliasNodeId);
@@ -231,7 +230,7 @@ function getAliasElementFromEntry(
 function appendAliasElements(
   aliasList: AliasEntry[],
   created: Set<string>,
-  nodeMap: Record<string, { kind?: string }>,
+  nodeMap: Partial<Record<string, { kind?: string }>>,
   nodeAnnById: Map<string, NodeAnnotation>,
   result: ParsedElement[]
 ): void {
@@ -257,15 +256,15 @@ function applyAliasToEdgeData(
   const originalSource = data.source;
   const originalTarget = data.target;
   const extra = { ...(data.extraData ?? {}) };
-  if (srcAlias) {
+  if (srcAlias !== undefined && srcAlias.length > 0) {
     data.source = srcAlias;
-    if (originalSource) {
+    if (originalSource !== undefined && originalSource.length > 0) {
       extra.yamlSourceNodeId = originalSource;
     }
   }
-  if (tgtAlias) {
+  if (tgtAlias !== undefined && tgtAlias.length > 0) {
     data.target = tgtAlias;
-    if (originalTarget) {
+    if (originalTarget !== undefined && originalTarget.length > 0) {
       extra.yamlTargetNodeId = originalTarget;
     }
   }
@@ -281,7 +280,7 @@ export function addAliasNodesFromAnnotations(
   elements?: ParsedElement[]
 ): ParsedElement[] {
   const result = elements ?? [];
-  const nodeMap = parsed.topology?.nodes || {};
+  const nodeMap = parsed.topology?.nodes ?? {};
   const nodeAnnById = buildNodeAnnotationIndex(annotations);
   const aliasList = listAliasEntriesFromNodeAnnotations(annotations);
   if (aliasList.length === 0) return result;
@@ -290,7 +289,7 @@ export function addAliasNodesFromAnnotations(
   appendAliasElements(
     aliasList,
     created,
-    nodeMap as Record<string, { kind?: string }>,
+    nodeMap,
     nodeAnnById,
     result
   );
@@ -314,9 +313,14 @@ export function rewireEdges(elements: ParsedElement[], mapping: Map<string, stri
       targetEndpoint?: string;
       extraData?: Record<string, unknown>;
     };
-    const srcAlias = mapping.get(`${data.source}|${data.sourceEndpoint || ""}`);
-    const tgtAlias = mapping.get(`${data.target}|${data.targetEndpoint || ""}`);
-    if (!srcAlias && !tgtAlias) continue;
+    const srcAlias = mapping.get(`${data.source}|${data.sourceEndpoint ?? ""}`);
+    const tgtAlias = mapping.get(`${data.target}|${data.targetEndpoint ?? ""}`);
+    if (
+      (srcAlias === undefined || srcAlias.length === 0) &&
+      (tgtAlias === undefined || tgtAlias.length === 0)
+    ) {
+      continue;
+    }
     applyAliasToEdgeData(data, srcAlias, tgtAlias);
   }
 }
@@ -347,12 +351,12 @@ export function collectAliasGroups(elements: ParsedElement[]): Map<string, strin
   for (const el of elements) {
     if (el.group !== "nodes") continue;
     const data = el.data as { id?: string; extraData?: { extYamlNodeId?: string; kind?: string } };
-    const extra = data.extraData || {};
+    const extra = data.extraData ?? {};
     const yamlRef = typeof extra.extYamlNodeId === "string" ? extra.extYamlNodeId.trim() : "";
-    const kind = String(extra.kind || "");
+    const kind = String(extra.kind ?? "");
     if (!yamlRef || yamlRef === data.id) continue;
     if (!isBridgeKind(kind)) continue;
-    const list = groups.get(yamlRef) || [];
+    const list = groups.get(yamlRef) ?? [];
     list.push(String(data.id));
     groups.set(yamlRef, list);
   }
@@ -370,8 +374,8 @@ export function collectStillReferencedBaseBridges(
   for (const el of elements) {
     if (el.group !== "edges") continue;
     const d = el.data as { source?: string; target?: string };
-    const s = String(d.source || "");
-    const t = String(d.target || "");
+    const s = String(d.source ?? "");
+    const t = String(d.target ?? "");
     if (aliasGroups.has(s)) stillReferenced.add(s);
     if (aliasGroups.has(t)) stillReferenced.add(t);
   }
@@ -383,11 +387,9 @@ export function collectStillReferencedBaseBridges(
  */
 export function addClass(nodeEl: ParsedElement, className: string): void {
   const existing = nodeEl.classes;
-  if (!existing) {
+  if (typeof existing !== "string" || existing.length === 0) {
     nodeEl.classes = className;
-  } else if (Array.isArray(existing)) {
-    if (!existing.includes(className)) nodeEl.classes = [...existing, className].join(" ");
-  } else if (typeof existing === "string" && !existing.includes(className)) {
+  } else if (!existing.includes(className)) {
     nodeEl.classes = `${existing} ${className}`;
   }
 }
@@ -408,7 +410,7 @@ export function hideBaseBridgeNodesWithAliases(
   for (const el of elements) {
     if (el.group !== "nodes") continue;
     const data = el.data as { id?: string; extraData?: { kind?: string } };
-    const id = String(data.id || "");
+    const id = String(data.id ?? "");
     if (!aliasGroups.has(id)) continue;
     if (stillReferenced.has(id)) {
       if (!loggedUnmappedBaseBridges.has(id)) {
@@ -417,7 +419,7 @@ export function hideBaseBridgeNodesWithAliases(
       }
       continue;
     }
-    const kind = data?.extraData?.kind;
+    const kind = data.extraData?.kind;
     if (!isBridgeKind(kind)) continue;
     addClass(el, CLASS_ALIASED_BASE_BRIDGE);
   }

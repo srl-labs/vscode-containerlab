@@ -82,7 +82,7 @@ function groupEdges(edges: Edge[]) {
 
   for (const edge of edges) {
     if (edge.source === edge.target) {
-      const loops = loopEdgesByNode.get(edge.source) || [];
+      const loops = loopEdgesByNode.get(edge.source) ?? [];
       loops.push(edge.id);
       loopEdgesByNode.set(edge.source, loops);
     } else {
@@ -92,7 +92,7 @@ function groupEdges(edges: Edge[]) {
           : [edge.target, edge.source];
       const pairKey = `${nodeA}|||${nodeB}`;
 
-      const group = edgesByPair.get(pairKey) || [];
+      const group = edgesByPair.get(pairKey) ?? [];
       group.push({ id: edge.id, source: edge.source, target: edge.target });
       edgesByPair.set(pairKey, group);
     }

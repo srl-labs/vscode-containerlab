@@ -69,6 +69,30 @@ interface GraphHandlersResult {
 
 type NodeElementData = Record<string, unknown> & { extraData?: Record<string, unknown> };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isTopoNode(node: Node): node is TopoNode {
+  return (
+    node.type === "topology-node" ||
+    node.type === "network-node" ||
+    node.type === "group-node" ||
+    node.type === "free-text-node" ||
+    node.type === "free-shape-node" ||
+    node.type === "traffic-rate-node"
+  );
+}
+
+function getNonEmptyString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function getExtraDataRecord(data: Record<string, unknown>): Record<string, unknown> | undefined {
+  const { extraData } = data;
+  return isRecord(extraData) ? extraData : undefined;
+}
+
 const NODE_FALLBACK_PROPS = [
   "kind",
   "type",
@@ -87,7 +111,7 @@ const NODE_FALLBACK_PROPS = [
 const NETWORK_NODE_TYPE = "network-node";
 
 function mergeNodeExtraData(data: NodeElementData): NodeSaveData["extraData"] {
-  const ed = (data.extraData ?? {}) as Record<string, unknown>;
+  const ed = (data.extraData ?? {});
   const result: Record<string, unknown> = { ...ed };
   for (const key of NODE_FALLBACK_PROPS) {
     if (result[key] === undefined) {
@@ -111,8 +135,8 @@ function mergeNodeExtraData(data: NodeElementData): NodeSaveData["extraData"] {
 }
 
 function toNodeSaveData(node: TopoNode): NodeSaveData {
-  const data = (node.data ?? {}) as NodeElementData;
-  const name = (data.label as string) || (data.name as string) || node.id;
+  const data = node.data as NodeElementData;
+  const name = getNonEmptyString(data.label) ?? getNonEmptyString(data.name) ?? node.id;
   return {
     id: node.id,
     name,
@@ -123,15 +147,15 @@ function toNodeSaveData(node: TopoNode): NodeSaveData {
 
 function isSpecialNetworkNode(node: TopoNode): boolean {
   if (node.type !== NETWORK_NODE_TYPE) return false;
-  const data = (node.data ?? {}) as Record<string, unknown>;
+  const data = node.data;
   const type = getNetworkType(data);
-  return Boolean(type && SPECIAL_NETWORK_TYPES.has(type));
+  return type !== undefined && type.length > 0 && SPECIAL_NETWORK_TYPES.has(type);
 }
 
 function isBridgeNetworkNode(node: TopoNode): boolean {
-  const data = (node.data ?? {}) as Record<string, unknown>;
+  const data = node.data;
   const type = getNetworkType(data);
-  return Boolean(type && BRIDGE_NETWORK_TYPES.has(type));
+  return type !== undefined && type.length > 0 && BRIDGE_NETWORK_TYPES.has(type);
 }
 
 const VXLAN_NETWORK_TYPES = new Set(["vxlan", "vxlan-stitch"]);
@@ -146,18 +170,18 @@ function detectSpecialLinkType(
 ): LinkTypeDetectionResult {
   const sourceNode = nodes.find((node) => node.id === sourceId);
   if (sourceNode?.type === NETWORK_NODE_TYPE) {
-    const data = (sourceNode.data ?? {}) as Record<string, unknown>;
+    const data = sourceNode.data;
     const type = getNetworkType(data);
-    if (type && SPECIAL_NETWORK_TYPES.has(type)) {
+    if (type !== undefined && type.length > 0 && SPECIAL_NETWORK_TYPES.has(type)) {
       return { linkType: type, networkNodeId: sourceId };
     }
   }
 
   const targetNode = nodes.find((node) => node.id === targetId);
   if (targetNode?.type === NETWORK_NODE_TYPE) {
-    const data = (targetNode.data ?? {}) as Record<string, unknown>;
+    const data = targetNode.data;
     const type = getNetworkType(data);
-    if (type && SPECIAL_NETWORK_TYPES.has(type)) {
+    if (type !== undefined && type.length > 0 && SPECIAL_NETWORK_TYPES.has(type)) {
       return { linkType: type, networkNodeId: targetId };
     }
   }
@@ -167,13 +191,13 @@ function detectSpecialLinkType(
 
 function getAliasYamlNodeId(node: TopoNode | undefined): string | undefined {
   if (!node) return undefined;
-  const data = (node.data ?? {}) as Record<string, unknown>;
-  const extraData = (data.extraData ?? {}) as Record<string, unknown>;
+  const data = node.data;
+  const extraData = getExtraDataRecord(data) ?? {};
   const yamlNodeId =
     typeof extraData.extYamlNodeId === "string" ? extraData.extYamlNodeId.trim() : "";
-  if (!yamlNodeId || yamlNodeId === node.id) return undefined;
+  if (yamlNodeId.length === 0 || yamlNodeId === node.id) return undefined;
   const type = getNetworkType(data);
-  if (!type || !BRIDGE_NETWORK_TYPES.has(type)) return undefined;
+  if (type === undefined || type.length === 0 || !BRIDGE_NETWORK_TYPES.has(type)) return undefined;
   return yamlNodeId;
 }
 
@@ -189,9 +213,9 @@ export function useGraphHandlersWithContext(
 
   const handleEdgeCreated = React.useCallback(
     (_sourceId: string, _targetId: string, edgeData: EdgeCreatedData) => {
-      const nodes = getNodes();
+      const nodes = getNodes().filter(isTopoNode);
       const detection = detectSpecialLinkType(
-        nodes as TopoNode[],
+        nodes,
         edgeData.source,
         edgeData.target
       );
@@ -199,16 +223,12 @@ export function useGraphHandlersWithContext(
       if (detection) {
         edgeExtraData.extType = detection.linkType;
       }
-      const sourceAliasYaml = getAliasYamlNodeId(
-        nodes.find((node) => node.id === edgeData.source) as TopoNode | undefined
-      );
-      const targetAliasYaml = getAliasYamlNodeId(
-        nodes.find((node) => node.id === edgeData.target) as TopoNode | undefined
-      );
-      if (sourceAliasYaml) {
+      const sourceAliasYaml = getAliasYamlNodeId(nodes.find((node) => node.id === edgeData.source));
+      const targetAliasYaml = getAliasYamlNodeId(nodes.find((node) => node.id === edgeData.target));
+      if (sourceAliasYaml !== undefined) {
         edgeExtraData.yamlSourceNodeId = sourceAliasYaml;
       }
-      if (targetAliasYaml) {
+      if (targetAliasYaml !== undefined) {
         edgeExtraData.yamlTargetNodeId = targetAliasYaml;
       }
       const extraData = Object.keys(edgeExtraData).length > 0 ? edgeExtraData : undefined;
@@ -228,10 +248,7 @@ export function useGraphHandlersWithContext(
 
       if (detection && VXLAN_NETWORK_TYPES.has(detection.linkType)) {
         const node = nodes.find((n) => n.id === detection.networkNodeId);
-        const existingExtra =
-          ((node?.data as Record<string, unknown> | undefined)?.extraData as
-            | Record<string, unknown>
-            | undefined) ?? {};
+        const existingExtra = node ? (getExtraDataRecord(node.data) ?? {}) : {};
         const nextExtra = {
           ...existingExtra,
           extRemote: existingExtra.extRemote ?? VXLAN_DEFAULTS.extRemote,
@@ -331,8 +348,8 @@ export function useGraphHandlersWithContext(
 
   const handleDeleteNode = React.useCallback(
     (nodeId: string) => {
-      const nodes = getNodes();
-      const node = nodes.find((n) => n.id === nodeId) as TopoNode | undefined;
+      const nodes = getNodes().filter(isTopoNode);
+      const node = nodes.find((n) => n.id === nodeId);
 
       removeNodeAndEdges(nodeId);
       menuHandlers.handleDeleteNode(nodeId);

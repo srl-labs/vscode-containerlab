@@ -43,6 +43,18 @@ function getShapeBorder(borderWidth: number, borderStyle: string, borderColor: s
   return `${borderWidth}px ${borderStyle} ${borderColor}`;
 }
 
+const FALLBACK_SHAPE_DATA: FreeShapeNodeData = { shapeType: "rectangle" };
+
+function isShapeType(value: unknown): value is FreeShapeNodeData["shapeType"] {
+  return value === "rectangle" || value === "circle" || value === "line";
+}
+
+function isFreeShapeNodeData(value: unknown): value is FreeShapeNodeData {
+  if (typeof value !== "object" || value === null) return false;
+  const shapeType: unknown = Reflect.get(value, "shapeType");
+  return isShapeType(shapeType);
+}
+
 // ============================================================================
 // Shape Components
 // ============================================================================
@@ -439,11 +451,11 @@ function BoxNode({
 // ============================================================================
 
 const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
-  const nodeData = data as FreeShapeNodeData;
+  const nodeData = isFreeShapeNodeData(data) ? data : FALLBACK_SHAPE_DATA;
   const isLocked = useIsLocked();
   const annotationHandlers = useAnnotationHandlers();
   const canEditAnnotations = !isLocked;
-  const isSelected = selected ?? false;
+  const isSelected = selected === true;
 
   // Track rotation state to keep handles visible during rotation
   const [isRotating, setIsRotating] = React.useState(false);
@@ -465,7 +477,7 @@ const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => 
   // Only save at end of resize to avoid creating undo entries for each pixel
   const handleResizeEnd = useCallback(
     (_event: unknown, params: ResizeParams) => {
-      annotationHandlers?.onUpdateFreeShapeSize?.(id, params.width, params.height);
+      annotationHandlers?.onUpdateFreeShapeSize(id, params.width, params.height);
     },
     [id, annotationHandlers]
   );

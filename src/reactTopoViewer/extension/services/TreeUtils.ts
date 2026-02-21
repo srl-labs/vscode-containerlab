@@ -16,7 +16,7 @@ function labValuesFor(
   if (!labs) {
     return [];
   }
-  return clabName
+  return clabName !== undefined && clabName.length > 0
     ? Object.values(labs).filter((lab) => lab.name === clabName)
     : Object.values(labs);
 }
@@ -29,7 +29,7 @@ function labelText(value: unknown): string {
   if (typeof value === "string") {
     return value;
   }
-  if (value && typeof value === "object") {
+  if (typeof value === "object" && value !== null) {
     const label = (value as { label?: unknown }).label;
     if (typeof label === "string") {
       return label;

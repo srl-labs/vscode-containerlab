@@ -18,7 +18,6 @@ import type {
   TrafficRateAnnotation,
   GroupStyleAnnotation
 } from "../../../shared/types/topology";
-import type { TopoNode } from "../../../shared/types/graph";
 import type {
   FreeTextNodeData,
   FreeShapeNodeData,
@@ -166,7 +165,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   const addGroup = useCallback(
     (group: GroupStyleAnnotation) => {
       const node = groupToNode(group);
-      addNode(node as TopoNode);
+      addNode(node);
     },
     [addNode]
   );
@@ -176,11 +175,11 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       // Find current group node
       const currentNode = useGraphStore
         .getState()
-        .nodes.find((n) => n.id === id && n.type === GROUP_NODE_TYPE);
+        .nodes.find((n): n is Node<GroupNodeData> => n.id === id && isGroupNode(n));
       if (!currentNode) return;
 
       // Convert to annotation, apply updates, convert back to node
-      const currentGroup = nodeToGroup(currentNode as Node<GroupNodeData>);
+      const currentGroup = nodeToGroup(currentNode);
       const updatedGroup = { ...currentGroup, ...updates };
       const newNode = groupToNode(updatedGroup);
       replaceNode(id, newNode);
@@ -202,7 +201,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   const addTextAnnotation = useCallback(
     (annotation: FreeTextAnnotation) => {
       const node = freeTextToNode(annotation);
-      addNode(node as TopoNode);
+      addNode(node);
     },
     [addNode]
   );
@@ -211,10 +210,10 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
     (id: string, updates: Partial<FreeTextAnnotation>) => {
       const currentNode = useGraphStore
         .getState()
-        .nodes.find((n) => n.id === id && n.type === FREE_TEXT_NODE_TYPE);
+        .nodes.find((n): n is Node<FreeTextNodeData> => n.id === id && isFreeTextNode(n));
       if (!currentNode) return;
 
-      const currentAnnotation = nodeToFreeText(currentNode as Node<FreeTextNodeData>);
+      const currentAnnotation = nodeToFreeText(currentNode);
       const updatedAnnotation = { ...currentAnnotation, ...updates };
       const newNode = freeTextToNode(updatedAnnotation);
       replaceNode(id, newNode);
@@ -236,7 +235,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   const addShapeAnnotation = useCallback(
     (annotation: FreeShapeAnnotation) => {
       const node = freeShapeToNode(annotation);
-      addNode(node as TopoNode);
+      addNode(node);
     },
     [addNode]
   );
@@ -245,10 +244,10 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
     (id: string, updates: Partial<FreeShapeAnnotation>) => {
       const currentNode = useGraphStore
         .getState()
-        .nodes.find((n) => n.id === id && n.type === FREE_SHAPE_NODE_TYPE);
+        .nodes.find((n): n is Node<FreeShapeNodeData> => n.id === id && isFreeShapeNode(n));
       if (!currentNode) return;
 
-      const currentAnnotation = nodeToFreeShape(currentNode as Node<FreeShapeNodeData>);
+      const currentAnnotation = nodeToFreeShape(currentNode);
       const updatedAnnotation = { ...currentAnnotation, ...updates };
       const newNode = freeShapeToNode(updatedAnnotation);
       replaceNode(id, newNode);
@@ -270,7 +269,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   const addTrafficRateAnnotation = useCallback(
     (annotation: TrafficRateAnnotation) => {
       const node = trafficRateToNode(annotation);
-      addNode(node as TopoNode);
+      addNode(node);
     },
     [addNode]
   );
@@ -279,10 +278,10 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
     (id: string, updates: Partial<TrafficRateAnnotation>) => {
       const currentNode = useGraphStore
         .getState()
-        .nodes.find((n) => n.id === id && n.type === TRAFFIC_RATE_NODE_TYPE);
+        .nodes.find((n): n is Node<TrafficRateNodeData> => n.id === id && isTrafficRateNode(n));
       if (!currentNode) return;
 
-      const current = nodeToTrafficRate(currentNode as Node<TrafficRateNodeData>);
+      const current = nodeToTrafficRate(currentNode);
       const updated: TrafficRateAnnotation = { ...current, ...updates };
       const newNode = trafficRateToNode(updated);
       replaceNode(id, newNode);
@@ -306,7 +305,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       const node = useGraphStore.getState().nodes.find((n) => n.id === nodeId);
       if (!node) return;
       updateNode(nodeId, {
-        data: { ...(node.data as Record<string, unknown>), groupId }
+        data: { ...(node.data), groupId }
       });
     },
     [updateNode]
@@ -316,7 +315,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
     (nodeId: string) => {
       const node = useGraphStore.getState().nodes.find((n) => n.id === nodeId);
       if (!node) return;
-      const nodeData = node.data as Record<string, unknown>;
+      const nodeData = node.data;
       // Force groupId to undefined so updateNode's merge clears membership.
       updateNode(nodeId, { data: { ...nodeData, groupId: undefined } });
     },
@@ -361,7 +360,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       const childMap = new Map<string, string[]>();
       for (const group of groups) {
         const parentId = resolveGroupParentId(group.parentId, group.groupId);
-        if (!parentId) continue;
+        if (parentId === undefined || parentId.length === 0) continue;
         const list = childMap.get(parentId) ?? [];
         list.push(group.id);
         childMap.set(parentId, list);
@@ -371,7 +370,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       const stack = [groupId];
       while (stack.length > 0) {
         const current = stack.pop();
-        if (!current || visited.has(current)) continue;
+        if (current === undefined || current.length === 0 || visited.has(current)) continue;
         visited.add(current);
         addDirectMembers(current);
         const children = childMap.get(current) ?? [];

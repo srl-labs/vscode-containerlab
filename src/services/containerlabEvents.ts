@@ -203,8 +203,8 @@ function buildUpdatedInterfaceRecord(
 function assignSnapshotFields(entry: MutableSnapshotEntry, iface: InterfaceRecord): void {
   for (const [entryKey, ifaceKey] of SNAPSHOT_FIELD_MAPPINGS) {
     const value = iface[ifaceKey];
-    if (value !== undefined) {
-      entry[entryKey as string] = value as number;
+    if (typeof value === "number") {
+      entry[entryKey as string] = value;
     }
   }
 }
@@ -214,8 +214,8 @@ function toInterfaceSnapshotEntry(iface: InterfaceRecord): ClabInterfaceSnapshot
     name: iface.ifname,
     type: iface.type || "",
     state: iface.state || "",
-    alias: iface.alias || "",
-    mac: iface.mac || "",
+    alias: iface.alias ?? "",
+    mac: iface.mac ?? "",
     mtu: iface.mtu ?? 0,
     ifindex: iface.ifindex ?? 0,
     netemDelay: iface.netemDelay ?? "",
@@ -394,8 +394,36 @@ function isString(value: unknown): value is string {
   return typeof value === "string";
 }
 
+function isContainerlabEvent(value: unknown): value is ContainerlabEvent {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const type: unknown = Reflect.get(value, "type");
+  const action: unknown = Reflect.get(value, "action");
+  const actorId: unknown = Reflect.get(value, "actor_id");
+  const actorName: unknown = Reflect.get(value, "actor_name");
+  const actorFullId: unknown = Reflect.get(value, "actor_full_id");
+  const timestamp: unknown = Reflect.get(value, "timestamp");
+  const attributes: unknown = Reflect.get(value, "attributes");
+
+  if (!isString(type) || !isString(action) || !isString(actorId)) {
+    return false;
+  }
+  if (actorName !== undefined && !isString(actorName)) return false;
+  if (actorFullId !== undefined && !isString(actorFullId)) return false;
+  if (timestamp !== undefined && !isString(timestamp)) return false;
+  if (attributes !== undefined && (typeof attributes !== "object" || attributes === null)) {
+    return false;
+  }
+  return true;
+}
+
+function isNonEmptyString(value: string | undefined): value is string {
+  return value !== undefined && value !== "";
+}
+
 function parseCidr(value?: string): { address?: string; prefixLength?: number } {
-  if (!value || typeof value !== "string") {
+  if (value === undefined || value === "") {
     return {};
   }
   const parts = value.split("/");
@@ -419,7 +447,7 @@ function resolveContainerIds(
   event: ContainerlabEvent,
   attributes: Record<string, unknown>
 ): { id: string; shortId: string } {
-  const fullId = isString(attributes.id) ? attributes.id : event.actor_full_id || "";
+  const fullId = isString(attributes.id) ? attributes.id : event.actor_full_id ?? "";
   const shortFromEvent = event.actor_id || "";
   const shortId = shortFromEvent || (fullId ? fullId.slice(0, 12) : "");
   const id = fullId || shortId;
@@ -434,7 +462,7 @@ function resolveNames(
   const longName = isString(attributes["clab-node-longname"])
     ? attributes["clab-node-longname"]
     : "";
-  const name = nameAttr || longName || event.actor_name || "";
+  const name = (nameAttr || longName || event.actor_name) ?? "";
   const nodeName = isString(attributes["clab-node-name"]) ? attributes["clab-node-name"] : name;
   return { name, nodeName };
 }
@@ -464,7 +492,7 @@ function buildLabels(
       : name,
     "clab-node-name": nodeName,
     "clab-owner": isString(attributes["clab-owner"]) ? attributes["clab-owner"] : "",
-    "clab-topo-file": topoFile || "",
+    "clab-topo-file": topoFile ?? "",
     containerlab: labName
   };
 
@@ -500,7 +528,7 @@ function resolveNetworkName(attributes: Record<string, unknown>): string | undef
   const bridge = isString(attributes["clab-mgmt-net-bridge"])
     ? attributes["clab-mgmt-net-bridge"]
     : undefined;
-  return network || bridge;
+  return network ?? bridge;
 }
 
 function toOptionalNumber(value: unknown): number | undefined {
@@ -570,7 +598,7 @@ function deriveStateFromAction(action: string): string {
 }
 
 function isExecAction(action: string | undefined): boolean {
-  if (!action) {
+  if (action === undefined || action === "") {
     return false;
   }
   return action.startsWith("exec");
@@ -599,7 +627,10 @@ function mergeContainerRecord(
 }
 
 function resolveLabNameForMerge(existing: ContainerRecord, incoming: ContainerRecord): string {
-  if ((!incoming.labName || incoming.labName === "unknown") && existing.labName) {
+  if (
+    (incoming.labName === "" || incoming.labName === "unknown") &&
+    existing.labName !== ""
+  ) {
     return existing.labName;
   }
   return incoming.labName;
@@ -609,7 +640,7 @@ function resolveTopoFileForMerge(
   existing: ContainerRecord,
   incoming: ContainerRecord
 ): string | undefined {
-  return incoming.topoFile || existing.topoFile;
+  return incoming.topoFile ?? existing.topoFile;
 }
 
 function mergeContainerData(
@@ -638,7 +669,11 @@ function mergeContainerData(
     merged.StartedAt = nextData.StartedAt ?? previousData.StartedAt;
   }
 
-  if (!merged.NetworkName && previousData.NetworkName) {
+  if (
+    (merged.NetworkName === undefined || merged.NetworkName === "") &&
+    previousData.NetworkName !== undefined &&
+    previousData.NetworkName !== ""
+  ) {
     merged.NetworkName = previousData.NetworkName;
   }
 
@@ -651,11 +686,19 @@ function mergeNetworkSettings(
 ): ClabDetailedJSON["NetworkSettings"] {
   const merged = { ...next };
 
-  if (!merged.IPv4addr && previous.IPv4addr) {
+  if (
+    (merged.IPv4addr === undefined || merged.IPv4addr === "") &&
+    previous.IPv4addr !== undefined &&
+    previous.IPv4addr !== ""
+  ) {
     merged.IPv4addr = previous.IPv4addr;
     merged.IPv4pLen = previous.IPv4pLen;
   }
-  if (!merged.IPv6addr && previous.IPv6addr) {
+  if (
+    (merged.IPv6addr === undefined || merged.IPv6addr === "") &&
+    previous.IPv6addr !== undefined &&
+    previous.IPv6addr !== ""
+  ) {
     merged.IPv6addr = previous.IPv6addr;
     merged.IPv6pLen = previous.IPv6pLen;
   }
@@ -672,7 +715,7 @@ function extractHealthSuffix(action: string): string | undefined {
     return undefined;
   }
   const status = action.slice("health_status:".length).trim();
-  if (!status) {
+  if (status === "") {
     return undefined;
   }
   // Map to display format
@@ -686,7 +729,7 @@ function extractHealthSuffix(action: string): string | undefined {
  * Replaces any existing healthcheck suffix or appends if none.
  */
 function updateStatusWithHealthSuffix(status: string, healthSuffix: string): string {
-  if (!status) {
+  if (status === "") {
     return status;
   }
   // Remove any existing healthcheck suffix
@@ -708,7 +751,7 @@ function resolveStatusValue(current: string, fallback: string | undefined, actio
 
   // For health_status events, update the status with healthcheck suffix
   const healthSuffix = extractHealthSuffix(action);
-  if (healthSuffix && fallback) {
+  if (healthSuffix !== undefined && fallback !== undefined && fallback !== "") {
     return updateStatusWithHealthSuffix(fallback, healthSuffix);
   }
 
@@ -735,14 +778,14 @@ function shouldResetLifecycleStatus(action: string): boolean {
 }
 
 function pickNonEmpty(current: string, fallback?: string): string {
-  if (current && current.trim().length > 0) {
+  if (current.trim().length > 0) {
     return current;
   }
   return fallback ?? current;
 }
 
 function resolveStateValue(current: string, fallback: string | undefined, action: string): string {
-  if ((!current || current === action) && fallback) {
+  if ((current === "" || current === action) && fallback !== undefined && fallback !== "") {
     return fallback;
   }
   return current;
@@ -764,7 +807,7 @@ function updateLabMappings(previous: ContainerRecord | undefined, next: Containe
     lab = { topoFile: next.topoFile, containers: new Map() };
     labsByName.set(next.labName, lab);
   }
-  if (next.topoFile) {
+  if (isNonEmptyString(next.topoFile)) {
     lab.topoFile = next.topoFile;
   }
   lab.containers.set(next.data.ShortID, next.data);
@@ -773,16 +816,17 @@ function updateLabMappings(previous: ContainerRecord | undefined, next: Containe
 function makeNodeSnapshotKey(record: ContainerRecord): string | undefined {
   const labels = record.data.Labels;
   const nodeName = labels["clab-node-name"] || labels["clab-node-longname"] || record.data.Names[0];
-  if (!nodeName) {
+  if (nodeName === "") {
     return undefined;
   }
-  const lab = record.labName || labels.containerlab || "unknown";
+  const labCandidate = pickNonEmpty(record.labName, labels.containerlab);
+  const lab = labCandidate === "" ? "unknown" : labCandidate;
   return `${lab}::${nodeName}`.toLowerCase();
 }
 
 function applyNodeSnapshot(record: ContainerRecord): ContainerRecord {
   const key = makeNodeSnapshotKey(record);
-  if (!key) {
+  if (key === undefined || key === "") {
     return record;
   }
   const snapshot = nodeSnapshots.get(key);
@@ -791,11 +835,19 @@ function applyNodeSnapshot(record: ContainerRecord): ContainerRecord {
   }
 
   const settings = record.data.NetworkSettings;
-  if (!settings.IPv4addr && snapshot.ipv4) {
+  if (
+    (settings.IPv4addr === undefined || settings.IPv4addr === "") &&
+    snapshot.ipv4 !== undefined &&
+    snapshot.ipv4 !== ""
+  ) {
     settings.IPv4addr = snapshot.ipv4;
     settings.IPv4pLen = snapshot.ipv4Prefix;
   }
-  if (!settings.IPv6addr && snapshot.ipv6) {
+  if (
+    (settings.IPv6addr === undefined || settings.IPv6addr === "") &&
+    snapshot.ipv6 !== undefined &&
+    snapshot.ipv6 !== ""
+  ) {
     settings.IPv6addr = snapshot.ipv6;
     settings.IPv6pLen = snapshot.ipv6Prefix;
   }
@@ -819,7 +871,7 @@ function estimateStartedAtFromStatus(
   status: string | undefined,
   eventTimestamp?: number
 ): number | undefined {
-  if (!status) {
+  if (status === undefined || status === "") {
     return undefined;
   }
 
@@ -903,19 +955,19 @@ function updateNodeSnapshot(
   action?: string
 ): void {
   const key = makeNodeSnapshotKey(record);
-  if (!key) {
+  if (key === undefined || key === "") {
     return;
   }
 
   const settings = record.data.NetworkSettings;
   const snapshot = nodeSnapshots.get(key) ?? {};
 
-  if (settings.IPv4addr) {
+  if (settings.IPv4addr !== undefined && settings.IPv4addr !== "") {
     snapshot.ipv4 = settings.IPv4addr;
     snapshot.ipv4Prefix = settings.IPv4pLen;
   }
 
-  if (settings.IPv6addr) {
+  if (settings.IPv6addr !== undefined && settings.IPv6addr !== "") {
     snapshot.ipv6 = settings.IPv6addr;
     snapshot.ipv6Prefix = settings.IPv6pLen;
   }
@@ -936,14 +988,14 @@ function updateNodeSnapshot(
 
 function clearNodeSnapshot(record: ContainerRecord): void {
   const key = makeNodeSnapshotKey(record);
-  if (!key) {
+  if (key === undefined || key === "") {
     return;
   }
   nodeSnapshots.delete(key);
 }
 
 function parseEventTimestamp(timestamp?: string): number | undefined {
-  if (!timestamp) {
+  if (timestamp === undefined || timestamp === "") {
     return undefined;
   }
   const parsed = Date.parse(timestamp);
@@ -961,11 +1013,11 @@ function resolveStartTimestamp(eventTimestamp?: number, current?: number): numbe
 }
 
 function hasNonEmptyStatus(value: string | undefined): boolean {
-  return !!(value && value.trim().length > 0);
+  return value !== undefined && value.trim().length > 0;
 }
 
 function formatStateLabel(state: string | undefined): string {
-  if (!state) {
+  if (state === undefined || state === "") {
     return "Unknown";
   }
   const normalized = state.replace(/[_-]+/g, " ");
@@ -973,7 +1025,7 @@ function formatStateLabel(state: string | undefined): string {
 }
 
 function shouldMarkInterfacesDown(state: string | undefined): boolean {
-  if (!state) {
+  if (state === undefined || state === "") {
     return true;
   }
 
@@ -982,7 +1034,7 @@ function shouldMarkInterfacesDown(state: string | undefined): boolean {
 }
 
 function applyContainerEvent(event: ContainerlabEvent): void {
-  const action = event.action || "";
+  const action = event.action;
 
   if (isExecAction(action)) {
     return;
@@ -1010,7 +1062,7 @@ function applyContainerEvent(event: ContainerlabEvent): void {
   containersById.set(enrichedRecord.data.ShortID, enrichedRecord);
   updateLabMappings(existing, enrichedRecord);
 
-  if (oldState && oldState !== newState) {
+  if (oldState !== undefined && oldState !== "" && oldState !== newState) {
     notifyContainerStateChanged(enrichedRecord.data.ShortID, newState);
   }
 
@@ -1055,7 +1107,7 @@ function applyInterfaceEvent(event: ContainerlabEvent): void {
   }
 
   const ifaceName = typeof attributes.ifname === "string" ? attributes.ifname : undefined;
-  if (!ifaceName) {
+  if (ifaceName === undefined || ifaceName === "") {
     return;
   }
 
@@ -1172,7 +1224,11 @@ function handleEventLine(line: string): void {
   }
 
   try {
-    const event = JSON.parse(trimmed) as ContainerlabEvent;
+    const parsed: unknown = JSON.parse(trimmed);
+    if (!isContainerlabEvent(parsed)) {
+      return;
+    }
+    const event = parsed;
     if (event.type === "container") {
       applyContainerEvent(event);
     } else if (event.type === "interface") {
@@ -1212,15 +1268,10 @@ function startProcess(runtime: string): void {
   const spawned = spawn(containerlabBinary, baseArgs, { stdio: ["ignore", "pipe", "pipe"] });
   child = spawned;
 
-  if (!spawned.stdout) {
-    finalizeInitialLoad(new Error("Failed to start containerlab events process"));
-    return;
-  }
-
   stdoutInterface = readline.createInterface({ input: spawned.stdout });
   stdoutInterface.on("line", handleEventLine);
 
-  spawned.stderr?.on("data", (chunk) => {
+  spawned.stderr.on("data", (chunk) => {
     console.warn(`[containerlabEvents]: stderr: ${chunk}`);
   });
 
@@ -1244,7 +1295,7 @@ function startProcess(runtime: string): void {
 }
 
 export async function ensureEventStream(runtime: string): Promise<void> {
-  if (child && currentRuntime === runtime) {
+  if (child !== null && currentRuntime === runtime) {
     if (initialLoadComplete) {
       return;
     }
@@ -1275,15 +1326,14 @@ export function getGroupedContainers(): Record<string, ClabDetailedJSON[]> {
       Names: [...container.Names],
       Labels: { ...container.Labels },
       NetworkSettings: { ...container.NetworkSettings },
-      Mounts: container.Mounts?.map((mount) => ({ ...mount })) ?? [],
-      Ports: container.Ports?.map((port) => ({ ...port })) ?? []
+      Mounts: container.Mounts.map((mount) => ({ ...mount })),
+      Ports: container.Ports.map((port) => ({ ...port }))
     }));
 
-    const arrayWithMeta = containers as unknown as ClabDetailedJSON[] & { [key: string]: unknown };
-    if (lab.topoFile) {
-      arrayWithMeta["topo-file"] = lab.topoFile;
+    if (isNonEmptyString(lab.topoFile)) {
+      Reflect.set(containers, "topo-file", lab.topoFile);
     }
-    result[labName] = arrayWithMeta;
+    result[labName] = containers;
   }
 
   return result;

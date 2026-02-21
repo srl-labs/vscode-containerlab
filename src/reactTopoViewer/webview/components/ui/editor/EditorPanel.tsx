@@ -71,10 +71,12 @@ function renderTabbedMode<TProps extends object>(
   tabs: Array<TabConfig<TProps>>,
   activeTab: string,
   onTabChange: (tabId: string) => void,
-  tabProps: TProps,
+  tabProps: TProps | undefined,
   readOnly: boolean
 ): React.ReactElement {
-  const tabDefs: TabDefinition[] = tabs.filter((tab) => !tab.hidden).map(({ id, label }) => ({ id, label }));
+  const tabDefs: TabDefinition[] = tabs
+    .filter((tab) => tab.hidden !== true)
+    .map(({ id, label }) => ({ id, label }));
   const activeConfig = tabs.find((tab) => tab.id === activeTab);
   const ActiveComponent = activeConfig?.component;
 
@@ -83,7 +85,7 @@ function renderTabbedMode<TProps extends object>(
       <TabNavigation tabs={tabDefs} activeTab={activeTab} onTabChange={onTabChange} />
       <Box sx={{ flex: 1, overflow: "auto" }}>
         <fieldset disabled={readOnly} style={FIELDSET_RESET_STYLE}>
-          {ActiveComponent ? <ActiveComponent {...tabProps} /> : null}
+          {ActiveComponent && tabProps !== undefined ? <ActiveComponent {...tabProps} /> : null}
         </fieldset>
       </Box>
     </Box>
@@ -124,9 +126,8 @@ export function EditorPanel<TProps extends object = Record<string, unknown>>({
   );
 
   // Tabbed mode
-  if (tabs && activeTab && onTabChange) {
-    const resolvedTabProps = (tabProps ?? {}) as TProps;
-    return renderTabbedMode(tabs, activeTab, onTabChange, resolvedTabProps, readOnly);
+  if (tabs !== undefined && activeTab !== undefined && activeTab.length > 0 && onTabChange !== undefined) {
+    return renderTabbedMode(tabs, activeTab, onTabChange, tabProps, readOnly);
   }
 
   // Children mode (non-tabbed)

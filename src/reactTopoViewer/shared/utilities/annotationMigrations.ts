@@ -24,15 +24,16 @@ export function applyInterfacePatternMigrations(
     return { annotations, modified: false };
   }
 
-  if (!annotations.nodeAnnotations) {
-    annotations.nodeAnnotations = [];
-  }
+  annotations.nodeAnnotations ??= [];
 
   let modified = false;
   for (const { nodeId, interfacePattern } of migrations) {
     const existing = annotations.nodeAnnotations.find((n) => n.id === nodeId);
     if (existing) {
-      if (!existing.interfacePattern) {
+      if (
+        existing.interfacePattern === undefined ||
+        existing.interfacePattern.length === 0
+      ) {
         existing.interfacePattern = interfacePattern;
         modified = true;
       }

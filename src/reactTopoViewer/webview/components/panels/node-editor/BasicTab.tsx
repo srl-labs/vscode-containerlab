@@ -60,12 +60,34 @@ const NODE_DIRECTION_OPTIONS = [
   { value: "up", label: "Rotate text 270deg", icon: <RotateLeftIcon fontSize="small" /> }
 ];
 
+const BUILTIN_NODE_TYPES: readonly NodeType[] = [
+  "pe",
+  "dcgw",
+  "leaf",
+  "switch",
+  "spine",
+  "super-spine",
+  "server",
+  "pon",
+  "controller",
+  "rgw",
+  "ue",
+  "cloud",
+  "client",
+  "bridge"
+];
+
+function isNodeType(icon: string): icon is NodeType {
+  return BUILTIN_NODE_TYPES.some((type) => type === icon);
+}
+
 /**
  * Get icon SVG source with fallback
  */
 function getIconSrc(icon: string, color: string): string {
+  const nodeType: NodeType = isNodeType(icon) ? icon : "pe";
   try {
-    return generateEncodedSVG(icon as NodeType, color);
+    return generateEncodedSVG(nodeType, color);
   } catch {
     return generateEncodedSVG("pe", color);
   }
@@ -107,7 +129,7 @@ const KindField: React.FC<KindFieldProps> = ({ data, onChange, kinds, onKindChan
       id="node-kind"
       label="Kind"
       options={kindOptions}
-      value={data.kind || ""}
+      value={data.kind ?? ""}
       onChange={handleKindChange}
       placeholder="Search or type kind..."
       allowFreeText={true}
@@ -133,7 +155,7 @@ const TypeField: React.FC<TypeFieldProps> = ({ data, onChange, availableTypes })
       id="node-type"
       label="Type"
       options={typeOptions}
-      value={data.type || ""}
+      value={data.type ?? ""}
       onChange={(value) => onChange({ type: value })}
       placeholder={
         availableTypes.length > 0 ? "Search or type..." : "Type value (no predefined types)"
@@ -167,7 +189,7 @@ const ImageVersionFields: React.FC<ImageVersionFieldsProps> = ({
 }) => {
   // Parse the current image into base and version
   const { base: currentBase, version: currentVersion } = useMemo(() => {
-    return parseImageString(data.image || "");
+    return parseImageString(data.image ?? "");
   }, [data.image, parseImageString]);
 
   // Track version separately for better UX when changing base image
@@ -271,10 +293,10 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const customIcons = useCustomIcons();
 
-  const color = data.iconColor || DEFAULT_ICON_COLOR;
+  const color = data.iconColor ?? DEFAULT_ICON_COLOR;
   // Don't apply default for dropdown value - show actual value (or empty)
   // Only use fallback for preview image rendering
-  const icon = data.icon || "";
+  const icon = data.icon ?? "";
   const previewIcon = icon || "pe";
 
   // Build custom icon map for efficient lookup
@@ -293,7 +315,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   const getIconSource = useCallback(
     (iconName: string, iconColor: string): string => {
       const customDataUri = customIconMap.get(iconName);
-      if (customDataUri) {
+      if (customDataUri !== undefined) {
         return customDataUri;
       }
       return getIconSrc(iconName, iconColor);
@@ -366,7 +388,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
         onSave={handleIconSave}
         initialIcon={previewIcon}
         initialColor={data.iconColor}
-        initialCornerRadius={data.iconCornerRadius || 0}
+        initialCornerRadius={data.iconCornerRadius ?? 0}
       />
     </>
   );
@@ -374,7 +396,13 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
 
 const LabelAndDirectionFields: React.FC<TabProps> = ({ data, onChange }) => {
   const isTransparent = data.labelBackgroundColor?.trim().toLowerCase() === "transparent";
-  const pickerColor = !isTransparent && data.labelBackgroundColor ? data.labelBackgroundColor : "#000000";
+  const labelBackgroundColor = data.labelBackgroundColor;
+  const pickerColor =
+    !isTransparent &&
+    labelBackgroundColor !== undefined &&
+    labelBackgroundColor.length > 0
+      ? labelBackgroundColor
+      : "#000000";
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
@@ -386,13 +414,13 @@ const LabelAndDirectionFields: React.FC<TabProps> = ({ data, onChange }) => {
           onChange={(value) => onChange({ labelPosition: value })}
           options={NODE_LABEL_POSITION_OPTIONS}
         />
-      <SelectField
-        id="node-direction"
-        label="Label Text Direction"
-        value={data.direction ?? "right"}
-        onChange={(value) => onChange({ direction: value })}
-        options={NODE_DIRECTION_OPTIONS}
-      />
+        <SelectField
+          id="node-direction"
+          label="Label Text Direction"
+          value={data.direction ?? "right"}
+          onChange={(value) => onChange({ direction: value })}
+          options={NODE_DIRECTION_OPTIONS}
+        />
       </Box>
       <ColorField
         id="node-label-bg-color"
@@ -412,6 +440,8 @@ const LabelAndDirectionFields: React.FC<TabProps> = ({ data, onChange }) => {
 };
 
 export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => {
+  const isCustomTemplate = data.isCustomTemplate === true;
+
   // Get schema data (kinds and types)
   const { kinds, getTypesForKind, kindSupportsType, isLoaded } = useSchema();
 
@@ -421,19 +451,19 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
 
   // Track available types based on selected kind
   const availableTypes = useMemo(() => {
-    return getTypesForKind(data.kind || "");
+    return getTypesForKind(data.kind ?? "");
   }, [data.kind, getTypesForKind]);
 
   // Check if the current kind supports the type field
   const showTypeField = useMemo(() => {
-    return kindSupportsType(data.kind || "");
+    return kindSupportsType(data.kind ?? "");
   }, [data.kind, kindSupportsType]);
 
   // Handler for kind changes - always clear type since different kinds have different type options
   const handleKindChange = useCallback(
     (_newKind: string) => {
       // Always clear type when kind changes - types are kind-specific
-      if (data.type) {
+      if (data.type !== undefined && data.type.length > 0) {
         onChange({ type: undefined });
       }
     },
@@ -442,14 +472,14 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      {data.isCustomTemplate && (
+      {isCustomTemplate && (
         <PanelSection title="Template" withTopDivider={false}>
           <CustomNodeTemplateFields data={data} onChange={onChange} />
         </PanelSection>
       )}
 
       <PanelSection title="Node Parameters">
-        {!data.isCustomTemplate && <NodeNameField data={data} onChange={onChange} />}
+        {!isCustomTemplate && <NodeNameField data={data} onChange={onChange} />}
 
         <KindField
           data={data}
@@ -492,7 +522,7 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
         <IconField data={data} onChange={onChange} />
       </PanelSection>
 
-      {!data.isCustomTemplate && (
+      {!isCustomTemplate && (
         <PanelSection title="Label & Direction" bodySx={{ p: 2 }}>
           <LabelAndDirectionFields data={data} onChange={onChange} />
         </PanelSection>

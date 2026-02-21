@@ -152,7 +152,7 @@ export class TransactionalFileSystemAdapter implements FileSystemAdapter {
     for (const entry of entries) {
       if (entry.content === null) continue;
       const tempPath = tempFiles.get(entry.path);
-      if (!tempPath) {
+      if (tempPath === undefined || tempPath.length === 0) {
         throw new Error(`Missing temp file for ${entry.path}`);
       }
       await this.base.rename(tempPath, entry.path);

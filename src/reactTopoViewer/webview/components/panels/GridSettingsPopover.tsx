@@ -89,7 +89,7 @@ export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
           <Slider
             size="small"
             value={gridLineWidth}
-            onChange={(_e, value) => onGridLineWidthChange(value as number)}
+            onChange={(_e, value) => onGridLineWidthChange(value)}
             min={0.00001}
             max={2}
             step={0.1}

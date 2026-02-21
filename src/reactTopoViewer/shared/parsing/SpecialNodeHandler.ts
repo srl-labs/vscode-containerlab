@@ -24,6 +24,17 @@ import {
 } from "./LinkNormalizer";
 import type { DummyContext, SpecialNodeInfo } from "./types";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isEndpointInput(value: unknown): value is string | { node: string; interface?: string } {
+  if (typeof value === "string") return true;
+  if (!isRecord(value)) return false;
+  if (typeof value.node !== "string") return false;
+  return value.interface === undefined || typeof value.interface === "string";
+}
+
 // ============================================================================
 // Special Node Initialization
 // ============================================================================
@@ -35,10 +46,10 @@ export function initSpecialNodes(nodes?: Record<string, ClabNode>): Map<string, 
   const specialNodes = new Map<string, SpecialNodeInfo>();
   if (!nodes) return specialNodes;
   for (const [nodeName, nodeData] of Object.entries(nodes)) {
-    if (nodeData?.kind === NODE_KIND_BRIDGE || nodeData?.kind === NODE_KIND_OVS_BRIDGE) {
+    if (nodeData.kind === NODE_KIND_BRIDGE || nodeData.kind === NODE_KIND_OVS_BRIDGE) {
       specialNodes.set(nodeName, {
         id: nodeName,
-        type: nodeData.kind as SpecialNodeInfo["type"],
+        type: nodeData.kind === NODE_KIND_BRIDGE ? NODE_KIND_BRIDGE : NODE_KIND_OVS_BRIDGE,
         label: nodeName
       });
     }
@@ -78,15 +89,20 @@ export function registerEndpoint(
   end: unknown,
   topologyNodeNames?: Set<string>
 ): void {
-  const { node, iface } = splitEndpoint(end as string | { node: string; interface?: string });
+  if (!isEndpointInput(end)) return;
+  const { node, iface } = splitEndpoint(end);
   const info = determineSpecialNode(node, iface);
   if (info) {
     specialNodes.set(info.id, { id: info.id, type: info.type, label: info.label });
-  } else if (!iface && !topologyNodeNames?.has(node) && !specialNodes.has(node)) {
+  } else if (
+    iface === "" &&
+    (topologyNodeNames === undefined || !topologyNodeNames.has(node)) &&
+    !specialNodes.has(node)
+  ) {
     // Bare endpoint not in topology nodes - treat as implicit bridge
     specialNodes.set(node, {
       id: node,
-      type: NODE_KIND_BRIDGE as SpecialNodeInfo["type"],
+      type: NODE_KIND_BRIDGE,
       label: node
     });
   }
@@ -96,7 +112,8 @@ export function registerEndpoint(
  * Gets the special ID for an endpoint.
  */
 export function getSpecialId(end: unknown): string | null {
-  const { node, iface } = splitEndpoint(end as string | { node: string; interface?: string });
+  if (!isEndpointInput(end)) return null;
+  const { node, iface } = splitEndpoint(end);
   if (node === "host") return `host:${iface}`;
   if (node === "mgmt-net") return `mgmt-net:${iface}`;
   if (node.startsWith(PREFIX_MACVLAN)) return node;
@@ -128,9 +145,9 @@ export function assignCommonLinkProps(
   linkObj: Record<string, unknown>,
   baseProps: Record<string, unknown>
 ): void {
-  if (linkObj?.mtu !== undefined) baseProps.extMtu = toStr(linkObj.mtu);
-  if (linkObj?.vars !== undefined) baseProps.extVars = linkObj.vars;
-  if (linkObj?.labels !== undefined) baseProps.extLabels = linkObj.labels;
+  if (linkObj.mtu !== undefined) baseProps.extMtu = toStr(linkObj.mtu);
+  if (linkObj.vars !== undefined) baseProps.extVars = linkObj.vars;
+  if (linkObj.labels !== undefined) baseProps.extLabels = linkObj.labels;
 }
 
 /**
@@ -142,9 +159,9 @@ export function assignHostMgmtProps(
   baseProps: Record<string, unknown>
 ): void {
   if (!["host", "mgmt-net", "macvlan"].includes(linkType)) return;
-  if (linkObj?.["host-interface"] !== undefined)
+  if (linkObj["host-interface"] !== undefined)
     baseProps.extHostInterface = linkObj["host-interface"];
-  if (linkType === "macvlan" && linkObj?.mode !== undefined) baseProps.extMode = linkObj.mode;
+  if (linkType === "macvlan" && linkObj.mode !== undefined) baseProps.extMode = linkObj.mode;
 }
 
 /**
@@ -156,11 +173,11 @@ export function assignVxlanProps(
   linkObj: Record<string, unknown>,
   baseProps: Record<string, unknown>
 ): void {
-  if (![TYPES.VXLAN, TYPES.VXLAN_STITCH].includes(linkType as typeof TYPES.VXLAN)) return;
-  if (linkObj?.remote !== undefined) baseProps.extRemote = toStr(linkObj.remote);
-  if (linkObj?.vni !== undefined) baseProps.extVni = toStr(linkObj.vni);
-  if (linkObj?.["dst-port"] !== undefined) baseProps.extDstPort = toStr(linkObj["dst-port"]);
-  if (linkObj?.["src-port"] !== undefined) baseProps.extSrcPort = toStr(linkObj["src-port"]);
+  if (linkType !== TYPES.VXLAN && linkType !== TYPES.VXLAN_STITCH) return;
+  if (linkObj.remote !== undefined) baseProps.extRemote = toStr(linkObj.remote);
+  if (linkObj.vni !== undefined) baseProps.extVni = toStr(linkObj.vni);
+  if (linkObj["dst-port"] !== undefined) baseProps.extDstPort = toStr(linkObj["dst-port"]);
+  if (linkObj["src-port"] !== undefined) baseProps.extSrcPort = toStr(linkObj["src-port"]);
 }
 
 /**
@@ -174,7 +191,7 @@ export function buildBaseProps(
   assignCommonLinkProps(linkObj, baseProps);
   assignHostMgmtProps(linkType, linkObj, baseProps);
   assignVxlanProps(linkType, linkObj, baseProps);
-  const endpoint = linkObj?.endpoint as Record<string, unknown> | undefined;
+  const endpoint = isRecord(linkObj.endpoint) ? linkObj.endpoint : undefined;
   const epMac = endpoint?.mac;
   if (epMac !== undefined) baseProps.extMac = epMac;
   return baseProps;
@@ -189,14 +206,14 @@ export function mergeSpecialNodeProps(
   endB: unknown,
   specialNodeProps: Map<string, Record<string, unknown>>
 ): void {
-  const linkType = typeof linkObj?.type === "string" ? String(linkObj.type) : "";
-  if (!linkType || linkType === "veth") return;
+  const linkType = typeof linkObj.type === "string" ? String(linkObj.type) : "";
+  if (linkType === "" || linkType === "veth") return;
 
   const ids = [getSpecialId(endA), getSpecialId(endB)];
   const baseProps = buildBaseProps(linkObj, linkType);
   ids.forEach((id) => {
-    if (!id) return;
-    const prev = specialNodeProps.get(id) || {};
+    if (id === null || id === "") return;
+    const prev = specialNodeProps.get(id) ?? {};
     specialNodeProps.set(id, { ...prev, ...baseProps });
   });
 }
@@ -222,15 +239,16 @@ export function collectSpecialNodes(
   if (!links) return { specialNodes, specialNodeProps };
 
   // Create set of topology node names to distinguish explicit nodes from implicit bridges
-  const topologyNodeNames = new Set(Object.keys(parsed.topology?.nodes || {}));
+  const topologyNodeNames = new Set(Object.keys(parsed.topology?.nodes ?? {}));
 
   for (const linkObj of links) {
-    const norm = normalizeLinkToTwoEndpoints(linkObj as Record<string, unknown>, dummyCtx);
+    const linkRecord: Record<string, unknown> = { ...linkObj };
+    const norm = normalizeLinkToTwoEndpoints(linkRecord, dummyCtx);
     if (!norm) continue;
     const { endA, endB } = norm;
     registerEndpoint(specialNodes, endA, topologyNodeNames);
     registerEndpoint(specialNodes, endB, topologyNodeNames);
-    mergeSpecialNodeProps(linkObj as Record<string, unknown>, endA, endB, specialNodeProps);
+    mergeSpecialNodeProps(linkRecord, endA, endB, specialNodeProps);
   }
 
   return { specialNodes, specialNodeProps };
@@ -265,7 +283,7 @@ function shouldSkipNetworkNode(
  */
 function extractNetworkPlacement(saved: NetworkNodeAnnotation): PlacementResult {
   return {
-    position: saved.position || { x: 0, y: 0 },
+    position: saved.position,
     label: saved.label,
     geoCoordinates: saved.geoCoordinates,
     group: saved.group,
@@ -297,7 +315,7 @@ function createNetworkNodeElement(
   placement: PlacementResult,
   extraProps: Record<string, unknown>
 ): ParsedElement {
-  const displayLabel = placement.label || nodeInfo.label || nodeId;
+  const displayLabel = (placement.label ?? nodeInfo.label) ?? nodeId;
   return {
     group: "nodes",
     data: {
@@ -305,13 +323,13 @@ function createNetworkNodeElement(
       weight: "30",
       name: displayLabel,
       topoViewerRole: nodeInfo.type as string,
-      lat: placement.geoCoordinates?.lat?.toString() || "",
-      lng: placement.geoCoordinates?.lng?.toString() || "",
+      lat: placement.geoCoordinates?.lat.toString() ?? "",
+      lng: placement.geoCoordinates?.lng.toString() ?? "",
       extraData: {
         clabServerUsername: "",
         fqdn: "",
-        group: placement.group || "",
-        level: placement.level || "",
+        group: placement.group ?? "",
+        level: placement.level ?? "",
         id: nodeId,
         image: "",
         index: "999",
@@ -348,11 +366,15 @@ function createNetworkNodeElement(
 /**
  * Creates a SpecialNodeInfo from a network annotation type.
  */
-function networkTypeToSpecialInfo(id: string, type: string, label?: string): SpecialNodeInfo {
+function networkTypeToSpecialInfo(
+  id: string,
+  type: SpecialNodeInfo["type"],
+  label?: string
+): SpecialNodeInfo {
   return {
     id,
-    type: type as SpecialNodeInfo["type"],
-    label: label || id
+    type,
+    label: label ?? id
   };
 }
 
@@ -367,20 +389,24 @@ function addOrphanedNetworkNodes(
   specialNodeProps?: Map<string, Record<string, unknown>>
 ): void {
   const networkAnnotations = annotations?.networkNodeAnnotations;
-  if (!networkAnnotations?.length) return;
+  if (networkAnnotations === undefined || networkAnnotations.length === 0) return;
 
   // Track which node IDs are already in result
-  const existingIds = new Set(result.map((el) => el.data?.id).filter(Boolean));
+  const existingIds = new Set(
+    result
+      .map((el) => (typeof el.data.id === "string" ? el.data.id : ""))
+      .filter((id) => id !== "")
+  );
 
   for (const annotation of networkAnnotations) {
     // Skip if already created from YAML links
     if (existingIds.has(annotation.id)) continue;
-    if (specialNodes?.has(annotation.id)) continue;
+    if (specialNodes !== undefined && specialNodes.has(annotation.id)) continue;
 
     // Create network node from annotation
     const nodeInfo = networkTypeToSpecialInfo(annotation.id, annotation.type, annotation.label);
     const placement = extractNetworkPlacement(annotation);
-    const extraProps = specialNodeProps?.get(annotation.id) || {};
+    const extraProps = specialNodeProps?.get(annotation.id) ?? {};
     const networkNodeEl = createNetworkNodeElement(annotation.id, nodeInfo, placement, extraProps);
     result.push(networkNodeEl);
   }
@@ -401,7 +427,7 @@ export function addNetworkNodes(
     if (shouldSkipNetworkNode(nodeId, nodeInfo, yamlNodeIds)) continue;
 
     const placement = resolveNetworkNodePlacement(nodeId, annotations);
-    const extraProps = specialNodeProps.get(nodeId) || {};
+    const extraProps = specialNodeProps.get(nodeId) ?? {};
     const networkNodeEl = createNetworkNodeElement(nodeId, nodeInfo, placement, extraProps);
     result.push(networkNodeEl);
   }
@@ -419,7 +445,7 @@ export function isSpecialNode(
   nodeId: string,
   specialNodes?: Map<string, SpecialNodeInfo>
 ): boolean {
-  if (specialNodes?.has(nodeId)) return true;
+  if (specialNodes !== undefined && specialNodes.has(nodeId)) return true;
   if (nodeId.startsWith("host:")) return true;
   if (nodeId.startsWith("mgmt-net:")) return true;
   if (nodeId.startsWith(PREFIX_MACVLAN)) return true;

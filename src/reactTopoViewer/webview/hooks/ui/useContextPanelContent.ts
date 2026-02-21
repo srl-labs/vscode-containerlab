@@ -31,14 +31,18 @@ export interface PanelView {
 
 const PALETTE_VIEW: PanelView = { kind: "palette", title: "Palette", hasFooter: false };
 
+function hasId(value: string | null): value is string {
+  return value !== null && value.length > 0;
+}
+
 function resolveEditingView(
   state: Pick<TopoViewerState, "editingNode" | "editingEdge" | "editingNetwork" | "editingImpairment">
 ): PanelView | null {
-  if (state.editingNode) return { kind: "nodeEditor", title: "Node Editor", hasFooter: true };
-  if (state.editingEdge) return { kind: "linkEditor", title: "Link Editor", hasFooter: true };
-  if (state.editingNetwork)
+  if (hasId(state.editingNode)) return { kind: "nodeEditor", title: "Node Editor", hasFooter: true };
+  if (hasId(state.editingEdge)) return { kind: "linkEditor", title: "Link Editor", hasFooter: true };
+  if (hasId(state.editingNetwork))
     return { kind: "networkEditor", title: "Network Editor", hasFooter: true };
-  if (state.editingImpairment)
+  if (hasId(state.editingImpairment))
     return { kind: "linkImpairment", title: "Link Impairments", hasFooter: true };
   return null;
 }
@@ -64,9 +68,9 @@ function resolveAnnotationView(annotationUI: AnnotationUIState): PanelView | nul
 function resolveSelectionView(
   state: Pick<TopoViewerState, "selectedNode" | "selectedEdge" | "mode">
 ): PanelView | null {
-  if (state.selectedNode && state.mode === "view")
+  if (hasId(state.selectedNode) && state.mode === "view")
     return { kind: "nodeInfo", title: "Node Properties", hasFooter: false };
-  if (state.selectedEdge && state.mode === "view")
+  if (hasId(state.selectedEdge) && state.mode === "view")
     return { kind: "linkInfo", title: "Link Properties", hasFooter: false };
   return null;
 }

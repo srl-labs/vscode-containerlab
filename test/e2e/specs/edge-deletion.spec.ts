@@ -225,7 +225,7 @@ test.describe("Edge Deletion - File Persistence", () => {
   }) => {
     // Get initial YAML
     const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-    const initialEndpointsCount = (initialYaml.match(/endpoints:/g) || []).length;
+    const initialEndpointsCount = (initialYaml.match(/endpoints:/g) ?? []).length;
     expect(initialEndpointsCount).toBeGreaterThanOrEqual(2);
 
     // Get edge IDs
@@ -240,7 +240,7 @@ test.describe("Edge Deletion - File Persistence", () => {
 
     // Verify single deletion
     let updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-    let updatedEndpointsCount = (updatedYaml.match(/endpoints:/g) || []).length;
+    let updatedEndpointsCount = (updatedYaml.match(/endpoints:/g) ?? []).length;
     expect(updatedEndpointsCount).toBe(initialEndpointsCount - 1);
 
     // Select and delete second edge using multi-select
@@ -264,7 +264,7 @@ test.describe("Edge Deletion - File Persistence", () => {
 
     // Verify multiple deletion
     updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-    updatedEndpointsCount = (updatedYaml.match(/endpoints:/g) || []).length;
+    updatedEndpointsCount = (updatedYaml.match(/endpoints:/g) ?? []).length;
     expect(updatedEndpointsCount).toBeLessThan(initialEndpointsCount - 1);
   });
 });

@@ -1,8 +1,6 @@
 // Grafana Flow-panel export helpers.
 import type { Edge, Node } from "@xyflow/react";
 
-import type { TopologyEdgeData } from "../../../../shared/types/graph";
-
 const SVG_NS = "http://www.w3.org/2000/svg";
 const SVG_MIME_TYPE = "image/svg+xml";
 const CELL_ID_PREAMBLE = "cell-";
@@ -79,11 +77,16 @@ function asString(value: unknown): string | null {
     : null;
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null) return {};
+  return Object.fromEntries(Object.entries(value));
+}
+
 function toCellMapping(edge: Edge): GrafanaEdgeCellMapping | null {
-  const data = (edge.data ?? {}) as TopologyEdgeData;
+  const data = asRecord(edge.data);
   const sourceEndpoint = asString(data.sourceEndpoint);
   const targetEndpoint = asString(data.targetEndpoint);
-  if (!sourceEndpoint || !targetEndpoint) return null;
+  if (sourceEndpoint === null || targetEndpoint === null) return null;
 
   const operstateCellId = `${edge.source}:${sourceEndpoint}`;
   const targetOperstateCellId = `${edge.target}:${targetEndpoint}`;
@@ -238,7 +241,7 @@ function applyGraphTransform(
 
 function parseNumericAttr(el: Element, attrName: string): number | null {
   const raw = el.getAttribute(attrName);
-  if (!raw) return null;
+  if (raw === null || raw.length === 0) return null;
   const parsed = Number.parseFloat(raw);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -358,7 +361,7 @@ function includeEdgePathBounds(
 ): void {
   for (const edgePath of Array.from(doc.querySelectorAll("g.export-edge path[d]"))) {
     const pathData = edgePath.getAttribute("d");
-    if (!pathData) continue;
+    if (pathData === null || pathData.length === 0) continue;
     includePathBounds(bounds, transform, pathData);
   }
 }
@@ -434,7 +437,7 @@ function parseViewBox(svgEl: Element): {
   height: number;
 } {
   const viewBoxAttr = svgEl.getAttribute("viewBox");
-  if (viewBoxAttr) {
+  if (viewBoxAttr !== null && viewBoxAttr.length > 0) {
     const parts = viewBoxAttr
       .split(/[ ,]+/)
       .map((part) => Number.parseFloat(part))
@@ -556,7 +559,7 @@ function setCellIdAttributes(element: Element, shortCellId: string): void {
 function parsePathStart(
   pathData: string | null,
 ): { x: number; y: number } | null {
-  if (!pathData) return null;
+  if (pathData === null || pathData.length === 0) return null;
   const trimmed = pathData.trim();
   if (trimmed.length === 0) return null;
   const command = trimmed[0];
@@ -945,7 +948,11 @@ function createTrafficHalfCell(
   group.setAttribute("class", "grafana-traffic-half");
   setCellIdAttributes(group, shortCellId);
 
-  const path = sourcePath.cloneNode(true) as Element;
+  const clonedPath = sourcePath.cloneNode(true);
+  if (!(clonedPath instanceof Element)) {
+    throw new Error("Expected cloned traffic path to be an Element");
+  }
+  const path = clonedPath;
   path.setAttribute("d", halfPathData);
   path.removeAttribute("id");
   path.removeAttribute("data-cell-id");
@@ -993,7 +1000,9 @@ function buildEdgeGroupByDataId(doc: XMLDocument): Map<string, Element> {
   const edgeGroupByDataId = new Map<string, Element>();
   for (const group of Array.from(doc.querySelectorAll("g.export-edge"))) {
     const edgeDataId = group.getAttribute("data-id");
-    if (!edgeDataId || edgeGroupByDataId.has(edgeDataId)) continue;
+    if (edgeDataId === null || edgeDataId.length === 0 || edgeGroupByDataId.has(edgeDataId)) {
+      continue;
+    }
     edgeGroupByDataId.set(edgeDataId, group);
   }
   return edgeGroupByDataId;
@@ -1165,7 +1174,7 @@ export function removeUnlinkedNodesFromSvg(
     doc.querySelectorAll("g.export-node[data-id]"),
   )) {
     const nodeId = nodeEl.getAttribute("data-id");
-    if (!nodeId || linkedNodeIds.has(nodeId)) continue;
+    if (nodeId === null || nodeId.length === 0 || linkedNodeIds.has(nodeId)) continue;
     nodeEl.remove();
   }
 

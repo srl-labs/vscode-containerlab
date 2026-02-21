@@ -58,7 +58,7 @@ export async function update(): Promise<void> {
     rawInspectData = events.getGroupedContainers();
 
     const duration = (Date.now() - start) / 1000;
-    const labsCount = rawInspectData ? Object.keys(rawInspectData).length : 0;
+    const labsCount = Object.keys(rawInspectData).length;
     outputChannel.debug(
       `[inspector] Updated inspect data for ${labsCount} labs in ${duration.toFixed(3)}s`
     );
@@ -83,7 +83,7 @@ async function updateWithPolling(runtime: string): Promise<void> {
   rawInspectData = fallback.getGroupedContainers();
 
   const duration = (Date.now() - start) / 1000;
-  const labsCount = rawInspectData ? Object.keys(rawInspectData).length : 0;
+  const labsCount = Object.keys(rawInspectData).length;
   outputChannel.debug(
     `[inspector] Updated inspect data for ${labsCount} labs in ${duration.toFixed(3)}s (polling)`
   );

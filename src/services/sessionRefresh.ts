@@ -43,6 +43,27 @@ function hasSessionProperties(session: unknown): session is { name?: unknown; ne
   return typeof session === "object" && session !== null;
 }
 
+function toSshxSession(sessionData: unknown): SshxSession | undefined {
+  if (!hasSessionProperties(sessionData)) return undefined;
+  const record = Object.fromEntries(Object.entries(sessionData));
+  return {
+    name: typeof record.name === "string" ? record.name : undefined,
+    network: typeof record.network === "string" ? record.network : undefined,
+    link: typeof record.link === "string" ? record.link : undefined
+  };
+}
+
+function toGottySession(sessionData: unknown): GottySession | undefined {
+  if (!hasSessionProperties(sessionData)) return undefined;
+  const record = Object.fromEntries(Object.entries(sessionData));
+  return {
+    name: typeof record.name === "string" ? record.name : undefined,
+    network: typeof record.network === "string" ? record.network : undefined,
+    port:
+      typeof record.port === "number" || typeof record.port === "string" ? record.port : undefined
+  };
+}
+
 function extractLabName(session: SshxSession | GottySession, prefix: string): string | undefined {
   if (typeof session.network === "string" && session.network.startsWith("clab-")) {
     return session.network.slice(5);
@@ -70,21 +91,21 @@ export async function refreshSshxSessions() {
       false
     );
     sshxSessions.clear();
-    if (out && typeof out === "string") {
+    if (typeof out === "string" && out.length > 0) {
       const parsed: unknown = JSON.parse(out);
       if (!isSessionArray(parsed)) {
         return;
       }
       parsed.forEach((sessionData) => {
-        if (!hasSessionProperties(sessionData)) {
+        const session = toSshxSession(sessionData);
+        if (session === undefined) {
           return;
         }
-        const session = sessionData as SshxSession;
-        if (!session.link || session.link === "N/A") {
+        if (session.link === undefined || session.link.length === 0 || session.link === "N/A") {
           return;
         }
         const lab = extractLabName(session, "sshx");
-        if (lab) {
+        if (lab !== undefined && lab.length > 0) {
           sshxSessions.set(lab, session.link);
         }
       });
@@ -105,7 +126,7 @@ export async function refreshGottySessions() {
       false
     );
     gottySessions.clear();
-    if (out && typeof out === "string") {
+    if (typeof out === "string" && out.length > 0) {
       const parsed: unknown = JSON.parse(out);
       if (!isSessionArray(parsed)) {
         return;
@@ -115,15 +136,18 @@ export async function refreshGottySessions() {
       const hostname = await getHostname();
 
       parsed.forEach((sessionData) => {
-        if (!hasSessionProperties(sessionData)) {
+        const session = toGottySession(sessionData);
+        if (session === undefined) {
           return;
         }
-        const session = sessionData as GottySession;
-        if (!session.port || !hostname) {
+        if (
+          session.port === undefined ||
+          hostname.length === 0
+        ) {
           return;
         }
         const lab = extractLabName(session, "gotty");
-        if (lab) {
+        if (lab !== undefined && lab.length > 0) {
           // Construct the URL using hostname and port
           const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
           const url = `http://${bracketed}:${session.port}`;

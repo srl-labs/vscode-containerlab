@@ -11,8 +11,8 @@ import { isSpecialEndpointId } from "./LinkTypes";
 export function generateDummyId(baseName: string, usedIds: Set<string>): string {
   const re = /^(dummy)(\d*)$/;
   const match = re.exec(baseName);
-  const base = match?.[1] || "dummy";
-  let num = parseInt(match?.[2] || "1") || 1;
+  const base = match?.[1] ?? "dummy";
+  let num = parseInt(match?.[2] ?? "1") || 1;
   while (usedIds.has(`${base}${num}`)) num++;
   return `${base}${num}`;
 }

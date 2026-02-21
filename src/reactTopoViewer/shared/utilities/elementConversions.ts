@@ -12,6 +12,7 @@ import type {
   NetworkNodeData,
   TopologyEdgeData
 } from "../types/graph";
+import { getNumber, getRecordUnknown, getString } from "./typeHelpers";
 
 // ============================================================================
 // ParsedElement to ReactFlow Conversion
@@ -47,7 +48,7 @@ function getGeoCoordinates(
 }
 
 function getNodeLabel(data: Record<string, unknown>): string {
-  return (data.name as string) ?? (data.id as string) ?? "";
+  return getString(data.name) ?? getString(data.id) ?? "";
 }
 
 export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
@@ -55,10 +56,11 @@ export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
     throw new Error("Cannot convert edge element to node");
   }
 
-  const data = element.data as Record<string, unknown>;
-  const extraData = (data.extraData ?? {}) as Record<string, unknown>;
-  const role = (data.topoViewerRole as string) ?? "pe";
+  const data = element.data;
+  const extraData = getRecordUnknown(data.extraData) ?? {};
+  const role = getString(data.topoViewerRole) ?? "pe";
   const geoCoordinates = getGeoCoordinates(data);
+  const id = getString(data.id) ?? "";
 
   // Determine node type based on role
   const isNetworkNode = NETWORK_NODE_ROLES.has(role);
@@ -66,47 +68,49 @@ export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
   if (isNetworkNode) {
     const networkNodeData: NetworkNodeData = {
       label: getNodeLabel(data),
-      nodeType: role as NetworkNodeData["nodeType"],
-      labelPosition: data.labelPosition as string | undefined,
-      direction: data.direction as string | undefined,
-      labelBackgroundColor: data.labelBackgroundColor as string | undefined,
+      nodeType: role,
+      labelPosition: getString(data.labelPosition),
+      direction: getString(data.direction),
+      labelBackgroundColor: getString(data.labelBackgroundColor),
       ...(geoCoordinates ? { geoCoordinates } : {}),
-      extraData: extraData
+      extraData
     };
 
-    return {
-      id: data.id as string,
+    const node: TopoNode = {
+      id,
       type: "network-node",
       position: element.position ?? { x: 0, y: 0 },
       data: networkNodeData
-    } as TopoNode;
+    };
+    return node;
   }
 
   // Regular topology node
   const nodeData: TopologyNodeData = {
     label: getNodeLabel(data),
     role,
-    kind: extraData.kind as string | undefined,
-    image: extraData.image as string | undefined,
-    iconColor: data.iconColor as string | undefined,
-    iconCornerRadius: data.iconCornerRadius as number | undefined,
-    labelPosition: data.labelPosition as string | undefined,
-    direction: data.direction as string | undefined,
-    labelBackgroundColor: data.labelBackgroundColor as string | undefined,
-    state: extraData.state as string | undefined,
-    mgmtIpv4Address: extraData.mgmtIpv4Address as string | undefined,
-    mgmtIpv6Address: extraData.mgmtIpv6Address as string | undefined,
-    longname: extraData.longname as string | undefined,
+    kind: getString(extraData.kind),
+    image: getString(extraData.image),
+    iconColor: getString(data.iconColor),
+    iconCornerRadius: getNumber(data.iconCornerRadius),
+    labelPosition: getString(data.labelPosition),
+    direction: getString(data.direction),
+    labelBackgroundColor: getString(data.labelBackgroundColor),
+    state: getString(extraData.state),
+    mgmtIpv4Address: getString(extraData.mgmtIpv4Address),
+    mgmtIpv6Address: getString(extraData.mgmtIpv6Address),
+    longname: getString(extraData.longname),
     ...(geoCoordinates ? { geoCoordinates } : {}),
     extraData
   };
 
-  return {
-    id: data.id as string,
+  const node: TopoNode = {
+    id,
     type: "topology-node",
     position: element.position ?? { x: 0, y: 0 },
     data: nodeData
-  } as TopoNode;
+  };
+  return node;
 }
 
 /**
@@ -117,28 +121,34 @@ export function parsedElementToTopoEdge(element: ParsedElement): TopoEdge {
     throw new Error("Cannot convert node element to edge");
   }
 
-  const data = element.data as Record<string, unknown>;
-  const extraData = (data.extraData ?? {}) as Record<string, unknown>;
+  const data = element.data;
+  const extraData = getRecordUnknown(data.extraData) ?? {};
+  const classes = element.classes ?? "";
+  const sourceEndpoint = getString(data.sourceEndpoint) ?? "";
+  const targetEndpoint = getString(data.targetEndpoint) ?? "";
+  const edgeId = getString(data.id) ?? "";
+  const source = getString(data.source) ?? "";
+  const target = getString(data.target) ?? "";
 
   // Compute link status from CSS classes
   let linkStatus: "up" | "down" | undefined;
-  if (element.classes?.includes("link-up")) {
+  if (classes.includes("link-up")) {
     linkStatus = "up";
-  } else if (element.classes?.includes("link-down")) {
+  } else if (classes.includes("link-down")) {
     linkStatus = "down";
   }
 
   const edgeData: TopologyEdgeData = {
-    sourceEndpoint: (data.sourceEndpoint as string) ?? "",
-    targetEndpoint: (data.targetEndpoint as string) ?? "",
+    sourceEndpoint,
+    targetEndpoint,
     linkStatus,
     extraData
   };
 
   return {
-    id: data.id as string,
-    source: data.source as string,
-    target: data.target as string,
+    id: edgeId,
+    source,
+    target,
     type: "topology-edge",
     data: edgeData
   };
@@ -154,7 +164,7 @@ export function convertElementsToTopologyData(elements: ParsedElement[]): Topolo
   for (const element of elements) {
     if (element.group === "nodes") {
       nodes.push(parsedElementToTopoNode(element));
-    } else if (element.group === "edges") {
+    } else {
       edges.push(parsedElementToTopoEdge(element));
     }
   }
@@ -170,13 +180,14 @@ export function convertElementsToTopologyData(elements: ParsedElement[]): Topolo
  * Converts a TopoNode back to ParsedElement format.
  */
 export function topoNodeToParsedElement(node: TopoNode): ParsedElement {
-  const data = node.data as Record<string, unknown>;
-  const geo = (data.geoCoordinates ??
-    (data.extraData as Record<string, unknown> | undefined)?.geoCoordinates) as
-    | { lat?: number; lng?: number }
-    | undefined;
+  const data = node.data;
+  const extraData = getRecordUnknown(data.extraData);
+  const geoRaw = data.geoCoordinates ?? extraData?.geoCoordinates;
+  const geo = getRecordUnknown(geoRaw);
   const lat = typeof geo?.lat === "number" ? String(geo.lat) : "";
   const lng = typeof geo?.lng === "number" ? String(geo.lng) : "";
+  const topoViewerRole =
+    getString(data.role) ?? getString(data.nodeType) ?? "pe";
 
   return {
     group: "nodes",
@@ -184,7 +195,7 @@ export function topoNodeToParsedElement(node: TopoNode): ParsedElement {
       id: node.id,
       weight: "30",
       name: data.label ?? node.id,
-      topoViewerRole: data.role ?? data.nodeType ?? "pe",
+      topoViewerRole,
       iconColor: data.iconColor,
       iconCornerRadius: data.iconCornerRadius,
       labelPosition: data.labelPosition,
@@ -192,9 +203,9 @@ export function topoNodeToParsedElement(node: TopoNode): ParsedElement {
       labelBackgroundColor: data.labelBackgroundColor,
       lat,
       lng,
-      extraData: data.extraData ?? {}
+      extraData: extraData ?? {}
     },
-    position: node.position ?? { x: 0, y: 0 },
+    position: node.position,
     removed: false,
     selected: false,
     selectable: true,
@@ -209,7 +220,7 @@ export function topoNodeToParsedElement(node: TopoNode): ParsedElement {
  * Converts a TopoEdge back to ParsedElement format.
  */
 export function topoEdgeToParsedElement(edge: TopoEdge): ParsedElement {
-  const data = edge.data as TopologyEdgeData | undefined;
+  const data = edge.data;
   const linkStatus = data?.linkStatus;
   let classes = "";
   if (linkStatus === "up") classes = "link-up";

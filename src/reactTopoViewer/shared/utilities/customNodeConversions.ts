@@ -5,9 +5,7 @@
 import type {
   NodeEditorData,
   CustomTemplateEditorData,
-  CustomNodeTemplate,
-  HealthCheckConfig,
-  SrosComponent
+  CustomNodeTemplate
 } from "../types/editors";
 
 /**
@@ -167,9 +165,9 @@ export function convertEditorDataToSaveData(
 ): SaveCustomNodeData {
   return {
     // Required fields
-    name: data.customName || "",
+    name: data.customName ?? "",
     oldName: originalName,
-    kind: data.kind || "",
+    kind: data.kind ?? "",
 
     setDefault: data.isDefaultCustomNode,
     ...buildCommonTemplateFields(data)
@@ -185,10 +183,10 @@ export function convertEditorDataToTemplateData(
   originalTemplate: CustomTemplateEditorData | null
 ): CustomTemplateEditorData {
   return {
-    id: originalTemplate?.id || data.id,
+    id: originalTemplate?.id ?? data.id,
     isCustomTemplate: true,
-    customName: data.customName || "",
-    kind: data.kind || "",
+    customName: data.customName ?? "",
+    kind: data.kind ?? "",
     originalName: originalTemplate?.originalName,
     isDefaultCustomNode: data.isDefaultCustomNode,
     ...buildCommonTemplateFields(data)
@@ -202,9 +200,6 @@ export function convertEditorDataToTemplateData(
 export function convertTemplateToEditorData(
   template: CustomNodeTemplate
 ): CustomTemplateEditorData {
-  // Use type assertion for accessing extended properties
-  const t = template as Record<string, unknown>;
-
   return {
     id: "edit-custom-node",
     isCustomTemplate: true,
@@ -216,8 +211,8 @@ export function convertTemplateToEditorData(
     type: template.type,
     image: template.image,
     icon: template.icon,
-    iconColor: t.iconColor as string | undefined,
-    iconCornerRadius: t.iconCornerRadius as number | undefined,
+    iconColor: template.iconColor,
+    iconCornerRadius: template.iconCornerRadius,
 
     // Custom template specific
     baseName: template.baseName,
@@ -225,51 +220,51 @@ export function convertTemplateToEditorData(
     isDefaultCustomNode: template.setDefault,
 
     // Configuration tab fields
-    license: t.license as string | undefined,
-    startupConfig: t.startupConfig as string | undefined,
-    enforceStartupConfig: t.enforceStartupConfig as boolean | undefined,
-    suppressStartupConfig: t.suppressStartupConfig as boolean | undefined,
-    binds: t.binds as string[] | undefined,
-    env: t.env as Record<string, string> | undefined,
-    envFiles: t.envFiles as string[] | undefined,
-    labels: t.labels as Record<string, string> | undefined,
+    license: template.license,
+    startupConfig: template.startupConfig,
+    enforceStartupConfig: template.enforceStartupConfig,
+    suppressStartupConfig: template.suppressStartupConfig,
+    binds: template.binds,
+    env: template.env,
+    envFiles: template.envFiles,
+    labels: template.labels,
 
     // Runtime tab fields
-    user: t.user as string | undefined,
-    entrypoint: t.entrypoint as string | undefined,
-    cmd: t.cmd as string | undefined,
-    exec: t.exec as string[] | undefined,
-    restartPolicy: t.restartPolicy as string | undefined,
-    autoRemove: t.autoRemove as boolean | undefined,
-    startupDelay: t.startupDelay as number | undefined,
+    user: template.user,
+    entrypoint: template.entrypoint,
+    cmd: template.cmd,
+    exec: template.exec,
+    restartPolicy: template.restartPolicy,
+    autoRemove: template.autoRemove,
+    startupDelay: template.startupDelay,
 
     // Network tab fields
-    mgmtIpv4: t.mgmtIpv4 as string | undefined,
-    mgmtIpv6: t.mgmtIpv6 as string | undefined,
-    networkMode: t.networkMode as string | undefined,
-    ports: t.ports as string[] | undefined,
-    dnsServers: t.dnsServers as string[] | undefined,
-    aliases: t.aliases as string[] | undefined,
+    mgmtIpv4: template.mgmtIpv4,
+    mgmtIpv6: template.mgmtIpv6,
+    networkMode: template.networkMode,
+    ports: template.ports,
+    dnsServers: template.dnsServers,
+    aliases: template.aliases,
 
     // Advanced tab fields
-    cpu: t.cpu as number | undefined,
-    cpuSet: t.cpuSet as string | undefined,
-    memory: t.memory as string | undefined,
-    shmSize: t.shmSize as string | undefined,
-    capAdd: t.capAdd as string[] | undefined,
-    sysctls: t.sysctls as Record<string, string> | undefined,
-    devices: t.devices as string[] | undefined,
-    certIssue: t.certIssue as boolean | undefined,
-    certKeySize: t.certKeySize as string | undefined,
-    certValidity: t.certValidity as string | undefined,
-    sans: t.sans as string[] | undefined,
-    healthCheck: t.healthCheck as HealthCheckConfig | undefined,
-    imagePullPolicy: t.imagePullPolicy as string | undefined,
-    runtime: t.runtime as string | undefined,
+    cpu: template.cpu,
+    cpuSet: template.cpuSet,
+    memory: template.memory,
+    shmSize: template.shmSize,
+    capAdd: template.capAdd,
+    sysctls: template.sysctls,
+    devices: template.devices,
+    certIssue: template.certIssue,
+    certKeySize: template.certKeySize,
+    certValidity: template.certValidity,
+    sans: template.sans,
+    healthCheck: template.healthCheck,
+    imagePullPolicy: template.imagePullPolicy,
+    runtime: template.runtime,
 
     // Components tab fields (SROS)
-    isDistributed: t.isDistributed as boolean | undefined,
-    components: t.components as SrosComponent[] | undefined
+    isDistributed: template.isDistributed,
+    components: template.components
   };
 }
 

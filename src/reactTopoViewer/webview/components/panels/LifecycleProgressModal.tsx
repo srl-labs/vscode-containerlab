@@ -158,7 +158,7 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
       </DialogTitle>
       {isProcessing && <LinearProgress />}
       <DialogContent dividers sx={{ pt: 2 }}>
-        {statusMessage && (
+        {statusMessage !== undefined && statusMessage !== null && statusMessage.length > 0 && (
           <Typography variant="body2" color="text.secondary" sx={{ display: "block", mb: 1 }}>
             {statusMessage}
           </Typography>

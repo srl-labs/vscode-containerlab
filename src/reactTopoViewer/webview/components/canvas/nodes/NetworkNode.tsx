@@ -45,11 +45,19 @@ const HANDLE_POSITIONS = [
   { position: Position.Left, id: "left" }
 ] as const;
 
+function toNetworkNodeData(data: NodeProps["data"]): NetworkNodeData {
+  return {
+    ...data,
+    label: typeof data.label === "string" ? data.label : "",
+    nodeType: typeof data.nodeType === "string" ? data.nodeType : "host"
+  };
+}
+
 /**
  * NetworkNode component renders network endpoint nodes (host, mgmt-net, etc.)
  */
 const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
-  const nodeData = data as NetworkNodeData;
+  const nodeData = toNetworkNodeData(data);
   const { label, nodeType, labelPosition, direction, labelBackgroundColor } = nodeData;
   const { linkSourceNode } = useLinkCreationContext();
   const { suppressLabels } = useNodeRenderConfig();

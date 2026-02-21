@@ -209,7 +209,7 @@ const ACTION_GROUP_ORDER_BY_NODE_KIND: Record<ExplorerNodeKind, ActionGroupId[]>
   other: ACTION_GROUP_ORDER_DEFAULT
 };
 
-const ACTION_ICON_BY_COMMAND: Record<string, SvgIconComponent> = {
+const ACTION_ICON_BY_COMMAND: Partial<Record<string, SvgIconComponent>> = {
   "containerlab.inspectall": ManageSearchIcon,
   "containerlab.treeview.runninglabs.hidenonownedlabs": VisibilityOffIcon,
   "containerlab.treeview.runninglabs.shownonownedlabs": VisibilityIcon,
@@ -418,7 +418,7 @@ type UiStateExplorerMessage = Extract<ExplorerIncomingMessage, { command: "uiSta
 type ErrorExplorerMessage = Extract<ExplorerIncomingMessage, { command: "error" }>;
 
 function statusColor(indicator: string | undefined): string {
-  if (!indicator) {
+  if (indicator === undefined || indicator.length === 0) {
     return COLOR_TEXT_DISABLED;
   }
   return STATUS_COLOR_MAP[indicator] || COLOR_TEXT_DISABLED;
@@ -488,11 +488,11 @@ function reorderSections(
 }
 
 function isExplorerSectionId(value: string): value is ExplorerSectionId {
-  return EXPLORER_SECTION_ORDER.includes(value as ExplorerSectionId);
+  return (EXPLORER_SECTION_ORDER as string[]).includes(value);
 }
 
 function nodeKindFromContext(contextValue: string | undefined): ExplorerNodeKind {
-  if (!contextValue) {
+  if (contextValue === undefined || contextValue.length === 0) {
     return "other";
   }
   if (contextValue.includes("containerlabLab")) {
@@ -525,7 +525,7 @@ function isSharedLabNode(node: ExplorerNode): boolean {
 function actionIcon(action: ExplorerAction): SvgIconComponent {
   const command = action.commandId.toLowerCase();
   const commandIcon = ACTION_ICON_BY_COMMAND[command];
-  if (commandIcon) {
+  if (commandIcon !== undefined) {
     return commandIcon;
   }
 
@@ -1081,7 +1081,7 @@ function ExplorerNodeTextBlock({
               />
             </IconButton>
           )}
-          {inlineContainerStatus && (
+          {inlineContainerStatus !== undefined && inlineContainerStatus.length > 0 && (
             <Typography variant="caption" color="text.secondary" noWrap>
               {inlineContainerStatus}
             </Typography>
@@ -1158,7 +1158,7 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
     () => buildNodeContextMenuItems(menuActions, nodeKind, onInvokeAction),
     [menuActions, nodeKind, onInvokeAction]
   );
-  const secondaryText = node.description || node.statusDescription;
+  const secondaryText = node.description ?? node.statusDescription;
   const isContainer = node.contextValue === "containerlabContainer" || node.contextValue === "containerlabContainerGroup";
   const isInterface =
     node.contextValue === "containerlabInterfaceUp" || node.contextValue === "containerlabInterfaceDown";
@@ -1421,7 +1421,9 @@ function usePaneResize(
       isResizingRef.current = true;
       setIsResizing(true);
 
-      const expandedIds = orderedSectionIds.filter((id) => !collapsedBySection[id] && !FIXED_HEIGHT_SECTIONS.has(id));
+      const expandedIds = orderedSectionIds.filter(
+        (id) => collapsedBySection[id] !== true && !FIXED_HEIGHT_SECTIONS.has(id)
+      );
       const headerHeight = 28;
       const dividerCount = Math.max(0, expandedIds.length - 1);
       const containerHeight = container.clientHeight;
@@ -1689,9 +1691,7 @@ export function ContainerlabExplorerView() {
 
     setExpandedBySection((current) => {
       if (filterActive) {
-        if (!expandedBeforeFilterRef.current) {
-          expandedBeforeFilterRef.current = current;
-        }
+        expandedBeforeFilterRef.current ??= current;
         const next: Partial<Record<ExplorerSectionId, string[]>> = { ...current };
         for (const section of message.sections) {
           if (section.id === "runningLabs" || section.id === "localLabs") {
@@ -1725,7 +1725,7 @@ export function ContainerlabExplorerView() {
   }, []);
 
   const handleUiStateMessage = useCallback((message: UiStateExplorerMessage) => {
-    const state = message.state || {};
+    const state = message.state;
     if (Array.isArray(state.sectionOrder) && state.sectionOrder.length > 0) {
       setSectionOrder(state.sectionOrder.filter((id) => isExplorerSectionId(id)));
     }
@@ -1837,7 +1837,9 @@ export function ContainerlabExplorerView() {
       const wasCollapsed = current[sectionId] ?? false;
       const next = { ...current, [sectionId]: !wasCollapsed };
 
-      const expandedAfter = orderedSectionIds.filter((id) => !next[id] && !FIXED_HEIGHT_SECTIONS.has(id));
+      const expandedAfter = orderedSectionIds.filter(
+        (id) => next[id] !== true && !FIXED_HEIGHT_SECTIONS.has(id)
+      );
       setHeightRatioBySection((currentRatios) => normalizeHeightRatios(currentRatios, expandedAfter));
 
       return next;
@@ -1902,10 +1904,12 @@ export function ContainerlabExplorerView() {
 
   const sectionFlexStyles = useMemo(() => {
     const styles: Partial<Record<ExplorerSectionId, string>> = {};
-    const expandedIds = orderedSectionIds.filter((id) => !collapsedBySection[id] && !FIXED_HEIGHT_SECTIONS.has(id));
+    const expandedIds = orderedSectionIds.filter(
+      (id) => collapsedBySection[id] !== true && !FIXED_HEIGHT_SECTIONS.has(id)
+    );
     const n = expandedIds.length;
     for (const id of orderedSectionIds) {
-      if (collapsedBySection[id] || FIXED_HEIGHT_SECTIONS.has(id)) {
+      if (collapsedBySection[id] === true || FIXED_HEIGHT_SECTIONS.has(id)) {
         styles[id] = "0 0 auto";
       } else {
         const ratio = heightRatioBySection[id] ?? (n > 0 ? 1 / n : 1);
@@ -1970,7 +1974,7 @@ export function ContainerlabExplorerView() {
         gap: 1.5
       }}
     >
-      {errorMessage && (
+      {errorMessage !== null && errorMessage.length > 0 && (
         <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mx: 1.5 }}>
           {errorMessage}
         </Alert>
@@ -2076,6 +2080,6 @@ function mount(): void {
   );
 }
 
-if (document.body?.dataset.webviewKind === EXPLORER_WEBVIEW_KIND) {
+if (document.body.dataset.webviewKind === EXPLORER_WEBVIEW_KIND) {
   mount();
 }

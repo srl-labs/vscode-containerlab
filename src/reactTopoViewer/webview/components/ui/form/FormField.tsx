@@ -26,39 +26,46 @@ export const FormField: React.FC<FormFieldProps> = ({
   tooltip,
   required,
   inherited
-}) => (
-  <Box sx={{ mb: 1.5 }}>
-    <Box sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
-      <Typography
-        component="label"
-        variant="body2"
-        sx={{
-          fontWeight: (theme) => theme.typography.fontWeightMedium,
-          textTransform: "uppercase",
-          letterSpacing: 0.5
-        }}
-      >
-        {label}
-        {unit && (
-          <Typography component="span" sx={{ ml: 0.5, textTransform: "none", fontWeight: 400 }}>
-            ({unit})
-          </Typography>
+}) => {
+  const hasUnit = unit !== undefined && unit.length > 0;
+  const isRequired = required === true;
+  const isInherited = inherited === true;
+  const hasTooltip = tooltip !== undefined && tooltip.length > 0;
+
+  return (
+    <Box sx={{ mb: 1.5 }}>
+      <Box sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
+        <Typography
+          component="label"
+          variant="body2"
+          sx={{
+            fontWeight: (theme) => theme.typography.fontWeightMedium,
+            textTransform: "uppercase",
+            letterSpacing: 0.5
+          }}
+        >
+          {label}
+          {hasUnit && (
+            <Typography component="span" sx={{ ml: 0.5, textTransform: "none", fontWeight: 400 }}>
+              ({unit})
+            </Typography>
+          )}
+          {isRequired && (
+            <Typography component="span" color="error" sx={{ ml: 0.5 }}>
+              *
+            </Typography>
+          )}
+        </Typography>
+        {isInherited && <InheritanceBadge />}
+        {hasTooltip && (
+          <Tooltip title={tooltip} arrow placement="top">
+            <IconButton size="small" sx={{ ml: 0.5, p: 0.25 }}>
+              <InfoOutlinedIcon sx={{ fontSize: 14 }} />
+            </IconButton>
+          </Tooltip>
         )}
-        {required && (
-          <Typography component="span" color="error" sx={{ ml: 0.5 }}>
-            *
-          </Typography>
-        )}
-      </Typography>
-      {inherited && <InheritanceBadge />}
-      {tooltip && (
-        <Tooltip title={tooltip} arrow placement="top">
-          <IconButton size="small" sx={{ ml: 0.5, p: 0.25 }}>
-            <InfoOutlinedIcon sx={{ fontSize: 14 }} />
-          </IconButton>
-        </Tooltip>
-      )}
+      </Box>
+      {children}
     </Box>
-    {children}
-  </Box>
-);
+  );
+};

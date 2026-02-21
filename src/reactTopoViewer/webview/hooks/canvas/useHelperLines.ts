@@ -177,7 +177,7 @@ export function calculateAlignments(
   const draggingEdges = getNodeEdges(draggingNode);
   const draggingDims = getNodeDimensions(draggingNode);
 
-  const otherNodes = allNodes.filter((n) => n.id !== draggingNode.id && !n.hidden);
+  const otherNodes = allNodes.filter((n) => n.id !== draggingNode.id && n.hidden !== true);
 
   const dragYPositions = [
     { value: draggingEdges.top, snapOffset: 0 },

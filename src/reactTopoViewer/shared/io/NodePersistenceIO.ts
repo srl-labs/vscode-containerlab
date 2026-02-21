@@ -13,14 +13,30 @@ import type { SaveResult, IOLogger } from "./types";
 import { ERROR_NODES_NOT_MAP, noopLogger } from "./types";
 import { deepEqual, setOrDelete } from "./YamlDocumentIO";
 
+function getYamlMapIn(
+  doc: YAML.Document.Parsed,
+  path: readonly string[]
+): YAML.YAMLMap | undefined {
+  const value = doc.getIn(path, true);
+  return YAML.isMap(value) ? value : undefined;
+}
+
+function getYamlSeqIn(
+  doc: YAML.Document.Parsed,
+  path: readonly string[]
+): YAML.YAMLSeq | undefined {
+  const value = doc.getIn(path, true);
+  return YAML.isSeq(value) ? value : undefined;
+}
+
 /**
  * Gets the nodes map from a YAML document, returning an error result if not found.
  */
 function getNodesMapOrError(
   doc: YAML.Document.Parsed
 ): { nodesMap: YAML.YAMLMap } | { error: SaveResult } {
-  const nodesMap = doc.getIn(["topology", "nodes"], true) as YAML.YAMLMap | undefined;
-  if (!nodesMap || !YAML.isMap(nodesMap)) {
+  const nodesMap = getYamlMapIn(doc, ["topology", "nodes"]);
+  if (nodesMap === undefined) {
     return { error: { success: false, error: ERROR_NODES_NOT_MAP } };
   }
   return { nodesMap };
@@ -32,25 +48,26 @@ function getNodesMapOrError(
  */
 function ensureTopologyContainers(doc: YAML.Document.Parsed): YAML.YAMLMap {
   if (!doc.contents || !YAML.isMap(doc.contents)) {
-    doc.contents = doc.createNode({}) as unknown as YAML.ParsedNode;
+    doc.contents = YAML.parseDocument("{}").contents;
   }
 
   const topology = doc.get("topology", true);
-  if (!topology || !YAML.isMap(topology)) {
-    doc.set("topology", doc.createNode({}) as YAML.YAMLMap);
+  if (!YAML.isMap(topology)) {
+    doc.set("topology", new YAML.YAMLMap());
   }
 
-  const nodesMap = doc.getIn(["topology", "nodes"], true);
-  if (!nodesMap || !YAML.isMap(nodesMap)) {
-    doc.setIn(["topology", "nodes"], doc.createNode({}) as YAML.YAMLMap);
+  let nodesMap = getYamlMapIn(doc, ["topology", "nodes"]);
+  if (nodesMap === undefined) {
+    nodesMap = new YAML.YAMLMap();
+    doc.setIn(["topology", "nodes"], nodesMap);
   }
 
-  const linksSeq = doc.getIn(["topology", "links"], true);
-  if (!linksSeq || !YAML.isSeq(linksSeq)) {
-    doc.setIn(["topology", "links"], doc.createNode([]) as YAML.YAMLSeq);
+  const linksSeq = getYamlSeqIn(doc, ["topology", "links"]);
+  if (linksSeq === undefined) {
+    doc.setIn(["topology", "links"], new YAML.YAMLSeq());
   }
 
-  return doc.getIn(["topology", "nodes"], true) as YAML.YAMLMap;
+  return nodesMap;
 }
 
 /** Node data for save operations */
@@ -58,17 +75,17 @@ export interface NodeSaveData {
   id: string;
   name: string;
   extraData?: {
-    kind?: string;
-    type?: string;
-    image?: string;
-    group?: string;
-    "startup-config"?: string;
-    "mgmt-ipv4"?: string;
-    "mgmt-ipv6"?: string;
-    labels?: Record<string, unknown>;
-    env?: Record<string, unknown>;
-    binds?: string[];
-    ports?: string[];
+    kind?: string | null;
+    type?: string | null;
+    image?: string | null;
+    group?: string | null;
+    "startup-config"?: string | null;
+    "mgmt-ipv4"?: string | null;
+    "mgmt-ipv6"?: string | null;
+    labels?: Record<string, unknown> | null;
+    env?: Record<string, unknown> | null;
+    binds?: string[] | null;
+    ports?: string[] | null;
     [key: string]: unknown;
   };
   position?: { x: number; y: number };
@@ -140,20 +157,27 @@ export function resolveInheritedConfig(
   kind?: string
 ): Partial<Record<string, unknown>> {
   const result: Record<string, unknown> = {};
+  const topology = topo.topology;
 
   // Apply defaults
-  if (topo.topology?.defaults) {
-    Object.assign(result, topo.topology.defaults);
+  if (topology?.defaults !== undefined) {
+    Object.assign(result, topology.defaults);
   }
 
   // Apply kind defaults
-  if (kind && topo.topology?.kinds?.[kind]) {
-    Object.assign(result, topo.topology.kinds[kind]);
+  if (kind !== undefined && kind.length > 0) {
+    const kindDefaults = topology?.kinds?.[kind];
+    if (kindDefaults !== undefined) {
+      Object.assign(result, kindDefaults);
+    }
   }
 
   // Apply group defaults
-  if (group && topo.topology?.groups?.[group]) {
-    Object.assign(result, topo.topology.groups[group]);
+  if (group !== undefined && group.length > 0) {
+    const groupDefaults = topology?.groups?.[group];
+    if (groupDefaults !== undefined) {
+      Object.assign(result, groupDefaults);
+    }
   }
 
   return result;
@@ -202,10 +226,10 @@ function createNodeYaml(doc: YAML.Document, nodeData: NodeSaveData): YAML.YAMLMa
   const nodeMap = new YAML.YAMLMap();
   nodeMap.flow = false;
 
-  const extra = nodeData.extraData || {};
+  const extra = nodeData.extraData ?? {};
 
   // Set kind (required, defaults to nokia_srlinux)
-  const kind = extra.kind?.trim() || "nokia_srlinux";
+  const kind = extra.kind?.trim() ?? "nokia_srlinux";
   nodeMap.set("kind", doc.createNode(kind));
 
   // Set all other supported properties from NODE_YAML_PROPERTIES
@@ -227,7 +251,7 @@ function updateNodeYaml(
   nodeData: NodeSaveData,
   inheritedConfig: Partial<Record<string, unknown>>
 ): void {
-  const extra = nodeData.extraData || {};
+  const extra = nodeData.extraData ?? {};
 
   // Update each supported property
   for (const prop of NODE_YAML_PROPERTIES) {
@@ -266,7 +290,7 @@ function endpointReferencesNode(ep: unknown, nodeId: string): boolean {
     return str === nodeId || str.startsWith(`${nodeId}:`);
   }
   if (YAML.isMap(ep)) {
-    return (ep as YAML.YAMLMap).get("node") === nodeId;
+    return (ep).get("node") === nodeId;
   }
   return false;
 }
@@ -286,7 +310,7 @@ function linkReferencesNode(linkMap: YAML.YAMLMap, nodeId: string): boolean {
   // Check single endpoint
   const endpoint = linkMap.get("endpoint", true);
   if (YAML.isMap(endpoint)) {
-    return (endpoint as YAML.YAMLMap).get("node") === nodeId;
+    return endpoint.get("node") === nodeId;
   }
 
   return false;
@@ -305,7 +329,7 @@ function updateEndpointReferences(ep: unknown, oldId: string, newId: string): vo
       ep.value = `${newId}:${str.slice(oldId.length + 1)}`;
     }
   } else if (YAML.isMap(ep)) {
-    const epMap = ep as YAML.YAMLMap;
+    const epMap = ep;
     if (epMap.get("node") === oldId) {
       epMap.set("node", newId);
     }
@@ -316,14 +340,14 @@ function updateEndpointReferences(ep: unknown, oldId: string, newId: string): vo
  * Updates all link references when a node is renamed
  */
 function updateLinksForRename(doc: YAML.Document.Parsed, oldId: string, newId: string): void {
-  const linksSeq = doc.getIn(["topology", "links"], true) as YAML.YAMLSeq | undefined;
-  if (!linksSeq || !YAML.isSeq(linksSeq)) {
+  const linksSeq = getYamlSeqIn(doc, ["topology", "links"]);
+  if (linksSeq === undefined) {
     return;
   }
 
   for (const item of linksSeq.items) {
     if (!YAML.isMap(item)) continue;
-    const linkMap = item as YAML.YAMLMap;
+    const linkMap = item;
 
     // Check endpoints array
     const endpoints = linkMap.get("endpoints", true);
@@ -336,9 +360,8 @@ function updateLinksForRename(doc: YAML.Document.Parsed, oldId: string, newId: s
     // Check single endpoint (less common)
     const endpoint = linkMap.get("endpoint", true);
     if (YAML.isMap(endpoint)) {
-      const epMap = endpoint as YAML.YAMLMap;
-      if (epMap.get("node") === oldId) {
-        epMap.set("node", newId);
+      if (endpoint.get("node") === oldId) {
+        endpoint.set("node", newId);
       }
     }
   }
@@ -354,7 +377,8 @@ function findNodeForEdit(
   isRename: boolean,
   logger: IOLogger
 ): { nodeMap: YAML.YAMLMap | null; earlyResult: SaveResult | null } {
-  const nodeMap = nodesMap.get(originalId, true) as YAML.YAMLMap | undefined;
+  const rawNode = nodesMap.get(originalId, true);
+  const nodeMap = YAML.isMap(rawNode) ? rawNode : undefined;
 
   if (nodeMap) {
     return { nodeMap, earlyResult: null };
@@ -456,8 +480,8 @@ export function editNodeInDoc(
 
     const inheritedConfig = resolveInheritedConfig(
       topoObj,
-      nodeData.extraData?.group,
-      nodeData.extraData?.kind
+      nodeData.extraData?.group ?? undefined,
+      nodeData.extraData?.kind ?? undefined
     );
 
     if (isRename) {
@@ -502,11 +526,11 @@ export function deleteNodeFromDoc(
     nodesMap.delete(nodeId);
 
     // Also remove any links connected to this node
-    const linksSeq = doc.getIn(["topology", "links"], true) as YAML.YAMLSeq | undefined;
-    if (linksSeq && YAML.isSeq(linksSeq)) {
+    const linksSeq = getYamlSeqIn(doc, ["topology", "links"]);
+    if (linksSeq !== undefined) {
       linksSeq.items = linksSeq.items.filter((item) => {
         if (!YAML.isMap(item)) return true;
-        return !linkReferencesNode(item as YAML.YAMLMap, nodeId);
+        return !linkReferencesNode(item, nodeId);
       });
     }
 
@@ -534,44 +558,42 @@ export function applyAnnotationData(
   data?: NodeAnnotationData
 ): void {
   if (!data) return;
-  if (data.label === null) {
-    delete annotation.label;
-  } else if (data.label !== undefined) {
-    annotation.label = data.label;
+  const nullableKeys = ["label", "labelPosition", "direction", "labelBackgroundColor"] as const;
+  for (const key of nullableKeys) {
+    const value = data[key];
+    if (value === null) {
+      delete annotation[key];
+    } else if (value !== undefined) {
+      annotation[key] = value;
+    }
   }
-  if (data.icon) annotation.icon = data.icon;
-  if (data.iconColor) annotation.iconColor = data.iconColor;
-  if (data.iconCornerRadius !== undefined) annotation.iconCornerRadius = data.iconCornerRadius;
-  if (data.labelPosition === null) {
-    delete annotation.labelPosition;
-  } else if (data.labelPosition !== undefined) {
-    annotation.labelPosition = data.labelPosition;
+
+  const nonEmptyKeys = ["icon", "iconColor", "interfacePattern", "groupId"] as const;
+  for (const key of nonEmptyKeys) {
+    const value = data[key];
+    if (value !== undefined && value.length > 0) {
+      annotation[key] = value;
+    }
   }
-  if (data.direction === null) {
-    delete annotation.direction;
-  } else if (data.direction !== undefined) {
-    annotation.direction = data.direction;
+
+  if (data.iconCornerRadius !== undefined) {
+    annotation.iconCornerRadius = data.iconCornerRadius;
   }
-  if (data.labelBackgroundColor === null) {
-    delete annotation.labelBackgroundColor;
-  } else if (data.labelBackgroundColor !== undefined) {
-    annotation.labelBackgroundColor = data.labelBackgroundColor;
-  }
-  if (data.interfacePattern) annotation.interfacePattern = data.interfacePattern;
-  if (data.groupId) annotation.groupId = data.groupId;
 }
 
 /** Build annotation properties for spread */
 export function buildAnnotationProps(data?: NodeAnnotationData): Record<string, unknown> {
   if (!data) return {};
-  return {
-    ...(data.icon && { icon: data.icon }),
-    ...(data.iconColor && { iconColor: data.iconColor }),
-    ...(data.iconCornerRadius !== undefined && { iconCornerRadius: data.iconCornerRadius }),
-    ...(data.labelPosition !== undefined && { labelPosition: data.labelPosition }),
-    ...(data.direction !== undefined && { direction: data.direction }),
-    ...(data.labelBackgroundColor !== undefined && { labelBackgroundColor: data.labelBackgroundColor }),
-    ...(data.interfacePattern && { interfacePattern: data.interfacePattern }),
-    ...(data.groupId && { groupId: data.groupId })
-  };
+  const props: Record<string, unknown> = {};
+  if (data.icon !== undefined && data.icon.length > 0) props.icon = data.icon;
+  if (data.iconColor !== undefined && data.iconColor.length > 0) props.iconColor = data.iconColor;
+  if (data.iconCornerRadius !== undefined) props.iconCornerRadius = data.iconCornerRadius;
+  if (data.labelPosition !== undefined) props.labelPosition = data.labelPosition;
+  if (data.direction !== undefined) props.direction = data.direction;
+  if (data.labelBackgroundColor !== undefined) props.labelBackgroundColor = data.labelBackgroundColor;
+  if (data.interfacePattern !== undefined && data.interfacePattern.length > 0) {
+    props.interfacePattern = data.interfacePattern;
+  }
+  if (data.groupId !== undefined && data.groupId.length > 0) props.groupId = data.groupId;
+  return props;
 }

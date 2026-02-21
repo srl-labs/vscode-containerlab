@@ -79,6 +79,28 @@ interface ColumnDefinition {
   sx?: Record<string, string | number>;
 }
 
+function isInspectContainerData(value: unknown): value is InspectContainerData {
+  return typeof value === "object" && value !== null;
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null) {
+    return {};
+  }
+  const record: Record<string, unknown> = {};
+  for (const [key, entryValue] of Object.entries(value)) {
+    record[key] = entryValue;
+  }
+  return record;
+}
+
+function parseInitialData(value: unknown): InspectWebviewInitialData {
+  const containers = toRecord(value).containers;
+  return {
+    containers: Array.isArray(containers) ? containers.filter(isInspectContainerData) : []
+  };
+}
+
 interface SortState {
   columnId: ColumnId;
   direction: "asc" | "desc";
@@ -117,7 +139,7 @@ const COLUMNS: ReadonlyArray<ColumnDefinition> = [
 
 function firstTruthyString(...values: Array<string | undefined | null>): string {
   for (const value of values) {
-    if (value && value.length > 0) {
+    if (typeof value === "string" && value.length > 0) {
       return value;
     }
   }
@@ -130,11 +152,11 @@ function getLabName(container: InspectContainerData): string {
     .slice(-1)[0]
     ?.replace(".clab.yml", "");
 
-  return (
-    container.lab_name ||
-    container.labPath ||
-    container.Labels?.containerlab ||
-    labelFromPath ||
+  return firstTruthyString(
+    container.lab_name,
+    container.labPath,
+    container.Labels?.containerlab,
+    labelFromPath,
     "unknown-lab"
   );
 }
@@ -153,7 +175,7 @@ function buildInspectRow(container: InspectContainerData): InspectRow {
   const status = firstTruthyString(container.status, container.Status);
   const pid = typeof container.Pid === "number" ? String(container.Pid) : "";
   const network = firstTruthyString(container.network_name, container.NetworkName);
-  const owner = container.Labels?.["clab-owner"] || "";
+  const owner = container.Labels?.["clab-owner"] ?? "";
 
   const ipv4 = firstTruthyString(
     container.ipv4_address,
@@ -440,7 +462,7 @@ function InspectGroupPanel({
 }
 
 function InspectApp(): React.JSX.Element {
-  const initialData = (window.__INITIAL_DATA__ ?? {}) as unknown as InspectWebviewInitialData;
+  const initialData = parseInitialData(window.__INITIAL_DATA__);
   const containers = Array.isArray(initialData.containers) ? initialData.containers : [];
 
   const postMessage = usePostMessage<InspectOutgoingMessage>();

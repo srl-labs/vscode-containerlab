@@ -120,11 +120,11 @@ function handleAltDelete(
 
 function handleLinkCreationClick(
   event: React.MouseEvent,
-  node: { id: string; type?: string },
+  node: Node,
   linkSourceNode: string | null,
   completeLinkCreation: (nodeId: string) => void
 ): boolean {
-  if (!linkSourceNode) return false;
+  if (linkSourceNode == null || linkSourceNode.length === 0) return false;
   const isLoopLink = linkSourceNode === node.id;
   const isNetworkNode = node.type === "network-node";
   if (isLoopLink && isNetworkNode) {
@@ -136,18 +136,18 @@ function handleLinkCreationClick(
 }
 
 function openAnnotationEditor(
-  node: { id: string; type?: string },
+  node: Node,
   clearContextForAnnotationEdit: () => void,
   annotationHandlers?: AnnotationHandlers
 ): boolean {
   if (!annotationHandlers) return false;
 
-  if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers.onEditFreeText) {
+  if (node.type === FREE_TEXT_NODE_TYPE) {
     clearContextForAnnotationEdit();
     annotationHandlers.onEditFreeText(node.id);
     return true;
   }
-  if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers.onEditFreeShape) {
+  if (node.type === FREE_SHAPE_NODE_TYPE) {
     clearContextForAnnotationEdit();
     annotationHandlers.onEditFreeShape(node.id);
     return true;
@@ -177,7 +177,7 @@ function useWrappedNodeClick(
   annotationHandlers?: AnnotationHandlers
 ) {
   return useCallback(
-    (event: React.MouseEvent, node: { id: string; type?: string }) => {
+    (event: React.MouseEvent, node: Node) => {
       if (handleAltDelete(event, node, mode, isLocked, handleDeleteNode, annotationHandlers))
         return;
       if (handleLinkCreationClick(event, node, linkSourceNode, completeLinkCreation)) return;
@@ -187,7 +187,7 @@ function useWrappedNodeClick(
         annotationHandlers
       );
       if (didOpenAnnotationEditor) return;
-      onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
+      onNodeClick(event, node);
     },
     [
       linkSourceNode,
@@ -209,13 +209,13 @@ function useWrappedEdgeClick(
   handleDeleteEdge: (edgeId: string) => void
 ) {
   return useCallback(
-    (event: React.MouseEvent, edge: { id: string }) => {
+    (event: React.MouseEvent, edge: Edge) => {
       if (event.altKey && mode === "edit" && !isLocked) {
         event.stopPropagation();
         handleDeleteEdge(edge.id);
         return;
       }
-      onEdgeClick(event, edge as Parameters<typeof onEdgeClick>[1]);
+      onEdgeClick(event, edge);
     },
     [onEdgeClick, mode, isLocked, handleDeleteEdge]
   );
@@ -381,11 +381,38 @@ function useWrappedOnInit(
 
 const CANVAS_DROP_MIME_TYPE = "application/reactflow-node";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isCanvasDropDataType(value: unknown): value is CanvasDropData["type"] {
+  return value === "node" || value === "network" || value === "annotation";
+}
+
+function isCanvasDropData(value: unknown): value is CanvasDropData {
+  if (!isRecord(value)) return false;
+  if (!isCanvasDropDataType(value.type)) return false;
+  if (value.templateName !== undefined && typeof value.templateName !== "string") return false;
+  if (value.networkType !== undefined && typeof value.networkType !== "string") return false;
+  if (
+    value.annotationType !== undefined &&
+    value.annotationType !== "text" &&
+    value.annotationType !== "shape" &&
+    value.annotationType !== "group" &&
+    value.annotationType !== "traffic-rate"
+  ) {
+    return false;
+  }
+  if (value.shapeType !== undefined && typeof value.shapeType !== "string") return false;
+  return true;
+}
+
 function parseCanvasDropData(event: React.DragEvent): CanvasDropData | null {
   const dataStr = event.dataTransfer.getData(CANVAS_DROP_MIME_TYPE);
   if (!dataStr) return null;
   try {
-    return JSON.parse(dataStr) as CanvasDropData;
+    const parsed: unknown = JSON.parse(dataStr);
+    return isCanvasDropData(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -410,7 +437,9 @@ function handleNodeDrop(
   snappedPosition: { x: number; y: number },
   handlers: CanvasDropHandlers
 ) {
-  if (!data.templateName || !handlers.onDropCreateNode) return;
+  if (data.templateName == null || data.templateName.length === 0 || !handlers.onDropCreateNode) {
+    return;
+  }
   handlers.onDropCreateNode(snappedPosition, data.templateName);
 }
 
@@ -419,7 +448,9 @@ function handleNetworkDrop(
   snappedPosition: { x: number; y: number },
   handlers: CanvasDropHandlers
 ) {
-  if (!data.networkType || !handlers.onDropCreateNetwork) return;
+  if (data.networkType == null || data.networkType.length === 0 || !handlers.onDropCreateNetwork) {
+    return;
+  }
   handlers.onDropCreateNetwork(snappedPosition, data.networkType);
 }
 
@@ -458,9 +489,7 @@ function handleCanvasDrop(
     handleNetworkDrop(data, snappedPosition, handlers);
     return;
   }
-  if (data.type === "annotation") {
-    handleAnnotationDrop(data, snappedPosition, handlers);
-  }
+  handleAnnotationDrop(data, snappedPosition, handlers);
 }
 
 function handleCanvasDropEvent(params: {
@@ -516,13 +545,15 @@ function getRenderableNodes(allNodes: Node[], nodesDraggable: boolean): Node[] {
   if (nodesDraggable) return allNodes;
 
   let changed = false;
-  const nextNodes = allNodes.map((node) => {
+  const nextNodes: Node[] = [];
+  for (const node of allNodes) {
     if (!isAnnotationNodeType(node.type) || node.draggable === false) {
-      return node;
+      nextNodes.push(node);
+      continue;
     }
     changed = true;
-    return { ...node, draggable: false };
-  });
+    nextNodes.push({ ...node, draggable: false });
+  }
   return changed ? nextNodes : allNodes;
 }
 
@@ -560,14 +591,14 @@ function useLinkTargetHover(linkSourceNode: string | null) {
   const [linkTargetNodeId, setLinkTargetNodeId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!linkSourceNode) {
+    if (linkSourceNode == null || linkSourceNode.length === 0) {
       setLinkTargetNodeId(null);
     }
   }, [linkSourceNode]);
 
   const handleNodeMouseEnter = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      if (!linkSourceNode) return;
+      if (linkSourceNode == null || linkSourceNode.length === 0) return;
       setLinkTargetNodeId(node.id);
     },
     [linkSourceNode]
@@ -575,7 +606,7 @@ function useLinkTargetHover(linkSourceNode: string | null) {
 
   const handleNodeMouseLeave = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      if (!linkSourceNode) return;
+      if (linkSourceNode == null || linkSourceNode.length === 0) return;
       setLinkTargetNodeId((current) => (current === node.id ? null : current));
     },
     [linkSourceNode]
@@ -597,8 +628,6 @@ function useGeoWheelZoom(
     if (!map || !container) return;
 
     const handleWheel = (event: WheelEvent) => {
-      if (!isGeoLayout || !isGeoEdit) return;
-
       const mapCanvas = map.getCanvas();
       if (event.target instanceof Element && mapCanvas.contains(event.target)) {
         // Let native MapLibre scroll-zoom handle direct map-canvas wheel events.
@@ -761,6 +790,8 @@ function renderBackgroundLayer(params: {
 }): React.ReactElement {
   const { gridLineWidth, gridStyle, effectiveGridColor, gridBgColor } = params;
   const isQuadraticGrid = gridStyle === "quadratic";
+  const backgroundStyle =
+    gridBgColor != null && gridBgColor.length > 0 ? { backgroundColor: gridBgColor } : undefined;
   return (
     <Background
       variant={isQuadraticGrid ? BackgroundVariant.Lines : BackgroundVariant.Dots}
@@ -768,7 +799,7 @@ function renderBackgroundLayer(params: {
       size={isQuadraticGrid ? undefined : gridLineWidth}
       lineWidth={isQuadraticGrid ? gridLineWidth : undefined}
       color={effectiveGridColor}
-      style={gridBgColor ? { backgroundColor: gridBgColor } : undefined}
+      style={backgroundStyle}
     />
   );
 }
@@ -846,9 +877,11 @@ function buildCanvasOverlays(params: {
 
   const canShowGeoMap = isGeoLayout;
   const canShowBackground = !isLowDetail && !isGeoLayout;
-  const canShowLinkCreation = Boolean(linkSourceNode);
-  const canShowLinkIndicator = Boolean(linkSourceNode);
-  const canShowAnnotationIndicator = isInAddMode && Boolean(addModeMessage);
+  const hasLinkSourceNode = linkSourceNode != null && linkSourceNode.length > 0;
+  const hasAddModeMessage = addModeMessage != null && addModeMessage.length > 0;
+  const canShowLinkCreation = hasLinkSourceNode;
+  const canShowLinkIndicator = hasLinkSourceNode;
+  const canShowAnnotationIndicator = isInAddMode && hasAddModeMessage;
 
   const geoMapLayer = canShowGeoMap ? renderGeoMapLayer(geoContainerRef) : null;
   const backgroundLayer = canShowBackground
@@ -856,7 +889,7 @@ function buildCanvasOverlays(params: {
     : null;
   const linkCreationLine = canShowLinkCreation
     ? renderLinkCreationLine({
-        linkSourceNode: linkSourceNode as string,
+        linkSourceNode: linkSourceNode,
         linkTargetNodeId,
         nodes,
         edges,
@@ -864,9 +897,9 @@ function buildCanvasOverlays(params: {
         linkCreationSeed
       })
     : null;
-  const linkIndicator = canShowLinkIndicator ? renderLinkIndicator(linkSourceNode as string) : null;
+  const linkIndicator = canShowLinkIndicator ? renderLinkIndicator(linkSourceNode) : null;
   const annotationIndicator = canShowAnnotationIndicator
-    ? renderAnnotationIndicator(addModeMessage as string)
+    ? renderAnnotationIndicator(addModeMessage)
     : null;
 
   return { geoMapLayer, backgroundLayer, linkCreationLine, linkIndicator, annotationIndicator };
@@ -945,10 +978,10 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       useCanvasStore();
 
     // All nodes (topology + annotation) are now unified in propNodes
-    const allNodes = useMemo(() => (propNodes as Node[]) ?? [], [propNodes]);
-    const allEdges = useMemo(() => (propEdges as Edge[]) ?? [], [propEdges]);
+    const allNodes = useMemo<Node[]>(() => propNodes ?? [], [propNodes]);
+    const allEdges = useMemo<Edge[]>(() => propEdges ?? [], [propEdges]);
     const visibleNodeCount = useMemo(
-      () => allNodes.reduce((count, node) => (node.hidden ? count : count + 1), 0),
+      () => allNodes.reduce((count, node) => (node.hidden === true ? count : count + 1), 0),
       [allNodes]
     );
 
@@ -1011,7 +1044,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       async (options: { padding: number; duration: number }) => {
         const instance = reactFlowInstanceRef.current;
         const canvasContainer = canvasContainerRef.current;
-        const visibleNodes = allNodes.filter((node) => !node.hidden);
+        const visibleNodes = allNodes.filter((node) => node.hidden !== true);
 
         if (!instance || !canvasContainer || visibleNodes.length === 0) {
           return;
@@ -1311,13 +1344,17 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       const handleMapClick = (event: { originalEvent?: MouseEvent }) => {
         const originalEvent = event.originalEvent;
         if (!originalEvent) return;
-        const target = (originalEvent.target as EventTarget | null) ?? canvasContainerRef.current;
-        wrappedOnPaneClick({
-          shiftKey: originalEvent.shiftKey,
-          target: (target ?? document.body) as EventTarget,
-          clientX: originalEvent.clientX,
-          clientY: originalEvent.clientY
-        } as React.MouseEvent);
+        const pane = canvasContainerRef.current?.querySelector<HTMLElement>(".react-flow__pane");
+        if (!pane) return;
+        pane.dispatchEvent(
+          new MouseEvent("click", {
+            bubbles: true,
+            cancelable: true,
+            clientX: originalEvent.clientX,
+            clientY: originalEvent.clientY,
+            shiftKey: originalEvent.shiftKey
+          })
+        );
       };
 
       map.on("click", handleMapClick);
@@ -1407,7 +1444,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       [allNodes, nodesDraggable]
     );
     const effectiveGridColor = useMemo(() => {
-      if (gridColor) return gridColor;
+      if (gridColor != null && gridColor.length > 0) return gridColor;
       const bg = gridBgColor ?? resolveComputedColor("--vscode-editor-background", "#1e1e1e");
       return invertHexColor(bg);
     }, [gridColor, gridBgColor]);

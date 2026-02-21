@@ -174,14 +174,47 @@ const MAX_LIFECYCLE_LOG_LINES = 500;
 // Helper Functions
 // ============================================================================
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isCustomNodeTemplate(value: unknown): value is CustomNodeTemplate {
+  return (
+    isRecord(value) &&
+    typeof value.name === "string" &&
+    typeof value.kind === "string"
+  );
+}
+
+function parseCustomNodeTemplates(value: unknown): CustomNodeTemplate[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is CustomNodeTemplate => isCustomNodeTemplate(entry));
+}
+
+function isCustomIconInfo(value: unknown): value is CustomIconInfo {
+  return (
+    isRecord(value) &&
+    typeof value.name === "string" &&
+    (value.source === "workspace" || value.source === "global") &&
+    typeof value.dataUri === "string" &&
+    (value.format === "svg" || value.format === "png")
+  );
+}
+
+function parseCustomIconInfos(value: unknown): CustomIconInfo[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is CustomIconInfo => isCustomIconInfo(entry));
+}
+
 /** Parse non-topology bootstrap data from extension/dev host */
 export function parseInitialData(data: unknown): Partial<TopoViewerState> {
-  if (!data || typeof data !== "object") return {};
-  const obj = data as Record<string, unknown>;
+  if (!isRecord(data)) return {};
+  const obj = data;
+  const defaultNode = typeof obj.defaultNode === "string" ? obj.defaultNode : "";
   return {
-    customNodes: (obj.customNodes as CustomNodeTemplate[]) || [],
-    defaultNode: (obj.defaultNode as string) || "",
-    customIcons: (obj.customIcons as CustomIconInfo[]) || []
+    customNodes: parseCustomNodeTemplates(obj.customNodes),
+    defaultNode,
+    customIcons: parseCustomIconInfos(obj.customIcons)
   };
 }
 

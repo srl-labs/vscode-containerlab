@@ -30,7 +30,7 @@ interface AboutModalProps {
 
 interface AuthorCardProps {
   name: string;
-  role: string;
+  title: string;
   linkedIn: string;
   iconText: string;
   iconColor: string;
@@ -38,7 +38,7 @@ interface AuthorCardProps {
 
 const TEXT_SECONDARY = "text.secondary";
 
-const AuthorCard: React.FC<AuthorCardProps> = ({ name, role, linkedIn, iconText, iconColor }) => (
+const AuthorCard: React.FC<AuthorCardProps> = ({ name, title, linkedIn, iconText, iconColor }) => (
   <Card variant="outlined" sx={{ mb: 1 }}>
     <CardActionArea
       component="a"
@@ -55,7 +55,7 @@ const AuthorCard: React.FC<AuthorCardProps> = ({ name, role, linkedIn, iconText,
           {name}
         </Typography>
         <Typography variant="caption" color={TEXT_SECONDARY}>
-          {role}
+          {title}
         </Typography>
       </Box>
       <OpenInNewIcon fontSize="small" sx={{ color: TEXT_SECONDARY }} />
@@ -323,21 +323,21 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         <Box sx={{ p: 2 }}>
           <AuthorCard
             name="Asad Arafat"
-            role="Maintainer (Original Creator)"
+            title="Maintainer (Original Creator)"
             linkedIn="https://www.linkedin.com/in/asadarafat/"
             iconText="AA"
             iconColor="#4CAF50"
           />
           <AuthorCard
             name="Florian Schwarz"
-            role="Maintainer"
+            title="Maintainer"
             linkedIn="https://linkedin.com/in/florian-schwarz-812a34145"
             iconText="FS"
             iconColor="#2196F3"
           />
           <AuthorCard
             name="Kaelem Chandra"
-            role="Maintainer"
+            title="Maintainer"
             linkedIn="https://linkedin.com/in/kaelem-chandra"
             iconText="KC"
             iconColor="#9C27B0"

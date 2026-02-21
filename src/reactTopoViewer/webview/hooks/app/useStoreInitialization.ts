@@ -24,7 +24,7 @@ export function useStoreInitialization({ initialData }: StoreInitializationData)
     initializedRef.current = true;
 
     // Initialize topoViewer store with parsed initial data
-    if (initialData) {
+    if (initialData !== undefined && initialData !== null) {
       const parsedData = parseInitialData(initialData);
       useTopoViewerStore.getState().setInitialData(parsedData);
     }

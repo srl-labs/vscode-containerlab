@@ -28,8 +28,16 @@ function getNodeTypeColor(nodeType: string): string {
   }
 }
 
+function toNetworkNodeData(data: NodeProps["data"]): NetworkNodeData {
+  return {
+    ...data,
+    label: typeof data.label === "string" ? data.label : "",
+    nodeType: typeof data.nodeType === "string" ? data.nodeType : "host"
+  };
+}
+
 const NetworkNodeLiteComponent: React.FC<NodeProps> = ({ data, selected }) => {
-  const nodeData = data as NetworkNodeData;
+  const nodeData = toNetworkNodeData(data);
   const color = getNodeTypeColor(nodeData.nodeType);
   const rotation = getNodeDirectionRotation(nodeData.direction);
 

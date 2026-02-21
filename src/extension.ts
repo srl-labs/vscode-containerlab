@@ -27,7 +27,7 @@ import {
 import { WelcomePage } from "./welcomePage";
 import { registerClabImageCompletion } from "./yaml/imageCompletion";
 import * as ins from "./treeView/inspector";
-import type * as c from "./treeView/common";
+import * as c from "./treeView/common";
 import {
   LocalLabTreeDataProvider,
   RunningLabTreeDataProvider,
@@ -156,20 +156,16 @@ function manageImpairments(node: c.ClabContainerTreeNode) {
   return cmd.manageNodeImpairments(node, extensionContext);
 }
 
-function graphTopoViewer(node: c.ClabLabTreeNode) {
+function graphTopoViewer(node?: c.ClabLabTreeNode) {
   return cmd.graphTopoviewer(node, extensionContext);
 }
 
 async function openTopoViewerEditorCommand(node?: c.ClabLabTreeNode) {
   // Just delegate to graphTopoViewer which handles everything
-  return graphTopoViewer(node as c.ClabLabTreeNode);
+  return graphTopoViewer(node);
 }
 
 async function createTopoViewerTemplateFileCommand() {
-  const ctx = extensionContext;
-  if (!ctx) {
-    return;
-  }
   const uri = await vscode.window.showSaveDialog({
     title: "Enter containerlab topology template file name",
     defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
@@ -213,10 +209,12 @@ topology:
   await vscode.window.showTextDocument(doc);
 
   // Open the TopoViewer
-  const node = {
-    labPath: { absolute: filePath, relative: path.basename(filePath) },
-    name: labName
-  } as c.ClabLabTreeNode;
+  const node = new c.ClabLabTreeNode(
+    labName,
+    vscode.TreeItemCollapsibleState.None,
+    { absolute: filePath, relative: path.basename(filePath) },
+    labName
+  );
   return graphTopoViewer(node);
 }
 
@@ -365,11 +363,9 @@ function registerRealtimeUpdates(context: vscode.ExtensionContext) {
   // Common handler for data changes (used by both events and fallback)
   const handleDataChanged = () => {
     ins.refreshFromEventStream();
-    if (runningLabsProvider) {
-      runningLabsProvider.softRefresh().catch((err: unknown) => {
-        console.error("[containerlab extension]: realtime refresh failed", err);
-      });
-    }
+    runningLabsProvider.softRefresh().catch((err: unknown) => {
+      console.error("[containerlab extension]: realtime refresh failed", err);
+    });
   };
 
   // Register BOTH listeners - isPollingMode() will dynamically check which one applies
@@ -393,7 +389,7 @@ function registerRealtimeUpdates(context: vscode.ExtensionContext) {
 
   // Register listener for container state changes (only relevant in events mode)
   const disposeStateChange = onContainerStateChanged((containerShortId, newState) => {
-    if (!isPollingMode() && runningLabsProvider) {
+    if (!isPollingMode()) {
       runningLabsProvider.refreshContainer(containerShortId, newState).catch((err: unknown) => {
         outputChannel.debug(
           `Failed to refresh container ${containerShortId}: ${err instanceof Error ? err.message : String(err)}`
@@ -666,7 +662,5 @@ export async function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
   explorerViewProvider = undefined;
   stopRealtimeBackgroundWorkers();
-  if (outputChannel) {
-    outputChannel.info("Deactivating Containerlab extension.");
-  }
+  outputChannel.info("Deactivating Containerlab extension.");
 }

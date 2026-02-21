@@ -42,11 +42,24 @@ export let helpFeedbackProvider: unknown;
 export let sshxSessions: Map<string, string> = new Map();
 export let gottySessions: Map<string, string> = new Map();
 
-export const extensionVersion = (
-  vscode.extensions.getExtension("srl-labs.vscode-containerlab")?.packageJSON as
-    | { version?: string }
-    | undefined
-)?.version;
+function toRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null) {
+    return {};
+  }
+  const record: Record<string, unknown> = {};
+  for (const [key, entryValue] of Object.entries(value)) {
+    record[key] = entryValue;
+  }
+  return record;
+}
+
+function resolveExtensionVersion(): string | undefined {
+  const pkg = toRecord(vscode.extensions.getExtension("srl-labs.vscode-containerlab")?.packageJSON);
+  const version = pkg.version;
+  return typeof version === "string" ? version : undefined;
+}
+
+export const extensionVersion = resolveExtensionVersion();
 
 export let containerlabBinaryPath: string = "containerlab";
 export let dockerClient: Docker;

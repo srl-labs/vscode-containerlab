@@ -39,7 +39,10 @@ const SECTION_COLORS: Record<string, RGBColor> = {
 };
 
 function getSectionColor(section: string): RGBColor {
-  return SECTION_COLORS[section] || COLORS.cyan;
+  if (Object.prototype.hasOwnProperty.call(SECTION_COLORS, section)) {
+    return SECTION_COLORS[section];
+  }
+  return COLORS.cyan;
 }
 
 const VaporwaveCanvas: React.FC<{

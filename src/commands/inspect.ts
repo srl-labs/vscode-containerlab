@@ -20,11 +20,22 @@ type InspectContainer = InspectContainerData;
 type InspectDataLegacy = { containers?: InspectContainer[] };
 type InspectDataGrouped = Record<string, InspectContainer[]>;
 type InspectData = InspectDataLegacy | InspectDataGrouped | null | undefined;
+type InspectCommandContext = { extensionUri: vscode.Uri };
+
+function toInspectContainers(value: unknown): InspectContainer[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is InspectContainer => item !== null && typeof item === "object");
+}
 
 // Helper function to normalize inspect data to a flat container list
 function normalizeInspectOutput(parsedData: InspectData): InspectContainer[] {
   let containers: InspectContainer[] = [];
-  if (parsedData && "containers" in parsedData && Array.isArray(parsedData.containers)) {
+  if (
+    parsedData !== null &&
+    parsedData !== undefined &&
+    "containers" in parsedData &&
+    Array.isArray(parsedData.containers)
+  ) {
     // Old format: Top-level "containers" array
     outputChannel.appendLine("[Inspect Command]: Detected old inspect format.");
     containers = parsedData.containers;
@@ -37,7 +48,7 @@ function normalizeInspectOutput(parsedData: InspectData): InspectContainer[] {
       // Check if the value associated with the key is an array (list of containers)
       const value = (parsedData as Record<string, unknown>)[key];
       if (Array.isArray(value)) {
-        containers.push(...(value as InspectContainer[]));
+        containers.push(...toInspectContainers(value));
       } else {
         // Log if we find unexpected data structure
         outputChannel.appendLine(
@@ -53,7 +64,7 @@ function normalizeInspectOutput(parsedData: InspectData): InspectContainer[] {
   return containers;
 }
 
-export async function inspectAllLabs(context: vscode.ExtensionContext) {
+export async function inspectAllLabs(context: InspectCommandContext) {
   try {
     outputChannel.appendLine(`[Inspect Command]: Refreshing via containerlab events cache`);
 
@@ -78,7 +89,7 @@ export async function inspectAllLabs(context: vscode.ExtensionContext) {
   }
 }
 
-export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.ExtensionContext) {
+export async function inspectOneLab(node: ClabLabTreeNode, context: InspectCommandContext) {
   if (!node.labPath.absolute) {
     vscode.window.showErrorMessage("No lab path found for this lab.");
     return;
@@ -89,16 +100,17 @@ export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.Exten
 
     await inspector.update();
 
-    const parsed = inspector.rawInspectData || {};
+    const parsed = inspector.rawInspectData ?? {};
     const filtered: InspectDataGrouped = {};
 
     for (const [labName, containers] of Object.entries(parsed)) {
-      if (!Array.isArray(containers)) {
-        continue;
-      }
-      const containersList = containers as unknown as InspectContainer[];
+      const containersList = toInspectContainers(containers);
+      if (containersList.length === 0) continue;
       const topoFile = containersList[0]?.["topo-file"];
-      if ((node.name && labName === node.name) || topoFile === node.labPath.absolute) {
+      if (
+        (node.name !== undefined && node.name.length > 0 && labName === node.name) ||
+        topoFile === node.labPath.absolute
+      ) {
         filtered[labName] = containersList;
         break;
       }
@@ -167,11 +179,11 @@ function showInspectWebview(
             if (currentContext.type === "all") {
               await inspectAllLabs({
                 extensionUri: currentContext.extensionUri
-              } as vscode.ExtensionContext);
-            } else if (currentContext.type === "single" && currentContext.node) {
+              });
+            } else if (currentContext.node !== undefined) {
               await inspectOneLab(currentContext.node, {
                 extensionUri: currentContext.extensionUri
-              } as vscode.ExtensionContext);
+              });
             }
           }
           break;
@@ -186,7 +198,7 @@ function showInspectWebview(
           }
 
           outputChannel.appendLine(
-            `[Inspect Command]: Open port requested - ${message.containerName || ""}:${port}`
+            `[Inspect Command]: Open port requested - ${message.containerName ?? ""}:${port}`
           );
           const url = `http://localhost:${port}`;
           void vscode.env.openExternal(vscode.Uri.parse(url));

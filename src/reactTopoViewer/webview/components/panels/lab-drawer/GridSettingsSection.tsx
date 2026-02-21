@@ -23,7 +23,8 @@ export const GridSettingsSection: React.FC<GridSettingsSectionProps> = ({
   onGridStyleChange
 }) => {
   const handleSliderChange = (_event: Event, value: number | number[]) => {
-    onGridLineWidthChange(value as number);
+    const width = Array.isArray(value) ? value[0] : value;
+    onGridLineWidthChange(width);
   };
 
   const handleStyleChange = (_event: React.MouseEvent<HTMLElement>, newStyle: GridStyle | null) => {

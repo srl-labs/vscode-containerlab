@@ -40,10 +40,10 @@ subscribeToWebviewMessages((event) => {
 });
 
 // Log bootstrap data
-const customNodeCount = Array.isArray(initialData?.customNodes)
+const customNodeCount = Array.isArray(initialData.customNodes)
   ? initialData.customNodes.length
   : 0;
-const iconCount = Array.isArray(initialData?.customIcons) ? initialData.customIcons.length : 0;
+const iconCount = Array.isArray(initialData.customIcons) ? initialData.customIcons.length : 0;
 log.info(
   `[ReactTopoViewer] Bootstrap data loaded (customNodes: ${customNodeCount}, customIcons: ${iconCount})`
 );

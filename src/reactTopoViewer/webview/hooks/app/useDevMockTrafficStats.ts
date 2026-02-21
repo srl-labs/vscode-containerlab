@@ -22,6 +22,17 @@ interface MockEndpointState {
   phase: number;
 }
 
+function toRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null) {
+    return {};
+  }
+  const record: Record<string, unknown> = {};
+  for (const [key, entryValue] of Object.entries(value)) {
+    record[key] = entryValue;
+  }
+  return record;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -155,8 +166,8 @@ function applyMockStatsToEdge(
   const sourceStats = buildMockStats(sourceState, stepSeconds);
   const targetStats = buildMockStats(targetState, stepSeconds);
 
-  const data = (edge.data ?? {}) as Record<string, unknown>;
-  const extraData = (data.extraData ?? {}) as Record<string, unknown>;
+  const data = toRecord(edge.data);
+  const extraData = toRecord(data.extraData);
 
   return {
     ...edge,

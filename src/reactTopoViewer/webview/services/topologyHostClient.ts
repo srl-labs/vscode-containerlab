@@ -39,55 +39,163 @@ let revision = 1;
 let hostContext: HostContext = {};
 let listenerStarted = false;
 
+type HostMessageType =
+  | "topology-host:snapshot"
+  | "topology-host:ack"
+  | "topology-host:reject"
+  | "topology-host:error";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isHostMessageType(value: unknown): value is HostMessageType {
+  return (
+    value === "topology-host:snapshot" ||
+    value === "topology-host:ack" ||
+    value === "topology-host:reject" ||
+    value === "topology-host:error"
+  );
+}
+
+function isDeploymentState(value: unknown): value is DeploymentState {
+  return value === "deployed" || value === "undeployed" || value === "unknown";
+}
+
+function hasSnapshotRevision(value: Record<string, unknown>): boolean {
+  return typeof value.revision === "number" && Number.isFinite(value.revision);
+}
+
+function hasSnapshotCollections(value: Record<string, unknown>): boolean {
+  return Array.isArray(value.nodes) && Array.isArray(value.edges) && isRecord(value.annotations);
+}
+
+function hasSnapshotTextFields(value: Record<string, unknown>): boolean {
+  const textFields = [
+    "yamlFileName",
+    "annotationsFileName",
+    "yamlContent",
+    "annotationsContent",
+    "labName"
+  ] as const;
+  return textFields.every((field) => typeof value[field] === "string");
+}
+
+function hasSnapshotModeAndState(value: Record<string, unknown>): boolean {
+  return (value.mode === "edit" || value.mode === "view") && isDeploymentState(value.deploymentState);
+}
+
+function hasSnapshotHistoryFlags(value: Record<string, unknown>): boolean {
+  return typeof value.canUndo === "boolean" && typeof value.canRedo === "boolean";
+}
+
+function isTopologySnapshot(value: unknown): value is TopologySnapshot {
+  if (!isRecord(value)) return false;
+  return (
+    hasSnapshotRevision(value) &&
+    hasSnapshotCollections(value) &&
+    hasSnapshotTextFields(value) &&
+    hasSnapshotModeAndState(value) &&
+    hasSnapshotHistoryFlags(value)
+  );
+}
+
+function hasValidHostMessageEnvelope(
+  value: Record<string, unknown>
+): value is Record<string, unknown> & {
+  type: HostMessageType;
+  requestId: string;
+  protocolVersion: number;
+} {
+  return (
+    isHostMessageType(value.type) &&
+    typeof value.requestId === "string" &&
+    value.requestId.length > 0 &&
+    typeof value.protocolVersion === "number" &&
+    Number.isFinite(value.protocolVersion)
+  );
+}
+
+function isHostAckPayload(value: Record<string, unknown>): boolean {
+  return (
+    typeof value.revision === "number" &&
+    Number.isFinite(value.revision) &&
+    (value.snapshot === undefined || isTopologySnapshot(value.snapshot))
+  );
+}
+
+function isHostRejectPayload(value: Record<string, unknown>): boolean {
+  return (
+    typeof value.revision === "number" &&
+    Number.isFinite(value.revision) &&
+    value.reason === "stale" &&
+    isTopologySnapshot(value.snapshot)
+  );
+}
+
+function isTopologyHostResponseMessage(value: unknown): value is TopologyHostResponseMessage {
+  if (!isRecord(value)) return false;
+  if (!hasValidHostMessageEnvelope(value)) return false;
+
+  switch (value.type) {
+    case "topology-host:snapshot":
+      return isTopologySnapshot(value.snapshot);
+    case "topology-host:ack":
+      return isHostAckPayload(value);
+    case "topology-host:reject":
+      return isHostRejectPayload(value);
+    case "topology-host:error":
+      return typeof value.error === "string";
+    default:
+      return false;
+  }
+}
+
 function ensureListener(): void {
   if (listenerStarted) return;
   subscribeToWebviewMessages(
     (event) => {
-      const data = event.data as { type?: string; requestId?: string } | undefined;
-      if (!data?.type || !data.requestId) return;
+      if (!isRecord(event.data)) return;
+      const { data } = event;
+      if (!isHostMessageType(data.type)) return;
+      if (typeof data.requestId !== "string" || data.requestId.length === 0) return;
+      const requestId = data.requestId;
 
-      const pendingRequest = pending.get(data.requestId);
+      const pendingRequest = pending.get(requestId);
       if (!pendingRequest) return;
 
       if (data.type === "topology-host:snapshot") {
         if (pendingRequest.expectedType !== "snapshot") {
           pendingRequest.reject(new Error("Unexpected snapshot response"));
-          pending.delete(data.requestId);
+          pending.delete(requestId);
           return;
         }
-        const snapshot = (data as { snapshot?: TopologySnapshot }).snapshot;
-        if (!snapshot) {
+        if (!isTopologySnapshot(data.snapshot)) {
           pendingRequest.reject(new Error("Snapshot message missing payload"));
-          pending.delete(data.requestId);
+          pending.delete(requestId);
           return;
         }
-        pendingRequest.resolve(snapshot);
-        pending.delete(data.requestId);
+        pendingRequest.resolve(data.snapshot);
+        pending.delete(requestId);
         return;
       }
 
-      if (
-        data.type === "topology-host:ack" ||
-        data.type === "topology-host:reject" ||
-        data.type === "topology-host:error"
-      ) {
-        if (pendingRequest.expectedType !== "command") {
-          pendingRequest.reject(new Error("Unexpected command response"));
-          pending.delete(data.requestId);
-          return;
-        }
-        pendingRequest.resolve(data as TopologyHostResponseMessage);
-        pending.delete(data.requestId);
+      if (pendingRequest.expectedType !== "command") {
+        pendingRequest.reject(new Error("Unexpected command response"));
+        pending.delete(requestId);
+        return;
       }
+      if (!isTopologyHostResponseMessage(data)) {
+        pendingRequest.reject(new Error("Invalid command response payload"));
+        pending.delete(requestId);
+        return;
+      }
+      pendingRequest.resolve(data);
+      pending.delete(requestId);
     },
     (event) => {
-      const type = event.data?.type;
-      return (
-        type === "topology-host:snapshot" ||
-        type === "topology-host:ack" ||
-        type === "topology-host:reject" ||
-        type === "topology-host:error"
-      );
+      if (!isRecord(event.data)) return false;
+      return isHostMessageType(event.data.type);
     }
   );
   listenerStarted = true;
@@ -99,27 +207,36 @@ function isVsCode(): boolean {
   }
   // In dev mode, window.vscode is a mock with __isDevMock__ marker
   // We should use HTTP endpoints instead of VS Code messaging
-  const vscode = window.vscode as { __isDevMock__?: boolean };
-  return !vscode.__isDevMock__;
+  return window.vscode.__isDevMock__ !== true;
 }
 
 function buildApiUrl(path: string, sessionId?: string): string {
-  if (!sessionId) return path;
+  if (sessionId === undefined || sessionId.length === 0) return path;
   const delimiter = path.includes("?") ? "&" : "?";
   return `${path}${delimiter}sessionId=${encodeURIComponent(sessionId)}`;
 }
 
 /** Send a message to VS Code with timeout handling */
-function sendVsCodeRequest<T>(
+function sendVsCodeRequest(
+  message: Record<string, unknown>,
+  expectedType: "snapshot",
+  timeoutMs?: number
+): Promise<TopologySnapshot>;
+function sendVsCodeRequest(
+  message: Record<string, unknown>,
+  expectedType: "command",
+  timeoutMs?: number
+): Promise<TopologyHostResponseMessage>;
+function sendVsCodeRequest(
   message: Record<string, unknown>,
   expectedType: "snapshot" | "command",
   timeoutMs = 30000
-): Promise<T> {
+): Promise<TopologyHostResponseMessage | TopologySnapshot> {
   ensureListener();
   const requestId = globalThis.crypto.randomUUID();
   return new Promise((resolve, reject) => {
     pending.set(requestId, {
-      resolve: resolve as PendingRequest["resolve"],
+      resolve,
       reject,
       expectedType
     });
@@ -155,13 +272,13 @@ export async function requestSnapshot(
   options: { externalChange?: boolean } = {}
 ): Promise<TopologySnapshot> {
   if (isVsCode()) {
-    return sendVsCodeRequest<TopologySnapshot>(
+    return sendVsCodeRequest(
       { type: "topology-host:get-snapshot", protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION },
       "snapshot"
     );
   }
 
-  if (!hostContext.path) {
+  if (hostContext.path === undefined || hostContext.path.length === 0) {
     throw new Error("Dev host context missing topology path");
   }
 
@@ -180,7 +297,10 @@ export async function requestSnapshot(
     throw new Error(`Failed to fetch snapshot: ${response.statusText}`);
   }
 
-  const payload = (await response.json()) as { snapshot: TopologySnapshot };
+  const payload: unknown = await response.json();
+  if (!isRecord(payload) || !isTopologySnapshot(payload.snapshot)) {
+    throw new Error("Snapshot response payload is invalid");
+  }
   return payload.snapshot;
 }
 
@@ -188,7 +308,7 @@ export async function dispatchTopologyCommand(
   command: TopologyHostCommand
 ): Promise<TopologyHostResponseMessage> {
   if (isVsCode()) {
-    return sendVsCodeRequest<TopologyHostResponseMessage>(
+    return sendVsCodeRequest(
       {
         type: "topology-host:command",
         protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
@@ -199,7 +319,7 @@ export async function dispatchTopologyCommand(
     );
   }
 
-  if (!hostContext.path) {
+  if (hostContext.path === undefined || hostContext.path.length === 0) {
     throw new Error("Dev host context missing topology path");
   }
 
@@ -219,5 +339,9 @@ export async function dispatchTopologyCommand(
     throw new Error(`Failed to send command: ${response.statusText}`);
   }
 
-  return (await response.json()) as TopologyHostResponseMessage;
+  const payload: unknown = await response.json();
+  if (!isTopologyHostResponseMessage(payload)) {
+    throw new Error("Command response payload is invalid");
+  }
+  return payload;
 }

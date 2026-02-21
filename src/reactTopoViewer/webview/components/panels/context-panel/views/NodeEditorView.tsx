@@ -57,6 +57,20 @@ function getTabsForNode(kind: string | undefined): Array<TabConfig<NodeEditorTab
   return BASE_TABS;
 }
 
+function isNodeEditorTabId(value: string): value is NodeEditorTabId {
+  switch (value) {
+    case "basic":
+    case "components":
+    case "config":
+    case "runtime":
+    case "network":
+    case "advanced":
+      return true;
+    default:
+      return false;
+  }
+}
+
 export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
   nodeData,
   onSave,
@@ -117,7 +131,11 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
     <EditorPanel
       tabs={tabs}
       activeTab={activeTab}
-      onTabChange={(id) => setActiveTab(id as NodeEditorTabId)}
+      onTabChange={(id) => {
+        if (isNodeEditorTabId(id)) {
+          setActiveTab(id);
+        }
+      }}
       tabProps={tabProps}
       readOnly={readOnly}
     />

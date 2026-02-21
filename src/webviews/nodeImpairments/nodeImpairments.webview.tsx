@@ -54,22 +54,44 @@ const FIELD_META: ReadonlyArray<{
   }
 ];
 
-function normalizeNetemFields(fields?: Partial<NetemFields>): NetemFields {
+function normalizeNetemFields(fields?: unknown): NetemFields {
+  const readField = (key: keyof NetemFields): string => {
+    if (typeof fields !== "object" || fields === null) {
+      return "";
+    }
+    const value: unknown = Reflect.get(fields, key);
+    return typeof value === "string" ? value : "";
+  };
+
   return {
-    delay: fields?.delay ?? "",
-    jitter: fields?.jitter ?? "",
-    loss: fields?.loss ?? "",
-    rate: fields?.rate ?? "",
-    corruption: fields?.corruption ?? ""
+    delay: readField("delay"),
+    jitter: readField("jitter"),
+    loss: readField("loss"),
+    rate: readField("rate"),
+    corruption: readField("corruption")
   };
 }
 
-function normalizeNetemMap(data?: Record<string, Partial<NetemFields>>): NetemDataMap {
+function normalizeNetemMap(data?: unknown): NetemDataMap {
   const normalized: NetemDataMap = {};
-  for (const [iface, fields] of Object.entries(data ?? {})) {
+  if (typeof data !== "object" || data === null) {
+    return normalized;
+  }
+  for (const [iface, fields] of Object.entries(data)) {
     normalized[iface] = normalizeNetemFields(fields);
   }
   return normalized;
+}
+
+function parseInitialData(value: unknown): NodeImpairmentsInitialData {
+  const nodeNameRaw: unknown =
+    typeof value === "object" && value !== null ? Reflect.get(value, "nodeName") : undefined;
+  const interfacesDataRaw: unknown =
+    typeof value === "object" && value !== null ? Reflect.get(value, "interfacesData") : undefined;
+  return {
+    nodeName: typeof nodeNameRaw === "string" ? nodeNameRaw : "",
+    interfacesData: normalizeNetemMap(interfacesDataRaw)
+  };
 }
 
 function hasDelayValidationError(fields: NetemFields): boolean {
@@ -79,8 +101,8 @@ function hasDelayValidationError(fields: NetemFields): boolean {
 }
 
 function NodeImpairmentsApp(): React.JSX.Element {
-  const initialData = (window.__INITIAL_DATA__ ?? {}) as unknown as NodeImpairmentsInitialData;
-  const nodeName = initialData.nodeName ?? "";
+  const initialData = parseInitialData(window.__INITIAL_DATA__);
+  const nodeName = initialData.nodeName;
 
   const postMessage = usePostMessage<NodeImpairmentsOutgoingMessage>();
 
@@ -94,10 +116,6 @@ function NodeImpairmentsApp(): React.JSX.Element {
   );
 
   useMessageListener<NodeImpairmentsIncomingMessage>((message) => {
-    if (message.command !== "updateFields") {
-      return;
-    }
-
     setNetemByInterface(normalizeNetemMap(message.data));
   });
 

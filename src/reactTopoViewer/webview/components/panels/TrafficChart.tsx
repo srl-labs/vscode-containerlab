@@ -73,7 +73,7 @@ function resolveNextTimestampSeconds(
   }
 
   const interval = resolveValidIntervalSeconds(stats);
-  if (!interval) {
+  if (interval === undefined) {
     return Math.max(nowSeconds, prev + MIN_TIMESTAMP_STEP_SECONDS);
   }
 

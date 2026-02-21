@@ -48,8 +48,11 @@ export const InputField: React.FC<InputFieldProps> = ({
   suffix,
   clearable
 }) => {
-  const showClear = clearable && value && !disabled;
-  const hasEndAdornment = tooltip || suffix || showClear;
+  const showClear = clearable === true && value.length > 0 && disabled !== true;
+  const hasTooltip = tooltip !== undefined && tooltip.length > 0;
+  const hasSuffix = suffix !== undefined && suffix.length > 0;
+  const tooltipText = tooltip ?? "";
+  const hasEndAdornment = hasTooltip || hasSuffix || showClear;
 
   return (
     <TextField
@@ -75,18 +78,16 @@ export const InputField: React.FC<InputFieldProps> = ({
           ? {
               endAdornment: (
                 <InputAdornment position="end">
-                  {suffix && (
-                    <Typography color="text.secondary">
-                      {suffix}
-                    </Typography>
+                  {hasSuffix && (
+                    <Typography color="text.secondary">{suffix}</Typography>
                   )}
                   {showClear && (
                     <IconButton size="small" onClick={() => onChange("")} edge="end" tabIndex={-1}>
                       <ClearIcon fontSize="small" />
                     </IconButton>
                   )}
-                  {tooltip && (
-                    <Tooltip title={tooltip} arrow>
+                  {hasTooltip && (
+                    <Tooltip title={tooltipText} arrow>
                       <IconButton size="small" edge="end" tabIndex={-1}>
                         <InfoOutlinedIcon sx={{ fontSize: 16 }} />
                       </IconButton>

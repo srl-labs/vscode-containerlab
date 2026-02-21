@@ -33,6 +33,69 @@ const DATA_NOTIFY_DELAY_MS = 50;
 // Default polling interval (ms)
 const DEFAULT_POLL_INTERVAL_MS = 5000;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+
+function isClabDetailedJSON(value: unknown): value is ClabDetailedJSON {
+  if (!isRecord(value)) return false;
+  return (
+    isStringArray(value.Names) &&
+    typeof value.ID === "string" &&
+    typeof value.ShortID === "string" &&
+    typeof value.Image === "string" &&
+    typeof value.State === "string" &&
+    typeof value.Status === "string" &&
+    isRecord(value.Labels)
+  );
+}
+
+function isClabDetailedArray(value: unknown): value is ClabDetailedJSON[] {
+  return Array.isArray(value) && value.every((entry) => isClabDetailedJSON(entry));
+}
+
+function parseInspectDataJson(stdout: string): Record<string, ClabDetailedJSON[]> | undefined {
+  const parsed: unknown = JSON.parse(stdout);
+  if (!isRecord(parsed)) return undefined;
+  const result: Record<string, ClabDetailedJSON[]> = {};
+  for (const [labName, value] of Object.entries(parsed)) {
+    if (!isClabDetailedArray(value)) return undefined;
+    result[labName] = value;
+  }
+  return result;
+}
+
+function isClabInspectInterfaceEntry(value: unknown): value is ClabInspectInterfaceJSON["interfaces"][number] {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.name === "string" &&
+    typeof value.type === "string" &&
+    typeof value.state === "string" &&
+    typeof value.alias === "string" &&
+    typeof value.mac === "string" &&
+    typeof value.mtu === "number" &&
+    typeof value.ifindex === "number"
+  );
+}
+
+function isClabInspectInterfaceJSON(value: unknown): value is ClabInspectInterfaceJSON {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.name === "string" &&
+    Array.isArray(value.interfaces) &&
+    value.interfaces.every((entry) => isClabInspectInterfaceEntry(entry))
+  );
+}
+
+function getArrayMetadataString<T>(items: T[], key: string): string | undefined {
+  const metadataValue = Object.entries(items).find(([entryKey]) => entryKey === key)?.[1];
+  return typeof metadataValue === "string" && metadataValue.length > 0 ? metadataValue : undefined;
+}
+
 function scheduleDataChanged(): void {
   if (dataListeners.size === 0) {
     return;
@@ -67,7 +130,7 @@ async function fetchInspectData(
     if (!stdout) {
       return undefined;
     }
-    return JSON.parse(stdout) as Record<string, ClabDetailedJSON[]>;
+    return parseInspectDataJson(stdout);
   } catch (err) {
     console.error(
       `[containerlabInspectFallback]: Failed to run inspect: ${err instanceof Error ? err.message : String(err)}`
@@ -119,7 +182,7 @@ function hasDataChanged(
   }
 
   for (const labName of newLabs) {
-    if (!oldData[labName]) {
+    if (!Object.prototype.hasOwnProperty.call(oldData, labName)) {
       return true;
     }
 
@@ -267,11 +330,10 @@ function findLabPathForContainer(containerName: string): string | undefined {
   }
 
   for (const labContainers of Object.values(rawInspectData)) {
-    const labArray = labContainers as ClabDetailedJSON[] & { "topo-file"?: string };
-    const container = labArray.find((c) => c.Names?.[0] === containerName);
+    const container = labContainers.find((c) => c.Names[0] === containerName);
     if (container) {
       // The topo-file is stored as a property on the array
-      return labArray["topo-file"] || container.Labels?.["clab-topo-file"];
+      return getArrayMetadataString(labContainers, "topo-file") ?? container.Labels["clab-topo-file"];
     }
   }
   return undefined;
@@ -287,7 +349,9 @@ function fetchInterfacesSync(labPath: string, containerName: string): ClabInspec
       ["inspect", "interfaces", "-t", labPath, "-f", "json", "-n", containerName],
       { stdio: ["pipe", "pipe", "ignore"], timeout: 10000 }
     ).toString();
-    return JSON.parse(clabStdout) as ClabInspectInterfaceJSON[];
+    const parsed: unknown = JSON.parse(clabStdout);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry) => isClabInspectInterfaceJSON(entry));
   } catch (err) {
     console.error(
       `[containerlabInspectFallback]: Failed to fetch interfaces for ${containerName}: ${err instanceof Error ? err.message : String(err)}`
@@ -300,13 +364,13 @@ function fetchInterfacesSync(labPath: string, containerName: string): ClabInspec
  * Convert raw interface data to snapshot format
  */
 function toInterfaceSnapshot(raw: ClabInspectInterfaceJSON[]): ClabInterfaceSnapshot[] {
-  if (!raw || raw.length === 0) {
+  if (raw.length === 0) {
     return [];
   }
 
   return raw.map((item) => ({
     name: item.name,
-    interfaces: (item.interfaces || []).map(
+    interfaces: item.interfaces.map(
       (iface) =>
         ({
           name: iface.name,
@@ -330,7 +394,7 @@ export function getInterfaceSnapshot(
 ): ClabInterfaceSnapshot[] {
   // Find the lab path for this container
   const labPath = findLabPathForContainer(containerName);
-  if (!labPath) {
+  if (labPath === undefined || labPath.length === 0) {
     console.warn(
       `[containerlabInspectFallback]: Could not find lab path for container ${containerName}`
     );

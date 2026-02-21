@@ -83,8 +83,21 @@ const COMMUNITY_LINKS: ReadonlyArray<{ label: string; href: string }> = [
   { label: "Discord", href: "https://discord.gg/vAyddtaEV9" }
 ];
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toWelcomeInitialData(value: unknown): WelcomeInitialData {
+  if (!isRecord(value)) {
+    return {};
+  }
+  return {
+    extensionVersion: typeof value.extensionVersion === "string" ? value.extensionVersion : undefined
+  };
+}
+
 function WelcomePageApp(): React.JSX.Element {
-  const initialData = (window.__INITIAL_DATA__ ?? {}) as WelcomeInitialData;
+  const initialData = toWelcomeInitialData(window.__INITIAL_DATA__);
   const extensionVersion = initialData.extensionVersion ?? "unknown";
 
   const postMessage = usePostMessage<WelcomeOutgoingMessage>();
@@ -95,10 +108,6 @@ function WelcomePageApp(): React.JSX.Element {
   const [isLoadingRepos, setIsLoadingRepos] = React.useState(true);
 
   useMessageListener<WelcomeIncomingMessage>((message) => {
-    if (message.command !== "reposLoaded") {
-      return;
-    }
-
     setRepos(Array.isArray(message.repos) ? message.repos : []);
     setUsingFallback(Boolean(message.usingFallback));
     setIsLoadingRepos(false);

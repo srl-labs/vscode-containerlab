@@ -61,12 +61,49 @@ type BasicEdge = { id: string; source: string; target: string; data?: unknown };
 type AliasEdgeInfo = { edge: BasicEdge; interfaceName?: string };
 type GraphState = ReturnType<typeof useGraphStore.getState>;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toRecord(value: unknown): Record<string, unknown> | undefined {
+  return isRecord(value) ? value : undefined;
+}
+
+function toOptionalNumber(value: string | undefined): number | undefined {
+  if (value == null || value.length === 0) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function getEdgeData(edge: BasicEdge): {
+  sourceEndpoint?: string;
+  targetEndpoint?: string;
+  extraData?: Record<string, unknown>;
+} {
+  const data = toRecord(edge.data);
+  return {
+    sourceEndpoint: typeof data?.sourceEndpoint === "string" ? data.sourceEndpoint : undefined,
+    targetEndpoint: typeof data?.targetEndpoint === "string" ? data.targetEndpoint : undefined,
+    extraData: toRecord(data?.extraData)
+  };
+}
+
+function getNodeExtraData(node: { data?: unknown } | undefined): Record<string, unknown> {
+  const data = toRecord(node?.data);
+  const extraData = toRecord(data?.extraData);
+  return extraData ? { ...extraData } : {};
+}
+
 // ============================================================================
 // Shared Helper Functions
 // ============================================================================
 
 function updateNodeExtraData(data: NodeEditorData): Record<string, unknown> {
-  const yamlExtraData = convertEditorDataToYaml(data as unknown as Record<string, unknown>);
+  const recordData: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    recordData[key] = value;
+  }
+  const yamlExtraData = convertEditorDataToYaml(recordData);
   const newExtraData: Record<string, unknown> = { ...yamlExtraData };
   for (const key of Object.keys(newExtraData)) {
     if (newExtraData[key] === null) {
@@ -105,7 +142,7 @@ function updateNodeVisualPreview(
   const graphState = useGraphStore.getState();
   const node = graphState.nodes.find((entry) => entry.id === nodeId);
   if (!node) return;
-  const currentData = (node.data ?? {}) as Record<string, unknown>;
+  const currentData = node.data;
   if (
     currentData.labelPosition === labelPosition &&
     currentData.direction === direction &&
@@ -132,12 +169,13 @@ function applyNodeChanges(
   }
 ): void {
   const { renameNode, updateNodeData, refreshEditorData } = deps;
-  if (oldName && renameNode) {
+  const hasOldName = oldName != null && oldName.length > 0;
+  if (hasOldName && renameNode) {
     renameNode(oldName, data.name, data.name);
   }
 
   if (updateNodeData) {
-    const nodeIdForUpdate = oldName ? data.name : data.id;
+    const nodeIdForUpdate = hasOldName ? data.name : data.id;
     updateNodeData(nodeIdForUpdate, updateNodeExtraData(data));
   }
 
@@ -163,19 +201,15 @@ function isBridgeAliasCandidate(
   if (!newNodeId || newNodeId === data.id) return false;
   const baseNode = nodes.find((node) => node.id === newNodeId);
   if (!baseNode) return false;
-  const baseType = getNetworkType((baseNode.data ?? {}) as Record<string, unknown>);
-  return Boolean(baseType && BRIDGE_NETWORK_TYPES.has(baseType));
+  const baseType = getNetworkType(toRecord(baseNode.data) ?? {});
+  return baseType != null && baseType.length > 0 && BRIDGE_NETWORK_TYPES.has(baseType);
 }
 
 function collectAliasEdgeInfos(edges: BasicEdge[], aliasId: string): AliasEdgeInfo[] {
   const edgeInfos: AliasEdgeInfo[] = [];
   for (const edge of edges) {
     if (edge.source !== aliasId && edge.target !== aliasId) continue;
-    const edgeData = (edge.data ?? {}) as {
-      sourceEndpoint?: string;
-      targetEndpoint?: string;
-      extraData?: Record<string, unknown>;
-    };
+    const edgeData = getEdgeData(edge);
     const interfaceName =
       edge.source === aliasId ? edgeData.sourceEndpoint : edgeData.targetEndpoint;
     edgeInfos.push({ edge, interfaceName });
@@ -201,7 +235,11 @@ function resolvePrimaryInterface(
   interfaceSet: Set<string>,
   interfaceCandidates: string[]
 ): string | undefined {
-  if (existingInterface && (interfaceSet.has(existingInterface) || interfaceSet.size === 0)) {
+  if (
+    existingInterface != null &&
+    existingInterface.length > 0 &&
+    (interfaceSet.has(existingInterface) || interfaceSet.size === 0)
+  ) {
     return existingInterface;
   }
   return interfaceCandidates[0];
@@ -231,14 +269,8 @@ function buildAliasLinkCommand(
   newNodeId: string,
   aliasAlreadyMapped: boolean
 ) {
-  const edgeData = info.edge.data as
-    | {
-        sourceEndpoint?: string;
-        targetEndpoint?: string;
-        extraData?: Record<string, unknown>;
-      }
-    | undefined;
-  const extra = edgeData?.extraData;
+  const edgeData = getEdgeData(info.edge);
+  const extra = edgeData.extraData;
   const yamlSource = resolveYamlEndpoint(
     extra,
     "yamlSourceNodeId",
@@ -263,13 +295,13 @@ function buildAliasLinkCommand(
       id: info.edge.id,
       source: nextSource,
       target: nextTarget,
-      sourceEndpoint: edgeData?.sourceEndpoint,
-      targetEndpoint: edgeData?.targetEndpoint,
+      sourceEndpoint: edgeData.sourceEndpoint,
+      targetEndpoint: edgeData.targetEndpoint,
       extraData: sanitizeLinkExtraData(extra),
       originalSource: yamlSource,
       originalTarget: yamlTarget,
-      originalSourceEndpoint: edgeData?.sourceEndpoint,
-      originalTargetEndpoint: edgeData?.targetEndpoint
+      originalSourceEndpoint: edgeData.sourceEndpoint,
+      originalTargetEndpoint: edgeData.targetEndpoint
     }
   };
 }
@@ -282,10 +314,7 @@ function updateAliasNodeInGraph(
   newNodeId: string
 ): BasicNode | undefined {
   const aliasNode = graphState.nodes.find((node) => node.id === aliasId) as BasicNode | undefined;
-  const existingExtra =
-    ((aliasNode?.data as Record<string, unknown> | undefined)?.extraData as
-      | Record<string, unknown>
-      | undefined) ?? {};
+  const existingExtra = getNodeExtraData(aliasNode);
   const nextExtra = {
     ...existingExtra,
     ...convertNetworkEditorDataToYaml(data),
@@ -354,8 +383,12 @@ function buildAliasEdgeUpdate(
   nextSource: string;
   nextTarget: string;
 } {
-  const edgeData = (info.edge.data ?? {}) as Record<string, unknown>;
-  const extra = { ...(edgeData.extraData as Record<string, unknown> | undefined) };
+  const edgeData = toRecord(info.edge.data) ?? {};
+  const extra: Record<string, unknown> = {};
+  const existingExtra = toRecord(edgeData.extraData);
+  if (existingExtra) {
+    Object.assign(extra, existingExtra);
+  }
   const shouldStayOnAlias = info.interfaceName === primaryInterface;
   const nextSource =
     !shouldStayOnAlias && info.edge.source === aliasId ? newNodeId : info.edge.source;
@@ -537,8 +570,8 @@ function applyLinkChanges(data: LinkEditorData, deps: LinkPersistDeps): void {
       ...data,
       source: saveData.source,
       target: saveData.target,
-      sourceEndpoint: saveData.sourceEndpoint || data.sourceEndpoint,
-      targetEndpoint: saveData.targetEndpoint || data.targetEndpoint
+      sourceEndpoint: saveData.sourceEndpoint ?? data.sourceEndpoint,
+      targetEndpoint: saveData.targetEndpoint ?? data.targetEndpoint
     });
   }
 }
@@ -606,7 +639,7 @@ export function useLinkEditorHandlers(
       if (edgeAnnotationHandlers) {
         const existing = findEdgeAnnotation(edgeAnnotationHandlers.edgeAnnotations, normalized);
         const shouldUpdate =
-          existing &&
+          existing != null &&
           (normalized.endpointLabelOffset !== existing.endpointLabelOffset ||
             normalized.endpointLabelOffsetEnabled !== existing.endpointLabelOffsetEnabled);
         if (shouldUpdate) {
@@ -713,10 +746,10 @@ function calculateExpectedNodeId(data: NetworkEditorData): string {
 function applyVxlanFields(extraData: Record<string, unknown>, data: NetworkEditorData): void {
   if (!VXLAN_NETWORK_TYPES.has(data.networkType)) return;
   Object.assign(extraData, {
-    extRemote: data.vxlanRemote || undefined,
-    extVni: data.vxlanVni ? Number(data.vxlanVni) : undefined,
-    extDstPort: data.vxlanDstPort ? Number(data.vxlanDstPort) : undefined,
-    extSrcPort: data.vxlanSrcPort ? Number(data.vxlanSrcPort) : undefined
+    extRemote: data.vxlanRemote ?? undefined,
+    extVni: toOptionalNumber(data.vxlanVni),
+    extDstPort: toOptionalNumber(data.vxlanDstPort),
+    extSrcPort: toOptionalNumber(data.vxlanSrcPort)
   });
 }
 
@@ -726,7 +759,7 @@ function applyHostInterfaceFields(
 ): void {
   if (!HOST_INTERFACE_TYPES.has(data.networkType)) return;
   extraData.extHostInterface = data.interfaceName || undefined;
-  extraData.extMode = data.networkType === "macvlan" ? data.macvlanMode || undefined : undefined;
+  extraData.extMode = data.networkType === "macvlan" ? data.macvlanMode ?? undefined : undefined;
 }
 
 function applyCommonNetworkFields(
@@ -734,8 +767,8 @@ function applyCommonNetworkFields(
   data: NetworkEditorData
 ): void {
   Object.assign(extraData, {
-    extMtu: data.mtu ? Number(data.mtu) : undefined,
-    extMac: data.mac || undefined,
+    extMtu: toOptionalNumber(data.mtu),
+    extMac: data.mac ?? undefined,
     extVars: data.vars && Object.keys(data.vars).length > 0 ? data.vars : undefined,
     extLabels: data.labels && Object.keys(data.labels).length > 0 ? data.labels : undefined
   });
@@ -803,10 +836,7 @@ export function useNetworkEditorHandlers(
       const existingNode =
         graphState.nodes.find((node) => node.id === newNodeId) ??
         graphState.nodes.find((node) => node.id === data.id);
-      const existingExtra =
-        ((existingNode?.data as Record<string, unknown> | undefined)?.extraData as
-          | Record<string, unknown>
-          | undefined) ?? {};
+      const existingExtra = getNodeExtraData(existingNode);
 
       let nextExtraData: Record<string, unknown>;
       if (BRIDGE_NETWORK_TYPES.has(data.networkType)) {
@@ -831,12 +861,9 @@ export function useNetworkEditorHandlers(
 
       const extraData = buildNetworkExtraData(data);
       const linkCommands = connectedEdges.map((edge) => {
-        const sourceEndpoint = (edge.data as Record<string, unknown> | undefined)?.sourceEndpoint as
-          | string
-          | undefined;
-        const targetEndpoint = (edge.data as Record<string, unknown> | undefined)?.targetEndpoint as
-          | string
-          | undefined;
+        const edgeData = getEdgeData(edge);
+        const sourceEndpoint = edgeData.sourceEndpoint;
+        const targetEndpoint = edgeData.targetEndpoint;
         const nextSource = edge.source === data.id ? newNodeId : edge.source;
         const nextTarget = edge.target === data.id ? newNodeId : edge.target;
         return {
@@ -879,12 +906,13 @@ export function useNetworkEditorHandlers(
   const persistBridgeNetwork = React.useCallback((data: NetworkEditorData, newNodeId: string) => {
     if (!BRIDGE_NETWORK_TYPES.has(data.networkType)) return;
 
+    const trimmedLabel = data.label.trim();
     const saveData = {
       id: data.id,
       name: newNodeId,
       extraData: {
         kind: data.networkType,
-        label: data.label?.trim() ? data.label.trim() : null
+        label: trimmedLabel.length > 0 ? trimmedLabel : null
       }
     };
     void executeTopologyCommand({ command: "editNode", payload: saveData });
@@ -901,7 +929,7 @@ export function useNetworkEditorHandlers(
       const { interfaceSet, interfaceCandidates } = extractInterfaceCandidates(edgeInfos);
 
       const snapshot = await requestSnapshot();
-      const annotations = snapshot.annotations ?? {};
+      const annotations = snapshot.annotations;
       const nodeAnnotations = [...(annotations.nodeAnnotations ?? [])];
       const existingAnn = nodeAnnotations.find((ann) => ann.id === aliasId);
       const existingInterface =
@@ -916,12 +944,13 @@ export function useNetworkEditorHandlers(
         interfaceCandidates
       );
 
-      if (!primaryInterface) {
+      if (primaryInterface == null || primaryInterface.length === 0) {
         return false;
       }
 
       const graphState = useGraphStore.getState();
-      const aliasLabel = data.label?.trim() || aliasId;
+      const trimmedLabel = data.label.trim();
+      const aliasLabel = trimmedLabel.length > 0 ? trimmedLabel : aliasId;
       const aliasNode = updateAliasNodeInGraph(graphState, aliasId, aliasLabel, data, newNodeId);
       const updatedAnnotations = buildUpdatedAliasAnnotations(
         nodeAnnotations,
@@ -1051,9 +1080,9 @@ export function useNodeCreationHandlers(
       }
 
       let template: CustomNodeTemplate | undefined;
-      if (templateName) {
+      if (templateName != null && templateName.length > 0) {
         template = state.customNodes.find((n) => n.name === templateName);
-      } else if (state.defaultNode) {
+      } else if (state.defaultNode.length > 0) {
         template = state.customNodes.find((n) => n.name === state.defaultNode);
       }
 

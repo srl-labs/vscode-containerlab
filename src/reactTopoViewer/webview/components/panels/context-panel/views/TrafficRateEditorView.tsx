@@ -102,7 +102,7 @@ function resolveNodeInterfaceOptions(
   nodeId: string | undefined,
   interfacesByNode: Map<string, string[]>
 ): string[] {
-  if (!nodeId) return [];
+  if (nodeId === undefined || nodeId.length === 0) return [];
   return interfacesByNode.get(nodeId) ?? [];
 }
 
@@ -120,15 +120,19 @@ function resolveShowLegendValue(checked: boolean): boolean | undefined {
   return undefined;
 }
 
-function resolveTrafficRateMode(mode: TrafficRateAnnotation["mode"]): TrafficRateMode {
+function resolveTrafficRateMode(mode: string | undefined): TrafficRateMode {
   return mode === "text" ? "text" : "chart";
 }
 
 function resolveTrafficRateTextMetric(
-  textMetric: TrafficRateAnnotation["textMetric"]
+  textMetric: string | undefined
 ): TrafficRateTextMetric {
   if (textMetric === "rx" || textMetric === "tx") return textMetric;
   return "combined";
+}
+
+function resolveBorderStyle(style: string): NonNullable<TrafficRateAnnotation["borderStyle"]> {
+  return style === "dashed" || style === "dotted" || style === "double" ? style : "solid";
 }
 
 function resolveTrafficRateSizeConfig(
@@ -194,8 +198,9 @@ function buildInterfaceSelectOptions(
   nodeId: string | undefined,
   interfaceOptions: string[]
 ): Array<{ value: string; label: string }> {
+  const hasNodeId = nodeId !== undefined && nodeId.length > 0;
   return [
-    { value: "", label: nodeId ? "Select interface" : "Select node first" },
+    { value: "", label: hasNodeId ? "Select interface" : "Select node first" },
     ...interfaceOptions.map((interfaceName) => ({
       value: interfaceName,
       label: interfaceName
@@ -307,7 +312,7 @@ function useTrafficRateModeChangeHandler(
   return useCallback(
     (value: string) => {
       if (!formData) return;
-      const nextMode = resolveTrafficRateMode(value as TrafficRateAnnotation["mode"]);
+      const nextMode = resolveTrafficRateMode(value);
       updateField("mode", nextMode);
       applyModeOverrides(updateField, resolveModeFieldOverrides(formData, nextMode));
     },
@@ -454,9 +459,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                   id="traffic-rate-text-metric"
                   label="Text value"
                   value={textMetric}
-                  onChange={(value) =>
-                    updateField("textMetric", value as TrafficRateAnnotation["textMetric"])
-                  }
+                  onChange={(value) => updateField("textMetric", resolveTrafficRateTextMetric(value))}
                   options={[
                     { value: "combined", label: "Combined (RX + TX)" },
                     { value: "rx", label: "RX only" },
@@ -477,7 +480,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                 value={resolvedFields.interfaceNameValue}
                 onChange={(value) => updateField("interfaceName", value)}
                 options={interfaceSelectOptions}
-                disabled={!formData.nodeId}
+                disabled={formData.nodeId === undefined || formData.nodeId.length === 0}
               />
             </>
           </PanelSection>
@@ -583,9 +586,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                 id="traffic-rate-border-style"
                 label="Style"
                 value={resolvedFields.borderStyleValue}
-                onChange={(value) =>
-                  updateField("borderStyle", value as TrafficRateAnnotation["borderStyle"])
-                }
+                onChange={(value) => updateField("borderStyle", resolveBorderStyle(value))}
                 options={[
                   { value: "solid", label: "Solid" },
                   { value: "dashed", label: "Dashed" },

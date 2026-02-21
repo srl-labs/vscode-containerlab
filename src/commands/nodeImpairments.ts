@@ -27,6 +27,25 @@ function getErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isNetemRawItem(value: unknown): value is NetemRawItem {
+  if (!isRecord(value)) return false;
+  return typeof value.interface === "string";
+}
+
+function toNetemRawData(value: unknown): NetemRawData {
+  if (!isRecord(value)) return {};
+  const result: NetemRawData = {};
+  for (const [key, items] of Object.entries(value)) {
+    if (!Array.isArray(items)) continue;
+    result[key] = items.filter((item): item is NetemRawItem => isNetemRawItem(item));
+  }
+  return result;
+}
+
 function normalizeInterfaceName(iface: string): string {
   const idx = iface.indexOf("(");
   const base = idx >= 0 ? iface.slice(0, idx) : iface;
@@ -57,8 +76,8 @@ function parseNetemItem(item: NetemRawItem): [string, NetemFields] | null {
   }
   const key = normalizeInterfaceName(item.interface);
   const fields: NetemFields = {
-    delay: item.delay?.trim() ? item.delay : "0ms",
-    jitter: item.jitter?.trim() ? item.jitter : "0ms",
+    delay: typeof item.delay === "string" && item.delay.trim().length > 0 ? item.delay : "0ms",
+    jitter: typeof item.jitter === "string" && item.jitter.trim().length > 0 ? item.jitter : "0ms",
     loss:
       typeof item.packet_loss === "number" && item.packet_loss > 0
         ? `${item.packet_loss}%`
@@ -76,7 +95,7 @@ function ensureDefaults(map: Record<string, NetemFields>, node: ClabContainerTre
     if (norm === "lo") {
       return;
     }
-    if (!map[norm]) {
+    if (!(norm in map)) {
       map[norm] = defaultNetemFields();
       outputChannel.info(`Defaulted values for ${norm}.`);
     }
@@ -92,17 +111,18 @@ async function refreshNetemSettings(
   let netemMap: Record<string, NetemFields> = {};
 
   try {
-    const stdout = (await runCommand(
+    const stdoutResult = await runCommand(
       showCmd,
       "Refresh netem settings",
       outputChannel,
       true,
       false
-    )) as string;
-    if (!stdout) {
+    );
+    if (typeof stdoutResult !== "string" || stdoutResult.length === 0) {
       throw new Error("No output from netem show command");
     }
-    const rawData = JSON.parse(stdout) as NetemRawData;
+    const stdout = stdoutResult;
+    const rawData = toNetemRawData(JSON.parse(stdout));
     const interfacesData = rawData[node.name] ?? [];
     for (const item of interfacesData) {
       const parsed = parseNetemItem(item);
