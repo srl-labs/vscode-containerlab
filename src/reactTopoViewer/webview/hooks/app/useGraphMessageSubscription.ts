@@ -12,7 +12,7 @@ import type { NetemState } from "../../../shared/parsing";
 import type { TopologySnapshot } from "../../../shared/types/messages";
 import {
   subscribeToWebviewMessages,
-  type TypedMessageEvent,
+  type TypedMessageEvent
 } from "../../messaging/webviewMessageBus";
 import { useGraphStore } from "../../stores/graphStore";
 import { applySnapshotToStores } from "../../services/topologyHostSync";
@@ -20,7 +20,7 @@ import {
   PENDING_NETEM_KEY,
   type PendingNetemOverride,
   areNetemEquivalent,
-  isPendingNetemFresh,
+  isPendingNetemFresh
 } from "../../utils/netemOverrides";
 
 // ============================================================================
@@ -96,7 +96,7 @@ function toPendingNetemOverride(value: unknown): PendingNetemOverride | undefine
   return {
     source: toNetemState(value.source),
     target: toNetemState(value.target),
-    appliedAt,
+    appliedAt
   };
 }
 
@@ -130,7 +130,7 @@ function buildEdgeWithExtraData(
   return {
     ...edge,
     data: { ...currentData, extraData, linkStatus: nextStatus },
-    className: classes ?? edge.className,
+    className: classes ?? edge.className
   };
 }
 
@@ -357,9 +357,9 @@ function applyNodeRuntimeUpdate(
         state: nextState,
         status: nextStatus,
         mgmtIpv4Address: nextIpv4,
-        mgmtIpv6Address: nextIpv6,
-      },
-    },
+        mgmtIpv6Address: nextIpv6
+      }
+    }
   };
 }
 

@@ -7,7 +7,7 @@
 
 import type {
   NetworkType as _NetworkType,
-  NetworkEditorData as _NetworkEditorData,
+  NetworkEditorData as _NetworkEditorData
 } from "../../../../shared/types/editors";
 import {
   NETWORK_TYPES as _NETWORK_TYPES,
@@ -18,7 +18,7 @@ import {
   getInterfaceLabel as _getInterfaceLabel,
   getInterfacePlaceholder as _getInterfacePlaceholder,
   showInterfaceField as _showInterfaceField,
-  supportsExtendedProps as _supportsExtendedProps,
+  supportsExtendedProps as _supportsExtendedProps
 } from "../../../../shared/types/editors";
 
 // Re-export types

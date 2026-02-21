@@ -6,13 +6,13 @@ export {
   Command,
   execCommandInTerminal,
   execCommandInOutput,
-  cancelActiveCommand,
+  cancelActiveCommand
 } from "../command";
 export type {
   SpinnerOptions,
   TerminalOptions,
   CmdOptions,
   SpinnerMsg,
-  CommandFailureHandler,
+  CommandFailureHandler
 } from "../command";
 export { ClabCommand } from "../clabCommand";

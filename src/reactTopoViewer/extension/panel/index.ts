@@ -24,7 +24,7 @@ export {
   extractKindsFromSchema,
   extractTypesByKindFromSchema,
   extractSrosComponentTypes,
-  parseSchemaData,
+  parseSchemaData
 } from "../../shared/schema";
 
 // Service adapters

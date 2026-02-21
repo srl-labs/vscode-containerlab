@@ -7,7 +7,7 @@ import type {
   ParsedElement,
   ClabTopology,
   TopologyAnnotations,
-  NodeAnnotation,
+  NodeAnnotation
 } from "../types/topology";
 
 import { NODE_KIND_BRIDGE, NODE_KIND_OVS_BRIDGE } from "./LinkNormalizer";
@@ -171,8 +171,8 @@ export function buildBridgeAliasElement(
         shortname: displayName,
         state: "",
         weight: "3",
-        extYamlNodeId: yamlRefId,
-      },
+        extYamlNodeId: yamlRefId
+      }
     },
     position,
     removed: false,
@@ -181,7 +181,7 @@ export function buildBridgeAliasElement(
     locked: false,
     grabbed: false,
     grabbable: true,
-    classes: "",
+    classes: ""
   };
 }
 

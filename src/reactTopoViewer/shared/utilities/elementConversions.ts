@@ -10,7 +10,7 @@ import type {
   TopologyData,
   TopologyNodeData,
   NetworkNodeData,
-  TopologyEdgeData,
+  TopologyEdgeData
 } from "../types/graph";
 import { getNumber, getRecordUnknown, getString } from "./typeHelpers";
 
@@ -29,7 +29,7 @@ const NETWORK_NODE_ROLES = new Set([
   "vxlan-stitch",
   "dummy",
   "bridge",
-  "ovs-bridge",
+  "ovs-bridge"
 ]);
 
 function getGeoCoordinates(
@@ -73,14 +73,14 @@ export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
       direction: getString(data.direction),
       labelBackgroundColor: getString(data.labelBackgroundColor),
       ...(geoCoordinates ? { geoCoordinates } : {}),
-      extraData,
+      extraData
     };
 
     const node: TopoNode = {
       id,
       type: "network-node",
       position: element.position ?? { x: 0, y: 0 },
-      data: networkNodeData,
+      data: networkNodeData
     };
     return node;
   }
@@ -101,14 +101,14 @@ export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
     mgmtIpv6Address: getString(extraData.mgmtIpv6Address),
     longname: getString(extraData.longname),
     ...(geoCoordinates ? { geoCoordinates } : {}),
-    extraData,
+    extraData
   };
 
   const node: TopoNode = {
     id,
     type: "topology-node",
     position: element.position ?? { x: 0, y: 0 },
-    data: nodeData,
+    data: nodeData
   };
   return node;
 }
@@ -142,7 +142,7 @@ export function parsedElementToTopoEdge(element: ParsedElement): TopoEdge {
     sourceEndpoint,
     targetEndpoint,
     linkStatus,
-    extraData,
+    extraData
   };
 
   return {
@@ -150,7 +150,7 @@ export function parsedElementToTopoEdge(element: ParsedElement): TopoEdge {
     source,
     target,
     type: "topology-edge",
-    data: edgeData,
+    data: edgeData
   };
 }
 
@@ -202,7 +202,7 @@ export function topoNodeToParsedElement(node: TopoNode): ParsedElement {
       labelBackgroundColor: data.labelBackgroundColor,
       lat,
       lng,
-      extraData: extraData ?? {},
+      extraData: extraData ?? {}
     },
     position: node.position,
     removed: false,
@@ -211,7 +211,7 @@ export function topoNodeToParsedElement(node: TopoNode): ParsedElement {
     locked: false,
     grabbed: false,
     grabbable: true,
-    classes: "",
+    classes: ""
   };
 }
 
@@ -239,7 +239,7 @@ export function topoEdgeToParsedElement(edge: TopoEdge): ParsedElement {
       lng: "",
       source: edge.source,
       target: edge.target,
-      extraData: data?.extraData ?? {},
+      extraData: data?.extraData ?? {}
     },
     position: { x: 0, y: 0 },
     removed: false,
@@ -248,7 +248,7 @@ export function topoEdgeToParsedElement(edge: TopoEdge): ParsedElement {
     locked: false,
     grabbed: false,
     grabbable: true,
-    classes,
+    classes
   };
 }
 

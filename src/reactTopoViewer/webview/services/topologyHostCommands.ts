@@ -7,7 +7,7 @@
 import type {
   TopologyHostCommand,
   TopologyHostResponseMessage,
-  TopologySnapshot,
+  TopologySnapshot
 } from "../../shared/types/messages";
 import { getRecordUnknown } from "../../shared/utilities/typeHelpers";
 import { useTopoViewerStore } from "../stores/topoViewerStore";
@@ -48,7 +48,7 @@ async function handleHostResponse(
   const syncUndoRedo = (snapshot: TopologySnapshot) => {
     useTopoViewerStore.getState().setInitialData({
       canUndo: snapshot.canUndo,
-      canRedo: snapshot.canRedo,
+      canRedo: snapshot.canRedo
     });
   };
 
@@ -57,7 +57,7 @@ async function handleHostResponse(
       yamlFileName: snapshot.yamlFileName,
       annotationsFileName: snapshot.annotationsFileName,
       yamlContent: snapshot.yamlContent,
-      annotationsContent: snapshot.annotationsContent,
+      annotationsContent: snapshot.annotationsContent
     });
   };
 

@@ -24,6 +24,6 @@ export function toNetworkNodeData(data: NodeProps["data"]): NetworkNodeData {
   return {
     ...data,
     label: typeof data.label === "string" ? data.label : "",
-    nodeType: typeof data.nodeType === "string" ? data.nodeType : "host",
+    nodeType: typeof data.nodeType === "string" ? data.nodeType : "host"
   };
 }

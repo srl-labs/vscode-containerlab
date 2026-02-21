@@ -39,7 +39,7 @@ const NOTES = {
   C6: 1046.5,
   D6: 1174.66,
   Eb6: 1244.51,
-  Bb6: 1864.66,
+  Bb6: 1864.66
 } as const;
 
 const BEAT = 0.923;
@@ -133,14 +133,14 @@ function buildMelody(): MelodyNote[] {
     { sd: "7", octave: 2, beat: 47, duration: 0.25, isRest: false },
     { sd: "7", octave: 1, beat: 47.25, duration: 0.25, isRest: false },
     { sd: "7", octave: 1, beat: 47.5, duration: 0.25, isRest: false },
-    { sd: "7", octave: 2, beat: 47.75, duration: 0.25, isRest: false },
+    { sd: "7", octave: 2, beat: 47.75, duration: 0.25, isRest: false }
   ];
 
   return rawNotes.map((note) => ({
     frequency: note.isRest ? 0 : getCMinorFrequency(note.sd, note.octave),
     beat: note.beat,
     duration: note.duration,
-    isRest: note.isRest,
+    isRest: note.isRest
   }));
 }
 
@@ -150,7 +150,7 @@ const CHORD_PADS = {
   Cm_add9: [NOTES.C3, NOTES.Eb3, NOTES.G3, NOTES.D4],
   Abm_add9: [NOTES.Ab3, NOTES.C4, NOTES.Eb4, NOTES.Bb4],
   Fmaj7: [NOTES.F3, NOTES.Ab3, NOTES.C4, NOTES.Eb4],
-  Bdim_add9: [NOTES.Bb3, NOTES.D4, NOTES.F4, NOTES.C5],
+  Bdim_add9: [NOTES.Bb3, NOTES.D4, NOTES.F4, NOTES.C5]
 };
 
 // Module-level cache
@@ -400,7 +400,7 @@ export function useAquaticAmbienceAudio(): UseAquaticAmbienceAudioReturn {
   const engine = useAudioEngine(renderAudio, {
     loop: false,
     fftSize: 256,
-    smoothingTimeConstant: 0.93,
+    smoothingTimeConstant: 0.93
   });
 
   const getCurrentSection = useCallback((): number => {
@@ -438,6 +438,6 @@ export function useAquaticAmbienceAudio(): UseAquaticAmbienceAudioReturn {
     getFrequencyData: engine.getFrequencyData,
     getTimeDomainData: engine.getTimeDomainData,
     getBeatIntensity,
-    getCurrentSection,
+    getCurrentSection
   };
 }

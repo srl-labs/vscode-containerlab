@@ -72,7 +72,7 @@ function getThemeTrafficRateDefaults(): {
   return {
     backgroundColor: resolveComputedColor("--vscode-editor-background", FALLBACK_BACKGROUND_COLOR),
     borderColor: resolveComputedColor("--vscode-panel-border", FALLBACK_BORDER_COLOR),
-    textColor: resolveComputedColor("--vscode-descriptionForeground", FALLBACK_TEXT_COLOR),
+    textColor: resolveComputedColor("--vscode-descriptionForeground", FALLBACK_TEXT_COLOR)
   };
 }
 
@@ -158,7 +158,7 @@ function resolveTrafficRateSizeConfig(
     width,
     height,
     widthMin,
-    heightMin,
+    heightMin
   };
 }
 
@@ -179,7 +179,7 @@ function resolveModeFieldOverrides(
       borderRadius:
         formData.borderRadius === undefined || formData.borderRadius === DEFAULT_BORDER_RADIUS_CHART
           ? DEFAULT_BORDER_RADIUS_TEXT
-          : undefined,
+          : undefined
     };
   }
 
@@ -195,7 +195,7 @@ function resolveModeFieldOverrides(
     borderRadius:
       formData.borderRadius === undefined || formData.borderRadius === DEFAULT_BORDER_RADIUS_TEXT
         ? DEFAULT_BORDER_RADIUS_CHART
-        : undefined,
+        : undefined
   };
 }
 
@@ -204,8 +204,8 @@ function buildNodeSelectOptions(nodeOptions: string[]): Array<{ value: string; l
     { value: "", label: "Select node" },
     ...nodeOptions.map((nodeId) => ({
       value: nodeId,
-      label: nodeId,
-    })),
+      label: nodeId
+    }))
   ];
 }
 
@@ -218,8 +218,8 @@ function buildInterfaceSelectOptions(
     { value: "", label: hasNodeId ? "Select interface" : "Select node first" },
     ...interfaceOptions.map((interfaceName) => ({
       value: interfaceName,
-      label: interfaceName,
-    })),
+      label: interfaceName
+    }))
   ];
 }
 
@@ -285,7 +285,7 @@ function resolveEditorResolvedFields(
     opacityValue: String(formData.backgroundOpacity ?? DEFAULT_BACKGROUND_OPACITY),
     borderWidthValue: String(formData.borderWidth ?? DEFAULT_BORDER_WIDTH),
     borderRadiusValue: String(formData.borderRadius ?? sizeConfig.defaultBorderRadiusForMode),
-    showLegendChecked: formData.showLegend !== false,
+    showLegendChecked: formData.showLegend !== false
   };
 }
 
@@ -376,7 +376,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
   onClose,
   onDelete,
   readOnly = false,
-  onFooterRef,
+  onFooterRef
 }) => {
   const graphNodes = useGraphStore((state) => state.nodes);
   const edges = useGraphStore((state) => state.edges);
@@ -388,7 +388,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
       annotation,
       formData,
       readOnly,
-      onPreview,
+      onPreview
     });
 
   const topologyNodeIds = useMemo(() => {
@@ -430,7 +430,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
     previewRef,
     initialAnnotationRef,
     initialSerializedRef,
-    hasPreviewRef,
+    hasPreviewRef
   });
 
   useEditorHandlersWithFooterRef({
@@ -442,7 +442,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
     discardChanges: discardWithRevert,
     onFooterRef,
     canSave,
-    hasChangesForFooter: hasChanges && canSaveNow,
+    hasChangesForFooter: hasChanges && canSaveNow
   });
 
   if (!formData) return null;
@@ -466,7 +466,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                 onChange={handleModeChange}
                 options={[
                   { value: "chart", label: "Chart" },
-                  { value: "text", label: "Text" },
+                  { value: "text", label: "Text" }
                 ]}
               />
               {mode === "text" && (
@@ -480,7 +480,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                   options={[
                     { value: "combined", label: "Combined (RX + TX)" },
                     { value: "rx", label: "RX only" },
-                    { value: "tx", label: "TX only" },
+                    { value: "tx", label: "TX only" }
                   ]}
                 />
               )}
@@ -611,7 +611,7 @@ export const TrafficRateEditorView: React.FC<TrafficRateEditorViewProps> = ({
                   { value: "solid", label: "Solid" },
                   { value: "dashed", label: "Dashed" },
                   { value: "dotted", label: "Dotted" },
-                  { value: "double", label: "Double" },
+                  { value: "double", label: "Double" }
                 ]}
               />
               <InputField

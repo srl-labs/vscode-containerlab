@@ -10,7 +10,7 @@ import { collectNodeGroupMemberships } from "../../annotations/groupMembership";
 import {
   GROUP_NODE_TYPE,
   nodeToGroup,
-  resolveGroupParentId,
+  resolveGroupParentId
 } from "../../annotations/annotationNodeConverters";
 
 import type { GroupEditorData } from "./groupTypes";
@@ -96,7 +96,7 @@ function getGroupDeletionContext(
     childGroups,
     textIds,
     shapeIds,
-    trafficRateIds,
+    trafficRateIds
   };
 }
 
@@ -108,7 +108,7 @@ function updateChildGroupParents(
   for (const child of childGroups) {
     derived.updateGroup(child.id, {
       parentId: parentId ?? undefined,
-      groupId: parentId ?? undefined,
+      groupId: parentId ?? undefined
     });
   }
 }
@@ -174,11 +174,11 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
           borderStyle: group.borderStyle,
           borderRadius: group.borderRadius,
           labelColor: group.labelColor,
-          labelPosition: group.labelPosition,
+          labelPosition: group.labelPosition
         },
         position: group.position,
         width: group.width,
-        height: group.height,
+        height: group.height
       });
     },
     [derived.groups, uiActions]
@@ -202,7 +202,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
         borderStyle: data.style.borderStyle,
         borderRadius: data.style.borderRadius,
         labelColor: data.style.labelColor,
-        labelPosition: data.style.labelPosition,
+        labelPosition: data.style.labelPosition
       });
       persist();
     },
@@ -266,7 +266,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       borderStyle: "dashed",
       borderRadius: 8,
       members,
-      ...(parentGroup ? { parentId: parentGroup.id, groupId: parentGroup.id } : {}),
+      ...(parentGroup ? { parentId: parentGroup.id, groupId: parentGroup.id } : {})
     };
 
     derived.addGroup(newGroup);
@@ -299,7 +299,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
               position,
               width: 300,
               height: 200,
-              members: [],
+              members: []
             };
 
       const parentGroup = findParentGroupForBounds(
@@ -321,7 +321,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
         borderStyle: "dashed",
         borderRadius: 8,
         members: bounds.members,
-        ...(parentGroup ? { parentId: parentGroup.id, groupId: parentGroup.id } : {}),
+        ...(parentGroup ? { parentId: parentGroup.id, groupId: parentGroup.id } : {})
       };
 
       derived.addGroup(newGroup);
@@ -368,7 +368,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       handleAddGroup,
       createGroupAtPosition,
       addGroup,
-      updateGroupSize,
+      updateGroupSize
     }),
     [
       editGroup,
@@ -377,7 +377,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       handleAddGroup,
       createGroupAtPosition,
       addGroup,
-      updateGroupSize,
+      updateGroupSize
     ]
   );
 }

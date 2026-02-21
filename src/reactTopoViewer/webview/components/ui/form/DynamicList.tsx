@@ -22,7 +22,7 @@ export const DynamicList: React.FC<DynamicListProps> = ({
   placeholder,
   addLabel = "Add",
   disabled,
-  hideAddButton,
+  hideAddButton
 }) => {
   const handleAdd = () => {
     onChange([...items, ""]);
@@ -73,7 +73,7 @@ const DynamicListItem: React.FC<DynamicListItemProps> = ({
   onChange,
   onRemove,
   placeholder,
-  disabled,
+  disabled
 }) => (
   <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
     <TextField

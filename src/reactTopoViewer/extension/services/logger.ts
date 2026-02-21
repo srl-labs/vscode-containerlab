@@ -9,7 +9,7 @@ import {
   type LogLevel,
   formatMessage,
   getCallerFileLine,
-  createLogger,
+  createLogger
 } from "../../shared/utilities/loggerUtils";
 
 let outputChannel: vscode.LogOutputChannel | undefined;

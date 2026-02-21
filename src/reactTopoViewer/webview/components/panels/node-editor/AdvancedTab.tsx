@@ -9,7 +9,7 @@ import {
   DynamicList,
   KeyValueList,
   PanelAddSection,
-  PanelSection,
+  PanelSection
 } from "../../ui/form";
 
 import type { TabProps, HealthCheckConfig } from "./types";
@@ -17,21 +17,21 @@ import type { TabProps, HealthCheckConfig } from "./types";
 const KEY_SIZE_OPTIONS = [
   { value: "", label: "Default" },
   { value: "2048", label: "2048" },
-  { value: "4096", label: "4096" },
+  { value: "4096", label: "4096" }
 ];
 
 const PULL_POLICY_OPTIONS = [
   { value: "", label: "Default" },
   { value: "always", label: "Always" },
   { value: "never", label: "Never" },
-  { value: "if-not-present", label: "If Not Present" },
+  { value: "if-not-present", label: "If Not Present" }
 ];
 
 const RUNTIME_OPTIONS = [
   { value: "", label: "Default" },
   { value: "runc", label: "runc" },
   { value: "kata", label: "kata" },
-  { value: "runsc", label: "runsc (gVisor)" },
+  { value: "runsc", label: "runsc (gVisor)" }
 ];
 
 const ResourceLimitsSection: React.FC<TabProps> = ({ data, onChange }) => (
@@ -79,7 +79,7 @@ interface TlsCertificateSectionProps extends TabProps {
 const TlsCertificateSection: React.FC<TlsCertificateSectionProps> = ({
   data,
   onChange,
-  certIssue,
+  certIssue
 }) => (
   <PanelSection title="TLS Certificate">
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>

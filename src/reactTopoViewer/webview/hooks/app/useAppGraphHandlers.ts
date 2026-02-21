@@ -10,7 +10,7 @@ import type {
   TopoEdge,
   TopoNode,
   EdgeCreatedHandler,
-  NodeCreatedHandler,
+  NodeCreatedHandler
 } from "../../../shared/types/graph";
 import { getRecordUnknown } from "../../../shared/utilities/typeHelpers";
 import type { GraphActions } from "../../stores/graphStore";
@@ -62,7 +62,7 @@ export interface AppGraphHandlers {
 export function useAppGraphHandlers({
   rfInstance,
   menuHandlers,
-  actions,
+  actions
 }: AppGraphHandlersConfig): AppGraphHandlers {
   const {
     addNode,
@@ -71,7 +71,7 @@ export function useAppGraphHandlers({
     removeEdge,
     updateNodeData,
     updateEdge,
-    renameNode,
+    renameNode
   } = actions;
 
   const addNodeDirect = React.useCallback(
@@ -99,7 +99,7 @@ export function useAppGraphHandlers({
     handleNodeCreatedCallback,
     handleBatchPaste,
     handleDeleteNode,
-    handleDeleteLink,
+    handleDeleteLink
   } = useGraphHandlersWithContext({
     getNodes,
     getEdges,
@@ -107,7 +107,7 @@ export function useAppGraphHandlers({
     addEdge: addEdgeDirect,
     removeNodeAndEdges,
     removeEdge,
-    menuHandlers,
+    menuHandlers
   });
 
   const handleUpdateNodeData = React.useCallback(
@@ -126,8 +126,8 @@ export function useAppGraphHandlers({
         data: {
           sourceEndpoint: saveData.sourceEndpoint ?? data.sourceEndpoint,
           targetEndpoint: saveData.targetEndpoint ?? data.targetEndpoint,
-          ...(saveData.extraData ? { extraData: saveData.extraData } : {}),
-        },
+          ...(saveData.extraData ? { extraData: saveData.extraData } : {})
+        }
       });
     },
     [updateEdge]
@@ -150,6 +150,6 @@ export function useAppGraphHandlers({
     handleUpdateEdgeData,
     renameNodeInGraph,
     addNodeDirect,
-    addEdgeDirect,
+    addEdgeDirect
   };
 }

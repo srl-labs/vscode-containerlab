@@ -16,13 +16,13 @@ import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
   TrafficRateAnnotation,
-  GroupStyleAnnotation,
+  GroupStyleAnnotation
 } from "../../../shared/types/topology";
 import type {
   FreeTextNodeData,
   FreeShapeNodeData,
   TrafficRateNodeData,
-  GroupNodeData,
+  GroupNodeData
 } from "../../components/canvas/types";
 import { useGraphStore } from "../../stores/graphStore";
 import {
@@ -38,7 +38,7 @@ import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   TRAFFIC_RATE_NODE_TYPE,
-  GROUP_NODE_TYPE,
+  GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
 
 /**
@@ -305,7 +305,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       const node = useGraphStore.getState().nodes.find((n) => n.id === nodeId);
       if (!node) return;
       updateNode(nodeId, {
-        data: { ...node.data, groupId },
+        data: { ...node.data, groupId }
       });
     },
     [updateNode]
@@ -408,7 +408,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       addNodeToGroup,
       removeNodeFromGroup,
       getNodeMembership,
-      getGroupMembers,
+      getGroupMembers
     }),
     [
       groups,
@@ -431,7 +431,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       addNodeToGroup,
       removeNodeFromGroup,
       getNodeMembership,
-      getGroupMembers,
+      getGroupMembers
     ]
   );
 }

@@ -50,13 +50,13 @@ function buildMelody(): MelodyNote[] {
     { sd: 4, octave: -1, beat: 31, duration: 0.5 },
     { sd: 4, octave: -1, beat: 31.5, duration: 0.5 },
     { sd: 7, octave: -3, beat: 32, duration: 0.5 },
-    { sd: 3, octave: 0, beat: 32.5, duration: 0.5 },
+    { sd: 3, octave: 0, beat: 32.5, duration: 0.5 }
   ];
 
   return rawNotes.map((note) => ({
     frequency: getBMinorFrequency(note.sd, note.octave),
     beat: note.beat,
-    duration: note.duration,
+    duration: note.duration
   }));
 }
 
@@ -67,32 +67,32 @@ const CHORD_PADS = {
     getBMinorFrequency(4, -1),
     getBMinorFrequency(6, -1),
     getBMinorFrequency(1, 0),
-    getBMinorFrequency(3, 0),
+    getBMinorFrequency(3, 0)
   ],
   Bm: [
     getBMinorFrequency(1, -1),
     getBMinorFrequency(3, -1),
     getBMinorFrequency(5, -1),
-    getBMinorFrequency(1, 0),
+    getBMinorFrequency(1, 0)
   ],
   Em: [
     getBMinorFrequency(4, -1),
     getBMinorFrequency(6, -1),
     getBMinorFrequency(1, 0),
-    getBMinorFrequency(4, 0),
+    getBMinorFrequency(4, 0)
   ],
   Csm7: [
     getBMinorFrequency(2, -1),
     getBMinorFrequency(4, -1),
     getBMinorFrequency(6, -1),
-    getBMinorFrequency(1, 0),
+    getBMinorFrequency(1, 0)
   ],
   A: [
     getBMinorFrequency(7, -2),
     getBMinorFrequency(2, -1),
     getBMinorFrequency(4, -1),
-    getBMinorFrequency(7, -1),
-  ],
+    getBMinorFrequency(7, -1)
+  ]
 };
 
 type VaporwaveSection = "em7" | "bm" | "em" | "csm7" | "a";
@@ -316,7 +316,7 @@ export function useVaporwaveAudio(): UseVaporwaveAudioReturn {
   const engine = useAudioEngine(renderLoop, {
     loop: true,
     loopEnd: LOOP_DURATION,
-    fftSize: 256,
+    fftSize: 256
   });
 
   const getCurrentSection = useCallback((): VaporwaveSection => {
@@ -346,6 +346,6 @@ export function useVaporwaveAudio(): UseVaporwaveAudioReturn {
     toggleMute: engine.toggleMute,
     getFrequencyData: engine.getFrequencyData,
     getTimeDomainData: engine.getTimeDomainData,
-    getCurrentSection,
+    getCurrentSection
   };
 }

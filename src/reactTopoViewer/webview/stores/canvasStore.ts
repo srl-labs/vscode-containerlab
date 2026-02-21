@@ -128,7 +128,7 @@ function processParallelEdges(
       parallelInfoMap.set(edge.id, {
         index: i,
         total: group.length,
-        isCanonicalDirection,
+        isCanonicalDirection
       });
     }
   }
@@ -145,7 +145,7 @@ export function buildEdgeInfo(edges: Edge[]): EdgeInfo {
 
   return {
     getParallelInfo: (edgeId: string) => parallelInfoMap.get(edgeId) ?? null,
-    getLoopInfo: (edgeId: string) => loopInfoMap.get(edgeId) ?? null,
+    getLoopInfo: (edgeId: string) => loopInfoMap.get(edgeId) ?? null
   };
 }
 
@@ -156,11 +156,11 @@ export function buildEdgeInfo(edges: Edge[]): EdgeInfo {
 const defaultEdgeRenderConfig: EdgeRenderConfig = {
   labelMode: "show-all",
   suppressLabels: false,
-  suppressHitArea: false,
+  suppressHitArea: false
 };
 
 const defaultNodeRenderConfig: NodeRenderConfig = {
-  suppressLabels: false,
+  suppressLabels: false
 };
 
 const initialState: CanvasState = {
@@ -169,7 +169,7 @@ const initialState: CanvasState = {
   nodeRenderConfig: defaultNodeRenderConfig,
   annotationHandlers: null,
   easterEggGlow: null,
-  fitViewRequestId: 0,
+  fitViewRequestId: 0
 };
 
 // ============================================================================
@@ -181,7 +181,7 @@ let edgeInfoCache: {
   info: EdgeInfo | null;
 } = {
   edgesRef: null,
-  info: null,
+  info: null
 };
 
 // ============================================================================
@@ -212,7 +212,7 @@ export const useCanvasStore = createWithEqualityFn<CanvasStore>((set) => ({
   },
   requestFitView: () => {
     set((state) => ({ fitViewRequestId: state.fitViewRequestId + 1 }));
-  },
+  }
 }));
 
 /**

@@ -15,7 +15,7 @@ interface FindNodePopoverProps {
 export const FindNodePopover: React.FC<FindNodePopoverProps> = ({
   anchorPosition,
   onClose,
-  rfInstance,
+  rfInstance
 }) => {
   const open = Boolean(anchorPosition);
 

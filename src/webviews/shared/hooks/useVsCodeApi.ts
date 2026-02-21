@@ -66,7 +66,7 @@ function fromWindow(): VsCodeApiLike | undefined {
       if (typeof setter === "function") {
         setter(state);
       }
-    },
+    }
   };
 }
 

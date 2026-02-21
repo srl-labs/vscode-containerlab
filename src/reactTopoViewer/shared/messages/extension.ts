@@ -10,7 +10,7 @@ export const LIFECYCLE_COMMANDS = {
   REDEPLOY_LAB: "redeployLab",
   DEPLOY_LAB_CLEANUP: "deployLabCleanup",
   DESTROY_LAB_CLEANUP: "destroyLabCleanup",
-  REDEPLOY_LAB_CLEANUP: "redeployLabCleanup",
+  REDEPLOY_LAB_CLEANUP: "redeployLabCleanup"
 } as const;
 
 export const MSG_CANCEL_LAB_LIFECYCLE = "cancelLabLifecycle" as const;
@@ -27,7 +27,7 @@ export function isLifecycleCommand(command: string): command is LifecycleCommand
 export const NODE_COMMANDS = {
   NODE_CONNECT_SSH: "clab-node-connect-ssh",
   NODE_ATTACH_SHELL: "clab-node-attach-shell",
-  NODE_VIEW_LOG: "clab-node-view-logs",
+  NODE_VIEW_LOG: "clab-node-view-logs"
 } as const;
 
 const NODE_COMMANDS_SET: ReadonlySet<string> = new Set(Object.values(NODE_COMMANDS));
@@ -41,7 +41,7 @@ export function isNodeCommand(command: string): command is NodeCommand {
 /** Interface commands */
 export const INTERFACE_COMMANDS = {
   INTERFACE_CAPTURE: "clab-interface-capture",
-  LINK_IMPAIRMENT: "clab-link-impairment",
+  LINK_IMPAIRMENT: "clab-link-impairment"
 } as const;
 
 const INTERFACE_COMMANDS_SET: ReadonlySet<string> = new Set(Object.values(INTERFACE_COMMANDS));
@@ -56,7 +56,7 @@ export function isInterfaceCommand(command: string): command is InterfaceCommand
 export const CUSTOM_NODE_COMMANDS = {
   SAVE_CUSTOM_NODE: "save-custom-node",
   DELETE_CUSTOM_NODE: "delete-custom-node",
-  SET_DEFAULT_CUSTOM_NODE: "set-default-custom-node",
+  SET_DEFAULT_CUSTOM_NODE: "set-default-custom-node"
 } as const;
 
 const CUSTOM_NODE_COMMANDS_SET: ReadonlySet<string> = new Set(Object.values(CUSTOM_NODE_COMMANDS));
@@ -72,7 +72,7 @@ export const ICON_COMMANDS = {
   ICON_LIST: "icon-list",
   ICON_UPLOAD: "icon-upload",
   ICON_DELETE: "icon-delete",
-  ICON_RECONCILE: "icon-reconcile",
+  ICON_RECONCILE: "icon-reconcile"
 } as const;
 
 const ICON_COMMANDS_SET: ReadonlySet<string> = new Set(Object.values(ICON_COMMANDS));
@@ -85,7 +85,7 @@ export function isIconCommand(command: string): command is IconCommand {
 
 /** Export commands */
 export const EXPORT_COMMANDS = {
-  EXPORT_SVG_GRAFANA_BUNDLE: "export-svg-grafana-bundle",
+  EXPORT_SVG_GRAFANA_BUNDLE: "export-svg-grafana-bundle"
 } as const;
 
 const EXPORT_COMMANDS_SET: ReadonlySet<string> = new Set(Object.values(EXPORT_COMMANDS));

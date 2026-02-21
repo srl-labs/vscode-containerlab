@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useMemo,
   useEffect,
-  useState,
+  useState
 } from "react";
 import { flushSync } from "react-dom";
 import {
@@ -22,7 +22,7 @@ import {
   useStore,
   type Edge,
   type Node,
-  type ReactFlowInstance,
+  type ReactFlowInstance
 } from "@xyflow/react";
 
 import {
@@ -30,7 +30,7 @@ import {
   FREE_TEXT_NODE_TYPE,
   TRAFFIC_RATE_NODE_TYPE,
   GROUP_NODE_TYPE,
-  isAnnotationNodeType,
+  isAnnotationNodeType
 } from "../../annotations/annotationNodeConverters";
 import {
   useAnnotationCanvasHandlers,
@@ -40,7 +40,7 @@ import {
   useGeoMapLayout,
   useHelperLines,
   useLinkCreation,
-  useSourceNodePosition,
+  useSourceNodePosition
 } from "../../hooks/canvas";
 import {
   useCanvasStore,
@@ -48,7 +48,7 @@ import {
   useGraphActions,
   useIsLocked,
   useMode,
-  useTopoViewerActions,
+  useTopoViewerActions
 } from "../../stores";
 import { invertHexColor, resolveComputedColor } from "../../utils/color";
 import { ContextMenu } from "../context-menu/ContextMenu";
@@ -64,7 +64,7 @@ import type {
   CanvasDropHandlers,
   EdgeLabelMode,
   ReactFlowCanvasProps,
-  ReactFlowCanvasRef,
+  ReactFlowCanvasRef
 } from "./types";
 
 const GRID_SIZE = 20;
@@ -197,7 +197,7 @@ function useWrappedNodeClick(
       isLocked,
       handleDeleteNode,
       clearContextForAnnotationEdit,
-      annotationHandlers,
+      annotationHandlers
     ]
   );
 }
@@ -229,7 +229,7 @@ const canvasStyle: React.CSSProperties = {
   top: 0,
   left: 0,
   right: 0,
-  bottom: 0,
+  bottom: 0
 };
 
 // Constants
@@ -310,14 +310,14 @@ function useRenderConfig(
     () => ({
       labelMode: linkLabelMode,
       suppressLabels: isLowDetail,
-      suppressHitArea: isLowDetail,
+      suppressHitArea: isLowDetail
     }),
     [linkLabelMode, isLowDetail]
   );
 
   const nodeRenderConfig = useMemo(
     () => ({
-      suppressLabels: isLowDetail,
+      suppressLabels: isLowDetail
     }),
     [isLowDetail]
   );
@@ -428,11 +428,11 @@ function getSnappedDropPosition(
 ): { x: number; y: number } {
   const position = reactFlowInstance.screenToFlowPosition({
     x: event.clientX,
-    y: event.clientY,
+    y: event.clientY
   });
   return {
     x: Math.round(position.x / GRID_SIZE) * GRID_SIZE,
-    y: Math.round(position.y / GRID_SIZE) * GRID_SIZE,
+    y: Math.round(position.y / GRID_SIZE) * GRID_SIZE
   };
 }
 
@@ -534,7 +534,7 @@ function shouldRunFitView(params: {
     isReactFlowReady,
     areNodesInitialized,
     reactFlowInstance,
-    fitNodeCount,
+    fitNodeCount
   } = params;
   return (
     fitViewRequestId > lastFitViewRequestId &&
@@ -577,7 +577,7 @@ function relayBackdropContextMenu(event: React.MouseEvent, closeContextMenu: () 
       clientX,
       clientY,
       button: 2,
-      buttons: 2,
+      buttons: 2
     })
   );
 }
@@ -652,7 +652,7 @@ function useGeoWheelZoom(
           ctrlKey: event.ctrlKey,
           shiftKey: event.shiftKey,
           altKey: event.altKey,
-          metaKey: event.metaKey,
+          metaKey: event.metaKey
         })
       );
     };
@@ -684,7 +684,7 @@ function useSyncCanvasStore(params: {
     nodeRenderConfig,
     setNodeRenderConfig,
     annotationHandlers,
-    setAnnotationHandlers,
+    setAnnotationHandlers
   } = params;
 
   useEffect(() => {
@@ -732,7 +732,7 @@ function getCanvasInteractionConfig(params: {
         left: 0,
         width: "100%",
         height: "100%",
-        zIndex: 1,
+        zIndex: 1
       }
     : undefined;
   return { allowPanOnDrag, allowSelectionOnDrag, nodesDraggable, nodesConnectable, reactFlowStyle };
@@ -782,7 +782,7 @@ function renderGeoMapLayer(
         left: 0,
         width: "100%",
         height: "100%",
-        zIndex: 0,
+        zIndex: 0
       }}
     />
   );
@@ -878,7 +878,7 @@ function buildCanvasOverlays(params: {
     gridLineWidth,
     gridStyle,
     effectiveGridColor,
-    gridBgColor,
+    gridBgColor
   } = params;
 
   const canShowGeoMap = isGeoLayout;
@@ -900,7 +900,7 @@ function buildCanvasOverlays(params: {
         nodes,
         edges,
         sourcePosition,
-        linkCreationSeed,
+        linkCreationSeed
       })
     : null;
   const linkIndicator = canShowLinkIndicator ? renderLinkIndicator(linkSourceNode) : null;
@@ -951,7 +951,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onAddTrafficRateAtPosition,
       onDropCreateNode,
       onDropCreateNetwork,
-      onLockedAction,
+      onLockedAction
     },
     ref
   ) => {
@@ -964,7 +964,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       editNetwork,
       editEdge,
       editImpairment,
-      editCustomTemplate,
+      editCustomTemplate
     } = useTopoViewerActions();
 
     // Get setters from graph store - these update the single source of truth
@@ -1022,7 +1022,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       startLinkCreation,
       completeLinkCreation,
       cancelLinkCreation,
-      linkCreationSeed,
+      linkCreationSeed
     } = useLinkCreation(handleEdgeCreatedWithContextPanel);
     const linkSourceNodeRef = useRef<string | null>(null);
     linkSourceNodeRef.current = linkSourceNode;
@@ -1041,7 +1041,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       setNodes,
       reactFlowInstanceRef,
       canvasContainerRef,
-      restoreOnExit: layout === "preset",
+      restoreOnExit: layout === "preset"
     });
     const isGeoEdit = isGeoEditable;
     useGeoWheelZoom(geoLayout, isGeoLayout, isGeoEdit, canvasContainerRef);
@@ -1093,7 +1093,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           isReactFlowReady,
           areNodesInitialized,
           reactFlowInstance: reactFlowInstanceRef.current,
-          fitNodeCount: visibleNodeCount,
+          fitNodeCount: visibleNodeCount
         })
       ) {
         return;
@@ -1160,7 +1160,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       geoLayout,
       isGeoLayout,
       isReactFlowReady,
-      areNodesInitialized,
+      areNodesInitialized
     ]);
 
     // Refs for context menu (to avoid re-renders)
@@ -1183,14 +1183,14 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onEdgeCreated: handleEdgeCreatedWithContextPanel,
       groupMemberHandlers: {
         getGroupMembers: annotationHandlers?.getGroupMembers,
-        onNodeDropped: annotationHandlers?.onNodeDropped,
+        onNodeDropped: annotationHandlers?.onNodeDropped
       },
       reactFlowInstanceRef,
       geoLayout: {
         isGeoLayout,
         isEditable: isGeoEditable,
-        getGeoUpdateForNode: geoLayout.getGeoUpdateForNode,
-      },
+        getGeoUpdateForNode: geoLayout.getGeoUpdateForNode
+      }
     });
     const { closeContextMenu } = handlers;
 
@@ -1237,7 +1237,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       nodeRenderConfig,
       setNodeRenderConfig,
       annotationHandlers,
-      setAnnotationHandlers,
+      setAnnotationHandlers
     });
 
     // Note: Keyboard delete handling is done by useAppKeyboardShortcuts in App.tsx
@@ -1263,7 +1263,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const refHandle = useMemo(
       () => ({
         ...refMethods,
-        fit: fitCanvas,
+        fit: fitCanvas
       }),
       [refMethods, fitCanvas]
     );
@@ -1319,7 +1319,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onAddTextAtPosition,
       onAddShapes,
       onAddShapeAtPosition,
-      onAddTrafficRateAtPosition,
+      onAddTrafficRateAtPosition
     });
 
     const {
@@ -1328,7 +1328,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       wrappedOnNodeDragStart,
       wrappedOnNodeDragStop,
       isInAddMode,
-      addModeMessage,
+      addModeMessage
     } = useAnnotationCanvasHandlers({
       mode,
       isLocked,
@@ -1339,7 +1339,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       baseOnNodeDoubleClick: handlers.onNodeDoubleClick,
       baseOnNodeDragStart: handlers.onNodeDragStart,
       baseOnNodeDragStop: handlers.onNodeDragStop,
-      onShiftClickCreate,
+      onShiftClickCreate
     });
 
     useEffect(() => {
@@ -1358,7 +1358,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
             cancelable: true,
             clientX: originalEvent.clientX,
             clientY: originalEvent.clientY,
-            shiftKey: originalEvent.shiftKey,
+            shiftKey: originalEvent.shiftKey
           })
         );
       };
@@ -1379,7 +1379,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         updateHelperLines,
         clearHelperLines,
         allNodes,
-        isGeoLayout,
+        isGeoLayout
       }
     );
 
@@ -1414,8 +1414,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
             onAddTextAtPosition,
             onAddShapeAtPosition,
             onAddGroupAtPosition,
-            onAddTrafficRateAtPosition,
-          },
+            onAddTrafficRateAtPosition
+          }
         });
       },
       [
@@ -1427,7 +1427,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         onAddTextAtPosition,
         onAddShapeAtPosition,
         onAddGroupAtPosition,
-        onAddTrafficRateAtPosition,
+        onAddTrafficRateAtPosition
       ]
     );
 
@@ -1436,14 +1436,14 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       isLocked,
       isGeoLayout,
       isGeoEdit,
-      isInAddMode,
+      isInAddMode
     });
     const {
       allowPanOnDrag,
       allowSelectionOnDrag,
       nodesDraggable,
       nodesConnectable,
-      reactFlowStyle,
+      reactFlowStyle
     } = interactionConfig;
     const renderNodes = useMemo(
       () => getRenderableNodes(allNodes, nodesDraggable),
@@ -1470,7 +1470,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       gridLineWidth,
       gridStyle,
       effectiveGridColor,
-      gridBgColor,
+      gridBgColor
     });
     const contextMenuVisible = handlers.contextMenu.type !== null;
 

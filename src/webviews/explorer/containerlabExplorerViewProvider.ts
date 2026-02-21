@@ -11,19 +11,19 @@ import type {
   ExplorerPersistUiStateMessage,
   ExplorerSetFilterMessage,
   ExplorerSnapshotMessage,
-  ExplorerUiState,
+  ExplorerUiState
 } from "../shared/explorer/types";
 import type {
   HelpFeedbackProvider,
   LocalLabTreeDataProvider,
-  RunningLabTreeDataProvider,
+  RunningLabTreeDataProvider
 } from "../../treeView";
 
 import { buildExplorerSnapshot } from "./explorerSnapshotAdapter";
 import type {
   ExplorerActionInvocation,
   ExplorerSnapshotOptions,
-  ExplorerSnapshotProviders,
+  ExplorerSnapshotProviders
 } from "./explorerSnapshotAdapter";
 
 const REFRESH_DEBOUNCE_MS = 120;
@@ -86,11 +86,11 @@ export class ContainerlabExplorerViewProvider
     this.providers = {
       runningProvider: args.runningProvider,
       localProvider: args.localProvider,
-      helpProvider: args.helpProvider,
+      helpProvider: args.helpProvider
     };
     this.options = {
       hideNonOwnedLabs: hideNonOwnedLabsState,
-      isLocalCaptureAllowed: args.isLocalCaptureAllowed,
+      isLocalCaptureAllowed: args.isLocalCaptureAllowed
     };
     this.filterableProviders = [args.runningProvider, args.localProvider];
     const savedFilter = context.workspaceState.get<string>(FILTER_STATE_KEY, "");
@@ -108,7 +108,7 @@ export class ContainerlabExplorerViewProvider
     const allProviders = [
       this.providers.runningProvider,
       this.providers.localProvider,
-      this.providers.helpProvider,
+      this.providers.helpProvider
     ];
     for (const provider of allProviders) {
       const disposable = provider.onDidChangeTreeData(() => {
@@ -126,8 +126,8 @@ export class ContainerlabExplorerViewProvider
       enableScripts: true,
       localResourceRoots: [
         vscode.Uri.joinPath(this.context.extensionUri, "dist"),
-        vscode.Uri.joinPath(this.context.extensionUri, "resources"),
-      ],
+        vscode.Uri.joinPath(this.context.extensionUri, "resources")
+      ]
     };
     webviewView.webview.html = this.getWebviewHtml(webviewView.webview);
 
@@ -247,7 +247,7 @@ export class ContainerlabExplorerViewProvider
     const state = this.context.workspaceState.get<ExplorerUiState>(UI_STATE_KEY, {});
     const message: ExplorerIncomingMessage = {
       command: "uiState",
-      state,
+      state
     };
     void this.webviewView.webview.postMessage(message);
   }
@@ -259,7 +259,7 @@ export class ContainerlabExplorerViewProvider
 
     const message: ExplorerIncomingMessage = {
       command: "filterState",
-      filterText: this.filterText,
+      filterText: this.filterText
     };
     void this.webviewView.webview.postMessage(message);
   }
@@ -332,8 +332,8 @@ export class ContainerlabExplorerViewProvider
         label: EXPLORER_SECTION_LABELS[sectionId],
         count: 0,
         nodes: [],
-        toolbarActions: [],
-      })),
+        toolbarActions: []
+      }))
     };
     void this.webviewView.webview.postMessage(snapshot);
   }

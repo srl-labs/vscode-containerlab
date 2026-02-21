@@ -22,7 +22,7 @@ import {
   MSG_CUSTOM_NODE_UPDATED,
   MSG_ICON_LIST_RESPONSE,
   MSG_LAB_LIFECYCLE_STATUS,
-  MSG_SVG_EXPORT_RESULT,
+  MSG_SVG_EXPORT_RESULT
 } from "../../shared/messages/webview";
 import type {
   CustomNodeCommand,
@@ -30,7 +30,7 @@ import type {
   IconCommand,
   InterfaceCommand,
   LifecycleCommand,
-  NodeCommand,
+  NodeCommand
 } from "../../shared/messages/extension";
 import {
   isCustomNodeCommand,
@@ -40,7 +40,7 @@ import {
   isLifecycleCommand,
   MSG_CANCEL_LAB_LIFECYCLE,
   isNodeCommand,
-  MSG_TOGGLE_SPLIT_VIEW,
+  MSG_TOGGLE_SPLIT_VIEW
 } from "../../shared/messages/extension";
 import { cancelActiveCommand } from "../../../commands/command";
 
@@ -155,7 +155,7 @@ export class MessageRouter {
       type: TOPOLOGY_HOST_ERROR,
       protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
       requestId,
-      error,
+      error
     });
   }
 
@@ -192,7 +192,7 @@ export class MessageRouter {
         protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
         requestId,
         snapshot,
-        reason: "init",
+        reason: "init"
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -303,8 +303,8 @@ export class MessageRouter {
         type: MSG_LAB_LIFECYCLE_STATUS,
         data: {
           status: "error",
-          errorMessage: "No active lifecycle command to cancel.",
-        },
+          errorMessage: "No active lifecycle command to cancel."
+        }
       });
       return;
     }
@@ -313,8 +313,8 @@ export class MessageRouter {
       type: MSG_LAB_LIFECYCLE_STATUS,
       data: {
         status: "error",
-        errorMessage: "Lifecycle command cancelled by user.",
-      },
+        errorMessage: "Lifecycle command cancelled by user."
+      }
     });
   }
 
@@ -331,7 +331,7 @@ export class MessageRouter {
       // Send error back to webview so user can see the failure
       panel.webview.postMessage({
         type: MSG_CUSTOM_NODE_ERROR,
-        error: res.error,
+        error: res.error
       });
       return;
     }
@@ -343,7 +343,7 @@ export class MessageRouter {
       panel.webview.postMessage({
         type: MSG_CUSTOM_NODE_UPDATED,
         customNodes,
-        defaultNode,
+        defaultNode
       });
     }
   }
@@ -425,7 +425,7 @@ export class MessageRouter {
       requestId: payload.requestId,
       success: payload.success,
       ...(payload.error != null && payload.error.length > 0 ? { error: payload.error } : {}),
-      ...(Array.isArray(payload.files) && payload.files.length > 0 ? { files: payload.files } : {}),
+      ...(Array.isArray(payload.files) && payload.files.length > 0 ? { files: payload.files } : {})
     });
   }
 
@@ -445,7 +445,7 @@ export class MessageRouter {
       baseName: this.sanitizeExportBaseName(baseName),
       svgContent,
       dashboardJson,
-      panelYaml,
+      panelYaml
     };
   }
 
@@ -460,7 +460,7 @@ export class MessageRouter {
       this.postSvgExportResult(panel, {
         requestId,
         success: false,
-        error: "Invalid SVG Grafana export payload",
+        error: "Invalid SVG Grafana export payload"
       });
       return;
     }
@@ -477,14 +477,14 @@ export class MessageRouter {
         title: "Export Grafana SVG Bundle",
         saveLabel: "Export",
         defaultUri,
-        filters: { SVG: ["svg"] },
+        filters: { SVG: ["svg"] }
       });
 
       if (!selectedUri) {
         this.postSvgExportResult(panel, {
           requestId: payload.requestId,
           success: false,
-          error: "Export cancelled",
+          error: "Export cancelled"
         });
         return;
       }
@@ -505,7 +505,7 @@ export class MessageRouter {
       this.postSvgExportResult(panel, {
         requestId: payload.requestId,
         success: true,
-        files: [svgPath, dashboardPath, panelPath],
+        files: [svgPath, dashboardPath, panelPath]
       });
       log.info(
         `[MessageRouter] Exported Grafana SVG bundle: ${svgPath}, ${dashboardPath}, ${panelPath}`
@@ -515,7 +515,7 @@ export class MessageRouter {
       this.postSvgExportResult(panel, {
         requestId: payload.requestId,
         success: false,
-        error,
+        error
       });
       log.error(`[MessageRouter] Failed to export Grafana SVG bundle: ${error}`);
     }
@@ -617,7 +617,7 @@ export class MessageRouter {
         "icon-list": () => this.handleIconList(panel),
         "icon-upload": () => this.handleIconUpload(panel),
         "icon-delete": () => this.handleIconDelete(message, panel),
-        "icon-reconcile": () => this.handleIconReconcile(message),
+        "icon-reconcile": () => this.handleIconReconcile(message)
       };
       await handlers[command]();
     } catch (err) {
@@ -628,7 +628,7 @@ export class MessageRouter {
   private sendIconResponse(panel: vscode.WebviewPanel, icons: unknown[]): void {
     panel.webview.postMessage({
       type: MSG_ICON_LIST_RESPONSE,
-      icons,
+      icons
     });
   }
 

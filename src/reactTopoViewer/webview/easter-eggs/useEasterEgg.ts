@@ -97,7 +97,7 @@ export function useEasterEgg(options: UseEasterEggOptions): UseEasterEggReturn {
       stickerbrush: "Stickerbrush",
       aquatic: "Aquatic",
       vaporwave: "Vaporwave",
-      deusex: "Deus Ex",
+      deusex: "Deus Ex"
     };
     return names[easterEggMode];
   }, [easterEggMode]);
@@ -169,12 +169,12 @@ export function useEasterEgg(options: UseEasterEggOptions): UseEasterEggReturn {
     state: {
       isPartyMode,
       easterEggMode,
-      progress,
+      progress
     },
     handleLogoClick,
     triggerPartyMode,
     endPartyMode,
     nextMode,
-    getModeName,
+    getModeName
   };
 }

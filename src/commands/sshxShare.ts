@@ -5,7 +5,7 @@ import {
   outputChannel,
   sshxSessions,
   runningLabsProvider,
-  containerlabBinaryPath,
+  containerlabBinaryPath
 } from "../globals";
 import { refreshSshxSessions, refreshRunningLabsProvider } from "../services/sessionRefresh";
 import { runCommand } from "../utils/utils";

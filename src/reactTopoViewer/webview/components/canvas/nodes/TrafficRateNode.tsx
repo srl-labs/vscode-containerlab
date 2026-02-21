@@ -10,7 +10,7 @@ import { useIsLocked } from "../../../stores/topoViewerStore";
 import { resolveComputedColor } from "../../../utils/color";
 import {
   formatMegabitsPerSecond,
-  resolveTrafficRateStats,
+  resolveTrafficRateStats
 } from "../../../utils/trafficRateAnnotation";
 
 const CHART_MIN_WIDTH = 180;
@@ -169,7 +169,7 @@ function renderTrafficRateBody(params: {
           color: params.textColor,
           width: "100%",
           whiteSpace: "nowrap",
-          overflow: "hidden",
+          overflow: "hidden"
         }}
       >
         {params.textModeRate}
@@ -275,7 +275,7 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
     textColor,
     hintColor,
     textModeRate,
-    textModeFontSize,
+    textModeFontSize
   });
 
   return (
@@ -296,7 +296,7 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
         display: "flex",
         flexDirection: "column",
         cursor: "move",
-        overflow: "hidden",
+        overflow: "hidden"
       }}
     >
       <NodeResizer
@@ -318,7 +318,7 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
             overflow: "hidden",
             textOverflow: "ellipsis",
             flexShrink: 0,
-            marginBottom: 4,
+            marginBottom: 4
           }}
         >
           {subtitle}

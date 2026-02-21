@@ -15,7 +15,7 @@ import {
   BTN_BLUR,
   lerpColor,
   useNodeGlow,
-  MuteButton,
+  MuteButton
 } from "../shared";
 import type { RGBColor, BaseModeProps } from "../shared";
 
@@ -27,7 +27,7 @@ const COLORS = {
   purple: { r: 185, g: 103, b: 255 },
   yellow: { r: 254, g: 255, b: 156 },
   blue: { r: 120, g: 129, b: 255 },
-  darkPurple: { r: 25, g: 4, b: 50 },
+  darkPurple: { r: 25, g: 4, b: 50 }
 };
 
 const SECTION_COLORS: Record<string, RGBColor> = {
@@ -35,7 +35,7 @@ const SECTION_COLORS: Record<string, RGBColor> = {
   bm: COLORS.cyan,
   em: COLORS.purple,
   csm7: COLORS.yellow,
-  a: COLORS.blue,
+  a: COLORS.blue
 };
 
 function getSectionColor(section: string): RGBColor {
@@ -114,7 +114,7 @@ const VaporwaveCanvas: React.FC<{
         pointerEvents: "none",
         zIndex: 99998,
         width: "100%",
-        height: "100%",
+        height: "100%"
       }}
     />
   );
@@ -354,7 +354,7 @@ function drawFloatingShapes(
         rotSpeed: (Math.random() - 0.5) * 0.01,
         type: shapeTypes[Math.floor(Math.random() * 3)],
         alpha: 0.1 + Math.random() * 0.15,
-        hue: 280 + Math.random() * 100,
+        hue: 280 + Math.random() * 100
       });
       /* eslint-enable sonarjs/pseudo-random */
     }
@@ -404,7 +404,7 @@ export const VaporwaveMode: React.FC<BaseModeProps> = ({
   isActive,
   onClose,
   onSwitchMode,
-  modeName,
+  modeName
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useVaporwaveAudio();
@@ -461,7 +461,7 @@ export const VaporwaveMode: React.FC<BaseModeProps> = ({
           alignItems: "flex-end",
           justifyContent: "center",
           pb: 4,
-          gap: 2,
+          gap: 2
         }}
       >
         <Box
@@ -483,7 +483,7 @@ export const VaporwaveMode: React.FC<BaseModeProps> = ({
             fontSize: "14px",
             fontWeight: 600,
             textShadow: "0 0 10px rgba(185, 103, 255, 0.8)",
-            boxShadow: "0 0 20px rgba(120, 129, 255, 0.5), inset 0 0 20px rgba(185, 103, 255, 0.1)",
+            boxShadow: "0 0 20px rgba(120, 129, 255, 0.5), inset 0 0 20px rgba(185, 103, 255, 0.1)"
           }}
           title={`Current: ${modeName}`}
         >
@@ -516,7 +516,7 @@ export const VaporwaveMode: React.FC<BaseModeProps> = ({
             fontSize: "14px",
             fontWeight: 600,
             textShadow: "0 0 10px rgba(255, 113, 206, 0.8)",
-            boxShadow: "0 0 20px rgba(1, 205, 254, 0.5), inset 0 0 20px rgba(255, 113, 206, 0.1)",
+            boxShadow: "0 0 20px rgba(1, 205, 254, 0.5), inset 0 0 20px rgba(255, 113, 206, 0.1)"
           }}
         >
           E X I T V A P O R

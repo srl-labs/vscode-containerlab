@@ -19,7 +19,7 @@ export const CheckboxField: React.FC<CheckboxFieldProps> = ({
   label,
   checked,
   onChange,
-  disabled,
+  disabled
 }) => (
   <FormControlLabel
     control={

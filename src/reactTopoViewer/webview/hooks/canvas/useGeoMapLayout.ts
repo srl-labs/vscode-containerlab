@@ -45,16 +45,16 @@ const MAP_STYLE: StyleSpecification = {
       type: "raster",
       tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
       tileSize: 256,
-      attribution: "© OpenStreetMap contributors",
-    },
+      attribution: "© OpenStreetMap contributors"
+    }
   },
   layers: [
     {
       id: "osm",
       type: "raster",
-      source: "osm",
-    },
-  ],
+      source: "osm"
+    }
+  ]
 };
 const INITIAL_GEO_SEQUENCE: GeoCoordinates[] = [
   // Stuttgart
@@ -64,7 +64,7 @@ const INITIAL_GEO_SEQUENCE: GeoCoordinates[] = [
   // Paris
   { lat: 48.856613, lng: 2.352222 },
   // London
-  { lat: 51.507351, lng: -0.127758 },
+  { lat: 51.507351, lng: -0.127758 }
 ];
 // Default center in Europe (Stuttgart).
 const DEFAULT_LAT = INITIAL_GEO_SEQUENCE[0].lat;
@@ -197,7 +197,7 @@ function roundGeo(coords: GeoCoordinates): GeoCoordinates {
 const DEFAULT_SIZE_BY_TYPE: Record<string, { width: number; height: number }> = {
   "group-node": DEFAULT_GROUP_SIZE,
   "free-text-node": DEFAULT_TEXT_SIZE,
-  "free-shape-node": DEFAULT_SHAPE_SIZE,
+  "free-shape-node": DEFAULT_SHAPE_SIZE
 };
 
 function getNodeSize(node: Node): { width: number; height: number } {
@@ -212,7 +212,7 @@ function getNodeSize(node: Node): { width: number; height: number } {
   const fallback = DEFAULT_SIZE_BY_TYPE[node.type ?? ""] ?? DEFAULT_NODE_SIZE;
   return {
     width: width ?? fallback.width,
-    height: height ?? fallback.height,
+    height: height ?? fallback.height
   };
 }
 
@@ -238,7 +238,7 @@ function projectGeoToPosition(map: MapLibreMap, node: Node, geo: GeoCoordinates)
   const point = map.project([geo.lng, geo.lat]);
   return {
     x: point.x - width / 2,
-    y: point.y - height / 2,
+    y: point.y - height / 2
   };
 }
 
@@ -271,7 +271,7 @@ function computeLineBounds(
     width: maxX - minX,
     height: Math.max(maxY - minY, LINE_PADDING * 2),
     relativeEndPosition: { x: end.x - start.x, y: end.y - start.y },
-    lineStartInNode: { x: start.x - minX, y: start.y - minY },
+    lineStartInNode: { x: start.x - minX, y: start.y - minY }
   };
 }
 
@@ -316,7 +316,7 @@ function geoCoordinatesForSlot(slot: number): GeoCoordinates {
 
   return roundGeo({
     lat: base.lat + Math.sin(angle) * radius,
-    lng: base.lng + Math.cos(angle) * radius,
+    lng: base.lng + Math.cos(angle) * radius
   });
 }
 
@@ -397,8 +397,8 @@ function syncNodesToMap(map: MapLibreMap, nodes: Node[]): { nodes: Node[]; chang
           startPosition: { x: start.x, y: start.y },
           endPosition: { x: end.x, y: end.y },
           relativeEndPosition: boundsInfo.relativeEndPosition,
-          lineStartInNode: boundsInfo.lineStartInNode,
-        },
+          lineStartInNode: boundsInfo.lineStartInNode
+        }
       });
       continue;
     }
@@ -452,7 +452,7 @@ function computeGeoViewportTransform(
   return {
     x: currentAnchorPoint.x - scale * base.anchorPoint.x,
     y: currentAnchorPoint.y - scale * base.anchorPoint.y,
-    zoom: scale,
+    zoom: scale
   };
 }
 
@@ -551,7 +551,7 @@ function resetGeoInteractionState({
   viewportTransformOverrideActiveRef,
   setIsInteracting,
   reactFlowInstance,
-  resetViewport = false,
+  resetViewport = false
 }: ResetGeoInteractionParams): void {
   clearPendingInteractionTimeout(interactionEndTimeoutRef);
   isInteractingRef.current = false;
@@ -572,7 +572,7 @@ export function useGeoMapLayout({
   setNodes,
   reactFlowInstanceRef,
   canvasContainerRef,
-  restoreOnExit,
+  restoreOnExit
 }: GeoMapLayoutParams): GeoMapLayoutApi {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -610,7 +610,7 @@ export function useGeoMapLayout({
         style: MAP_STYLE,
         center: DEFAULT_CENTER,
         zoom: DEFAULT_ZOOM,
-        attributionControl: {},
+        attributionControl: {}
       });
 
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
@@ -641,7 +641,7 @@ export function useGeoMapLayout({
       viewportElementRef,
       viewportTransformOverrideActiveRef,
       setIsInteracting,
-      reactFlowInstance: reactFlowInstanceRef.current,
+      reactFlowInstance: reactFlowInstanceRef.current
     });
     viewportElementRef.current = null;
     geoSyncSignatureRef.current = "";
@@ -661,7 +661,7 @@ export function useGeoMapLayout({
         viewportElementRef,
         viewportTransformOverrideActiveRef,
         setIsInteracting,
-        reactFlowInstance: reactFlowInstanceRef.current,
+        reactFlowInstance: reactFlowInstanceRef.current
       });
       viewportElementRef.current = null;
       if (mapRef.current) {
@@ -678,7 +678,7 @@ export function useGeoMapLayout({
       map.dragPan.enable({
         linearity: 0.2,
         maxSpeed: 2200,
-        deceleration: 3200,
+        deceleration: 3200
       });
       map.dragRotate.disable();
       map.touchZoomRotate.disableRotation();
@@ -826,7 +826,7 @@ export function useGeoMapLayout({
         if (currentMap) {
           interactionBaseRef.current = {
             zoom: currentMap.getZoom(),
-            anchorPoint: currentMap.project(GEO_TRANSFORM_ANCHOR),
+            anchorPoint: currentMap.project(GEO_TRANSFORM_ANCHOR)
           };
         } else {
           interactionBaseRef.current = null;
@@ -885,7 +885,7 @@ export function useGeoMapLayout({
         viewportTransformOverrideActiveRef,
         setIsInteracting,
         reactFlowInstance: reactFlowInstanceRef.current,
-        resetViewport: true,
+        resetViewport: true
       });
     };
   }, [isGeoLayout, reactFlowInstanceRef, canvasContainerRef]);
@@ -918,7 +918,7 @@ export function useGeoMapLayout({
       if (node.type === FREE_SHAPE_NODE_TYPE && data.shapeType === "line") {
         const lineStart = toXYPosition(data.lineStartInNode) ?? {
           x: LINE_PADDING,
-          y: LINE_PADDING,
+          y: LINE_PADDING
         };
         const relativeEnd = toXYPosition(data.relativeEndPosition) ?? { x: 0, y: 0 };
         const startX = node.position.x + lineStart.x;
@@ -929,7 +929,7 @@ export function useGeoMapLayout({
         const endGeo = map.unproject([endX, endY]);
         return {
           geoCoordinates: roundGeo({ lat: startGeo.lat, lng: startGeo.lng }),
-          endGeoCoordinates: roundGeo({ lat: endGeo.lat, lng: endGeo.lng }),
+          endGeoCoordinates: roundGeo({ lat: endGeo.lat, lng: endGeo.lng })
         };
       }
       const geoCoordinates = unprojectPositionToGeo(map, node);
@@ -953,7 +953,7 @@ export function useGeoMapLayout({
         viewportTransformOverrideActiveRef,
         setIsInteracting,
         reactFlowInstance: reactFlowInstanceRef.current,
-        resetViewport: true,
+        resetViewport: true
       });
 
       const bounds = buildGeoBounds(nodesRef.current);
@@ -974,7 +974,7 @@ export function useGeoMapLayout({
       isInteracting,
       fitToViewport,
       getGeoCoordinatesForNode,
-      getGeoUpdateForNode,
+      getGeoUpdateForNode
     }),
     [isReady, isInteracting, fitToViewport, getGeoCoordinatesForNode, getGeoUpdateForNode]
   );

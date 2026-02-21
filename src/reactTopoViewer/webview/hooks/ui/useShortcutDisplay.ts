@@ -45,7 +45,7 @@ const FRIENDLY_KEYS: Record<string, string> = {
   PageDown: "Page Down",
   Enter: "Enter",
   Escape: "Esc",
-  CapsLock: "Caps Lock",
+  CapsLock: "Caps Lock"
 };
 
 /** Modifier keys to ignore when pressed alone */
@@ -63,7 +63,7 @@ function getModifiers(e: KeyboardEvent | MouseEvent): string[] {
     [e.ctrlKey, isMac ? "⌃" : "Ctrl"],
     [e.shiftKey, isMac ? "⇧" : "Shift"],
     [e.altKey, isMac ? "⌥" : "Alt"],
-    [e.metaKey, isMac ? "⌘" : "Meta"],
+    [e.metaKey, isMac ? "⌘" : "Meta"]
   ];
   return modifiers.filter(([pressed]) => pressed).map(([, display]) => display);
 }

@@ -9,7 +9,7 @@ import { getWiresharkVncWebviewHtml } from "../webviews/wiresharkVnc/wiresharkVn
 import {
   DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE,
   DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY,
-  WIRESHARK_VNC_CTR_NAME_PREFIX,
+  WIRESHARK_VNC_CTR_NAME_PREFIX
 } from "../utils/consts";
 
 export { getHostname, setSessionHostname };
@@ -110,7 +110,7 @@ async function getEdgesharkNetwork(): Promise<string> {
   try {
     // List containers using edgeshark as name filter
     const containers = await dockerClient.listContainers({
-      filters: { name: ["edgeshark"] },
+      filters: { name: ["edgeshark"] }
     });
 
     if (containers.length === 0) {
@@ -221,11 +221,11 @@ async function startWiresharkContainer(
       HostConfig: {
         AutoRemove: true,
         PortBindings: {
-          "5800/tcp": [{ HostIp: "127.0.0.1", HostPort: options.port.toString() }],
+          "5800/tcp": [{ HostIp: "127.0.0.1", HostPort: options.port.toString() }]
         },
         NetworkMode: networkName || "bridge",
-        Binds: volumeBinds.length > 0 ? volumeBinds : undefined,
-      },
+        Binds: volumeBinds.length > 0 ? volumeBinds : undefined
+      }
     });
     await container.start();
     outputChannel.info(`Started Wireshark VNC container: ${container.id}`);
@@ -274,7 +274,7 @@ export async function captureEdgesharkVNC(
     packetflixUri: modifiedPacketflixUri,
     themeSetting: wiresharkThemeSetting,
     ctrName,
-    port,
+    port
   });
   if (containerId == null || containerId.length === 0) {
     return;
@@ -300,8 +300,8 @@ export async function captureEdgesharkVNC(
       retainContextWhenHidden: keepOpenInBackground,
       localResourceRoots: [
         vscode.Uri.joinPath(extensionUri, "dist"),
-        vscode.Uri.joinPath(extensionUri, "resources"),
-      ],
+        vscode.Uri.joinPath(extensionUri, "resources")
+      ]
     }
   );
 
@@ -326,7 +326,7 @@ export async function captureEdgesharkVNC(
 
   panel.webview.html = getWiresharkVncWebviewHtml(panel.webview, extensionUri, {
     iframeUrl,
-    showVolumeTip: Boolean(volumeMount),
+    showVolumeTip: Boolean(volumeMount)
   });
 
   const readinessMonitor = createVncReadinessMonitor(panel, localUri.toString(), iframeUrl);
@@ -441,8 +441,8 @@ export async function killAllWiresharkVNCCtrs() {
     const containers = await dockerClient.listContainers({
       filters: {
         name: [ctrNamePrefix],
-        ancestor: [dockerImage],
-      },
+        ancestor: [dockerImage]
+      }
     });
 
     if (containers.length > 0) {
@@ -452,7 +452,7 @@ export async function killAllWiresharkVNCCtrs() {
           try {
             const container = dockerClient.getContainer(containerInfo.Id);
             await container.remove({
-              force: true,
+              force: true
             });
             outputChannel.info(`Removed Wireshark VNC container: ${containerInfo.Id}`);
           } catch (err) {

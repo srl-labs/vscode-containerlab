@@ -11,7 +11,7 @@ import {
   Tab,
   Tabs,
   Tooltip,
-  Typography,
+  Typography
 } from "@mui/material";
 
 import type { NodeType } from "../../icons/SvgGenerator";
@@ -38,7 +38,7 @@ const AVAILABLE_ICONS: NodeType[] = [
   "rgw",
   "ue",
   "cloud",
-  "client",
+  "client"
 ];
 
 const ICON_LABELS: Record<string, string> = {
@@ -55,7 +55,7 @@ const ICON_LABELS: Record<string, string> = {
   rgw: "RGW",
   ue: "User Equipment",
   cloud: "Cloud",
-  client: "Client",
+  client: "Client"
 };
 
 const DEFAULT_COLOR = "#1a73e8";
@@ -80,7 +80,7 @@ const IconsGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
       borderRadius: 0.5,
       border: 1,
       borderColor: "divider",
-      p: 1,
+      p: 1
     }}
   >
     {children}
@@ -157,7 +157,7 @@ function useIconSelectorState(
     setColor,
     radius,
     setRadius,
-    resultColor,
+    resultColor
   };
 }
 
@@ -189,7 +189,7 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
   onClick,
   onDelete,
   isCustom,
-  source,
+  source
 }) {
   const showDeleteButton = isCustom === true && source === "global" && onDelete !== undefined;
   const handleDelete = onDelete ?? (() => undefined);
@@ -219,8 +219,8 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
           outlineColor: "primary.main",
           outlineOffset: 1,
           "&:hover": {
-            backgroundColor: isSelected ? "action.selected" : "action.hover",
-          },
+            backgroundColor: isSelected ? "action.selected" : "action.hover"
+          }
         }}
       >
         <IconPreview src={iconSrc} alt={icon} size={36} cornerRadius={cornerRadius} />
@@ -231,7 +231,7 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            fontSize: "10px",
+            fontSize: "10px"
           }}
         >
           {ICON_LABELS[icon] || icon}
@@ -255,7 +255,7 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
             bgcolor: "error.main",
             color: "white",
             opacity: 0,
-            "&:hover": { bgcolor: "error.dark" },
+            "&:hover": { bgcolor: "error.dark" }
           }}
           className="icon-delete-btn"
         >
@@ -268,7 +268,7 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
 
 const RadiusField: React.FC<{ value: number; onChange: (v: number) => void }> = ({
   value,
-  onChange,
+  onChange
 }) => (
   <InputField
     id="icon-corner-radius"
@@ -293,7 +293,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
   onSave,
   initialIcon = "pe",
   initialColor = null,
-  initialCornerRadius = 0,
+  initialCornerRadius = 0
 }) => {
   const customIcons = useCustomIcons();
 
@@ -427,7 +427,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
                     flexDirection: "column",
                     alignItems: "center",
                     gap: 1.5,
-                    py: 2,
+                    py: 2
                   }}
                 >
                   <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>

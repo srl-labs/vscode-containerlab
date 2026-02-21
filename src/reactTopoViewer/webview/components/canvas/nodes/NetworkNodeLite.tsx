@@ -22,7 +22,7 @@ const NetworkNodeLiteComponent: React.FC<NodeProps> = ({ data, selected }) => {
     borderRadius: 4,
     transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
     outline: selected ? `2px solid ${SELECTION_COLOR}` : "none",
-    outlineOffset: 1,
+    outlineOffset: 1
   };
 
   return <LiteNodeShell className="network-node-lite" iconStyle={iconStyle} />;

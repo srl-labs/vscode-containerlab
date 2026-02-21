@@ -34,11 +34,11 @@ export const FreeTextEditorView: React.FC<FreeTextEditorViewProps> = ({
   onClose,
   onDelete,
   readOnly = false,
-  onFooterRef,
+  onFooterRef
 }) => {
   const { formData, updateField, hasChanges, resetInitialData, discardChanges } =
     useGenericFormState(annotation, {
-      getIsNew: (a) => a?.text === "",
+      getIsNew: (a) => a?.text === ""
     });
 
   const validateSave = useCallback((data: FreeTextAnnotation) => canSave(data), []);
@@ -53,7 +53,7 @@ export const FreeTextEditorView: React.FC<FreeTextEditorViewProps> = ({
     discardChanges,
     onFooterRef,
     canSave: validateSave,
-    hasChangesForFooter: hasChanges && canSaveNow,
+    hasChangesForFooter: hasChanges && canSaveNow
   });
 
   if (!formData) return null;

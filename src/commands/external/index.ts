@@ -9,7 +9,7 @@ export {
   graphTopoviewer,
   getCurrentTopoViewer,
   notifyCurrentTopoViewerOfCommandSuccess,
-  notifyCurrentTopoViewerOfCommandFailure,
+  notifyCurrentTopoViewerOfCommandFailure
 } from "../graph";
 export { inspectAllLabs, inspectOneLab } from "../inspect";
 export { openBrowser } from "../openBrowser";
@@ -27,5 +27,5 @@ export {
   fcliNi,
   fcliSubif,
   fcliSysInfo,
-  fcliCustom,
+  fcliCustom
 } from "../fcli";

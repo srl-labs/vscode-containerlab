@@ -11,7 +11,7 @@ export {
   useNodeEditorHandlers,
   useLinkEditorHandlers,
   useNetworkEditorHandlers,
-  useNodeCreationHandlers,
+  useNodeCreationHandlers
 } from "./useEditorHandlers";
 export type { NodeCreationState } from "./useEditorHandlers";
 
@@ -23,7 +23,7 @@ export { useEditorHandlersWithFooterRef } from "./useEditorHandlersWithFooterRef
 export { useCustomTemplateEditor } from "./useCustomTemplateEditor";
 export type {
   CustomTemplateEditorHandlers,
-  CustomTemplateEditorResult,
+  CustomTemplateEditorResult
 } from "./useCustomTemplateEditor";
 
 // Editor form hooks (extracted from view components)

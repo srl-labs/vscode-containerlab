@@ -30,7 +30,7 @@ const ShortcutRow: React.FC<ShortcutRowProps> = ({ label, shortcut }) => (
       sx={{
         fontFamily: "monospace",
         fontSize: "0.75rem",
-        height: 22,
+        height: 22
       }}
     />
   </Box>

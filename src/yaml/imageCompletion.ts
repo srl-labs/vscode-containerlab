@@ -185,7 +185,7 @@ function registerCompletionProvider(context: vscode.ExtensionContext): void {
   const provider: vscode.CompletionItemProvider = {
     provideCompletionItems(document, position) {
       return provideImageCompletions(document, position);
-    },
+    }
   };
 
   const disposable = vscode.languages.registerCompletionItemProvider(

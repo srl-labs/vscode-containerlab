@@ -17,7 +17,7 @@ export {
   ERROR_NODES_NOT_MAP,
   ERROR_LINKS_NOT_SEQ,
   ERROR_SERVICE_NOT_INIT,
-  ERROR_NO_YAML_PATH,
+  ERROR_NO_YAML_PATH
 } from "./types";
 
 // Re-export TopologyAnnotations from types module
@@ -36,7 +36,7 @@ export {
   setOrDelete,
   parseYamlDocument,
   stringifyYamlDocument,
-  writeYamlFile,
+  writeYamlFile
 } from "./YamlDocumentIO";
 
 // Annotations I/O
@@ -52,7 +52,7 @@ export {
   editNodeInDoc,
   deleteNodeFromDoc,
   applyAnnotationData,
-  buildAnnotationProps,
+  buildAnnotationProps
 } from "./NodePersistenceIO";
 
 // Link persistence

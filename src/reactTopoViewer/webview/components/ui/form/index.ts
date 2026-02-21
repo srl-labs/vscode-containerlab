@@ -20,5 +20,5 @@ export {
   RangeSlider,
   PREVIEW_GRID_BG_SX,
   PreviewSurface,
-  DeleteActionButton,
+  DeleteActionButton
 } from "./FormComponents";

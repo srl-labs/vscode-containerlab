@@ -5,7 +5,7 @@ import {
   outputChannel,
   gottySessions,
   runningLabsProvider,
-  containerlabBinaryPath,
+  containerlabBinaryPath
 } from "../globals";
 import { refreshGottySessions, refreshRunningLabsProvider } from "../services/sessionRefresh";
 import { runCommand } from "../utils/utils";

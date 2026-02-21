@@ -5,7 +5,7 @@ import {
   AccountTree as AccountTreeIcon,
   Download as DownloadIcon,
   Lightbulb as LightbulbIcon,
-  Settings as SettingsIcon,
+  Settings as SettingsIcon
 } from "@mui/icons-material";
 import {
   Alert,
@@ -26,20 +26,20 @@ import {
   Tab,
   Tabs,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
-  GroupStyleAnnotation,
+  GroupStyleAnnotation
 } from "../../../shared/types/topology";
 import { EXPORT_COMMANDS } from "../../../shared/messages/extension";
 import { MSG_SVG_EXPORT_RESULT } from "../../../shared/messages/webview";
 import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
-  GROUP_NODE_TYPE,
+  GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
 import { sendCommandToExtension } from "../../messaging/extensionMessaging";
 import { subscribeToWebviewMessages } from "../../messaging/webviewMessageBus";
@@ -63,13 +63,13 @@ import {
   DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS,
   getViewportSize,
   compositeAnnotationsIntoSvg,
-  addBackgroundRect,
+  addBackgroundRect
 } from "./svg-export";
 import type {
   CustomIconMap,
   GrafanaTrafficThresholds,
   GraphSvgResult,
-  GraphSvgRenderOptions,
+  GraphSvgRenderOptions
 } from "./svg-export";
 
 export interface SvgExportModalProps {
@@ -86,7 +86,7 @@ export interface SvgExportModalProps {
 const ANNOTATION_NODE_TYPES: Set<string> = new Set([
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
-  GROUP_NODE_TYPE,
+  GROUP_NODE_TYPE
 ]);
 
 function downloadSvg(content: string, filename: string): void {
@@ -222,7 +222,7 @@ function extractEdgeInterfaceRows(rfInstance: ReactFlowInstance | null): EdgeInt
       source: edge.source,
       target: edge.target,
       sourceEndpoint,
-      targetEndpoint,
+      targetEndpoint
     });
   }
 
@@ -364,7 +364,7 @@ function requestGrafanaBundleExport(payload: GrafanaBundlePayload): Promise<stri
       baseName: payload.baseName,
       svgContent: payload.svgContent,
       dashboardJson: payload.dashboardJson,
-      panelYaml: payload.panelYaml,
+      panelYaml: payload.panelYaml
     });
   });
 }
@@ -377,7 +377,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   shapeAnnotations = [],
   groups = [],
   rfInstance,
-  customIcons,
+  customIcons
 }) => {
   const [borderZoom, setBorderZoom] = useState(100);
   const [borderPadding, setBorderPadding] = useState(0);
@@ -394,7 +394,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   const [excludeNodesWithoutLinks, setExcludeNodesWithoutLinks] = useState(true);
   const [includeGrafanaLegend, setIncludeGrafanaLegend] = useState(false);
   const [trafficThresholds, setTrafficThresholds] = useState<GrafanaTrafficThresholds>({
-    ...DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS,
+    ...DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS
   });
   const [trafficThresholdUnit, setTrafficThresholdUnit] = useState<TrafficThresholdUnit>(
     DEFAULT_TRAFFIC_THRESHOLD_UNIT
@@ -472,7 +472,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       const nextValue = parseThreshold(rawValue, trafficThresholdUnit);
       setTrafficThresholds((prev) => ({
         ...prev,
-        [threshold]: nextValue,
+        [threshold]: nextValue
       }));
     },
     [trafficThresholdUnit]
@@ -501,7 +501,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       ? {
           nodeIconSize: grafanaNodeSizePx,
           interfaceScale: grafanaInterfaceSizePercent / 100,
-          interfaceLabelOverrides: effectiveInterfaceLabelOverrides,
+          interfaceLabelOverrides: effectiveInterfaceLabelOverrides
         }
       : undefined;
     const graphSvg = buildGraphSvg(
@@ -550,14 +550,14 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     backgroundOption,
     customBackgroundColor,
     filename,
-    defaultBaseName,
+    defaultBaseName
   ]);
 
   const exportPlainSvg = useCallback((prepared: PreparedSvgExport): void => {
     downloadSvg(prepared.finalSvg, `${prepared.baseName}.svg`);
     setExportStatus({
       type: "success",
-      message: "SVG exported successfully",
+      message: "SVG exported successfully"
     });
   }, []);
 
@@ -602,13 +602,13 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         baseName: prepared.baseName,
         svgContent: grafanaSvg,
         dashboardJson,
-        panelYaml,
+        panelYaml
       });
       const suffix =
         files.length > 0 ? ` (${files.map((file) => file.split("/").pop()).join(", ")})` : "";
       setExportStatus({
         type: "success",
-        message: `Grafana bundle exported successfully${suffix}`,
+        message: `Grafana bundle exported successfully${suffix}`
       });
     },
     [trafficThresholds, excludeNodesWithoutLinks, borderPadding, includeGrafanaLegend]
@@ -618,7 +618,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     if (!isExportAvailable || !rfInstance) {
       setExportStatus({
         type: "error",
-        message: "SVG export is not yet available",
+        message: "SVG export is not yet available"
       });
       return;
     }
@@ -647,7 +647,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     rfInstance,
     prepareSvgExport,
     exportPlainSvg,
-    exportGrafanaBundleFiles,
+    exportGrafanaBundleFiles
   ]);
 
   const previewBackgroundSx = (() => {
@@ -656,7 +656,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         backgroundImage:
           "linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%)",
         backgroundSize: "8px 8px",
-        backgroundPosition: "0 0, 0 4px, 4px -4px, -4px 0px",
+        backgroundPosition: "0 0, 0 4px, 4px -4px, -4px 0px"
       } as const;
     }
     return { backgroundColor: customBackgroundColor } as const;
@@ -697,8 +697,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                         .svg
                       </Typography>
                     </InputAdornment>
-                  ),
-                },
+                  )
+                }
               }}
             />
           </Box>
@@ -721,8 +721,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                 slotProps={{
                   htmlInput: { min: 10, max: 300, step: 1 },
                   input: {
-                    endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                  },
+                    endAdornment: <InputAdornment position="end">%</InputAdornment>
+                  }
                 }}
               />
               <TextField
@@ -734,8 +734,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                 slotProps={{
                   htmlInput: { min: 0, max: 500, step: 1 },
                   input: {
-                    endAdornment: <InputAdornment position="end">px</InputAdornment>,
-                  },
+                    endAdornment: <InputAdornment position="end">px</InputAdornment>
+                  }
                 }}
               />
             </Box>
@@ -800,7 +800,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                gap: 1,
+                gap: 1
               }}
             >
               <FormControlLabel
@@ -840,7 +840,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                 borderRadius: 1,
                 overflow: "hidden",
                 border: 1,
-                borderColor: "divider",
+                borderColor: "divider"
               }}
             >
               <Box
@@ -848,7 +848,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   position: "absolute",
                   inset: 0,
                   opacity: 0.3,
-                  ...PREVIEW_GRID_BG_SX,
+                  ...PREVIEW_GRID_BG_SX
                 }}
               />
               <Box
@@ -857,7 +857,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   zIndex: 10,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
+                  justifyContent: "center"
                 }}
               >
                 <Box
@@ -874,7 +874,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                     transition: "all 200ms",
                     ...previewBackgroundSx,
                     padding: `${Math.min(borderPadding / 20, 8)}px`,
-                    transform: `scale(${0.8 + borderZoom / 500})`,
+                    transform: `scale(${0.8 + borderZoom / 500})`
                   }}
                 >
                   <AccountTreeIcon sx={{ fontSize: 24, color: "primary.main", opacity: 0.8 }} />
@@ -913,8 +913,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                 sx={{
                   color: "text.primary",
                   "& .MuiAlert-message": {
-                    color: "text.primary",
-                  },
+                    color: "text.primary"
+                  }
                 }}
               >
                 {exportStatus.message}
@@ -977,8 +977,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   slotProps={{
                     htmlInput: { min: 12, max: 240, step: 1 },
                     input: {
-                      endAdornment: <InputAdornment position="end">px</InputAdornment>,
-                    },
+                      endAdornment: <InputAdornment position="end">px</InputAdornment>
+                    }
                   }}
                 />
                 <TextField
@@ -999,8 +999,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   slotProps={{
                     htmlInput: { min: 40, max: 400, step: 5 },
                     input: {
-                      endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                    },
+                      endAdornment: <InputAdornment position="end">%</InputAdornment>
+                    }
                   }}
                 />
               </Box>
@@ -1029,8 +1029,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   slotProps={{
                     htmlInput: {
                       min: 0,
-                      step: getThresholdUnitStep(trafficThresholdUnit),
-                    },
+                      step: getThresholdUnitStep(trafficThresholdUnit)
+                    }
                   }}
                 />
                 <TextField
@@ -1042,8 +1042,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   slotProps={{
                     htmlInput: {
                       min: 0,
-                      step: getThresholdUnitStep(trafficThresholdUnit),
-                    },
+                      step: getThresholdUnitStep(trafficThresholdUnit)
+                    }
                   }}
                 />
                 <TextField
@@ -1055,8 +1055,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   slotProps={{
                     htmlInput: {
                       min: 0,
-                      step: getThresholdUnitStep(trafficThresholdUnit),
-                    },
+                      step: getThresholdUnitStep(trafficThresholdUnit)
+                    }
                   }}
                 />
                 <TextField
@@ -1068,8 +1068,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   slotProps={{
                     htmlInput: {
                       min: 0,
-                      step: getThresholdUnitStep(trafficThresholdUnit),
-                    },
+                      step: getThresholdUnitStep(trafficThresholdUnit)
+                    }
                   }}
                 />
               </Box>
@@ -1144,7 +1144,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   overflowY: "auto",
                   display: "flex",
                   flexDirection: "column",
-                  gap: 1,
+                  gap: 1
                 }}
               >
                 {filteredInterfaceRows.length === 0 ? (
@@ -1168,7 +1168,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                             mt: 1,
                             display: "grid",
                             gridTemplateColumns: "1fr 1fr",
-                            gap: 1,
+                            gap: 1
                           }}
                         >
                           <TextField

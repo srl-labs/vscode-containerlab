@@ -23,7 +23,7 @@ export {
   convertElementsToTopologyData,
   topoNodeToParsedElement,
   topoEdgeToParsedElement,
-  convertTopologyDataToElements,
+  convertTopologyDataToElements
 } from "./conversions";
 export type { YamlExtraData, SaveCustomNodeData } from "./conversions";
 
@@ -48,7 +48,7 @@ export {
   HOSTY_TYPES,
   isSpecialEndpointId,
   isSpecialNodeOrBridge,
-  splitEndpointLike,
+  splitEndpointLike
 } from "./identifiers";
 
 // Re-export from helpers
@@ -59,6 +59,6 @@ export {
   getBoolean,
   getStringArray,
   getRecord,
-  applyInterfacePatternMigrations,
+  applyInterfacePatternMigrations
 } from "./helpers";
 export type { InterfacePatternMigration } from "./helpers";

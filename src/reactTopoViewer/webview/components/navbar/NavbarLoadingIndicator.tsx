@@ -11,14 +11,14 @@ interface NavbarLoadingIndicatorProps {
 
 export const NavbarLoadingIndicator: React.FC<NavbarLoadingIndicatorProps> = ({
   isActive,
-  mode,
+  mode
 }) => {
   // Build class names based on state
   const indicatorClass = [
     "navbar-loading-indicator",
     isActive && "is-active",
     isActive && mode === "deploy" && "is-deploy",
-    isActive && mode === "destroy" && "is-destroy",
+    isActive && mode === "destroy" && "is-destroy"
   ]
     .filter(Boolean)
     .join(" ");

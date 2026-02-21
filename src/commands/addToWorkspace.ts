@@ -20,7 +20,7 @@ export async function addLabFolderToWorkspace(node: ClabLabTreeNode): Promise<vo
 
   vscode.workspace.updateWorkspaceFolders(existingCount, null, {
     uri: vscode.Uri.file(folderPath),
-    name: node.label, // or any other display name
+    name: node.label // or any other display name
   });
 
   vscode.window.showInformationMessage(`Added "${node.name}" to your workspace.`);

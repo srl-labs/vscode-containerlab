@@ -32,7 +32,7 @@ export const CopyableCode: React.FC<CopyableCodeProps> = ({ children }) => {
         py: 0.25,
         fontFamily: "monospace",
         transition: (theme) => theme.transitions.create("backgroundColor"),
-        ...(copied ? { outline: "1px solid" } : {}),
+        ...(copied ? { outline: "1px solid" } : {})
       }}
     >
       {copied ? "Copied!" : children}

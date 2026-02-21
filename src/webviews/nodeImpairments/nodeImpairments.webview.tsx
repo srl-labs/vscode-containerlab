@@ -12,7 +12,7 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 import React from "react";
 import { createRoot } from "react-dom/client";
@@ -50,8 +50,8 @@ const FIELD_META: ReadonlyArray<{
     label: "Corruption",
     unit: "%",
     placeholder: "0",
-    inputType: "text",
-  },
+    inputType: "text"
+  }
 ];
 
 function normalizeNetemFields(fields?: unknown): NetemFields {
@@ -68,7 +68,7 @@ function normalizeNetemFields(fields?: unknown): NetemFields {
     jitter: readField("jitter"),
     loss: readField("loss"),
     rate: readField("rate"),
-    corruption: readField("corruption"),
+    corruption: readField("corruption")
   };
 }
 
@@ -90,7 +90,7 @@ function parseInitialData(value: unknown): NodeImpairmentsInitialData {
     typeof value === "object" && value !== null ? Reflect.get(value, "interfacesData") : undefined;
   return {
     nodeName: typeof nodeNameRaw === "string" ? nodeNameRaw : "",
-    interfacesData: normalizeNetemMap(interfacesDataRaw),
+    interfacesData: normalizeNetemMap(interfacesDataRaw)
   };
 }
 
@@ -127,8 +127,8 @@ function NodeImpairmentsApp(): React.JSX.Element {
           ...current,
           [iface]: {
             ...currentFields,
-            [field]: nextValue,
-          },
+            [field]: nextValue
+          }
         };
       });
     },
@@ -145,7 +145,7 @@ function NodeImpairmentsApp(): React.JSX.Element {
           bgcolor: "background.default",
           overflow: "hidden",
           display: "flex",
-          flexDirection: "column",
+          flexDirection: "column"
         }}
       >
         <Paper
@@ -156,7 +156,7 @@ function NodeImpairmentsApp(): React.JSX.Element {
             alignItems: "center",
             justifyContent: "space-between",
             gap: 1,
-            flexWrap: "wrap",
+            flexWrap: "wrap"
           }}
         >
           <Typography variant="h6" sx={{ lineHeight: 1.2 }}>
@@ -248,8 +248,8 @@ function NodeImpairmentsApp(): React.JSX.Element {
                                   input: {
                                     endAdornment: (
                                       <InputAdornment position="end">{field.unit}</InputAdornment>
-                                    ),
-                                  },
+                                    )
+                                  }
                                 }}
                               />
                             </TableCell>

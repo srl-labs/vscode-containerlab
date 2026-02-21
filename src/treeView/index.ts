@@ -11,7 +11,7 @@ export {
   ClabContainerTreeNode,
   ClabInterfaceTreeNode,
   ClabSshxLinkTreeNode,
-  ClabGottyLinkTreeNode,
+  ClabGottyLinkTreeNode
 } from "./common";
 export type { LabPath, ClabDetailedJSON, ClabJSON } from "./common";
 
@@ -29,5 +29,5 @@ export {
   getInterfacesSnapshot,
   getInterfaceVersion,
   refreshFromEventStream,
-  resetForcedPollingMode,
+  resetForcedPollingMode
 } from "./inspector";

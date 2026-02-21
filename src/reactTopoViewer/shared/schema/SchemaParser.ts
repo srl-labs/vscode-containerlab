@@ -139,7 +139,7 @@ export function extractSrosComponentTypes(schema: Record<string, unknown>): Sros
     card: getEnumFromDef("sros-card-types"),
     mda: getEnumFromDef("sros-mda-types"),
     xiom: getEnumFromDef("sros-xiom-types"),
-    xiomMda: getEnumFromDef("sros-xiom-mda-types"),
+    xiomMda: getEnumFromDef("sros-xiom-mda-types")
   };
 }
 
@@ -150,6 +150,6 @@ export function parseSchemaData(schema: Record<string, unknown>): SchemaData {
   return {
     kinds: extractKindsFromSchema(schema),
     typesByKind: extractTypesByKindFromSchema(schema),
-    srosComponentTypes: extractSrosComponentTypes(schema),
+    srosComponentTypes: extractSrosComponentTypes(schema)
   };
 }

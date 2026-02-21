@@ -383,9 +383,9 @@ function toInterfaceSnapshot(raw: ClabInspectInterfaceJSON[]): ClabInterfaceSnap
           alias: iface.alias || "",
           mac: iface.mac || "",
           mtu: iface.mtu || 0,
-          ifindex: iface.ifindex || 0,
+          ifindex: iface.ifindex || 0
         }) as ClabInterfaceSnapshotEntry
-    ),
+    )
   }));
 }
 
@@ -420,7 +420,7 @@ export function getInterfaceSnapshot(
   // Update cache
   interfaceCache.set(cacheKey, {
     timestamp: Date.now(),
-    interfaces,
+    interfaces
   });
 
   return interfaces;

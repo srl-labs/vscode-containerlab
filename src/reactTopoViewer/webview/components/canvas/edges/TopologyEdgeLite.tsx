@@ -42,7 +42,7 @@ const TopologyEdgeLiteComponent: React.FC<EdgeProps> = ({
   targetX,
   targetY,
   selected,
-  data,
+  data
 }) => {
   const isSelected = selected === true;
   const linkStatus = getLinkStatus(data);
@@ -58,7 +58,7 @@ const TopologyEdgeLiteComponent: React.FC<EdgeProps> = ({
         cursor: "pointer",
         opacity: isSelected ? EDGE_OPACITY_SELECTED : EDGE_OPACITY_NORMAL,
         strokeWidth: isSelected ? EDGE_WIDTH_SELECTED : EDGE_WIDTH_NORMAL,
-        stroke,
+        stroke
       }}
       className="react-flow__edge-path"
     />

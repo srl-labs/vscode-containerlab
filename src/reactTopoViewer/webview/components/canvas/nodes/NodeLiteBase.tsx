@@ -13,7 +13,7 @@ const CONTAINER_STYLE: React.CSSProperties = {
   height: ICON_SIZE,
   display: "flex",
   alignItems: "center",
-  justifyContent: "center",
+  justifyContent: "center"
 };
 
 interface LiteNodeShellProps {

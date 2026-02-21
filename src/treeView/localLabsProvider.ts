@@ -91,7 +91,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
         const uris = (
           await Promise.race([
             vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN),
-            timeout,
+            timeout
           ])
         ).filter((u) => !u.scheme || u.scheme === "file");
         this.cachedUris = new Map(uris.map((u) => [u.fsPath, u]));
@@ -204,7 +204,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
       vscode.TreeItemCollapsibleState.None,
       {
         relative: filePath,
-        absolute: normPath,
+        absolute: normPath
       },
       undefined,
       undefined,

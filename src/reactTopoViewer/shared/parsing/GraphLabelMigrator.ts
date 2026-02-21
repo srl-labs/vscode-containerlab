@@ -26,7 +26,7 @@ export function nodeHasGraphLabels(labels: Record<string, unknown> | undefined):
     "graph-level",
     "graph-groupLabelPos",
     "graph-geoCoordinateLat",
-    "graph-geoCoordinateLng",
+    "graph-geoCoordinateLng"
   ] as const;
   return relevantKeys.some((key) => labels[key] !== undefined && labels[key] !== null);
 }
@@ -53,7 +53,7 @@ function parseNumericPair(
   if (first === undefined || second === undefined) return undefined;
   return {
     first: Number.parseFloat(first) || 0,
-    second: Number.parseFloat(second) || 0,
+    second: Number.parseFloat(second) || 0
   };
 }
 
@@ -91,7 +91,7 @@ export function buildAnnotationFromLabels(
     ...(groupLabelPos !== undefined ? { groupLabelPos } : {}),
     ...(geoPair !== undefined
       ? { geoCoordinates: { lat: geoPair.first, lng: geoPair.second } }
-      : {}),
+      : {})
   };
 }
 
@@ -166,7 +166,7 @@ function createBaseAnnotations(annotations: TopologyAnnotations | undefined): To
   return {
     ...base,
     ...annotations,
-    nodeAnnotations: [...nodeAnnotations],
+    nodeAnnotations: [...nodeAnnotations]
   };
 }
 
@@ -209,10 +209,10 @@ export function processGraphLabelMigrations(
         nodeAnnotations: [],
         edgeAnnotations: [],
         aliasEndpointAnnotations: [],
-        viewerSettings: {},
+        viewerSettings: {}
       },
       migrations: [],
-      needsSave: false,
+      needsSave: false
     };
   }
 
@@ -220,6 +220,6 @@ export function processGraphLabelMigrations(
   return {
     annotations: updatedAnnotations,
     migrations,
-    needsSave: true,
+    needsSave: true
   };
 }

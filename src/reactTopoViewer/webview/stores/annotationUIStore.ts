@@ -10,7 +10,7 @@ import { shallow } from "zustand/shallow";
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
-  TrafficRateAnnotation,
+  TrafficRateAnnotation
 } from "../../shared/types/topology";
 import type { GroupEditorData } from "../hooks/canvas/groupTypes";
 
@@ -114,7 +114,7 @@ const initialState: AnnotationUIState = {
   isAddShapeMode: false,
   pendingShapeType: "rectangle",
   selectedTrafficRateIds: new Set(),
-  editingTrafficRateAnnotation: null,
+  editingTrafficRateAnnotation: null
 };
 
 // ============================================================================
@@ -155,9 +155,9 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
             // Ensure only one annotation editor is active at a time.
             editingTextAnnotation: null,
             editingShapeAnnotation: null,
-            editingTrafficRateAnnotation: null,
+            editingTrafficRateAnnotation: null
           }
-        : {}),
+        : {})
     });
   },
 
@@ -196,9 +196,9 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
             // Ensure only one annotation editor is active at a time.
             editingGroup: null,
             editingShapeAnnotation: null,
-            editingTrafficRateAnnotation: null,
+            editingTrafficRateAnnotation: null
           }
-        : {}),
+        : {})
     });
   },
 
@@ -245,9 +245,9 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
             // Ensure only one annotation editor is active at a time.
             editingGroup: null,
             editingTextAnnotation: null,
-            editingTrafficRateAnnotation: null,
+            editingTrafficRateAnnotation: null
           }
-        : {}),
+        : {})
     });
   },
 
@@ -259,7 +259,7 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
     set({
       isAddShapeMode: enabled,
       isAddTextMode: false,
-      ...(shapeType ? { pendingShapeType: shapeType } : {}),
+      ...(shapeType ? { pendingShapeType: shapeType } : {})
     });
   },
 
@@ -302,9 +302,9 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
             // Ensure only one annotation editor is active at a time.
             editingGroup: null,
             editingTextAnnotation: null,
-            editingShapeAnnotation: null,
+            editingShapeAnnotation: null
           }
-        : {}),
+        : {})
     });
   },
 
@@ -318,7 +318,7 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
       selectedGroupIds: new Set(),
       selectedTextIds: new Set(),
       selectedShapeIds: new Set(),
-      selectedTrafficRateIds: new Set(),
+      selectedTrafficRateIds: new Set()
     });
   },
 
@@ -357,7 +357,7 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
       next.delete(id);
       return { selectedTrafficRateIds: next };
     });
-  },
+  }
 }));
 
 // ============================================================================
@@ -415,7 +415,7 @@ export const useAnnotationUIState = () =>
       isAddShapeMode: state.isAddShapeMode,
       pendingShapeType: state.pendingShapeType,
       selectedTrafficRateIds: state.selectedTrafficRateIds,
-      editingTrafficRateAnnotation: state.editingTrafficRateAnnotation,
+      editingTrafficRateAnnotation: state.editingTrafficRateAnnotation
     }),
     shallow
   );
@@ -457,7 +457,7 @@ export const useAnnotationUIActions = () =>
       removeFromGroupSelection: state.removeFromGroupSelection,
       removeFromTextSelection: state.removeFromTextSelection,
       removeFromShapeSelection: state.removeFromShapeSelection,
-      removeFromTrafficRateSelection: state.removeFromTrafficRateSelection,
+      removeFromTrafficRateSelection: state.removeFromTrafficRateSelection
     }),
     shallow
   );

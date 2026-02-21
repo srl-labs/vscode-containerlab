@@ -34,7 +34,7 @@ export const DialogCancelSaveActions: React.FC<DialogCancelSaveActionsProps> = (
   onSave,
   cancelLabel = "Cancel",
   saveLabel = "Save",
-  disableSave = false,
+  disableSave = false
 }) => (
   <DialogActions>
     <Button variant="text" size="small" onClick={onCancel}>

@@ -171,7 +171,7 @@ export function upsertEdgeLabelOffsetAnnotation(
     sourceEndpoint: data.sourceEndpoint,
     targetEndpoint: data.targetEndpoint,
     endpointLabelOffsetEnabled: data.endpointLabelOffsetEnabled === true,
-    endpointLabelOffset: offset,
+    endpointLabelOffset: offset
   };
 
   return upsertEdgeAnnotation(annotations, nextAnnotation);

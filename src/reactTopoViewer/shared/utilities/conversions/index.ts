@@ -6,14 +6,14 @@
 export {
   convertToEditorData,
   convertEditorDataToYaml,
-  convertEditorDataToNodeSaveData,
+  convertEditorDataToNodeSaveData
 } from "../nodeEditorConversions";
 export type { YamlExtraData } from "../nodeEditorConversions";
 
 // Network editor conversions
 export {
   convertToNetworkEditorData,
-  convertNetworkEditorDataToYaml,
+  convertNetworkEditorDataToYaml
 } from "../networkEditorConversions";
 
 // Custom node conversions
@@ -21,7 +21,7 @@ export {
   convertCustomTemplateToEditorData,
   convertEditorDataToSaveData,
   convertTemplateToEditorData,
-  createNewTemplateEditorData,
+  createNewTemplateEditorData
 } from "../customNodeConversions";
 export type { SaveCustomNodeData } from "../customNodeConversions";
 
@@ -32,5 +32,5 @@ export {
   convertElementsToTopologyData,
   topoNodeToParsedElement,
   topoEdgeToParsedElement,
-  convertTopologyDataToElements,
+  convertTopologyDataToElements
 } from "../elementConversions";

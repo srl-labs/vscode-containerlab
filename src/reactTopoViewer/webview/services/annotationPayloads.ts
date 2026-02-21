@@ -21,6 +21,6 @@ export function buildAnnotationNodesPayload(nodes?: Node[]): AnnotationNodesPayl
     freeTextAnnotations,
     freeShapeAnnotations,
     trafficRateAnnotations,
-    groupStyleAnnotations: groups,
+    groupStyleAnnotations: groups
   };
 }

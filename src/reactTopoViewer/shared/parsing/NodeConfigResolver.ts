@@ -61,6 +61,6 @@ export function resolveNodeConfig(parsed: ClabTopology, node: ClabNode): ClabNod
     ...groupCfg,
     ...node,
     kind: kindName,
-    labels: mergeNodeLabels(defaults.labels, kindCfg.labels, groupCfg.labels, node.labels),
+    labels: mergeNodeLabels(defaults.labels, kindCfg.labels, groupCfg.labels, node.labels)
   };
 }

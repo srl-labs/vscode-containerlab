@@ -58,7 +58,7 @@ export function useIconReconciliation(): void {
   useEffect(() => {
     const usedIcons = extractUsedCustomIcons(
       iconUsageEntries.map((entry) => ({
-        data: { topoViewerRole: entry.topoViewerRole ?? undefined },
+        data: { topoViewerRole: entry.topoViewerRole ?? undefined }
       }))
     );
     const prevUsedIcons = prevUsedIconsRef.current;

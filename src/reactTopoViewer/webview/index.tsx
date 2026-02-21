@@ -33,7 +33,7 @@ subscribeToWebviewMessages((event) => {
     // Dispatch a custom event so hooks can react to the update
     window.dispatchEvent(
       new CustomEvent("docker-images-updated", {
-        detail: message.dockerImages,
+        detail: message.dockerImages
       })
     );
   }

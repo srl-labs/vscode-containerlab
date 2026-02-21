@@ -6,7 +6,7 @@ import {
   FormatAlignRight as FormatAlignRightIcon,
   FormatBold as FormatBoldIcon,
   FormatItalic as FormatItalicIcon,
-  FormatUnderlined as FormatUnderlinedIcon,
+  FormatUnderlined as FormatUnderlinedIcon
 } from "@mui/icons-material";
 import {
   Box,
@@ -17,7 +17,7 @@ import {
   InputAdornment,
   MenuItem,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 
 import type { FreeTextAnnotation } from "../../../../shared/types/topology";
@@ -35,7 +35,7 @@ const FONTS = [
   "Georgia",
   "Helvetica",
   "Times New Roman",
-  "Verdana",
+  "Verdana"
 ];
 
 interface Props {
@@ -58,7 +58,7 @@ const IconBtn: React.FC<{
       borderRadius: 0.5,
       color: active ? "primary.contrastText" : "text.primary",
       bgcolor: active ? "primary.main" : "transparent",
-      "&:hover": { bgcolor: active ? "primary.dark" : "action.hover" },
+      "&:hover": { bgcolor: active ? "primary.dark" : "action.hover" }
     }}
   >
     {children}
@@ -68,7 +68,7 @@ const IconBtn: React.FC<{
 // Formatting toolbar
 const Toolbar: React.FC<{ formData: FreeTextAnnotation; updateField: Props["updateField"] }> = ({
   formData,
-  updateField,
+  updateField
 }) => {
   const isBold = formData.fontWeight === "bold";
   const isItalic = formData.fontStyle === "italic";
@@ -82,7 +82,7 @@ const Toolbar: React.FC<{ formData: FreeTextAnnotation; updateField: Props["upda
         alignItems: "center",
         gap: 0.25,
         pb: 0.75,
-        borderRadius: 0.5,
+        borderRadius: 0.5
       }}
     >
       <IconBtn
@@ -167,8 +167,8 @@ const FontControls: React.FC<{
                 px
               </Typography>
             </InputAdornment>
-          ),
-        },
+          )
+        }
       }}
       sx={{ flex: 3 }}
     />
@@ -228,8 +228,8 @@ const StyleOptions: React.FC<{
                   deg
                 </Typography>
               </InputAdornment>
-            ),
-          },
+            )
+          }
         }}
       />
     </Box>

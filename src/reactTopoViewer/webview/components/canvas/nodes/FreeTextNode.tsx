@@ -33,7 +33,7 @@ function buildWrapperStyle(rotation: number, selected: boolean): React.CSSProper
     // Use outline instead of border - doesn't affect layout/cause shifts
     outline: selected ? `2px solid ${SELECTION_COLOR}` : "none",
     outlineOffset: 0,
-    borderRadius: 4,
+    borderRadius: 4
   };
 }
 
@@ -81,7 +81,7 @@ function resolveTextStyleOptions(data: FreeTextNodeData): TextStyleOptions {
     textDecoration: data.textDecoration ?? "none",
     textAlign: data.textAlign ?? "left",
     fontFamily: data.fontFamily ?? "inherit",
-    roundedBackground: data.roundedBackground ?? true,
+    roundedBackground: data.roundedBackground ?? true
   };
 }
 
@@ -129,7 +129,7 @@ function buildTextStyle(data: FreeTextNodeData, isMediaOnly: boolean): React.CSS
     width: "100%",
     height: layoutStyle.height,
     outline: "none",
-    overflow: layoutStyle.overflow,
+    overflow: layoutStyle.overflow
   };
 }
 
@@ -144,7 +144,7 @@ function handleWheelEvent(e: React.WheelEvent): void {
 function toFreeTextNodeData(data: NodeProps["data"]): FreeTextNodeData {
   return {
     ...data,
-    text: typeof data.text === "string" ? data.text : "",
+    text: typeof data.text === "string" ? data.text : ""
   };
 }
 

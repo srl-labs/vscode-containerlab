@@ -4,7 +4,7 @@ export const HIDDEN_HANDLE_STYLE: React.CSSProperties = {
   opacity: 0,
   pointerEvents: "none",
   width: 1,
-  height: 1,
+  height: 1
 };
 
 const LABEL_STYLE_BASE: React.CSSProperties = {
@@ -19,7 +19,7 @@ const LABEL_STYLE_BASE: React.CSSProperties = {
   maxWidth: 80,
   overflow: "hidden",
   textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
+  whiteSpace: "nowrap"
 };
 
 export type NodeLabelPosition = "top" | "right" | "bottom" | "left";
@@ -29,7 +29,7 @@ const NODE_DIRECTION_ROTATION: Record<NodeDirection, number> = {
   right: 0,
   down: 90,
   left: 180,
-  up: 270,
+  up: 270
 };
 
 export function normalizeNodeLabelPosition(value: unknown): NodeLabelPosition {
@@ -87,7 +87,7 @@ export function buildNodeLabelStyle(params: {
     transformOrigin: "center center",
     ...(labelBgColor !== undefined && labelBgColor.length > 0
       ? { backgroundColor: labelBgColor }
-      : {}),
+      : {})
   };
 
   switch (normalizeNodeLabelPosition(params.position)) {
@@ -96,28 +96,28 @@ export function buildNodeLabelStyle(params: {
         ...baseStyle,
         bottom: params.iconSize + verticalGap,
         left: "50%",
-        transform: `translateX(-50%)${rotateTransform}`,
+        transform: `translateX(-50%)${rotateTransform}`
       };
     case "right":
       return {
         ...baseStyle,
         left: params.iconSize - sideOverlap,
         top: "50%",
-        transform: `translateY(-50%)${rotateTransform}`,
+        transform: `translateY(-50%)${rotateTransform}`
       };
     case "left":
       return {
         ...baseStyle,
         right: params.iconSize - sideOverlap,
         top: "50%",
-        transform: `translateY(-50%)${rotateTransform}`,
+        transform: `translateY(-50%)${rotateTransform}`
       };
     default:
       return {
         ...baseStyle,
         top: params.iconSize + verticalGap,
         left: "50%",
-        transform: `translateX(-50%)${rotateTransform}`,
+        transform: `translateX(-50%)${rotateTransform}`
       };
   }
 }

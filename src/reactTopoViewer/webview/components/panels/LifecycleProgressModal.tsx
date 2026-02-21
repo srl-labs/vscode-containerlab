@@ -16,7 +16,7 @@ import Typography from "@mui/material/Typography";
 import type {
   LifecycleLogEntry,
   LifecycleStatus,
-  ProcessingMode,
+  ProcessingMode
 } from "../../stores/topoViewerStore";
 
 interface LifecycleProgressModalProps {
@@ -93,7 +93,7 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
   labName,
   logs,
   onClose,
-  onCancel,
+  onCancel
 }) => {
   const logContainerRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -124,14 +124,14 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
         backdrop: {
           sx: {
             backdropFilter: "blur(2px)",
-            backgroundColor: "rgba(0, 0, 0, 0.35)",
-          },
+            backgroundColor: "rgba(0, 0, 0, 0.35)"
+          }
         },
         paper: {
           sx: {
-            overflow: "hidden",
-          },
-        },
+            overflow: "hidden"
+          }
+        }
       }}
     >
       <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1.25, py: 1.5 }}>
@@ -174,7 +174,7 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
             minHeight: 220,
             maxHeight: 320,
             overflowY: "auto",
-            p: 1.25,
+            p: 1.25
           }}
         >
           {logs.length === 0 && (
@@ -192,7 +192,7 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
                   "SFMono-Regular, Consolas, 'Liberation Mono', Menlo, Courier, monospace",
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
-                lineHeight: 1.4,
+                lineHeight: 1.4
               }}
             >
               {entry.line}

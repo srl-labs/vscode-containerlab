@@ -48,7 +48,7 @@ export function usePanelTabVisibility(): PanelTabVisibility {
     annotationUI.editingTextAnnotation,
     annotationUI.editingShapeAnnotation,
     annotationUI.editingTrafficRateAnnotation,
-    annotationUI.editingGroup,
+    annotationUI.editingGroup
   ].some((value) => value !== null);
   const showEditTab = hasEditor;
 

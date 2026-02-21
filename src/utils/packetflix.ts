@@ -121,7 +121,7 @@ async function captureMultipleEdgeshark(
     "network-interfaces": ifNames,
     name: base.parentName,
     type: "docker",
-    prefix: "",
+    prefix: ""
   };
 
   const containerStr = encodeURIComponent(JSON.stringify(containerObj));
@@ -156,7 +156,7 @@ export async function setSessionHostname(): Promise<boolean> {
         return "Input should not be empty";
       }
       return undefined;
-    },
+    }
   };
 
   const val = await vscode.window.showInputBox(opts);

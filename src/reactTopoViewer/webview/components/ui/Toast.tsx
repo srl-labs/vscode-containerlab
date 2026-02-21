@@ -63,6 +63,6 @@ export function useToasts() {
   return {
     toasts,
     addToast,
-    dismissToast,
+    dismissToast
   };
 }

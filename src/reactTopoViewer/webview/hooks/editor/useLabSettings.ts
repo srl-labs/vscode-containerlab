@@ -9,7 +9,7 @@ import type {
   IpType,
   DriverOption,
   BasicSettingsState,
-  MgmtSettingsState,
+  MgmtSettingsState
 } from "../../components/panels/lab-settings/types";
 import { executeTopologyCommand } from "../../services";
 
@@ -73,7 +73,7 @@ function parseIpv4Settings(
     ipv4Type: "custom",
     ipv4Subnet,
     ipv4Gateway: mgmt?.["ipv4-gw"] ?? "",
-    ipv4Range: mgmt?.["ipv4-range"] ?? "",
+    ipv4Range: mgmt?.["ipv4-range"] ?? ""
   };
 }
 
@@ -90,7 +90,7 @@ function parseIpv6Settings(
   return {
     ipv6Type: "custom",
     ipv6Subnet,
-    ipv6Gateway: mgmt?.["ipv6-gw"] ?? "",
+    ipv6Gateway: mgmt?.["ipv6-gw"] ?? ""
   };
 }
 
@@ -192,7 +192,7 @@ function buildInitialBasic(settings?: LabSettings): BasicSettingsState {
   return {
     labName: settings?.name ?? "",
     prefixType: prefix.prefixType,
-    customPrefix: prefix.customPrefix,
+    customPrefix: prefix.customPrefix
   };
 }
 
@@ -213,7 +213,7 @@ function buildInitialMgmt(settings?: LabSettings): MgmtSettingsState {
     mtu: mgmt?.mtu !== undefined ? String(mgmt.mtu) : "",
     bridge: mgmt?.bridge ?? "",
     externalAccess: mgmt?.["external-access"] !== false,
-    driverOptions: parseDriverOptions(mgmt ?? undefined),
+    driverOptions: parseDriverOptions(mgmt ?? undefined)
   };
 }
 
@@ -229,7 +229,7 @@ export function useLabSettingsState(labSettings?: LabSettings): UseLabSettingsSt
   const setBasic = {
     setLabName: (v: string) => setBasicState((prev) => ({ ...prev, labName: v })),
     setPrefixType: (v: PrefixType) => setBasicState((prev) => ({ ...prev, prefixType: v })),
-    setCustomPrefix: (v: string) => setBasicState((prev) => ({ ...prev, customPrefix: v })),
+    setCustomPrefix: (v: string) => setBasicState((prev) => ({ ...prev, customPrefix: v }))
   };
 
   const setMgmt = {
@@ -243,29 +243,29 @@ export function useLabSettingsState(labSettings?: LabSettings): UseLabSettingsSt
     setIpv6Gateway: (v: string) => setMgmtState((prev) => ({ ...prev, ipv6Gateway: v })),
     setMtu: (v: string) => setMgmtState((prev) => ({ ...prev, mtu: v })),
     setBridge: (v: string) => setMgmtState((prev) => ({ ...prev, bridge: v })),
-    setExternalAccess: (v: boolean) => setMgmtState((prev) => ({ ...prev, externalAccess: v })),
+    setExternalAccess: (v: boolean) => setMgmtState((prev) => ({ ...prev, externalAccess: v }))
   };
 
   const driverOpts = {
     add: () =>
       setMgmtState((prev) => ({
         ...prev,
-        driverOptions: [...prev.driverOptions, { key: "", value: "" }],
+        driverOptions: [...prev.driverOptions, { key: "", value: "" }]
       })),
     remove: (index: number) =>
       setMgmtState((prev) => ({
         ...prev,
-        driverOptions: prev.driverOptions.filter((_, i) => i !== index),
+        driverOptions: prev.driverOptions.filter((_, i) => i !== index)
       })),
     update: (index: number, field: "key" | "value", value: string) =>
       setMgmtState((prev) => ({
         ...prev,
         driverOptions: prev.driverOptions.map((opt, i) =>
           i === index ? { ...opt, [field]: value } : opt
-        ),
+        )
       })),
     setAll: (options: DriverOption[]) =>
-      setMgmtState((prev) => ({ ...prev, driverOptions: options })),
+      setMgmtState((prev) => ({ ...prev, driverOptions: options }))
   };
 
   const handleSave = useCallback(async () => {
@@ -274,7 +274,7 @@ export function useLabSettingsState(labSettings?: LabSettings): UseLabSettingsSt
 
     const payload: LabSettings = {
       ...settings,
-      ...(mgmtSettings === null ? { mgmt: null } : { mgmt: mgmtSettings as LabSettings["mgmt"] }),
+      ...(mgmtSettings === null ? { mgmt: null } : { mgmt: mgmtSettings as LabSettings["mgmt"] })
     };
 
     await executeTopologyCommand({ command: "setLabSettings", payload });
@@ -286,6 +286,6 @@ export function useLabSettingsState(labSettings?: LabSettings): UseLabSettingsSt
     setBasic,
     setMgmt,
     driverOpts,
-    handleSave,
+    handleSave
   };
 }

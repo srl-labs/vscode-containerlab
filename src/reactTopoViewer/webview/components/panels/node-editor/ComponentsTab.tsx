@@ -4,7 +4,7 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon,
   ExpandLess as ExpandLessIcon,
-  ExpandMore as ExpandMoreIcon,
+  ExpandMore as ExpandMoreIcon
 } from "@mui/icons-material";
 import {
   Box,
@@ -18,7 +18,7 @@ import {
   Tab,
   Tabs,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 
 import { InputField, FilterableDropdown } from "../../ui/form";
@@ -65,7 +65,7 @@ const MdaEntry: React.FC<MdaEntryProps> = ({
   mdaTypes,
   onUpdate,
   onRemove,
-  slotPrefix = "",
+  slotPrefix = ""
 }) => (
   <Box
     sx={{
@@ -76,7 +76,7 @@ const MdaEntry: React.FC<MdaEntryProps> = ({
       px: 1.5,
       borderRadius: 1,
       border: 1,
-      borderColor: "divider",
+      borderColor: "divider"
     }}
   >
     <Box sx={{ flex: 2, minWidth: 0 }}>
@@ -95,9 +95,9 @@ const MdaEntry: React.FC<MdaEntryProps> = ({
           htmlInput: { min: 1 },
           input: slotPrefix
             ? {
-                startAdornment: <InputAdornment position="start">{slotPrefix}</InputAdornment>,
+                startAdornment: <InputAdornment position="start">{slotPrefix}</InputAdornment>
               }
-            : undefined,
+            : undefined
         }}
       />
     </Box>
@@ -134,7 +134,7 @@ const MdaListSection: React.FC<MdaListSectionProps> = ({
   mdaTypes,
   slotPrefix,
   onUpdate,
-  onRemove,
+  onRemove
 }) => (
   <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
     {mdas.map((mda, mdaIdx) => (
@@ -172,7 +172,7 @@ const MdaSectionWrapper: React.FC<MdaSectionWrapperProps> = ({
   parentIndex,
   onAddMda,
   onUpdateMda,
-  onRemoveMda,
+  onRemoveMda
 }) => (
   <>
     <Box
@@ -181,7 +181,7 @@ const MdaSectionWrapper: React.FC<MdaSectionWrapperProps> = ({
         alignItems: "center",
         justifyContent: JUSTIFY_SPACE_BETWEEN,
         px: 2,
-        py: 1,
+        py: 1
       }}
     >
       <Typography variant="subtitle2">MDA Components</Typography>
@@ -299,7 +299,7 @@ const ComponentHeader: React.FC<{
       justifyContent: JUSTIFY_SPACE_BETWEEN,
       px: 1.5,
       py: 0.5,
-      cursor: "pointer",
+      cursor: "pointer"
     }}
     onClick={onToggle}
   >
@@ -375,7 +375,7 @@ const ComponentXiomSection: React.FC<
   onRemoveXiom,
   onAddXiomMda,
   onUpdateXiomMda,
-  onRemoveXiomMda,
+  onRemoveXiomMda
 }) => {
   const xioms = component.xiom ?? [];
   const [activeXiomTab, setActiveXiomTab] = useState(0);
@@ -392,7 +392,7 @@ const ComponentXiomSection: React.FC<
           alignItems: "center",
           justifyContent: JUSTIFY_SPACE_BETWEEN,
           px: 2,
-          py: 1,
+          py: 1
         }}
       >
         <Typography variant="subtitle2">XIOM Components</Typography>
@@ -503,7 +503,7 @@ const ComponentSection: React.FC<ComponentSectionProps> = ({
   removeXiomMda,
   onAdd,
   addDisabled,
-  addDisabledTitle,
+  addDisabledTitle
 }) => (
   <>
     <Divider />
@@ -513,7 +513,7 @@ const ComponentSection: React.FC<ComponentSectionProps> = ({
         alignItems: "center",
         justifyContent: JUSTIFY_SPACE_BETWEEN,
         px: 2,
-        py: 1,
+        py: 1
       }}
     >
       <Typography variant="subtitle2">{title}</Typography>
@@ -578,7 +578,7 @@ const ComponentSlotTypeRow: React.FC<ComponentSlotTypeRowProps> = ({
   onUpdate,
   onRemove,
   removeTitle,
-  padded = false,
+  padded = false
 }) => (
   <Box
     sx={{
@@ -586,7 +586,7 @@ const ComponentSlotTypeRow: React.FC<ComponentSlotTypeRowProps> = ({
       gridTemplateColumns: onRemove ? "1fr 4fr auto" : "1fr 4fr",
       gap: 1.5,
       alignItems: "center",
-      ...(padded ? { p: 1.5 } : undefined),
+      ...(padded ? { p: 1.5 } : undefined)
     }}
   >
     <InputField
@@ -684,10 +684,10 @@ interface IntegratedModeSectionProps {
 const IntegratedModeSection: React.FC<IntegratedModeSectionProps> = ({
   components,
   srosTypes,
-  onChange,
+  onChange
 }) => {
   const integratedComp = components.find((c) => c.slot === undefined || c.slot === "") ?? {
-    mda: [],
+    mda: []
   };
   const mdas = integratedComp.mda ?? [];
 
@@ -716,7 +716,7 @@ const IntegratedModeSection: React.FC<IntegratedModeSectionProps> = ({
           alignItems: "center",
           justifyContent: JUSTIFY_SPACE_BETWEEN,
           px: 2,
-          py: 1,
+          py: 1
         }}
       >
         <Typography variant="subtitle2">MDA Configuration</Typography>
@@ -760,7 +760,7 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
   sfmValue,
   srosTypes,
   onComponentsChange,
-  onSfmChange,
+  onSfmChange
 }) => {
   const cpmComponents = components.filter((c) => isCpmSlot(c.slot));
   const cardComponents = components.filter(
@@ -894,7 +894,7 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
     removeXiom,
     addXiomMda,
     updateXiomMda,
-    removeXiomMda,
+    removeXiomMda
   };
 
   return (

@@ -92,7 +92,7 @@ export function startDockerImageEventMonitor(context: vscode.ExtensionContext) {
           stream.off("error", onError);
           stream.removeAllListeners();
           monitorHandle = undefined;
-        },
+        }
       };
       context.subscriptions.push(monitorHandle);
     })

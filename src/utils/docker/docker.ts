@@ -10,7 +10,7 @@ async function pullDockerImage(image: string): Promise<boolean> {
     {
       location: vscode.ProgressLocation.Notification,
       title: `Pulling Docker image ${image}`,
-      cancellable: false,
+      cancellable: false
     },
     async () => {
       outputChannel.info(`Pulling image ${image}`);

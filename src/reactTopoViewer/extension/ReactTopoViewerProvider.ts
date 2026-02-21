@@ -18,7 +18,7 @@ import {
   MSG_EDGE_STATS_UPDATE,
   MSG_FIT_VIEWPORT,
   MSG_NODE_DATA_UPDATED,
-  MSG_TOPO_MODE_CHANGE,
+  MSG_TOPO_MODE_CHANGE
 } from "../shared/messages/webview";
 import type { TopoEdge } from "../shared/types/graph";
 import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../shared/types/messages";
@@ -34,7 +34,7 @@ import {
   type PanelConfig,
   MessageRouter,
   WatcherManager,
-  buildBootstrapData,
+  buildBootstrapData
 } from "./panel";
 
 const INTERNAL_UPDATE_GRACE_MS = 250;
@@ -146,14 +146,14 @@ export class ReactTopoViewer {
   private initializeWatchers(panel: vscode.WebviewPanel): void {
     const updateController = {
       isInternalUpdate: () =>
-        this.internalUpdateDepth > 0 || Date.now() < this.internalUpdateGraceUntil,
+        this.internalUpdateDepth > 0 || Date.now() < this.internalUpdateGraceUntil
     };
     const postSnapshot = (snapshot: unknown) => {
       panel.webview.postMessage({
         type: "topology-host:snapshot",
         protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
         snapshot,
-        reason: "external-change",
+        reason: "external-change"
       });
     };
 
@@ -251,7 +251,7 @@ export class ReactTopoViewer {
       viewType: this.viewType,
       title: labName,
       column: column ?? vscode.ViewColumn.One,
-      extensionUri: context.extensionUri,
+      extensionUri: context.extensionUri
     };
     const panel = createPanel(config);
     this.currentPanel = panel;
@@ -269,7 +269,7 @@ export class ReactTopoViewer {
       deploymentState: this.deploymentState,
       containerDataProvider,
       setInternalUpdate: (updating: boolean) => this.setInternalUpdate(updating),
-      logger: log,
+      logger: log
     });
 
     this.messageRouter = new MessageRouter({
@@ -286,20 +286,20 @@ export class ReactTopoViewer {
             this.currentPanel.title = snapshot.labName;
           }
         }
-      },
+      }
     });
 
     this.initializeWatchers(panel);
 
     const bootstrapData = await buildBootstrapData({
       extensionUri: this.context.extensionUri,
-      yamlFilePath: this.lastYamlFilePath,
+      yamlFilePath: this.lastYamlFilePath
     });
 
     panel.webview.html = generateWebviewHtml({
       webview: panel.webview,
       extensionUri: context.extensionUri,
-      bootstrapData,
+      bootstrapData
     });
 
     this.setupPanelHandlers(panel, context);
@@ -328,12 +328,12 @@ export class ReactTopoViewer {
     try {
       const bootstrapData = await buildBootstrapData({
         extensionUri: this.context.extensionUri,
-        yamlFilePath: this.lastYamlFilePath,
+        yamlFilePath: this.lastYamlFilePath
       });
       panel.webview.html = generateWebviewHtml({
         webview: panel.webview,
         extensionUri: this.context.extensionUri,
-        bootstrapData,
+        bootstrapData
       });
       return true;
     } catch (err) {
@@ -375,7 +375,7 @@ export class ReactTopoViewer {
         this.topologyHost.updateContext({
           mode: this.isViewMode ? "view" : "edit",
           deploymentState: this.deploymentState,
-          containerDataProvider,
+          containerDataProvider
         });
         const snapshot = await this.topologyHost.getSnapshot();
         this.lastTopologyEdges = snapshot.edges;
@@ -383,7 +383,7 @@ export class ReactTopoViewer {
           type: "topology-host:snapshot",
           protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
           snapshot,
-          reason: "resync",
+          reason: "resync"
         });
       }
 
@@ -414,8 +414,8 @@ export class ReactTopoViewer {
       type: MSG_TOPO_MODE_CHANGE,
       data: {
         mode,
-        deploymentState: this.deploymentState,
-      },
+        deploymentState: this.deploymentState
+      }
     });
 
     log.info(`[ReactTopoViewer] Mode changed to: ${mode}`);
@@ -439,14 +439,14 @@ export class ReactTopoViewer {
       this.cacheClabTreeDataToTopoviewer = labsData;
       if (this.topologyHost) {
         this.topologyHost.updateContext({
-          containerDataProvider: new ContainerDataAdapter(labsData),
+          containerDataProvider: new ContainerDataAdapter(labsData)
         });
       }
 
       // Build edge stats updates from cached edges using extracted builder
       const edgeUpdates = buildEdgeStatsUpdates(this.lastTopologyEdges, labsData, {
         currentLabName: this.currentLabName,
-        topology: this.topologyHost?.currentClabTopology?.topology,
+        topology: this.topologyHost?.currentClabTopology?.topology
       });
       const nodeUpdates = buildNodeRuntimeUpdates(labsData, this.currentLabName);
 
@@ -454,14 +454,14 @@ export class ReactTopoViewer {
         // Send only edge stats updates (not full topology)
         this.currentPanel.webview.postMessage({
           type: MSG_EDGE_STATS_UPDATE,
-          data: { edgeUpdates },
+          data: { edgeUpdates }
         });
       }
 
       if (nodeUpdates.length > 0) {
         this.currentPanel.webview.postMessage({
           type: MSG_NODE_DATA_UPDATED,
-          data: { nodeUpdates },
+          data: { nodeUpdates }
         });
       }
     } catch (err) {

@@ -8,7 +8,7 @@ import type {
   ParsedElement,
   ClabTopology,
   NetworkNodeAnnotation,
-  TopologyAnnotations,
+  TopologyAnnotations
 } from "../types/topology";
 
 import type { SpecialNodeType } from "./LinkNormalizer";
@@ -20,7 +20,7 @@ import {
   NODE_KIND_OVS_BRIDGE,
   splitEndpoint,
   normalizeLinkToTwoEndpoints,
-  createDummyContext,
+  createDummyContext
 } from "./LinkNormalizer";
 import type { DummyContext, SpecialNodeInfo } from "./types";
 
@@ -50,7 +50,7 @@ export function initSpecialNodes(nodes?: Record<string, ClabNode>): Map<string, 
       specialNodes.set(nodeName, {
         id: nodeName,
         type: nodeData.kind === NODE_KIND_BRIDGE ? NODE_KIND_BRIDGE : NODE_KIND_OVS_BRIDGE,
-        label: nodeName,
+        label: nodeName
       });
     }
   }
@@ -103,7 +103,7 @@ export function registerEndpoint(
     specialNodes.set(node, {
       id: node,
       type: NODE_KIND_BRIDGE,
-      label: node,
+      label: node
     });
   }
 }
@@ -287,7 +287,7 @@ function extractNetworkPlacement(saved: NetworkNodeAnnotation): PlacementResult 
     label: saved.label,
     geoCoordinates: saved.geoCoordinates,
     group: saved.group,
-    level: saved.level,
+    level: saved.level
   };
 }
 
@@ -349,8 +349,8 @@ function createNetworkNodeElement(
         shortname: displayLabel,
         state: "",
         weight: "3",
-        ...extraProps,
-      },
+        ...extraProps
+      }
     },
     position: placement.position,
     removed: false,
@@ -359,7 +359,7 @@ function createNetworkNodeElement(
     locked: false,
     grabbed: false,
     grabbable: true,
-    classes: "special-endpoint",
+    classes: "special-endpoint"
   };
 }
 
@@ -374,7 +374,7 @@ function networkTypeToSpecialInfo(
   return {
     id,
     type,
-    label: label ?? id,
+    label: label ?? id
   };
 }
 

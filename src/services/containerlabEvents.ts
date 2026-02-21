@@ -69,7 +69,7 @@ const INTERFACE_KEYS: (keyof InterfaceRecord)[] = [
   "netemJitter",
   "netemLoss",
   "netemRate",
-  "netemCorruption",
+  "netemCorruption"
 ];
 
 type MutableInterfaceRecord = InterfaceRecord & { [key: string]: unknown };
@@ -79,7 +79,7 @@ const STRING_ATTRIBUTE_MAPPINGS: Array<[keyof InterfaceRecord, string]> = [
   ["type", "type"],
   ["state", "state"],
   ["alias", "alias"],
-  ["mac", "mac"],
+  ["mac", "mac"]
 ];
 
 const NUMERIC_ATTRIBUTE_MAPPINGS: Array<[keyof InterfaceRecord, string]> = [
@@ -93,7 +93,7 @@ const NUMERIC_ATTRIBUTE_MAPPINGS: Array<[keyof InterfaceRecord, string]> = [
   ["txBytes", "tx_bytes"],
   ["rxPackets", "rx_packets"],
   ["txPackets", "tx_packets"],
-  ["statsIntervalSeconds", "interval_seconds"],
+  ["statsIntervalSeconds", "interval_seconds"]
 ];
 
 const SNAPSHOT_FIELD_MAPPINGS: Array<[keyof ClabInterfaceSnapshotEntry, keyof InterfaceRecord]> = [
@@ -105,7 +105,7 @@ const SNAPSHOT_FIELD_MAPPINGS: Array<[keyof ClabInterfaceSnapshotEntry, keyof In
   ["txPps", "txPps"],
   ["txBytes", "txBytes"],
   ["txPackets", "txPackets"],
-  ["statsIntervalSeconds", "statsIntervalSeconds"],
+  ["statsIntervalSeconds", "statsIntervalSeconds"]
 ];
 
 // Clab event doesn't pass default values.
@@ -115,7 +115,7 @@ const NETEM_FIELD_MAPPINGS: Array<[keyof InterfaceRecord, string, string]> = [
   ["netemJitter", "netem_jitter", "0ms"],
   ["netemLoss", "netem_loss", "0%"],
   ["netemRate", "netem_rate", "0"],
-  ["netemCorruption", "netem_corruption", "0"],
+  ["netemCorruption", "netem_corruption", "0"]
 ];
 
 function parseNumericAttribute(value: unknown): number | undefined {
@@ -181,7 +181,7 @@ function buildUpdatedInterfaceRecord(
     : {
         ifname: ifaceName,
         type: "",
-        state: "",
+        state: ""
       };
 
   base.ifname = ifaceName;
@@ -222,7 +222,7 @@ function toInterfaceSnapshotEntry(iface: InterfaceRecord): ClabInterfaceSnapshot
     netemJitter: iface.netemJitter ?? "",
     netemLoss: iface.netemLoss ?? "",
     netemRate: iface.netemRate ?? "",
-    netemCorruption: iface.netemCorruption ?? "",
+    netemCorruption: iface.netemCorruption ?? ""
   };
 
   assignSnapshotFields(entry, iface);
@@ -431,7 +431,7 @@ function parseCidr(value?: string): { address?: string; prefixLength?: number } 
     const prefix = Number(parts[1]);
     return {
       address: parts[0],
-      prefixLength: Number.isFinite(prefix) ? prefix : undefined,
+      prefixLength: Number.isFinite(prefix) ? prefix : undefined
     };
   }
   return { address: value };
@@ -493,7 +493,7 @@ function buildLabels(
     "clab-node-name": nodeName,
     "clab-owner": isString(attributes["clab-owner"]) ? attributes["clab-owner"] : "",
     "clab-topo-file": topoFile ?? "",
-    containerlab: labName,
+    containerlab: labName
   };
 
   if (isString(attributes["clab-node-type"])) {
@@ -519,7 +519,7 @@ function buildNetworkSettings(
     IPv4addr: ipv4.address,
     IPv4pLen: ipv4.prefixLength,
     IPv6addr: ipv6.address,
-    IPv6pLen: ipv6.prefixLength,
+    IPv6pLen: ipv6.prefixLength
   };
 }
 
@@ -568,7 +568,7 @@ function toClabDetailed(event: ContainerlabEvent): ContainerRecord | undefined {
     Mounts: [],
     Ports: [],
     Pid: toOptionalNumber(attributes.pid),
-    NetworkName: networkName,
+    NetworkName: networkName
   };
 
   return { labName, topoFile, data: detailed };
@@ -622,7 +622,7 @@ function mergeContainerRecord(
   return {
     labName: resolveLabNameForMerge(existing, incoming),
     topoFile: resolveTopoFileForMerge(existing, incoming),
-    data: mergeContainerData(existing, incoming, action),
+    data: mergeContainerData(existing, incoming, action)
   };
 }
 
@@ -659,7 +659,7 @@ function mergeContainerData(
     NetworkSettings: mergedNetwork,
     Status: resolveStatusValue(nextData.Status, previousData.Status, action),
     Image: pickNonEmpty(nextData.Image, previousData.Image),
-    State: resolveStateValue(nextData.State, previousData.State, action),
+    State: resolveStateValue(nextData.State, previousData.State, action)
   };
 
   if (nextData.StartedAt !== undefined || previousData.StartedAt !== undefined) {
@@ -1324,7 +1324,7 @@ export function getGroupedContainers(): Record<string, ClabDetailedJSON[]> {
       Labels: { ...container.Labels },
       NetworkSettings: { ...container.NetworkSettings },
       Mounts: container.Mounts.map((mount) => ({ ...mount })),
-      Ports: container.Ports.map((port) => ({ ...port })),
+      Ports: container.Ports.map((port) => ({ ...port }))
     }));
 
     if (isNonEmptyString(lab.topoFile)) {
@@ -1352,8 +1352,8 @@ export function getInterfaceSnapshot(
   return [
     {
       name: containerName,
-      interfaces,
-    },
+      interfaces
+    }
   ];
 }
 

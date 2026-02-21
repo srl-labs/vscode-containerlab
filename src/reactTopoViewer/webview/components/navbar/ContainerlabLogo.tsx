@@ -26,13 +26,13 @@ const bubbleStyle: React.CSSProperties = {
   fill: "none",
   stroke: "#3CBEEF",
   strokeMiterlimit: 10,
-  strokeWidth: "0.8px",
+  strokeWidth: "0.8px"
 };
 
 export const ContainerlabLogo: React.FC<ContainerlabLogoProps> = ({
   className,
   clickProgress = 0,
-  isExploded = false,
+  isExploded = false
 }) => {
   // Calculate shake intensity based on click progress (0-9)
   const shakeClass = useMemo(() => {
@@ -52,7 +52,7 @@ export const ContainerlabLogo: React.FC<ContainerlabLogoProps> = ({
           const particleStyle: ParticleStyle = {
             "--particle-angle": `${i * 30}deg`,
             "--particle-delay": `${i * 0.02}s`,
-            "--particle-color": i % 2 === 0 ? "#3CBEEF" : "#878787",
+            "--particle-color": i % 2 === 0 ? "#3CBEEF" : "#878787"
           };
           return <div key={i} className="logo-particle" style={particleStyle} />;
         })}

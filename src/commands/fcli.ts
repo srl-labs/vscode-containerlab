@@ -67,7 +67,7 @@ export const fcliSysInfo = (node: ClabLabTreeNode) => runFcli(node, "sys-info");
 export async function fcliCustom(node: ClabLabTreeNode) {
   const val = await vscode.window.showInputBox({
     title: "Custom fcli command",
-    placeHolder: "Enter command, e.g. bgp-peers",
+    placeHolder: "Enter command, e.g. bgp-peers"
   });
   if (val === undefined || val.trim().length === 0) {
     return;

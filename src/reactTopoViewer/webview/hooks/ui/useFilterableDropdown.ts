@@ -73,7 +73,7 @@ function resolveCommitValue(
   if (match) {
     return {
       newFilterText: match.value,
-      newValue: match.value !== currentValue ? match.value : null,
+      newValue: match.value !== currentValue ? match.value : null
     };
   }
   return { newFilterText: currentValue, newValue: null };
@@ -114,7 +114,7 @@ function useDropdownOpenState(value: string) {
     highlightedIndex,
     setHighlightedIndex,
     isFiltering,
-    setIsFiltering,
+    setIsFiltering
   };
 }
 
@@ -195,7 +195,7 @@ export function useFilterableDropdown({
   options,
   value,
   onChange,
-  allowFreeText,
+  allowFreeText
 }: UseFilterableDropdownProps): UseFilterableDropdownReturn {
   const state = useDropdownOpenState(value);
   const {
@@ -206,7 +206,7 @@ export function useFilterableDropdown({
     highlightedIndex,
     setHighlightedIndex,
     isFiltering,
-    setIsFiltering,
+    setIsFiltering
   } = state;
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -299,6 +299,6 @@ export function useFilterableDropdown({
     handleInputChange,
     handleToggle,
     handleFocus,
-    setHighlightedIndex,
+    setHighlightedIndex
   };
 }

@@ -25,7 +25,7 @@ export const ConfirmBulkLinksModal: React.FC<ConfirmBulkLinksModalProps> = ({
   sourcePattern,
   targetPattern,
   onCancel,
-  onConfirm,
+  onConfirm
 }) => (
   <Dialog open={isOpen} onClose={onCancel} maxWidth="xs" fullWidth>
     <DialogTitle
@@ -41,7 +41,7 @@ export const ConfirmBulkLinksModal: React.FC<ConfirmBulkLinksModalProps> = ({
         sx={{
           p: 1,
           borderRadius: 0.5,
-          border: 1,
+          border: 1
         }}
       >
         <Typography variant="body2">

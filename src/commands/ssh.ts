@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import {
   type ClabContainerTreeNode,
   type ClabLabTreeNode,
-  flattenContainers,
+  flattenContainers
 } from "../treeView/common";
 import { sshUserMapping } from "../globals";
 

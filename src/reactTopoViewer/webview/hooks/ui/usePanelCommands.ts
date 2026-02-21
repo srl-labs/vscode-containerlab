@@ -27,7 +27,7 @@ export function useDeploymentCommands(): DeploymentCommands {
     onDestroy: useCallback(() => sendCommandToExtension("destroyLab"), []),
     onDestroyCleanup: useCallback(() => sendCommandToExtension("destroyLabCleanup"), []),
     onRedeploy: useCallback(() => sendCommandToExtension("redeployLab"), []),
-    onRedeployCleanup: useCallback(() => sendCommandToExtension("redeployLabCleanup"), []),
+    onRedeployCleanup: useCallback(() => sendCommandToExtension("redeployLabCleanup"), [])
   };
 }
 
@@ -126,7 +126,7 @@ function useContextPanel() {
         }
         return next;
       });
-    }, []),
+    }, [])
   };
 }
 
@@ -152,7 +152,7 @@ function useModals() {
     handleCloseShortcuts: useCallback(() => setShowShortcutsModal(false), []),
     handleCloseSvgExport: useCallback(() => setShowSvgExportModal(false), []),
     handleCloseBulkLink: useCallback(() => setShowBulkLinkModal(false), []),
-    handleCloseAbout: useCallback(() => setShowAboutPanel(false), []),
+    handleCloseAbout: useCallback(() => setShowAboutPanel(false), [])
   };
 }
 
@@ -178,7 +178,7 @@ function usePopovers() {
       (position: { top: number; left: number }) => setFindPopoverPosition(position),
       []
     ),
-    handleCloseFindPopover: useCallback(() => setFindPopoverPosition(null), []),
+    handleCloseFindPopover: useCallback(() => setFindPopoverPosition(null), [])
   };
 }
 

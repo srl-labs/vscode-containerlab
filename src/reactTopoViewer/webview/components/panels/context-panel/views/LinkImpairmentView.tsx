@@ -9,7 +9,7 @@ import type { LinkImpairmentData, LinkImpairmentTabId } from "../../link-impairm
 import { applyNetemSettings } from "../../link-impairment/LinkImpairmentUtils";
 import {
   LinkImpairmentTab,
-  type LinkImpairmentTabProps,
+  type LinkImpairmentTabProps
 } from "../../link-impairment/LinkImpairmentTab";
 
 export interface LinkImpairmentViewProps {
@@ -41,7 +41,7 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
   onApply,
   onClose,
   readOnly = false,
-  onFooterRef,
+  onFooterRef
 }) => {
   const {
     activeTab,
@@ -51,7 +51,7 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
     hasChanges,
     resetAfterApply,
     discardChanges,
-    validationErrors,
+    validationErrors
   } = useLinkImpairmentForm(linkData, readOnly);
 
   const handleSave = useCallback(() => {
@@ -86,13 +86,13 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
             {
               id: "source",
               label: `${formData.source}:${formData.sourceEndpoint}`,
-              component: LinkImpairmentTab,
+              component: LinkImpairmentTab
             },
             {
               id: "target",
               label: `${formData.target}:${formData.targetEndpoint}`,
-              component: LinkImpairmentTab,
-            },
+              component: LinkImpairmentTab
+            }
           ]
         : [],
     [formData]
@@ -106,7 +106,7 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
             key: formData.id + activeTab,
             data:
               activeTab === "source" ? (formData.sourceNetem ?? {}) : (formData.targetNetem ?? {}),
-            onChange: handleChange,
+            onChange: handleChange
           }
         : { key: "", data: {}, onChange: handleChange },
     [formData, activeTab, handleChange]

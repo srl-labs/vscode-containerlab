@@ -15,7 +15,7 @@ import {
   BTN_BLUR,
   lerpColor,
   useNodeGlow,
-  MuteButton,
+  MuteButton
 } from "../shared";
 import type { RGBColor, BaseModeProps } from "../shared";
 
@@ -27,7 +27,7 @@ const COLORS = {
   purple: { r: 128, g: 0, b: 128 },
   lavender: { r: 150, g: 120, b: 182 },
   gold: { r: 255, g: 215, b: 0 },
-  warmWhite: { r: 255, g: 250, b: 240 },
+  warmWhite: { r: 255, g: 250, b: 240 }
 };
 
 /** Section to color mapping - cycling through forest colors */
@@ -35,7 +35,7 @@ const SECTION_COLORS: RGBColor[] = [
   COLORS.emerald,
   COLORS.forestGreen,
   COLORS.lavender,
-  COLORS.purple,
+  COLORS.purple
 ];
 
 /**
@@ -78,7 +78,7 @@ function initializeFireflies(width: number, height: number): void {
       brightness: 0.3 + Math.random() * 0.7,
       pulsePhase: Math.random() * Math.PI * 2,
       pulseSpeed: 0.02 + Math.random() * 0.03,
-      hue: 60 + Math.random() * 80, // Yellow to green range
+      hue: 60 + Math.random() * 80 // Yellow to green range
     });
     /* eslint-enable sonarjs/pseudo-random */
   }
@@ -157,7 +157,7 @@ const StickerbushCanvas: React.FC<{
         pointerEvents: "none",
         zIndex: 99998,
         width: "100%",
-        height: "100%",
+        height: "100%"
       }}
     />
   );
@@ -329,7 +329,7 @@ export const StickerbushMode: React.FC<BaseModeProps> = ({
   isActive,
   onClose,
   onSwitchMode,
-  modeName,
+  modeName
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useStickerbushAudio();
@@ -385,7 +385,7 @@ export const StickerbushMode: React.FC<BaseModeProps> = ({
           alignItems: "flex-end",
           justifyContent: "center",
           pb: 4,
-          gap: 2,
+          gap: 2
         }}
       >
         <Box
@@ -407,7 +407,7 @@ export const StickerbushMode: React.FC<BaseModeProps> = ({
             fontSize: "14px",
             fontWeight: 600,
             textShadow: "0 0 10px rgba(255, 215, 0, 0.8)",
-            boxShadow: "0 0 20px rgba(128, 0, 128, 0.5), inset 0 0 20px rgba(255, 215, 0, 0.1)",
+            boxShadow: "0 0 20px rgba(128, 0, 128, 0.5), inset 0 0 20px rgba(255, 215, 0, 0.1)"
           }}
           title={`Current: ${modeName}`}
         >
@@ -440,7 +440,7 @@ export const StickerbushMode: React.FC<BaseModeProps> = ({
             fontSize: "14px",
             fontWeight: 600,
             textShadow: "0 0 10px rgba(80, 200, 120, 0.8)",
-            boxShadow: "0 0 20px rgba(34, 139, 34, 0.5), inset 0 0 20px rgba(80, 200, 120, 0.1)",
+            boxShadow: "0 0 20px rgba(34, 139, 34, 0.5), inset 0 0 20px rgba(80, 200, 120, 0.1)"
           }}
         >
           End Stickerbrush

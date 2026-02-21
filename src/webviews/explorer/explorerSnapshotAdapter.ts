@@ -3,7 +3,7 @@ import type * as vscode from "vscode";
 import type {
   HelpFeedbackProvider,
   LocalLabTreeDataProvider,
-  RunningLabTreeDataProvider,
+  RunningLabTreeDataProvider
 } from "../../treeView";
 import {
   EXPLORER_SECTION_LABELS,
@@ -12,7 +12,7 @@ import {
   type ExplorerNode,
   type ExplorerSectionId,
   type ExplorerSectionSnapshot,
-  type ExplorerSnapshotMessage,
+  type ExplorerSnapshotMessage
 } from "../shared/explorer/types";
 
 interface ExplorerTreeProvider {
@@ -122,7 +122,7 @@ const COMMAND_LABELS: Record<string, string> = {
   "containerlab.treeView.runningLabs.hideNonOwnedLabs": "Hide Non-Owned Labs",
   "containerlab.treeView.runningLabs.showNonOwnedLabs": "Show Non-Owned Labs",
   "containerlab.editor.topoViewerEditor": "New Topology File",
-  "containerlab.lab.cloneRepo": "Clone Repository",
+  "containerlab.lab.cloneRepo": "Clone Repository"
 };
 
 const DESTRUCTIVE_COMMANDS = new Set<string>([
@@ -130,7 +130,7 @@ const DESTRUCTIVE_COMMANDS = new Set<string>([
   "containerlab.lab.destroy",
   "containerlab.lab.destroy.cleanup",
   "containerlab.lab.sshx.detach",
-  "containerlab.lab.gotty.detach",
+  "containerlab.lab.gotty.detach"
 ]);
 const SECTION_BUILD_TIMEOUT_MS = 4000;
 const TREE_ITEM_COLLAPSIBLE_NONE = 0;
@@ -275,7 +275,7 @@ class ExplorerActionRegistry {
       actionRef,
       label,
       commandId,
-      destructive,
+      destructive
     };
   }
 
@@ -654,7 +654,7 @@ async function buildNode(
     primaryAction,
     shareAction,
     actions: nodeActions,
-    children,
+    children
   };
 }
 
@@ -732,7 +732,7 @@ async function buildSectionSnapshot(
     label: EXPLORER_SECTION_LABELS[sectionId],
     count: countForSection(sectionId, nodes),
     nodes,
-    toolbarActions: toolbarActionsForSection(sectionId, registry, options),
+    toolbarActions: toolbarActionsForSection(sectionId, registry, options)
   };
 }
 
@@ -778,7 +778,7 @@ async function buildSectionSnapshotSafe(
       label: EXPLORER_SECTION_LABELS[sectionId],
       count: 0,
       nodes: [],
-      toolbarActions: toolbarActionsForSection(sectionId, registry, options),
+      toolbarActions: toolbarActionsForSection(sectionId, registry, options)
     };
   }
 }
@@ -792,7 +792,7 @@ export async function buildExplorerSnapshot(
   const providersBySection: Record<ExplorerSectionId, ExplorerTreeProvider> = {
     runningLabs: providers.runningProvider,
     localLabs: providers.localProvider,
-    helpFeedback: providers.helpProvider,
+    helpFeedback: providers.helpProvider
   };
 
   const sections = await Promise.all(
@@ -805,8 +805,8 @@ export async function buildExplorerSnapshot(
     snapshot: {
       command: "snapshot",
       filterText,
-      sections,
+      sections
     },
-    actionBindings: registry.getBindings(),
+    actionBindings: registry.getBindings()
   };
 }

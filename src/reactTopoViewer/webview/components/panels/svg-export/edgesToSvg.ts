@@ -5,7 +5,7 @@ import {
   getEdgePoints,
   calculateControlPoint,
   getLabelPosition,
-  getNodeIntersection,
+  getNodeIntersection
 } from "../../canvas/edgeGeometry";
 
 import {
@@ -14,7 +14,7 @@ import {
   EDGE_STYLE,
   EDGE_LABEL,
   CONTROL_POINT_STEP_SIZE,
-  escapeXml,
+  escapeXml
 } from "./constants";
 
 // ============================================================================
@@ -134,14 +134,14 @@ function getNodeRect(node: Node, nodeIconSize: number): NodeRect {
     x: node.position.x,
     y: node.position.y,
     width: nodeIconSize,
-    height: nodeIconSize,
+    height: nodeIconSize
   };
 }
 
 function getRectCenter(rect: NodeRect): { x: number; y: number } {
   return {
     x: rect.x + rect.width / 2,
-    y: rect.y + rect.height / 2,
+    y: rect.y + rect.height / 2
   };
 }
 
@@ -589,7 +589,7 @@ function getRegularEdgeLabelPositions(
   if (ctx.nodeProximateLabels && sourceAnchor && targetAnchor) {
     return {
       sourceLabelPos: sourceAnchor,
-      targetLabelPos: targetAnchor,
+      targetLabelPos: targetAnchor
     };
   }
 
@@ -622,7 +622,7 @@ function getRegularEdgeLabelPositions(
       points.sy,
       targetOffset,
       controlPoint ?? undefined
-    ),
+    )
   };
 }
 
@@ -667,7 +667,7 @@ function buildLoopEdgePath(
   return {
     path,
     sourceLabelPos: { x: labelX, y: centerY - 10 },
-    targetLabelPos: { x: labelX, y: centerY + 10 },
+    targetLabelPos: { x: labelX, y: centerY + 10 }
   };
 }
 
@@ -758,7 +758,7 @@ function resolveRegularEdgeAnchors(
     targetAnchor:
       targetEndpoint !== null
         ? ctx.interfaceAnchors?.get(targetNode.id)?.get(targetEndpoint)
-        : undefined,
+        : undefined
   };
 }
 
@@ -843,7 +843,7 @@ export function edgeToSvg(
     nodeIconSize: resolvedRenderOptions.nodeIconSize,
     interfaceScale: resolvedRenderOptions.interfaceScale,
     interfaceLabelOverrides: resolvedRenderOptions.interfaceLabelOverrides,
-    interfaceAnchors,
+    interfaceAnchors
   };
 
   // Handle loop edges (self-referencing)

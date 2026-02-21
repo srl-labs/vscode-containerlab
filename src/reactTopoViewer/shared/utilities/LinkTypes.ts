@@ -19,7 +19,7 @@ export const SINGLE_ENDPOINT_TYPES = new Set<string>([
   "macvlan",
   TYPE_DUMMY,
   "vxlan",
-  "vxlan-stitch",
+  "vxlan-stitch"
 ]);
 
 export const VX_TYPES = new Set<string>(["vxlan", "vxlan-stitch"]);

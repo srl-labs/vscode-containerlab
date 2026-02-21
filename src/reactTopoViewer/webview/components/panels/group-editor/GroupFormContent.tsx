@@ -45,7 +45,7 @@ export const GroupFormContent: React.FC<Props> = ({ formData, updateField, updat
               label: pos
                 .split("-")
                 .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                .join(" "),
+                .join(" ")
             }))}
           />
           <InputField
@@ -124,7 +124,7 @@ export const GroupFormContent: React.FC<Props> = ({ formData, updateField, updat
               { value: "solid", label: "Solid" },
               { value: "dashed", label: "Dashed" },
               { value: "dotted", label: "Dotted" },
-              { value: "double", label: "Double" },
+              { value: "double", label: "Double" }
             ]}
           />
         </Box>

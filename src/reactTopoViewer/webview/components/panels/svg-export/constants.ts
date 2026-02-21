@@ -34,7 +34,7 @@ export const NODE_LABEL = {
   maxWidth: 80,
   fontSize: 11, // 0.7rem ≈ 11px
   /** Gap between icon and label */
-  marginTop: 2,
+  marginTop: 2
 } as const;
 
 // ============================================================================
@@ -44,12 +44,12 @@ export const NODE_LABEL = {
 export const EDGE_COLOR = {
   default: "#969799",
   up: "#00df2b",
-  down: "#df2b00",
+  down: "#df2b00"
 } as const;
 
 export const EDGE_STYLE = {
   strokeWidth: 2.5,
-  opacity: 0.5,
+  opacity: 0.5
 } as const;
 
 /** Control point step size for parallel edge bezier curves */
@@ -71,7 +71,7 @@ export const EDGE_LABEL = {
   paddingY: 1,
   borderRadius: 4,
   /** Pixels from node edge for label positioning */
-  offset: 18,
+  offset: 18
 } as const;
 
 // ============================================================================
@@ -85,7 +85,7 @@ export const NETWORK_TYPE_COLOR: Record<string, string> = {
   vxlan: "#8B5CF6",
   bridge: "#F59E0B",
   "ovs-bridge": "#F59E0B",
-  default: "#6B7280",
+  default: "#6B7280"
 } as const;
 
 /** Get network node icon color by type */
@@ -115,7 +115,7 @@ export const ROLE_SVG_MAP: Record<string, string> = {
   rgw: "rgw",
   ue: "ue",
   cloud: "cloud",
-  client: "client",
+  client: "client"
 } as const;
 
 /** Get SVG node type from role string */

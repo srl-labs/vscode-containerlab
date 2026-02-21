@@ -8,5 +8,5 @@ export const DEFAULT_INTERFACE_PATTERNS: Record<string, string> = {
   cisco_csr1000v: "Gi{n}",
   cisco_c8000v: "Gi{n}",
   cisco_cat9kv: "Gi1/0/{n}",
-  cisco_iol: "e0/{n}",
+  cisco_iol: "e0/{n}"
 };

@@ -39,7 +39,7 @@ export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
   onGridColorChange,
   gridBgColor,
   onGridBgColorChange,
-  onResetColors,
+  onResetColors
 }) => {
   const open = Boolean(anchorPosition);
   const isGridStyle = (value: unknown): value is GridStyle =>

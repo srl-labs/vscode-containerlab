@@ -245,7 +245,7 @@ export const MgmtTab: React.FC<MgmtTabProps> = (props) => {
           alignItems: "center",
           justifyContent: "space-between",
           px: 2,
-          py: 1,
+          py: 1
         }}
       >
         <Typography variant="subtitle2">Bridge Driver Options</Typography>

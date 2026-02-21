@@ -11,7 +11,7 @@ export {
   useE2ETestingExposure,
   useClipboardHandlers,
   useAppKeyboardShortcuts,
-  useGraphCreation,
+  useGraphCreation
 } from "./app";
 export type {
   CustomNodeCommands,
@@ -21,5 +21,5 @@ export type {
   ClipboardHandlersReturn,
   AppKeyboardShortcutsConfig,
   GraphCreationConfig,
-  GraphCreationReturn,
+  GraphCreationReturn
 } from "./app";

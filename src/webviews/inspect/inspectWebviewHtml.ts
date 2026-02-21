@@ -15,6 +15,6 @@ export function getInspectWebviewHtml(
     scriptFile: "inspectWebview.js",
     title: "Containerlab Inspect",
     initialData,
-    webviewKind: "containerlab-inspect",
+    webviewKind: "containerlab-inspect"
   });
 }

@@ -36,8 +36,8 @@ export class WelcomePage {
         enableScripts: true,
         localResourceRoots: [
           vscode.Uri.joinPath(this.context.extensionUri, "dist"),
-          vscode.Uri.joinPath(this.context.extensionUri, "resources"),
-        ],
+          vscode.Uri.joinPath(this.context.extensionUri, "resources")
+        ]
       }
     );
 
@@ -69,7 +69,7 @@ export class WelcomePage {
         void this.panel.webview.postMessage({
           command: "reposLoaded",
           repos,
-          usingFallback,
+          usingFallback
         });
       }
     };
@@ -140,7 +140,7 @@ topology:
     }
 
     return getWelcomeWebviewHtml(this.panel.webview, this.context.extensionUri, {
-      extensionVersion: extensionVersion ?? "unknown",
+      extensionVersion: extensionVersion ?? "unknown"
     });
   }
 }

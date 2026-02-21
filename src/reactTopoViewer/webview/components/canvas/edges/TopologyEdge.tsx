@@ -64,7 +64,7 @@ function toEdgeData(value: unknown): EdgeDataLike {
         ? record.endpointLabelOffsetEnabled
         : undefined,
     endpointLabelOffset:
-      typeof record.endpointLabelOffset === "number" ? record.endpointLabelOffset : undefined,
+      typeof record.endpointLabelOffset === "number" ? record.endpointLabelOffset : undefined
   };
 }
 
@@ -89,7 +89,7 @@ function useNodeGeometry(nodeId: string): NodeGeometry | null {
         return {
           position: { x: position.x, y: position.y },
           width: node.measured.width ?? NODE_ICON_SIZE,
-          height: node.measured.height ?? NODE_ICON_SIZE,
+          height: node.measured.height ?? NODE_ICON_SIZE
         };
       },
       [nodeId]
@@ -165,7 +165,7 @@ function calculateLoopEdgeGeometry(
   return {
     path,
     sourceLabelPos: { x: labelX, y: labelY - labelOffset },
-    targetLabelPos: { x: labelX, y: labelY + labelOffset },
+    targetLabelPos: { x: labelX, y: labelY + labelOffset }
   };
 }
 
@@ -184,7 +184,7 @@ const LABEL_STYLE_BASE: React.CSSProperties = {
   whiteSpace: "nowrap",
   textShadow: `0 0 2px ${LABEL_OUTLINE_COLOR}, 0 0 2px ${LABEL_OUTLINE_COLOR}, 0 0 3px ${LABEL_OUTLINE_COLOR}`,
   lineHeight: 1.2,
-  zIndex: 1,
+  zIndex: 1
 };
 
 /**
@@ -194,13 +194,13 @@ const LABEL_STYLE_BASE: React.CSSProperties = {
 const EndpointLabel = memo(function EndpointLabel({
   text,
   x,
-  y,
+  y
 }: Readonly<{ text: string; x: number; y: number }>) {
   // Only the transform is dynamic, base style is constant
   const style = useMemo(
     (): React.CSSProperties => ({
       ...LABEL_STYLE_BASE,
-      transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`,
+      transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`
     }),
     [x, y]
   );
@@ -241,7 +241,7 @@ function computeLoopGeometry(
     path: loopGeometry.path,
     controlPoint: null,
     sourceLabelPos: loopGeometry.sourceLabelPos,
-    targetLabelPos: loopGeometry.targetLabelPos,
+    targetLabelPos: loopGeometry.targetLabelPos
   };
 }
 
@@ -259,13 +259,13 @@ function computeRegularGeometry(
       x: sourcePos.x + (sourceNodeWidth - NODE_ICON_SIZE) / 2,
       y: sourcePos.y,
       width: NODE_ICON_SIZE,
-      height: NODE_ICON_SIZE,
+      height: NODE_ICON_SIZE
     },
     {
       x: targetPos.x + (targetNodeWidth - NODE_ICON_SIZE) / 2,
       y: targetPos.y,
       width: NODE_ICON_SIZE,
-      height: NODE_ICON_SIZE,
+      height: NODE_ICON_SIZE
     }
   );
 
@@ -307,7 +307,7 @@ function computeRegularGeometry(
       points.sy,
       labelOffset,
       controlPoint ?? undefined
-    ),
+    )
   };
 }
 
@@ -353,7 +353,7 @@ function getStrokeStyle(linkStatus: string | undefined, selected: boolean) {
   return {
     color: getStrokeColor(linkStatus, selected),
     width: selected ? EDGE_WIDTH_SELECTED : EDGE_WIDTH_NORMAL,
-    opacity: selected ? EDGE_OPACITY_SELECTED : EDGE_OPACITY_NORMAL,
+    opacity: selected ? EDGE_OPACITY_SELECTED : EDGE_OPACITY_NORMAL
   };
 }
 
@@ -412,7 +412,7 @@ const TopologyEdgeComponent: React.FC<EdgeProps> = ({ id, source, target, data, 
           cursor: "pointer",
           opacity: stroke.opacity,
           strokeWidth: stroke.width,
-          stroke: stroke.color,
+          stroke: stroke.color
         }}
         className="react-flow__edge-path"
       />

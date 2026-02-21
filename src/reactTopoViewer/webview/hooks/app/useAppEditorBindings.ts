@@ -25,7 +25,7 @@ export function useAppEditorBindings({
   selectionData,
   renameNodeInGraph,
   handleUpdateNodeData,
-  handleUpdateEdgeData,
+  handleUpdateEdgeData
 }: AppEditorBindingsParams) {
   const { editNode, editEdge, editNetwork, setEdgeAnnotations, refreshEditorData } = actions;
 
@@ -42,7 +42,7 @@ export function useAppEditorBindings({
     selectionData.editingLinkData,
     {
       edgeAnnotations: state.edgeAnnotations,
-      setEdgeAnnotations,
+      setEdgeAnnotations
     },
     handleUpdateEdgeData
   );
@@ -56,6 +56,6 @@ export function useAppEditorBindings({
   return {
     nodeEditorHandlers,
     linkEditorHandlers,
-    networkEditorHandlers,
+    networkEditorHandlers
   };
 }

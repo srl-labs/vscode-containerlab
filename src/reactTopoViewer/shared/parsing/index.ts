@@ -42,7 +42,7 @@ export {
   parseTopologyToReactFlow,
   parseTopologyToReactFlowFromParsed,
   parseTopologyForEditorRF,
-  parseTopologyForEditorRFParsed,
+  parseTopologyForEditorRFParsed
 } from "./TopologyParser";
 
 // Core types
@@ -58,7 +58,7 @@ export type {
   NodeBuildContext,
   EdgeBuildContext,
   NodeRole,
-  TopologyData,
+  TopologyData
 } from "./types";
 
 // Re-export topology types for convenience
@@ -67,7 +67,7 @@ export type {
   ParsedElement,
   TopologyAnnotations,
   NodeAnnotation,
-  NetemState,
+  NetemState
 } from "./types";
 
 // Constants and utilities from types

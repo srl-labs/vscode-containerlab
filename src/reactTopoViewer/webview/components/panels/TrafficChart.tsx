@@ -50,7 +50,7 @@ function createEmptyHistory(): EndpointStatsHistory {
     rxBps: [],
     txBps: [],
     rxPps: [],
-    txPps: [],
+    txPps: []
   };
 }
 
@@ -104,8 +104,8 @@ function resolveLegendSlotProps(compact: boolean, showLegend: boolean, scale: nu
     return {
       legend: {
         direction: "horizontal" as const,
-        position: { vertical: "bottom" as const, horizontal: "center" as const },
-      },
+        position: { vertical: "bottom" as const, horizontal: "center" as const }
+      }
     };
   }
 
@@ -122,13 +122,13 @@ function resolveLegendSlotProps(compact: boolean, showLegend: boolean, scale: nu
         padding: 0,
         gap: 0.25,
         "& .MuiChartsLegend-series": {
-          gap: 0.25,
+          gap: 0.25
         },
         "& .MuiChartsLegend-mark": {
-          fontSize: markSize,
-        },
-      },
-    },
+          fontSize: markSize
+        }
+      }
+    }
   };
 }
 
@@ -207,7 +207,7 @@ function resolveXAxisWindow(
   const windowSeconds = intervalSeconds * visiblePointSpan;
   return {
     xMin: new Date((lastTimestamp - windowSeconds) * 1000),
-    xMax: new Date(lastTimestamp * 1000),
+    xMax: new Date(lastTimestamp * 1000)
   };
 }
 
@@ -237,7 +237,7 @@ function buildChartData(
     txPpsData: [...history.txPps],
     unitLabel: unit.label,
     xMin,
-    xMax,
+    xMax
   };
 }
 
@@ -255,7 +255,7 @@ function buildXAxis(
     disableLine: true,
     disableTicks: true,
     valueFormatter: (value: Date) =>
-      value.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      value.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
   };
   if (compact) {
     return [{ ...baseAxis, position: "none" as const, height: 0 }];
@@ -271,13 +271,13 @@ function buildYAxis(compact: boolean, scale: number, unitLabel: string) {
         position: "left" as const,
         disableTicks: true,
         tickLabelStyle: { fontSize: Math.round(8 * scale), fill: "#9aa0a6" },
-        valueFormatter: (value: number) => `${value} ${unitLabel}`,
+        valueFormatter: (value: number) => `${value} ${unitLabel}`
       },
       {
         id: "pps",
         position: "none" as const,
-        width: 0,
-      },
+        width: 0
+      }
     ];
   }
 
@@ -286,14 +286,14 @@ function buildYAxis(compact: boolean, scale: number, unitLabel: string) {
       id: "bps",
       label: unitLabel,
       labelStyle: { fontSize: 11 },
-      tickLabelStyle: { fontSize: 10, fill: "#cccccc" },
+      tickLabelStyle: { fontSize: 10, fill: "#cccccc" }
     },
     {
       id: "pps",
       label: "PPS",
       labelStyle: { fontSize: 11 },
-      tickLabelStyle: { fontSize: 10, fill: "#cccccc" },
-    },
+      tickLabelStyle: { fontSize: 10, fill: "#cccccc" }
+    }
   ];
 }
 
@@ -321,7 +321,7 @@ function buildSeries(params: {
       color: "#4ec9b0",
       showMark: false,
       curve: "linear" as const,
-      yAxisId: "bps",
+      yAxisId: "bps"
     },
     {
       data: params.txBpsData,
@@ -329,7 +329,7 @@ function buildSeries(params: {
       color: "#569cd6",
       showMark: false,
       curve: "linear" as const,
-      yAxisId: "bps",
+      yAxisId: "bps"
     },
     {
       data: params.rxPpsData,
@@ -337,7 +337,7 @@ function buildSeries(params: {
       color: "#b5cea8",
       showMark: false,
       curve: "linear" as const,
-      yAxisId: "pps",
+      yAxisId: "pps"
     },
     {
       data: params.txPpsData,
@@ -345,8 +345,8 @@ function buildSeries(params: {
       color: "#9cdcfe",
       showMark: false,
       curve: "linear" as const,
-      yAxisId: "pps",
-    },
+      yAxisId: "pps"
+    }
   ];
 }
 
@@ -357,7 +357,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
   compact = false,
   showLegend = !compact,
   scale = 1,
-  emptyMessage = "No traffic data available",
+  emptyMessage = "No traffic data available"
 }) => {
   const resolvedHeight = height ?? (compact ? "100%" : 240);
   // Track last-seen stats to avoid double-push in Strict Mode
@@ -380,19 +380,19 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
     rxBpsData,
     txBpsData,
     rxPpsData,
-    txPpsData,
+    txPpsData
   });
   const chartSx: SxProps<Theme> = compact
     ? {
         "& .MuiChartsGrid-line": { stroke: "#3e3e42" },
-        "& .MuiChartsAxis-line": { stroke: "#3e3e42" },
+        "& .MuiChartsAxis-line": { stroke: "#3e3e42" }
       }
     : {
         "& .MuiChartsGrid-line": { stroke: "#3e3e42" },
         "& .MuiChartsAxis-line": { stroke: "#cccccc" },
         "& .MuiChartsAxis-tick": { stroke: "#3e3e42" },
         "& .MuiChartsAxisHighlight-root": { stroke: "#cccccc" },
-        "& .MuiChartsAxis-label": { fill: "#cccccc" },
+        "& .MuiChartsAxis-label": { fill: "#cccccc" }
       };
 
   if (xData.length === 0) {

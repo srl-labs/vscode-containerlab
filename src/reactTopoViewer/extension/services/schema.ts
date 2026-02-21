@@ -51,7 +51,7 @@ export async function loadSchemaData(extensionUri: vscode.Uri): Promise<SchemaDa
     return {
       kinds: [],
       typesByKind: {},
-      srosComponentTypes: { sfm: [], cpm: [], card: [], mda: [], xiom: [], xiomMda: [] },
+      srosComponentTypes: { sfm: [], cpm: [], card: [], mda: [], xiom: [], xiomMda: [] }
     };
   }
 }

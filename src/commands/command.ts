@@ -294,7 +294,7 @@ export class Command {
         {
           location: vscode.ProgressLocation.Notification,
           title: this.spinnerMsg?.progressMsg,
-          cancellable: true,
+          cancellable: true
         },
         async (progress, token) => {
           progress.report({ message: " [View Logs](command:containerlab.viewLogs)" });

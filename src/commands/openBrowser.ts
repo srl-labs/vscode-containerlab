@@ -57,11 +57,11 @@ async function pickPortMapping(portMappings: PortMapping[]): Promise<PortMapping
     label: `${mapping.hostPort}:${mapping.containerPort}/${mapping.protocol}`,
     description: mapping.description || "",
     detail: `Open in browser`,
-    mapping,
+    mapping
   }));
 
   const selected = await vscode.window.showQuickPick(quickPickItems, {
-    placeHolder: "Select a port to open in browser",
+    placeHolder: "Select a port to open in browser"
   });
 
   return selected?.mapping;
@@ -146,7 +146,7 @@ function addBinding(
     containerPort,
     hostPort,
     protocol,
-    description: getPortDescription(containerPort),
+    description: getPortDescription(containerPort)
   });
 }
 
@@ -185,7 +185,7 @@ function getPortDescription(port: string): string {
     "8443": "HTTPS (Alt)",
     "9000": "Web Server",
     "9090": "Prometheus",
-    "9200": "Elasticsearch",
+    "9200": "Elasticsearch"
   };
 
   return portMap[port] || "";

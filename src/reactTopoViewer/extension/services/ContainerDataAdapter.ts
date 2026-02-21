@@ -7,13 +7,13 @@ import {
   type ClabLabTreeNode,
   type ClabContainerTreeNode,
   type ClabInterfaceTreeNode,
-  flattenContainers,
+  flattenContainers
 } from "../../../treeView/common";
 import { mapSrosInterfaceName } from "../../shared/parsing/DistributedSrosMapper";
 import type {
   ContainerDataProvider,
   ContainerInfo,
-  InterfaceInfo,
+  InterfaceInfo
 } from "../../shared/parsing/types";
 
 import { sortContainersByInterfacePriority } from "./TreeUtils";
@@ -228,7 +228,7 @@ export class ContainerDataAdapter implements ContainerDataProvider {
       if (iface) {
         return {
           containerName: container.name,
-          ifaceData: this.toInterfaceInfo(iface),
+          ifaceData: this.toInterfaceInfo(iface)
         };
       }
     }
@@ -289,7 +289,7 @@ export class ContainerDataAdapter implements ContainerDataProvider {
       nodeType: container.nodeType,
       nodeGroup: container.nodeGroup,
       interfaces: container.interfaces.map((i) => this.toInterfaceInfo(i)),
-      label,
+      label
     };
   }
 
@@ -315,7 +315,7 @@ export class ContainerDataAdapter implements ContainerDataProvider {
             txBytes: iface.stats.txBytes,
             rxPackets: iface.stats.rxPackets,
             txPackets: iface.stats.txPackets,
-            statsIntervalSeconds: iface.stats.statsIntervalSeconds,
+            statsIntervalSeconds: iface.stats.statsIntervalSeconds
           }
         : undefined,
       netemState: iface.netemState
@@ -324,9 +324,9 @@ export class ContainerDataAdapter implements ContainerDataProvider {
             jitter: iface.netemState.jitter,
             loss: iface.netemState.loss,
             rate: iface.netemState.rate,
-            corruption: iface.netemState.corruption,
+            corruption: iface.netemState.corruption
           }
-        : undefined,
+        : undefined
     };
   }
 }

@@ -11,7 +11,7 @@ const NETWORK_MODE_OPTIONS = [
   { value: "bridge", label: "Bridge" },
   { value: "host", label: "Host" },
   { value: "none", label: "None" },
-  { value: "container", label: "Container" },
+  { value: "container", label: "Container" }
 ];
 
 export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {

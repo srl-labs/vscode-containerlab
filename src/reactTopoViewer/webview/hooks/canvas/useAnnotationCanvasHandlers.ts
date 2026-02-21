@@ -12,7 +12,7 @@ import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   TRAFFIC_RATE_NODE_TYPE,
-  GROUP_NODE_TYPE,
+  GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
 import { log } from "../../utils/logger";
 import { snapToGrid } from "../../utils/grid";
@@ -89,7 +89,7 @@ function useWrappedPaneClick(
         const bounds = event.currentTarget.getBoundingClientRect();
         const position = rfInstance.screenToFlowPosition({
           x: event.clientX - bounds.left,
-          y: event.clientY - bounds.top,
+          y: event.clientY - bounds.top
         });
         log.info(`[ReactFlowCanvas] Shift+Click: Creating node at (${position.x}, ${position.y})`);
         onShiftClickCreate(snapToGrid(position));
@@ -100,7 +100,7 @@ function useWrappedPaneClick(
         const bounds = event.currentTarget.getBoundingClientRect();
         const position = rfInstance.screenToFlowPosition({
           x: event.clientX - bounds.left,
-          y: event.clientY - bounds.top,
+          y: event.clientY - bounds.top
         });
         log.info(`[ReactFlowCanvas] Adding text at (${position.x}, ${position.y})`);
         annotationHandlers.onAddTextClick(position);
@@ -111,7 +111,7 @@ function useWrappedPaneClick(
         const bounds = event.currentTarget.getBoundingClientRect();
         const position = rfInstance.screenToFlowPosition({
           x: event.clientX - bounds.left,
-          y: event.clientY - bounds.top,
+          y: event.clientY - bounds.top
         });
         log.info(`[ReactFlowCanvas] Adding shape at (${position.x}, ${position.y})`);
         annotationHandlers.onAddShapeClick(position);
@@ -140,7 +140,7 @@ function useWrappedPaneClick(
       annotationHandlers,
       reactFlowInstanceRef,
       baseOnPaneClick,
-      onShiftClickCreate,
+      onShiftClickCreate
     ]
   );
 }
@@ -208,7 +208,7 @@ function useAddModeState(annotationMode?: AnnotationModeState) {
   }, [
     annotationMode?.isAddTextMode,
     annotationMode?.isAddShapeMode,
-    annotationMode?.pendingShapeType,
+    annotationMode?.pendingShapeType
   ]);
 
   return { isInAddMode, addModeMessage };
@@ -230,7 +230,7 @@ export function useAnnotationCanvasHandlers(
     baseOnNodeDoubleClick,
     baseOnNodeDragStart,
     baseOnNodeDragStop,
-    onShiftClickCreate,
+    onShiftClickCreate
   } = options;
 
   // Escape key to cancel add modes
@@ -273,6 +273,6 @@ export function useAnnotationCanvasHandlers(
     wrappedOnNodeDragStart,
     wrappedOnNodeDragStop,
     isInAddMode,
-    addModeMessage,
+    addModeMessage
   };
 }

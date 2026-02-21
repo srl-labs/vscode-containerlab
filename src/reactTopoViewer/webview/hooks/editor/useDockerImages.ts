@@ -102,7 +102,7 @@ function splitImageString(
   if (lastColonIndex > 0) {
     return {
       base: fullImage.substring(0, lastColonIndex),
-      version: fullImage.substring(lastColonIndex + 1),
+      version: fullImage.substring(lastColonIndex + 1)
     };
   }
   return { base: fullImage, version: "latest" };
@@ -158,6 +158,6 @@ export function useDockerImages(): UseDockerImagesResult {
     parseImageString,
     combineImageVersion,
     isLoaded: dockerImages.length > 0 || typeof window.__DOCKER_IMAGES__ !== "undefined",
-    hasImages: baseImages.length > 0,
+    hasImages: baseImages.length > 0
   };
 }

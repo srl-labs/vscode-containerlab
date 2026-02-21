@@ -83,7 +83,7 @@ export class CustomNodeConfigManager {
       }
       const updatedNodes = customNodes.map((node, index) => ({
         ...node,
-        setDefault: index === targetIndex,
+        setDefault: index === targetIndex
       }));
 
       await config.update("customNodes", updatedNodes, vscode.ConfigurationTarget.Global);
@@ -92,7 +92,7 @@ export class CustomNodeConfigManager {
 
       return {
         result: { customNodes: updatedNodes, defaultNode: defaultCustomNode?.name ?? "" },
-        error: null,
+        error: null
       };
     } catch (err) {
       const error = `Error setting default custom node: ${err}`;
@@ -114,7 +114,7 @@ export class CustomNodeConfigManager {
       log.info(`Deleted custom node ${name}`);
       return {
         result: { customNodes: filteredNodes, defaultNode: defaultCustomNode?.name ?? "" },
-        error: null,
+        error: null
       };
     } catch (err) {
       const error = `Error deleting custom node: ${err}`;
@@ -135,7 +135,7 @@ export class CustomNodeConfigManager {
     return {
       defaultNode: defaultCustomNode?.name ?? "",
       defaultKind: defaultCustomNode?.kind ?? "nokia_srlinux",
-      defaultType: defaultCustomNode?.type ?? "",
+      defaultType: defaultCustomNode?.type ?? ""
     };
   }
 

@@ -39,7 +39,7 @@ export function useAppE2EExposure({
   annotations,
   graphCreation,
   layoutControls,
-  rfInstance,
+  rfInstance
 }: AppE2EExposureParams): void {
   useE2ETestingExposure({
     isLocked: state.isLocked,
@@ -61,6 +61,6 @@ export function useAppE2EExposure({
     selectedNode: state.selectedNode,
     selectedEdge: state.selectedEdge,
     selectNode: actions.selectNode,
-    selectEdge: actions.selectEdge,
+    selectEdge: actions.selectEdge
   });
 }

@@ -12,7 +12,7 @@ import type {
   NodeAnnotation as _NodeAnnotation,
   EdgeAnnotation as _EdgeAnnotation,
   AliasEndpointAnnotation as _AliasEndpointAnnotation,
-  TopologyAnnotations as _TopologyAnnotations,
+  TopologyAnnotations as _TopologyAnnotations
 } from "../types/topology";
 
 // Re-export types
@@ -39,6 +39,6 @@ export function createEmptyAnnotations(): TopologyAnnotations {
     nodeAnnotations: [],
     edgeAnnotations: [],
     aliasEndpointAnnotations: [],
-    viewerSettings: {},
+    viewerSettings: {}
   };
 }

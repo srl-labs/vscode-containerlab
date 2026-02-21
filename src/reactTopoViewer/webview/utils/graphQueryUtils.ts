@@ -115,6 +115,6 @@ export function getNodesBoundingBox(
     x: minX,
     y: minY,
     width: maxX - minX,
-    height: maxY - minY,
+    height: maxY - minY
   };
 }

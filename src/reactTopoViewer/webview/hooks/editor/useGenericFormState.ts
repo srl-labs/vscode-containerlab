@@ -72,7 +72,7 @@ export function useGenericFormState<T extends { id: string }>(
     resetInitialData,
     discardChanges,
     isNew,
-    setFormData,
+    setFormData
   };
 }
 

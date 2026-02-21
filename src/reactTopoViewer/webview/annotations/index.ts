@@ -4,7 +4,7 @@ export {
   TRAFFIC_RATE_NODE_TYPE,
   GROUP_NODE_TYPE,
   annotationsToNodes,
-  nodesToAnnotations,
+  nodesToAnnotations
 } from "./annotationNodeConverters";
 export { applyGroupMembershipToNodes, collectNodeGroupMemberships } from "./groupMembership";
 export { findEdgeAnnotationInLookup, pruneEdgeAnnotations } from "./edgeAnnotations";
@@ -13,5 +13,5 @@ export {
   isNonEmptyString,
   parseLegacyGroupIdentity,
   toFiniteNumber,
-  toPosition,
+  toPosition
 } from "./valueParsers";

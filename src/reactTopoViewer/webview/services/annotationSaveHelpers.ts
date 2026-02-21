@@ -9,7 +9,7 @@ import type {
   FreeShapeAnnotation,
   GroupStyleAnnotation,
   EdgeAnnotation,
-  TopologyAnnotations,
+  TopologyAnnotations
 } from "../../shared/types/topology";
 
 import { buildAnnotationNodesPayload } from "./annotationPayloads";
@@ -21,7 +21,7 @@ export async function saveFreeTextAnnotations(annotations: FreeTextAnnotation[])
   try {
     await executeTopologyCommand({
       command: "setAnnotations",
-      payload: { freeTextAnnotations: annotations },
+      payload: { freeTextAnnotations: annotations }
     });
   } catch (err) {
     console.error(`${WARN_COMMAND_FAILED}: setAnnotations(freeTextAnnotations)`, err);
@@ -41,7 +41,7 @@ export async function saveAnnotationNodesFromGraph(
     await executeTopologyCommand(
       {
         command: "setAnnotations",
-        payload: buildAnnotationNodesPayload(nodes),
+        payload: buildAnnotationNodesPayload(nodes)
       },
       { applySnapshot: options.applySnapshot ?? true }
     );
@@ -59,8 +59,8 @@ export async function saveAnnotationNodesWithMemberships(
       command: "setAnnotationsWithMemberships",
       payload: {
         annotations: buildAnnotationNodesPayload(nodes),
-        memberships: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId ?? null })),
-      },
+        memberships: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId ?? null }))
+      }
     });
   } catch (err) {
     console.error(`${WARN_COMMAND_FAILED}: setAnnotationsWithMemberships`, err);
@@ -71,7 +71,7 @@ export async function saveFreeShapeAnnotations(annotations: FreeShapeAnnotation[
   try {
     await executeTopologyCommand({
       command: "setAnnotations",
-      payload: { freeShapeAnnotations: annotations },
+      payload: { freeShapeAnnotations: annotations }
     });
   } catch (err) {
     console.error(`${WARN_COMMAND_FAILED}: setAnnotations(freeShapeAnnotations)`, err);
@@ -84,7 +84,7 @@ export async function saveGroupStyleAnnotations(
   try {
     await executeTopologyCommand({
       command: "setAnnotations",
-      payload: { groupStyleAnnotations: annotations },
+      payload: { groupStyleAnnotations: annotations }
     });
   } catch (err) {
     console.error(`${WARN_COMMAND_FAILED}: setAnnotations(groupStyleAnnotations)`, err);
@@ -133,7 +133,7 @@ export async function saveAllNodeGroupMemberships(
     await executeTopologyCommand(
       {
         command: "setNodeGroupMemberships",
-        payload: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId ?? null })),
+        payload: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId ?? null }))
       },
       { applySnapshot: false }
     );

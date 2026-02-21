@@ -8,11 +8,11 @@ import type {
   EndpointWithNetem,
   LinkImpairmentData,
   LinkImpairmentTabId,
-  NetemState,
+  NetemState
 } from "../../components/panels/link-impairment/types";
 import {
   formatNetemData,
-  validateLinkImpairmentState,
+  validateLinkImpairmentState
 } from "../../components/panels/link-impairment/LinkImpairmentUtils";
 
 export interface UseLinkImpairmentFormReturn {
@@ -39,7 +39,7 @@ export function useLinkImpairmentForm(
       const curr = { source: formData.sourceNetem, target: formData.targetNetem };
       const prev = {
         source: formData.extraData?.clabSourceNetem,
-        target: formData.extraData?.clabTargetNetem,
+        target: formData.extraData?.clabTargetNetem
       };
       return JSON.stringify(curr) !== JSON.stringify(prev);
     }
@@ -54,7 +54,7 @@ export function useLinkImpairmentForm(
 
       const currentBaseline = {
         source: netemData.extraData?.clabSourceNetem,
-        target: netemData.extraData?.clabTargetNetem,
+        target: netemData.extraData?.clabTargetNetem
       };
 
       const hasBaseline = prev !== null && initialDataRef.current !== null;
@@ -66,7 +66,7 @@ export function useLinkImpairmentForm(
         const formatted = formatNetemData(netemData);
         const serialized = JSON.stringify({
           source: formatted.extraData?.clabSourceNetem,
-          target: formatted.extraData?.clabTargetNetem,
+          target: formatted.extraData?.clabTargetNetem
         });
         initialDataRef.current = serialized;
         if (isNewLink) setActiveTab("source");
@@ -100,8 +100,8 @@ export function useLinkImpairmentForm(
       extraData: {
         ...formData.extraData,
         clabSourceNetem: formData.sourceNetem,
-        clabTargetNetem: formData.targetNetem,
-      },
+        clabTargetNetem: formData.targetNetem
+      }
     };
     setFormData(updated);
   }, [formData]);
@@ -110,7 +110,7 @@ export function useLinkImpairmentForm(
     if (!formData) return [];
     const endpoints: EndpointWithNetem[] = [
       { node: formData.source, iface: formData.sourceEndpoint, netem: formData.sourceNetem },
-      { node: formData.target, iface: formData.targetEndpoint, netem: formData.targetNetem },
+      { node: formData.target, iface: formData.targetEndpoint, netem: formData.targetNetem }
     ];
     return endpoints.flatMap((endpoint) => {
       if (!endpoint.netem) return [];
@@ -124,7 +124,7 @@ export function useLinkImpairmentForm(
     const restored: LinkImpairmentData = {
       ...formData,
       sourceNetem: formData.extraData?.clabSourceNetem ?? formData.sourceNetem,
-      targetNetem: formData.extraData?.clabTargetNetem ?? formData.targetNetem,
+      targetNetem: formData.extraData?.clabTargetNetem ?? formData.targetNetem
     };
     setFormData(restored);
   }, [formData]);
@@ -137,6 +137,6 @@ export function useLinkImpairmentForm(
     hasChanges,
     resetAfterApply,
     discardChanges,
-    validationErrors,
+    validationErrors
   };
 }

@@ -26,7 +26,7 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
   isActive,
   description,
   dense = false,
-  showTipsHeader = false,
+  showTipsHeader = false
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -132,8 +132,8 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
                     <ClearIcon fontSize="small" />
                   </IconButton>
                 </InputAdornment>
-              ) : undefined,
-            },
+              ) : undefined
+            }
           }}
         />
         <IconButton
@@ -144,7 +144,7 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
             bgcolor: "primary.main",
             color: "primary.contrastText",
             "&:hover": { bgcolor: "primary.dark" },
-            borderRadius: 1,
+            borderRadius: 1
           }}
         >
           <SearchIcon fontSize="small" />

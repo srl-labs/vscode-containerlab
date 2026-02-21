@@ -58,7 +58,7 @@ export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): voi
     const combined = new Set<string>([
       ...annotations.selectedTextIds,
       ...annotations.selectedShapeIds,
-      ...annotations.selectedTrafficRateIds,
+      ...annotations.selectedTrafficRateIds
     ]);
     annotations.selectedGroupIds.forEach((id) => combined.add(id));
     return combined;
@@ -66,7 +66,7 @@ export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): voi
     annotations.selectedTextIds,
     annotations.selectedShapeIds,
     annotations.selectedTrafficRateIds,
-    annotations.selectedGroupIds,
+    annotations.selectedGroupIds
   ]);
 
   // Keyboard shortcuts
@@ -94,6 +94,6 @@ export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): voi
     onClearAnnotationSelection: annotations.clearAllSelections,
     hasAnnotationClipboard: clipboardHandlers.hasClipboardData,
     hasGraphClipboard: clipboardHandlers.hasClipboardData,
-    onCreateGroup: annotations.handleAddGroup,
+    onCreateGroup: annotations.handleAddGroup
   });
 }

@@ -12,7 +12,7 @@ import type {
   GroupStyleAnnotation,
   NodeAnnotation,
   NetworkNodeAnnotation,
-  TopologyAnnotations,
+  TopologyAnnotations
 } from "../../shared/types/topology";
 import type { TopoNode } from "../../shared/types/graph";
 import {
@@ -23,7 +23,7 @@ import {
   parseLegacyGroupIdentity,
   pruneEdgeAnnotations,
   toFiniteNumber,
-  toPosition,
+  toPosition
 } from "../annotations";
 import { useGraphStore } from "../stores/graphStore";
 import { useTopoViewerStore } from "../stores/topoViewerStore";
@@ -112,7 +112,7 @@ function deriveLegacyGroupBounds(
   return {
     position: { x: minX - LEGACY_GROUP_PADDING, y: minY - LEGACY_GROUP_PADDING },
     width: Math.max(DEFAULT_GROUP_WIDTH, maxX - minX + LEGACY_GROUP_PADDING * 2),
-    height: Math.max(DEFAULT_GROUP_HEIGHT, maxY - minY + LEGACY_GROUP_PADDING * 2),
+    height: Math.max(DEFAULT_GROUP_HEIGHT, maxY - minY + LEGACY_GROUP_PADDING * 2)
   };
 }
 
@@ -129,7 +129,7 @@ function normalizeFreeTextAnnotations(annotations: FreeTextAnnotation[]): FreeTe
 
     const normalizedAnnotation: FreeTextAnnotation = {
       ...annotation,
-      position,
+      position
     };
     if (normalizedWidth !== undefined) {
       normalizedAnnotation.width = normalizedWidth;
@@ -152,7 +152,7 @@ function normalizeFreeShapeAnnotations(annotations: FreeShapeAnnotation[]): Free
     return {
       ...annotation,
       position: toPosition(annotation.position) ?? { x: 0, y: 0 },
-      endPosition: normalizedEnd,
+      endPosition: normalizedEnd
     };
   });
 }
@@ -196,7 +196,7 @@ function normalizeTrafficRateShowLegend(
 function normalizeTrafficRateAnnotation(annotation: TrafficRateAnnotation): TrafficRateAnnotation {
   const normalized: TrafficRateAnnotation = {
     ...annotation,
-    position: toPosition(annotation.position) ?? { x: 0, y: 0 },
+    position: toPosition(annotation.position) ?? { x: 0, y: 0 }
   };
   setOptionalTrafficRateField(normalized, "mode", normalizeTrafficRateModeValue(annotation.mode));
   setOptionalTrafficRateField(
@@ -252,7 +252,7 @@ function resolveGroupBounds(
     return {
       position: normalizedPosition,
       width: normalizedWidth,
-      height: normalizedHeight,
+      height: normalizedHeight
     };
   }
 
@@ -266,7 +266,7 @@ function resolveGroupBounds(
   return {
     position: normalizedPosition ?? derivedBounds?.position ?? { x: 0, y: 0 },
     width: normalizedWidth ?? derivedBounds?.width ?? DEFAULT_GROUP_WIDTH,
-    height: normalizedHeight ?? derivedBounds?.height ?? DEFAULT_GROUP_HEIGHT,
+    height: normalizedHeight ?? derivedBounds?.height ?? DEFAULT_GROUP_HEIGHT
   };
 }
 
@@ -294,7 +294,7 @@ function normalizeGroupStyleAnnotation(
     position: bounds.position,
     width: bounds.width,
     height: bounds.height,
-    labelColor: resolveGroupLabelColor(group),
+    labelColor: resolveGroupLabelColor(group)
   };
 }
 
@@ -308,7 +308,7 @@ function normalizeGroupStyleAnnotations(
 function syncUndoRedo(snapshot: TopologySnapshot): void {
   useTopoViewerStore.getState().setInitialData({
     canUndo: snapshot.canUndo,
-    canRedo: snapshot.canRedo,
+    canRedo: snapshot.canRedo
   });
 }
 
@@ -332,7 +332,7 @@ function snapLayoutPositions(nodes: Node[]): {
     }
     return {
       ...node,
-      position: snappedPosition,
+      position: snappedPosition
     };
   });
 
@@ -348,7 +348,7 @@ async function persistLayoutPositions(
       dispatchTopologyCommand({
         command: "savePositions",
         payload: positions,
-        skipHistory: true,
+        skipHistory: true
       })
     );
     if (response.type === "topology-host:ack") {
@@ -412,7 +412,7 @@ function normalizeAnnotations(annotations?: TopologyAnnotations): Required<Topol
     networkNodeAnnotations = [],
     edgeAnnotations = [],
     aliasEndpointAnnotations = [],
-    viewerSettings = {},
+    viewerSettings = {}
   } = annotations ?? {};
 
   const normalizedNodeAnnotations = nodeAnnotations;
@@ -428,7 +428,7 @@ function normalizeAnnotations(annotations?: TopologyAnnotations): Required<Topol
     networkNodeAnnotations,
     edgeAnnotations,
     aliasEndpointAnnotations,
-    viewerSettings,
+    viewerSettings
   };
 }
 
@@ -464,7 +464,7 @@ function applyGeoCoordinatesToNodes(
     const data = node.data;
     return {
       ...node,
-      data: { ...data, geoCoordinates: geo },
+      data: { ...data, geoCoordinates: geo }
     };
   });
 }
@@ -527,7 +527,7 @@ export function applySnapshotToStores(
     gridColor: gridColor ?? null,
     gridBgColor: gridBgColor ?? null,
     canUndo: snapshot.canUndo,
-    canRedo: snapshot.canRedo,
+    canRedo: snapshot.canRedo
   });
 
   if (options.isInitialLoad === true) {

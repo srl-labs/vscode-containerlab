@@ -3,7 +3,7 @@
  */
 import type {
   LabSettings as SharedLabSettings,
-  MgmtSettings as SharedMgmtSettings,
+  MgmtSettings as SharedMgmtSettings
 } from "../../../../shared/types/labSettings";
 
 export type LabSettings = SharedLabSettings;

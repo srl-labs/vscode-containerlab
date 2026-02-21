@@ -61,6 +61,6 @@ export function createLogger(logFn: (level: LogLevel, message: unknown) => void)
     },
     error(msg: unknown): void {
       logFn("error", msg);
-    },
+    }
   };
 }

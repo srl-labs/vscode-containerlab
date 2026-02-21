@@ -9,7 +9,7 @@
 import type {
   TopologyHostCommand,
   TopologyHostResponseMessage,
-  TopologySnapshot,
+  TopologySnapshot
 } from "../../shared/types/messages";
 import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../../shared/types/messages";
 import type { DeploymentState } from "../../shared/types/topology";
@@ -76,7 +76,7 @@ function hasSnapshotTextFields(value: Record<string, unknown>): boolean {
     "annotationsFileName",
     "yamlContent",
     "annotationsContent",
-    "labName",
+    "labName"
   ] as const;
   return textFields.every((field) => typeof value[field] === "string");
 }
@@ -240,7 +240,7 @@ function sendVsCodeRequest(
     pending.set(requestId, {
       resolve,
       reject,
-      expectedType,
+      expectedType
     });
     window.vscode?.postMessage({ ...message, requestId });
     setTimeout(() => {
@@ -291,8 +291,8 @@ export async function requestSnapshot(
       path: hostContext.path,
       mode: hostContext.mode,
       deploymentState: hostContext.deploymentState,
-      externalChange: options.externalChange ?? false,
-    }),
+      externalChange: options.externalChange ?? false
+    })
   });
 
   if (!response.ok) {
@@ -315,7 +315,7 @@ export async function dispatchTopologyCommand(
         type: "topology-host:command",
         protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
         baseRevision: revision,
-        command,
+        command
       },
       "command"
     );
@@ -333,8 +333,8 @@ export async function dispatchTopologyCommand(
       baseRevision: revision,
       command,
       mode: hostContext.mode,
-      deploymentState: hostContext.deploymentState,
-    }),
+      deploymentState: hostContext.deploymentState
+    })
   });
 
   if (!response.ok) {

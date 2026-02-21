@@ -80,7 +80,7 @@ function RectangleShape(props: RectangleProps): React.ReactElement {
     borderRadius: cornerRadius,
     // Use outline for selection - doesn't affect layout
     outline: selected ? `2px solid ${SELECTION_COLOR}` : "none",
-    outlineOffset: 1,
+    outlineOffset: 1
   };
   return <div style={style} className="free-shape-rectangle" />;
 }
@@ -104,7 +104,7 @@ function CircleShape(props: CircleProps): React.ReactElement {
     borderRadius: "50%",
     // Use outline for selection - doesn't affect layout
     outline: selected ? `2px solid ${SELECTION_COLOR}` : "none",
-    outlineOffset: 1,
+    outlineOffset: 1
   };
   return <div style={style} className="free-shape-circle" />;
 }
@@ -177,7 +177,7 @@ function LineShape(props: LineShapeProps): React.ReactElement {
     lineEndArrow,
     lineArrowSize,
     selected,
-    nodeId,
+    nodeId
   } = props;
 
   // Calculate line endpoints within SVG
@@ -211,7 +211,7 @@ function LineShape(props: LineShapeProps): React.ReactElement {
         position: "absolute",
         left: 0,
         top: 0,
-        overflow: "visible",
+        overflow: "visible"
       }}
       className="free-shape-line"
     >
@@ -253,7 +253,7 @@ function buildBoxWrapperStyle(rotation: number): React.CSSProperties {
     minHeight: MIN_HEIGHT,
     cursor: "move",
     transform: rotation ? `rotate(${rotation}deg)` : undefined,
-    transformOrigin: "center center",
+    transformOrigin: "center center"
   };
 }
 
@@ -263,7 +263,7 @@ function buildLineContainerStyle(): React.CSSProperties {
     position: "relative",
     cursor: "move",
     width: "100%",
-    height: "100%",
+    height: "100%"
   };
 }
 
@@ -292,11 +292,11 @@ function getLinePositions(data: FreeShapeNodeData): {
   const startPosition = data.startPosition ?? { x: 0, y: 0 };
   const endPosition = data.endPosition ?? {
     x: startPosition.x + DEFAULT_LINE_LENGTH,
-    y: startPosition.y,
+    y: startPosition.y
   };
   const relativeEnd = data.relativeEndPosition ?? {
     x: endPosition.x - startPosition.x,
-    y: endPosition.y - startPosition.y,
+    y: endPosition.y - startPosition.y
   };
   // Line start within the node's bounding box (with padding)
   const lineStartInNode =
@@ -328,7 +328,7 @@ function getLineStyleProps(data: FreeShapeNodeData): {
     borderStyle: data.borderStyle ?? "solid",
     lineStartArrow: data.lineStartArrow ?? false,
     lineEndArrow: data.lineEndArrow ?? true,
-    lineArrowSize: data.lineArrowSize ?? 10,
+    lineArrowSize: data.lineArrowSize ?? 10
   };
 }
 
@@ -337,7 +337,7 @@ function LineNode({
   data,
   isSelected,
   showHandles,
-  annotationHandlers,
+  annotationHandlers
 }: LineNodeProps): React.ReactElement {
   const { relativeEnd, startPosition, endPosition, lineStartInNode } = getLinePositions(data);
   const styleProps = getLineStyleProps(data);
@@ -402,7 +402,7 @@ function BoxNode({
   annotationHandlers,
   onResizeEnd,
   onRotationStart,
-  onRotationEnd,
+  onRotationEnd
 }: BoxNodeProps): React.ReactElement {
   const rotation = data.rotation ?? 0;
   const wrapperStyle = buildBoxWrapperStyle(rotation);
@@ -413,7 +413,7 @@ function BoxNode({
     borderWidth: data.borderWidth ?? 2,
     borderStyle: data.borderStyle ?? "solid",
     borderColor: data.borderColor ?? vscodePalette.text.primary,
-    selected: isSelected,
+    selected: isSelected
   };
 
   return (

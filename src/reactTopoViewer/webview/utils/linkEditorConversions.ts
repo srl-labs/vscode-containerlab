@@ -142,7 +142,7 @@ export function convertToLinkEditorData(
     originalSourceEndpoint: sourceEndpoint,
     originalTargetEndpoint: targetEndpoint,
     sourceIsNetwork: isSpecialEndpointId(source),
-    targetIsNetwork: isSpecialEndpointId(target),
+    targetIsNetwork: isSpecialEndpointId(target)
   };
 }
 
@@ -183,7 +183,7 @@ export function convertEditorDataToLinkSaveData(data: LinkEditorData): LinkSaveD
     originalSource: data.originalSource,
     originalTarget: data.originalTarget,
     originalSourceEndpoint: data.originalSourceEndpoint,
-    originalTargetEndpoint: data.originalTargetEndpoint,
+    originalTargetEndpoint: data.originalTargetEndpoint
   };
 
   return saveData;

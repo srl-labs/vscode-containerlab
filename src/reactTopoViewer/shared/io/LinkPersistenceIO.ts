@@ -74,7 +74,7 @@ const SINGLE_ENDPOINT_TYPES = new Set([
   "macvlan",
   "vxlan",
   "vxlan-stitch",
-  "dummy",
+  "dummy"
 ]);
 
 function hasText(value: string | undefined): value is string {
@@ -111,7 +111,7 @@ const SPECIAL_NODE_PREFIXES = [
   "macvlan:",
   "vxlan:",
   "vxlan-stitch:",
-  "dummy",
+  "dummy"
 ];
 
 /**
@@ -208,7 +208,7 @@ function extractVxlanProperties(nodeId: string): {
     remote: remoteCandidate && looksLikeIpAddress(remoteCandidate) ? remoteCandidate : undefined,
     vni: parts[1] || undefined,
     dstPort: parts[2] || undefined,
-    srcPort: parts[3] || undefined,
+    srcPort: parts[3] || undefined
   };
 }
 
@@ -384,7 +384,7 @@ function hasExtendedProperties(linkData: LinkSaveData): boolean {
     "extRemote",
     "extVni",
     "extDstPort",
-    "extSrcPort",
+    "extSrcPort"
   ];
 
   if (extendedKeys.some((k) => extra[k] !== undefined && extra[k] !== "")) return true;

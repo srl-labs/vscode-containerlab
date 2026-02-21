@@ -39,7 +39,7 @@ export const PaletteView: React.FC<PaletteViewProps> = ({
   selectedLinkData,
   editor,
   onFooterRef,
-  onBannerRef,
+  onBannerRef
 }) => {
   const localFooterRef = useRef<FooterRefLocal>(null);
 

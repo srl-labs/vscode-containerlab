@@ -30,7 +30,7 @@ export class TransactionalFileSystemAdapter implements FileSystemAdapter {
     if (!this.inTransaction) return;
     const entries: PendingEntry[] = Array.from(this.pending.entries()).map(([path, content]) => ({
       path,
-      content,
+      content
     }));
     this.pending.clear();
     this.inTransaction = false;

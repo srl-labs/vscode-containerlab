@@ -15,7 +15,7 @@ export type {
   EasterEggMode,
   EasterEggState,
   UseEasterEggOptions,
-  UseEasterEggReturn,
+  UseEasterEggReturn
 } from "./useEasterEgg";
 
 // Renderer component
@@ -27,5 +27,5 @@ export {
   StickerbushMode,
   AquaticAmbienceMode,
   VaporwaveMode,
-  DeusExMode,
+  DeusExMode
 } from "./modes";

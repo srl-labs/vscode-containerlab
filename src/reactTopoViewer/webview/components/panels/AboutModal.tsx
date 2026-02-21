@@ -11,7 +11,7 @@ import {
   Divider,
   IconButton,
   Link,
-  Typography,
+  Typography
 } from "@mui/material";
 import {
   Close as CloseIcon,
@@ -20,7 +20,7 @@ import {
   GitHub as GitHubIcon,
   Groups as GroupsIcon,
   MenuBook as MenuBookIcon,
-  OpenInNew as OpenInNewIcon,
+  OpenInNew as OpenInNewIcon
 } from "@mui/icons-material";
 
 interface AboutModalProps {
@@ -111,7 +111,7 @@ const AnimatedContainerlabLogo: React.FC = () => (
               style={{
                 offsetPath:
                   'path("M205.884199,165.860001C197.074282,167.998330,195.705752,161.169993,195.705752,158.843356C195.597238,154.417121,207.484159,154.853512,204.543302,147.117108")',
-                offsetRotate: "0deg",
+                offsetRotate: "0deg"
               }}
               id="modal-small-bubble_to"
             >
@@ -128,7 +128,7 @@ const AnimatedContainerlabLogo: React.FC = () => (
               style={{
                 offsetPath:
                   'path("M197.413191,161.660004C199.739487,153.100729,206.577824,157.960197,206.367518,150.296087Q197.733947,137.765919,204.968877,131.776987")',
-                offsetRotate: "0deg",
+                offsetRotate: "0deg"
               }}
               id="modal-mid-bubble_to"
             >
@@ -147,7 +147,7 @@ const AnimatedContainerlabLogo: React.FC = () => (
               style={{
                 offsetPath:
                   'path("M202.937712,152.410004C210.676320,150.141269,203.420795,132.803737,202.846000,130.576097Q201.344264,117.338369,204.543310,117.443650")',
-                offsetRotate: "0deg",
+                offsetRotate: "0deg"
               }}
               id="modal-big-bubble_to"
             >
@@ -259,9 +259,9 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
       slotProps={{
         paper: {
           sx: {
-            maxHeight: "80vh",
-          },
-        },
+            maxHeight: "80vh"
+          }
+        }
       }}
     >
       <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -376,7 +376,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             justifyContent: "center",
             gap: 0.5,
             py: 2,
-            color: TEXT_SECONDARY,
+            color: TEXT_SECONDARY
           }}
         >
           <Typography variant="caption">Made with</Typography>

@@ -9,7 +9,7 @@ import {
   type ClabContainerTreeNode,
   type ClabInterfaceTreeNode,
   type ClabLabTreeNode,
-  flattenContainers,
+  flattenContainers
 } from "../../../treeView/common";
 import { runningLabsProvider } from "../../../globals";
 import type { EndpointResult } from "../../shared/types/endpoint";
@@ -61,7 +61,7 @@ function createDefaultContainerNode(nodeName: string): ClabContainerTreeNode {
     interfaces: [],
     labPath: { absolute: "", relative: "" },
     IPv4Address: "",
-    IPv6Address: "",
+    IPv6Address: ""
   } as ClabContainerTreeNode;
 }
 
@@ -83,7 +83,7 @@ function createInterfaceObject(
     mac: "",
     mtu: 0,
     ifIndex: 0,
-    state: "",
+    state: ""
   } as ClabInterfaceTreeNode;
 }
 

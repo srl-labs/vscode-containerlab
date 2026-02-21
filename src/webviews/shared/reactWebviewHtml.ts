@@ -27,7 +27,7 @@ export function createReactWebviewHtml(options: ReactWebviewHtmlOptions): string
     initialData,
     webviewKind,
     connectSrc,
-    frameSrc,
+    frameSrc
   } = options;
 
   const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "dist", scriptFile));

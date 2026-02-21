@@ -35,7 +35,7 @@ interface SelectFieldProps {
 const INLINE_FLEX_DISPLAY = "inline-flex";
 const INLINE_FLEX_ALIGN_SX = {
   display: INLINE_FLEX_DISPLAY,
-  alignItems: "center",
+  alignItems: "center"
 } as const;
 
 function renderOptionLabel(
@@ -67,7 +67,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   disabled,
   helperText,
   required,
-  clearable,
+  clearable
 }) => {
   const hasLabel = label !== undefined && label.length > 0;
   const hasPlaceholder = placeholder !== undefined && placeholder.length > 0;

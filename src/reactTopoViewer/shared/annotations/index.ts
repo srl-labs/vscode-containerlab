@@ -13,7 +13,7 @@ export type {
   NetworkNodeAnnotation,
   NodeAnnotation,
   AliasEndpointAnnotation,
-  TopologyAnnotations,
+  TopologyAnnotations
 } from "./types";
 
 // Utilities

@@ -32,7 +32,7 @@ export const DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS: GrafanaTrafficThresholds = {
   green: 199999,
   yellow: 500000,
   orange: 1000000,
-  red: 5000000,
+  red: 5000000
 };
 
 interface GrafanaDashboardTargetConfig {
@@ -51,7 +51,7 @@ const DEFAULT_GRAFANA_TARGETS: GrafanaDashboardTargetConfig[] = [
     legendFormat: "oper-state:{{source}}:{{interface_name}}",
     instant: false,
     range: true,
-    hide: false,
+    hide: false
   },
   {
     datasource: "prometheus",
@@ -59,7 +59,7 @@ const DEFAULT_GRAFANA_TARGETS: GrafanaDashboardTargetConfig[] = [
     legendFormat: "{{source}}:{{interface_name}}:out",
     instant: false,
     range: true,
-    hide: false,
+    hide: false
   },
   {
     datasource: "prometheus",
@@ -67,8 +67,8 @@ const DEFAULT_GRAFANA_TARGETS: GrafanaDashboardTargetConfig[] = [
     legendFormat: "{{source}}:{{interface_name}}:in",
     instant: false,
     range: true,
-    hide: false,
-  },
+    hide: false
+  }
 ];
 
 function asString(value: unknown): string | null {
@@ -100,7 +100,7 @@ function toCellMapping(edge: Edge): GrafanaEdgeCellMapping | null {
     operstateCellId,
     targetOperstateCellId,
     trafficCellId,
-    reverseTrafficCellId,
+    reverseTrafficCellId
   };
 }
 
@@ -186,7 +186,7 @@ function createBounds(): Bounds {
     minX: Number.POSITIVE_INFINITY,
     minY: Number.POSITIVE_INFINITY,
     maxX: Number.NEGATIVE_INFINITY,
-    maxY: Number.NEGATIVE_INFINITY,
+    maxY: Number.NEGATIVE_INFINITY
   };
 }
 
@@ -224,7 +224,7 @@ function applyGraphTransform(
 ): { x: number; y: number } {
   return {
     x: x * transform.scale + transform.tx,
-    y: y * transform.scale + transform.ty,
+    y: y * transform.scale + transform.ty
   };
 }
 
@@ -268,7 +268,7 @@ function parseGraphTransform(svgEl: Element): GraphTransform {
   return {
     tx: Number.isFinite(tx) ? tx : 0,
     ty: Number.isFinite(ty) ? ty : 0,
-    scale: Number.isFinite(scale) && scale !== 0 ? scale : 1,
+    scale: Number.isFinite(scale) && scale !== 0 ? scale : 1
   };
 }
 
@@ -377,7 +377,7 @@ function createLegendTextRows(
     { color: "#5fe15c", text: `${green} - ${yellow} Mbps` },
     { color: "#ffe24a", text: `${yellow} - ${orange} Mbps` },
     { color: "#ff9f1a", text: `${orange} - ${red} Mbps` },
-    { color: "#ff4f6b", text: `${red}+ Mbps` },
+    { color: "#ff4f6b", text: `${red}+ Mbps` }
   ];
 }
 
@@ -404,7 +404,7 @@ function parseViewBox(svgEl: Element): {
     x: 0,
     y: 0,
     width: Number.isFinite(width) && width > 0 ? width : 1,
-    height: Number.isFinite(height) && height > 0 ? height : 1,
+    height: Number.isFinite(height) && height > 0 ? height : 1
   };
 }
 
@@ -565,7 +565,7 @@ interface Point {
 function lerp(a: Point, b: Point, t = 0.5): Point {
   return {
     x: a.x + (b.x - a.x) * t,
-    y: a.y + (b.y - a.y) * t,
+    y: a.y + (b.y - a.y) * t
   };
 }
 
@@ -629,7 +629,7 @@ function parsePathCommand(pathData: string): ParsedPathCommand | null {
         sx,
         sy,
         command: "C",
-        args: [args[0], args[1], args[2], args[3], args[4], args[5]],
+        args: [args[0], args[1], args[2], args[3], args[4], args[5]]
       };
     }
     default:
@@ -652,7 +652,7 @@ function midpointForQuadraticPath(
   const oneMinusT = 1 - t;
   return {
     x: oneMinusT * oneMinusT * sx + 2 * oneMinusT * t * cx + t * t * tx,
-    y: oneMinusT * oneMinusT * sy + 2 * oneMinusT * t * cy + t * t * ty,
+    y: oneMinusT * oneMinusT * sy + 2 * oneMinusT * t * cy + t * t * ty
   };
 }
 
@@ -674,7 +674,7 @@ function midpointForCubicPath(
       oneMinusT * oneMinusT * oneMinusT * sy +
       3 * oneMinusT * oneMinusT * t * c1y +
       3 * oneMinusT * t * t * c2y +
-      t * t * t * ty,
+      t * t * t * ty
   };
 }
 
@@ -702,7 +702,7 @@ function splitLinePath(
   const m = lerp(p0, p1);
   return {
     first: `M ${fmt(p0.x)} ${fmt(p0.y)} L ${fmt(m.x)} ${fmt(m.y)}`,
-    second: `M ${fmt(m.x)} ${fmt(m.y)} L ${fmt(p1.x)} ${fmt(p1.y)}`,
+    second: `M ${fmt(m.x)} ${fmt(m.y)} L ${fmt(p1.x)} ${fmt(p1.y)}`
   };
 }
 
@@ -720,7 +720,7 @@ function splitQuadraticPath(
   const mid = lerp(p01, p12);
   return {
     first: `M ${fmt(p0.x)} ${fmt(p0.y)} Q ${fmt(p01.x)} ${fmt(p01.y)} ${fmt(mid.x)} ${fmt(mid.y)}`,
-    second: `M ${fmt(mid.x)} ${fmt(mid.y)} Q ${fmt(p12.x)} ${fmt(p12.y)} ${fmt(p2.x)} ${fmt(p2.y)}`,
+    second: `M ${fmt(mid.x)} ${fmt(mid.y)} Q ${fmt(p12.x)} ${fmt(p12.y)} ${fmt(p2.x)} ${fmt(p2.y)}`
   };
 }
 
@@ -746,7 +746,7 @@ function splitCubicPath(
       `${fmt(mid.x)} ${fmt(mid.y)}`,
     second:
       `M ${fmt(mid.x)} ${fmt(mid.y)} C ${fmt(p123.x)} ${fmt(p123.y)} ${fmt(p23.x)} ${fmt(p23.y)} ` +
-      `${fmt(p3.x)} ${fmt(p3.y)}`,
+      `${fmt(p3.x)} ${fmt(p3.y)}`
   };
 }
 
@@ -779,7 +779,7 @@ function parsePathEndpoints(pathData: string): { start: Point; end: Point } | nu
   const start = { x: numbers[0], y: numbers[1] };
   const end = {
     x: numbers[numbers.length - 2],
-    y: numbers[numbers.length - 1],
+    y: numbers[numbers.length - 1]
   };
   return { start, end };
 }
@@ -832,13 +832,13 @@ function resolveTrafficLabelPoint(
     alongStep * 3,
     -alongStep * 3,
     alongStep * 4,
-    -alongStep * 4,
+    -alongStep * 4
   ];
 
   for (const offset of alongOffsets) {
     const candidate = {
       x: base.x + tangent.x * offset,
-      y: base.y + tangent.y * offset,
+      y: base.y + tangent.y * offset
     };
     if (!isLabelCollision(candidate, occupiedPoints, minimumDx, minimumDy)) {
       occupiedPoints.push(candidate);
@@ -850,7 +850,7 @@ function resolveTrafficLabelPoint(
   for (const offset of alongOffsets) {
     const candidate = {
       x: base.x + tangent.x * offset + normal.x * normalStep,
-      y: base.y + tangent.y * offset + normal.y * normalStep,
+      y: base.y + tangent.y * offset + normal.y * normalStep
     };
     if (!isLabelCollision(candidate, occupiedPoints, minimumDx, minimumDy)) {
       occupiedPoints.push(candidate);
@@ -914,7 +914,7 @@ function resolveOperstateCellElements(edgeGroup: Element): {
     .filter((shape): shape is Element => shape !== null);
   return {
     source: labelRects[0] ?? null,
-    target: labelRects[1] ?? null,
+    target: labelRects[1] ?? null
   };
 }
 
@@ -1133,7 +1133,7 @@ export function buildGrafanaPanelYaml(
     "    valueMappings:",
     `      - { valueMax: ${greenThreshold}, text: "\\u200B" }`,
     'cellIdPreamble: "cell-"',
-    "cells:",
+    "cells:"
   ];
 
   if (mappings.length === 0) {
@@ -1178,7 +1178,7 @@ function buildDashboardTargets() {
     instant: target.instant,
     legendFormat: target.legendFormat,
     range: target.range,
-    refId: String.fromCharCode("A".charCodeAt(0) + index),
+    refId: String.fromCharCode("A".charCodeAt(0) + index)
   }));
 }
 
@@ -1198,9 +1198,9 @@ export function buildGrafanaDashboardJson(
           hide: true,
           iconColor: "rgba(0, 211, 255, 1)",
           name: "Annotations & Alerts",
-          type: "dashboard",
-        },
-      ],
+          type: "dashboard"
+        }
+      ]
     },
     editable: true,
     fiscalYearStartMonth: 0,
@@ -1221,7 +1221,7 @@ export function buildGrafanaDashboardJson(
             dataCtr: 0,
             displaySvgCtr: 0,
             mappingsCtr: 0,
-            timingsCtr: 0,
+            timingsCtr: 0
           },
           highlighterEnabled: true,
           panZoomEnabled: true,
@@ -1229,12 +1229,12 @@ export function buildGrafanaDashboardJson(
           siteConfig: "",
           svg: svgContent,
           testDataEnabled: false,
-          timeSliderEnabled: true,
+          timeSliderEnabled: true
         },
         targets: buildDashboardTargets(),
         title,
-        type: "andrewbmchugh-flow-panel",
-      },
+        type: "andrewbmchugh-flow-panel"
+      }
     ],
     refresh: "5s",
     schemaVersion: 38,
@@ -1244,7 +1244,7 @@ export function buildGrafanaDashboardJson(
     timezone: "",
     title,
     version: 6,
-    weekStart: "",
+    weekStart: ""
   };
 
   return JSON.stringify(dashboard, null, 2);

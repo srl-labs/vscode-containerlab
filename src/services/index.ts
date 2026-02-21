@@ -7,10 +7,10 @@ export { refreshSshxSessions, refreshGottySessions } from "./sessionRefresh";
 export {
   onDataChanged as onEventsDataChanged,
   onContainerStateChanged,
-  stopEventStream,
+  stopEventStream
 } from "./containerlabEvents";
 
 export {
   onDataChanged as onFallbackDataChanged,
-  stopPolling as stopFallbackPolling,
+  stopPolling as stopFallbackPolling
 } from "./containerlabInspectFallback";

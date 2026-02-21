@@ -24,7 +24,7 @@ export const KeyValueList: React.FC<KeyValueListProps> = ({
   valuePlaceholder = "Value",
   addLabel = "Add",
   disabled,
-  hideAddButton,
+  hideAddButton
 }) => {
   const entries = Object.entries(items);
 
@@ -95,7 +95,7 @@ const KeyValueItem: React.FC<KeyValueItemProps> = ({
   onRemove,
   keyPlaceholder,
   valuePlaceholder,
-  disabled,
+  disabled
 }) => (
   <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
     <TextField

@@ -18,7 +18,7 @@ export function createPendingNetemOverride(
   return {
     source,
     target,
-    appliedAt: Date.now(),
+    appliedAt: Date.now()
   };
 }
 
@@ -33,7 +33,7 @@ function normalizeNetemForCompare(netem?: NetemState): Record<keyof NetemState, 
     jitter: normalizeNetemValue(netem?.jitter),
     loss: normalizeNetemPercentage(netem?.loss),
     rate: normalizeNetemValue(netem?.rate),
-    corruption: normalizeNetemPercentage(netem?.corruption),
+    corruption: normalizeNetemPercentage(netem?.corruption)
   };
 }
 

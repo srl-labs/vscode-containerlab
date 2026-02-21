@@ -17,6 +17,6 @@ export function getWiresharkVncWebviewHtml(
     initialData,
     webviewKind: "containerlab-wireshark-vnc",
     connectSrc: ["http:", "https:"],
-    frameSrc: ["http:", "https:"],
+    frameSrc: ["http:", "https:"]
   });
 }

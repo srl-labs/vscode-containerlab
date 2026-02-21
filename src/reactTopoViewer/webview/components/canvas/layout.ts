@@ -9,7 +9,7 @@ import {
   forceCenter,
   forceCollide,
   type SimulationNodeDatum,
-  type SimulationLinkDatum,
+  type SimulationLinkDatum
 } from "d3-force";
 
 /**
@@ -31,7 +31,7 @@ function applyPositionMap(nodes: Node[], positions: Map<string, { x: number; y: 
     if (!newPos) return node;
     return {
       ...node,
-      position: newPos,
+      position: newPos
     };
   });
 }
@@ -101,7 +101,7 @@ export function applyForceLayout(
     x: node.position.x || (index * 50) % 500,
     y: node.position.y || Math.floor(index / 10) * 50,
     width: 50,
-    height: 50,
+    height: 50
   }));
 
   // Create simulation links
@@ -110,7 +110,7 @@ export function applyForceLayout(
     .filter((edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target))
     .map((edge) => ({
       source: edge.source,
-      target: edge.target,
+      target: edge.target
     }));
 
   // Calculate center
@@ -152,7 +152,7 @@ export function applyForceLayout(
   for (const simNode of simNodes) {
     nodePositions.set(simNode.id, {
       x: simNode.x + padding,
-      y: simNode.y + padding,
+      y: simNode.y + padding
     });
   }
 

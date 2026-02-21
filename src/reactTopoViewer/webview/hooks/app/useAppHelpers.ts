@@ -7,17 +7,17 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import type {
   CustomNodeTemplate,
   CustomTemplateEditorData,
-  NetworkType,
+  NetworkType
 } from "../../../shared/types/editors";
 import type { EdgeCreatedHandler, NodeCreatedHandler } from "../../../shared/types/graph";
 import {
   createNewTemplateEditorData,
-  convertTemplateToEditorData,
+  convertTemplateToEditorData
 } from "../../../shared/utilities/customNodeConversions";
 import {
   sendDeleteCustomNode,
   sendSetDefaultCustomNode,
-  sendCommandToExtension,
+  sendCommandToExtension
 } from "../../messaging/extensionMessaging";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import { useTopoViewerStore } from "../../stores/topoViewerStore";
@@ -72,7 +72,7 @@ export function useCustomNodeCommands(
     onNewCustomNode,
     onEditCustomNode,
     onDeleteCustomNode,
-    onSetDefaultCustomNode,
+    onSetDefaultCustomNode
   };
 }
 
@@ -98,7 +98,7 @@ export function useNavbarCommands(): NavbarCommands {
 
   return {
     onLayoutToggle,
-    onToggleSplit,
+    onToggleSplit
   };
 }
 
@@ -168,7 +168,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
     selectedNode,
     selectedEdge,
     selectNode,
-    selectEdge,
+    selectEdge
   } = config;
 
   // Core E2E exposure (isLocked, mode, setLocked)
@@ -202,7 +202,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
     handleEdgeCreated,
     handleNodeCreatedCallback,
     handleAddGroup,
-    createNetworkAtPosition,
+    createNetworkAtPosition
   ]);
 
   // Node editor E2E exposure
@@ -237,7 +237,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
       Object.defineProperty(window.__DEV__, "groupsCount", {
         configurable: true,
         enumerable: true,
-        get: () => resolveGroups().length,
+        get: () => resolveGroups().length
       });
     }
   }, [resolveGroups]);
@@ -287,7 +287,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
         const nodes = rfInstance.getNodes();
         const updatedNodes = nodes.map((node) => ({
           ...node,
-          selected: nodeIdSet.has(node.id),
+          selected: nodeIdSet.has(node.id)
         }));
         rfInstance.setNodes(updatedNodes);
       };
@@ -298,7 +298,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
         const nodes = rfInstance.getNodes();
         const updatedNodes = nodes.map((node) => ({
           ...node,
-          selected: false,
+          selected: false
         }));
         rfInstance.setNodes(updatedNodes);
       };

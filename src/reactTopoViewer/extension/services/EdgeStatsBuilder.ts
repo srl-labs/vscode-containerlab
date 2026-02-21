@@ -78,7 +78,7 @@ export function buildNodeRuntimeUpdates(
         state: container.state,
         status: container.status,
         mgmtIpv4Address: container.IPv4Address,
-        mgmtIpv6Address: container.IPv6Address,
+        mgmtIpv6Address: container.IPv6Address
       });
     }
   }

@@ -139,7 +139,7 @@ const TEMPLATE_EXCLUDED_FIELDS = new Set([
   "setDefault",
   "baseName",
   "interfacePattern",
-  "oldName",
+  "oldName"
 ]);
 
 /**
@@ -186,7 +186,7 @@ function createNodeData(
     mgmtIpv4Address: "",
     fromCustomTemplate: Boolean(template?.name),
     ...(interfacePattern !== undefined ? { interfacePattern } : {}),
-    ...extractExtraTemplate(template),
+    ...extractExtraTemplate(template)
   };
 
   const type = determineType(kind, template);
@@ -204,7 +204,7 @@ function createNodeData(
     sourceEndpoint: "",
     targetEndpoint: "",
     containerDockerExtraAttribute: { state: "", status: "" },
-    extraData,
+    extraData
   };
 
   applyOptionalNodeStyle(nodeData, template);
@@ -223,14 +223,14 @@ function nodeDataToTopoNode(data: NodeData, position: { x: number; y: number }):
     image: data.extraData.image,
     iconColor: data.iconColor,
     iconCornerRadius: data.iconCornerRadius,
-    extraData: data.extraData,
+    extraData: data.extraData
   };
 
   return {
     id: data.id,
     type: "topology-node",
     position,
-    data: nodeData,
+    data: nodeData
   };
 }
 

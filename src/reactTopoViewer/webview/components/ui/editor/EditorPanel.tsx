@@ -54,7 +54,7 @@ function resolveFooterControlConfig(footer?: EditorPanelFooterConfig): FooterCon
       onApply: () => {},
       onSave: () => {},
       hasChanges: false,
-      onDiscard: undefined,
+      onDiscard: undefined
     };
   }
 
@@ -63,7 +63,7 @@ function resolveFooterControlConfig(footer?: EditorPanelFooterConfig): FooterCon
     onApply: footer.onApply,
     onSave: footer.onSave,
     hasChanges: footer.hasChanges,
-    onDiscard: footer.onDiscard,
+    onDiscard: footer.onDiscard
   };
 }
 
@@ -111,7 +111,7 @@ export function EditorPanel<TProps extends object = Record<string, unknown>>({
   tabProps,
   children,
   readOnly = false,
-  footer,
+  footer
 }: EditorPanelProps<TProps>): React.ReactElement {
   const footerConfig = resolveFooterControlConfig(footer);
 

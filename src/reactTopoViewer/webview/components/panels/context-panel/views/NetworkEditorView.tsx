@@ -7,7 +7,7 @@ import {
   FilterableDropdown,
   Section,
   KeyValueList,
-  PanelSection,
+  PanelSection
 } from "../../../ui/form";
 import { EditorPanel } from "../../../ui/editor/EditorPanel";
 import { useApplySaveHandlers, useFooterControlsRef } from "../../../../hooks/ui";
@@ -21,7 +21,7 @@ import {
   getInterfaceLabel,
   getInterfacePlaceholder,
   showInterfaceField,
-  supportsExtendedProps,
+  supportsExtendedProps
 } from "../../network-editor/types";
 
 export interface NetworkEditorViewProps {
@@ -222,7 +222,7 @@ export const NetworkEditorView: React.FC<NetworkEditorViewProps> = ({
   onSave,
   onApply,
   readOnly = false,
-  onFooterRef,
+  onFooterRef
 }) => {
   const { formData, handleChange, hasChanges, resetInitialData, discardChanges } =
     useNetworkEditorForm(nodeData, readOnly);

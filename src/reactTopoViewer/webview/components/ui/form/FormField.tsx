@@ -25,7 +25,7 @@ export const FormField: React.FC<FormFieldProps> = ({
   unit,
   tooltip,
   required,
-  inherited,
+  inherited
 }) => {
   const hasUnit = unit !== undefined && unit.length > 0;
   const isRequired = required === true;
@@ -41,7 +41,7 @@ export const FormField: React.FC<FormFieldProps> = ({
           sx={{
             fontWeight: (theme) => theme.typography.fontWeightMedium,
             textTransform: "uppercase",
-            letterSpacing: 0.5,
+            letterSpacing: 0.5
           }}
         >
           {label}

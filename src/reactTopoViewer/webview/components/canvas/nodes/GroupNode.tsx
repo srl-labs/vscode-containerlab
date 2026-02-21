@@ -76,7 +76,7 @@ function getLabelPositionStyle(position: string | undefined): React.CSSPropertie
     fontSize: 12,
     fontWeight: 500,
     whiteSpace: "nowrap",
-    padding: "2px 6px",
+    padding: "2px 6px"
   };
 
   switch (position) {
@@ -100,7 +100,7 @@ function getLabelPositionStyle(position: string | undefined): React.CSSPropertie
 function toGroupNodeData(data: NodeProps["data"]): GroupNodeData {
   return {
     ...data,
-    name: typeof data.name === "string" ? data.name : "",
+    name: typeof data.name === "string" ? data.name : ""
   };
 }
 
@@ -149,12 +149,12 @@ const GroupNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     // Use outline for selection - doesn't affect layout
     outline: isSelected ? `2px solid ${SELECTION_COLOR}` : "none",
     outlineOffset: 1,
-    cursor: "move",
+    cursor: "move"
   };
 
   const labelStyle: React.CSSProperties = {
     ...getLabelPositionStyle(labelPosition),
-    color: labelColor,
+    color: labelColor
   };
 
   const displayLabel = nodeData.label ?? nodeData.name;

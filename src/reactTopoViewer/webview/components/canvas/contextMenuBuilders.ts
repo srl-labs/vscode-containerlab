@@ -19,7 +19,7 @@ import {
   Speed as SpeedIcon,
   Terminal as TerminalIcon,
   TextFields as TextFieldsIcon,
-  Tune as TuneIcon,
+  Tune as TuneIcon
 } from "@mui/icons-material";
 
 import type { ContextMenuItem } from "../context-menu/ContextMenu";
@@ -30,7 +30,7 @@ import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   TRAFFIC_RATE_NODE_TYPE,
-  GROUP_NODE_TYPE,
+  GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
 
 import type { ReactFlowCanvasProps } from "./types";
@@ -137,8 +137,8 @@ function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
       onClick: () => {
         editFreeText?.(targetId);
         closeContextMenu();
-      },
-    },
+      }
+    }
   ];
   if (!isLocked) {
     items.push(
@@ -152,7 +152,7 @@ function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
         onClick: () => {
           deleteFreeText?.(targetId);
           closeContextMenu();
-        },
+        }
       }
     );
   }
@@ -174,8 +174,8 @@ function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
       onClick: () => {
         editFreeShape?.(targetId);
         closeContextMenu();
-      },
-    },
+      }
+    }
   ];
   if (!isLocked) {
     items.push(
@@ -189,7 +189,7 @@ function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
         onClick: () => {
           deleteFreeShape?.(targetId);
           closeContextMenu();
-        },
+        }
       }
     );
   }
@@ -211,8 +211,8 @@ function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
       onClick: () => {
         editGroup?.(targetId);
         closeContextMenu();
-      },
-    },
+      }
+    }
   ];
   if (!isLocked) {
     items.push(
@@ -226,7 +226,7 @@ function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
         onClick: () => {
           deleteGroup?.(targetId);
           closeContextMenu();
-        },
+        }
       }
     );
   }
@@ -248,8 +248,8 @@ function buildTrafficRateContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
       onClick: () => {
         editTrafficRate?.(targetId);
         closeContextMenu();
-      },
-    },
+      }
+    }
   ];
 
   if (!isLocked) {
@@ -264,7 +264,7 @@ function buildTrafficRateContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
         onClick: () => {
           deleteTrafficRate?.(targetId);
           closeContextMenu();
-        },
+        }
       }
     );
   }
@@ -282,7 +282,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
       onClick: () => {
         sendCommandToExtension("clab-node-connect-ssh", { nodeName: targetId });
         closeContextMenu();
-      },
+      }
     },
     {
       id: "shell-node",
@@ -291,7 +291,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
       onClick: () => {
         sendCommandToExtension("clab-node-attach-shell", { nodeName: targetId });
         closeContextMenu();
-      },
+      }
     },
     {
       id: "logs-node",
@@ -300,7 +300,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
       onClick: () => {
         sendCommandToExtension("clab-node-view-logs", { nodeName: targetId });
         closeContextMenu();
-      },
+      }
     },
     { id: DIVIDER_ID, label: "", divider: true },
     {
@@ -310,8 +310,8 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
       onClick: () => {
         showNodeInfo?.(targetId);
         closeContextMenu();
-      },
-    },
+      }
+    }
   ];
 }
 
@@ -330,7 +330,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     handleDeleteNode,
     linkSourceNode,
     startLinkCreation,
-    cancelLinkCreation,
+    cancelLinkCreation
   } = ctx;
 
   // Handle annotation nodes with specific menus
@@ -363,7 +363,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
       onClick: () => {
         cancelLinkCreation?.();
         closeContextMenu();
-      },
+      }
     });
     items.push({ id: "divider-link", label: "", divider: true });
   }
@@ -378,7 +378,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
       onClick: () => {
         startLinkCreation?.(targetId);
         closeContextMenu();
-      },
+      }
     });
   }
 
@@ -398,7 +398,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
       }
       editNode(targetId);
       closeContextMenu();
-    },
+    }
   });
 
   items.push({ id: DIVIDER_ID, label: "", divider: true });
@@ -408,7 +408,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     icon: React.createElement(DeleteIcon, { fontSize: "small" }),
     disabled: isLocked,
     danger: true,
-    onClick: () => handleDeleteNode(targetId),
+    onClick: () => handleDeleteNode(targetId)
   });
 
   return items;
@@ -431,7 +431,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
     editEdge,
     handleDeleteEdge,
     showLinkInfo,
-    showLinkImpairment,
+    showLinkImpairment
   } = ctx;
 
   // Build capture items for each endpoint
@@ -446,10 +446,10 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
       onClick: () => {
         sendCommandToExtension("clab-interface-capture", {
           nodeName: srcName,
-          interfaceName: sourceEndpoint,
+          interfaceName: sourceEndpoint
         });
         closeContextMenu();
-      },
+      }
     });
   }
   if (isNonEmptyString(dstName) && isNonEmptyString(targetEndpoint)) {
@@ -460,10 +460,10 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
       onClick: () => {
         sendCommandToExtension("clab-interface-capture", {
           nodeName: dstName,
-          interfaceName: targetEndpoint,
+          interfaceName: targetEndpoint
         });
         closeContextMenu();
-      },
+      }
     });
   }
 
@@ -474,7 +474,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
     onClick: () => {
       showLinkImpairment?.(targetId);
       closeContextMenu();
-    },
+    }
   };
   const linkInfoItem: ContextMenuItem = {
     id: "info-edge",
@@ -483,7 +483,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
     onClick: () => {
       showLinkInfo?.(targetId);
       closeContextMenu();
-    },
+    }
   };
   if (!isEditMode) {
     return [
@@ -491,7 +491,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
       ...(captureItems.length > 0 ? [{ id: "divider-capture", label: "", divider: true }] : []),
       impairmentItem,
       { id: "divider-info", label: "", divider: true },
-      linkInfoItem,
+      linkInfoItem
     ];
   }
   return [
@@ -503,7 +503,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
       onClick: () => {
         editEdge(targetId);
         closeContextMenu();
-      },
+      }
     },
     { id: DIVIDER_ID, label: "", divider: true },
     {
@@ -512,8 +512,8 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
       icon: React.createElement(DeleteIcon, { fontSize: "small" }),
       disabled: isLocked,
       danger: true,
-      onClick: () => handleDeleteEdge(targetId),
-    },
+      onClick: () => handleDeleteEdge(targetId)
+    }
   ];
 }
 
@@ -534,7 +534,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     onAddShapes,
     onAddShapeAtPosition,
     onAddTrafficRateAtPosition,
-    menuPosition,
+    menuPosition
   } = ctx;
   const items: ContextMenuItem[] = [];
 
@@ -552,7 +552,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
             onAddDefaultNode(flowPosition);
           }
           closeContextMenu();
-        },
+        }
       },
       { id: "divider-additions", label: "", divider: true }
     );
@@ -578,7 +578,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
       onClick: () => {
         onAddGroup();
         closeContextMenu();
-      },
+      }
     });
   }
   if (onAddText || onAddTextAtPosition) {
@@ -595,7 +595,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
           onAddText?.();
         }
         closeContextMenu();
-      },
+      }
     });
   }
 
@@ -619,7 +619,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
               onAddShapes?.("rectangle");
             }
             closeContextMenu();
-          },
+          }
         },
         {
           id: "add-shape-circle",
@@ -634,7 +634,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
               onAddShapes?.("circle");
             }
             closeContextMenu();
-          },
+          }
         },
         {
           id: "add-shape-line",
@@ -649,9 +649,9 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
               onAddShapes?.("line");
             }
             closeContextMenu();
-          },
-        },
-      ],
+          }
+        }
+      ]
     });
   }
   if (onAddTrafficRateAtPosition) {
@@ -666,7 +666,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
           onAddTrafficRateAtPosition(flowPosition);
         }
         closeContextMenu();
-      },
+      }
     });
   }
   if (editorItems.length > 0) {
@@ -680,7 +680,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     onClick: () => {
       onOpenNodePalette?.();
       closeContextMenu();
-    },
+    }
   };
   if (items.length > 0) {
     items.push({ id: "divider-palette", label: "", divider: true });

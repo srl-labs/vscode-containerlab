@@ -145,7 +145,7 @@ const NODE_YAML_PROPERTIES = [
   "image-pull-policy",
   "runtime",
   "components",
-  "stages",
+  "stages"
 ] as const;
 
 /**
@@ -400,8 +400,8 @@ function findNodeForEdit(
       nodeMap: null,
       earlyResult: {
         success: false,
-        error: `Cannot rename: source node "${originalId}" not found`,
-      },
+        error: `Cannot rename: source node "${originalId}" not found`
+      }
     };
   }
 

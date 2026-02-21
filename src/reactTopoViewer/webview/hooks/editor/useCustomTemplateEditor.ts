@@ -7,7 +7,7 @@ import type { CustomTemplateEditorData, NodeEditorData } from "../../../shared/t
 import {
   convertCustomTemplateToEditorData,
   convertEditorDataToSaveData,
-  convertEditorDataToTemplateData,
+  convertEditorDataToTemplateData
 } from "../../../shared/utilities/customNodeConversions";
 import { sendSaveCustomNode } from "../../messaging/extensionMessaging";
 
@@ -53,7 +53,7 @@ export function useCustomTemplateEditor(
         // This prevents the form from resetting when custom-nodes-updated triggers a re-render
         const updatedTemplate = convertEditorDataToTemplateData(data, editingCustomTemplate);
         editCustomTemplate(updatedTemplate);
-      },
+      }
     }),
     [editingCustomTemplate, editCustomTemplate]
   );

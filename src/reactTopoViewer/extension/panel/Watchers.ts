@@ -158,7 +158,7 @@ export class WatcherManager {
     this.dockerImagesSubscription = onDockerImagesUpdated((images) => {
       panel.webview.postMessage({
         type: "docker-images-updated",
-        dockerImages: images,
+        dockerImages: images
       });
       log.info(`[ReactTopoViewer] Docker images updated, found ${images.length} images`);
     });

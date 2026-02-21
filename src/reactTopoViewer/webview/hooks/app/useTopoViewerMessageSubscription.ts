@@ -18,7 +18,7 @@ import type { CustomIconInfo } from "../../../shared/types/icons";
 import {
   subscribeToWebviewMessages,
   type TypedMessageEvent,
-  type WebviewMessageBase,
+  type WebviewMessageBase
 } from "../../messaging/webviewMessageBus";
 import { useCanvasStore } from "../../stores/canvasStore";
 import { useTopoViewerStore, type DeploymentState } from "../../stores/topoViewerStore";
@@ -171,7 +171,7 @@ const MESSAGE_HANDLERS: Partial<Record<string, (message: WebviewMessageBase) => 
   "lab-lifecycle-status": handleLabLifecycleStatus,
   "fit-viewport": () => {
     handleFitViewport();
-  },
+  }
 };
 
 // ============================================================================

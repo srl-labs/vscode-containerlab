@@ -33,7 +33,7 @@ function parseGitHubSearchResponse(value: unknown): GitHubSearchResponse {
       name: typeof item.name === "string" ? item.name : "",
       html_url: typeof item.html_url === "string" ? item.html_url : "",
       description: typeof item.description === "string" ? item.description : "",
-      stargazers_count: typeof item.stargazers_count === "number" ? item.stargazers_count : 0,
+      stargazers_count: typeof item.stargazers_count === "number" ? item.stargazers_count : 0
     }))
     .filter((repo) => repo.name.length > 0 && repo.html_url.length > 0);
   return { items: parsedItems };
@@ -44,32 +44,32 @@ export const fallbackRepos: PopularRepo[] = [
     name: "srl-telemetry-lab",
     html_url: "https://github.com/srl-labs/srl-telemetry-lab",
     description: "A lab demonstrating the telemetry stack with SR Linux.",
-    stargazers_count: 85,
+    stargazers_count: 85
   },
   {
     name: "netbox-nrx-clab",
     html_url: "https://github.com/srl-labs/netbox-nrx-clab",
     description: "NetBox NRX Containerlab integration, enabling network automation use cases.",
-    stargazers_count: 65,
+    stargazers_count: 65
   },
   {
     name: "sros-anysec-macsec-lab",
     html_url: "https://github.com/srl-labs/sros-anysec-macsec-lab",
     description: "SR OS Anysec & MACsec lab with containerlab.",
-    stargazers_count: 42,
+    stargazers_count: 42
   },
   {
     name: "intent-based-ansible-lab",
     html_url: "https://github.com/srl-labs/intent-based-ansible-lab",
     description: "Intent-based networking lab with Ansible and SR Linux.",
-    stargazers_count: 38,
+    stargazers_count: 38
   },
   {
     name: "multivendor-evpn-lab",
     html_url: "https://github.com/srl-labs/multivendor-evpn-lab",
     description: "Multivendor EVPN lab with Nokia, Arista, and Cisco network operating systems.",
-    stargazers_count: 78,
-  },
+    stargazers_count: 78
+  }
 ];
 
 export function fetchPopularRepos(): Promise<PopularRepo[]> {
@@ -82,8 +82,8 @@ export function fetchPopularRepos(): Promise<PopularRepo[]> {
       {
         headers: {
           "User-Agent": "VSCode-Containerlab-Extension",
-          Accept: "application/vnd.github.v3+json",
-        },
+          Accept: "application/vnd.github.v3+json"
+        }
       },
       (res) => {
         let data = "";
@@ -128,7 +128,7 @@ export async function pickPopularRepo(
     label: r.name,
     description: r.description,
     detail: `⭐ ${r.stargazers_count}`,
-    repo: r.html_url,
+    repo: r.html_url
   }));
   return vscode.window.showQuickPick(items, { title, placeHolder });
 }

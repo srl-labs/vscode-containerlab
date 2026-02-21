@@ -98,7 +98,7 @@ export async function saveNetworkNodesFromGraph(nodes?: Node[]): Promise<void> {
     const annotations = buildNetworkNodeAnnotations(graphNodes);
     await executeTopologyCommand({
       command: "setAnnotations",
-      payload: { networkNodeAnnotations: annotations },
+      payload: { networkNodeAnnotations: annotations }
     });
   } catch (err) {
     console.error(`${WARN_COMMAND_FAILED}: setAnnotations(networkNodeAnnotations)`, err);
@@ -157,8 +157,8 @@ export async function saveNodePositionsWithAnnotations(
         command: "savePositionsAndAnnotations",
         payload: {
           positions,
-          annotations: buildAnnotationNodesPayload(nodes),
-        },
+          annotations: buildAnnotationNodesPayload(nodes)
+        }
       },
       { applySnapshot: false }
     );
@@ -188,10 +188,10 @@ export async function saveNodePositionsWithMemberships(
             { command: "savePositions", payload: positions },
             {
               command: "setNodeGroupMemberships",
-              payload: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId })),
-            },
-          ],
-        },
+              payload: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId }))
+            }
+          ]
+        }
       },
       { applySnapshot: false }
     );

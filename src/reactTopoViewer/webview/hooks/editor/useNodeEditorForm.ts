@@ -23,7 +23,7 @@ export const YAML_TO_EDITOR_MAP: Partial<Record<string, keyof NodeEditorData>> =
   "cpu-set": "cpuSet",
   "shm-size": "shmSize",
   "cap-add": "capAdd",
-  "image-pull-policy": "imagePullPolicy",
+  "image-pull-policy": "imagePullPolicy"
 };
 
 export function hasFieldChanged(
@@ -111,6 +111,6 @@ export function useNodeEditorForm(
     hasChanges,
     resetAfterApply,
     discardChanges,
-    originalData,
+    originalData
   };
 }

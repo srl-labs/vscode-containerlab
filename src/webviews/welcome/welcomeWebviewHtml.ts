@@ -17,6 +17,6 @@ export function getWelcomeWebviewHtml(
     scriptFile: "welcomePageWebview.js",
     title: "Welcome to Containerlab",
     initialData,
-    webviewKind: "containerlab-welcome",
+    webviewKind: "containerlab-welcome"
   });
 }

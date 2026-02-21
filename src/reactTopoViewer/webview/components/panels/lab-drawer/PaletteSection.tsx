@@ -21,7 +21,7 @@ import {
   Speed as SpeedIcon,
   Star as StarIcon,
   StarOutline as StarOutlineIcon,
-  TextFields as TextFieldsIcon,
+  TextFields as TextFieldsIcon
 } from "@mui/icons-material";
 import {
   Box,
@@ -32,7 +32,7 @@ import {
   InputAdornment,
   TextField,
   Tooltip,
-  Typography,
+  Typography
 } from "@mui/material";
 
 import type { CustomNodeTemplate } from "../../../../shared/types/editors";
@@ -41,7 +41,7 @@ import { generateEncodedSVG, type NodeType } from "../../../icons/SvgGenerator";
 import {
   useCustomIcons,
   useCustomNodes,
-  useTopoViewerStore,
+  useTopoViewerStore
 } from "../../../stores/topoViewerStore";
 import { buildCustomIconMap } from "../../../utils/iconUtils";
 import type { TabDefinition } from "../../ui/editor";
@@ -82,7 +82,7 @@ const NETWORK_TYPE_DEFINITIONS: readonly NetworkTypeDefinition[] = [
   { type: "vxlan-stitch", label: "VXLAN Stitch", icon: <CableIcon fontSize="small" /> },
   { type: "dummy", label: "Dummy", icon: <PowerIcon fontSize="small" /> },
   { type: "bridge", label: "Bridge", icon: <AccountTreeIcon fontSize="small" /> },
-  { type: "ovs-bridge", label: "OVS Bridge", icon: <HubIcon fontSize="small" /> },
+  { type: "ovs-bridge", label: "OVS Bridge", icon: <HubIcon fontSize="small" /> }
 ];
 
 const VALID_NODE_TYPES: Record<NodeType, true> = {
@@ -99,7 +99,7 @@ const VALID_NODE_TYPES: Record<NodeType, true> = {
   ue: true,
   cloud: true,
   client: true,
-  bridge: true,
+  bridge: true
 };
 
 function isNodeType(value: string): value is NodeType {
@@ -179,7 +179,7 @@ const PaletteDraggableCard: React.FC<{
         alignItems: "center",
         gap: 1,
         "&:hover": { bgcolor: ACTION_HOVER_BG },
-        "&:active": { cursor: "grabbing" },
+        "&:active": { cursor: "grabbing" }
       }}
     >
       {children}
@@ -189,7 +189,7 @@ const PaletteDraggableCard: React.FC<{
 
 const SectionHeader: React.FC<{ title: string; action?: React.ReactNode }> = ({
   title,
-  action,
+  action
 }) => (
   <>
     <Divider />
@@ -223,7 +223,7 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
   isDefault,
   onEdit,
   onDelete,
-  onSetDefault,
+  onSetDefault
 }) => {
   const isDefaultNode = isDefault === true;
   const onDragStart = useCallback(
@@ -232,7 +232,7 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
         REACTFLOW_NODE_MIME_TYPE,
         JSON.stringify({
           type: "node",
-          templateName: template.name,
+          templateName: template.name
         })
       );
       event.dataTransfer.effectAllowed = "move";
@@ -321,7 +321,7 @@ const PaletteSimpleDraggable: React.FC<PaletteSimpleDraggableProps> = ({
   dragPayload,
   icon,
   label,
-  subtitle,
+  subtitle
 }) => {
   const onDragStart = useCallback(
     (event: React.DragEvent) => {
@@ -363,7 +363,7 @@ const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({
   label,
   kind,
   icon,
-  payload,
+  payload
 }) => (
   <PaletteSimpleDraggable
     dragPayload={{ type: "annotation", ...payload }}
@@ -379,7 +379,7 @@ export const PALETTE_TABS: TabDefinition[] = [
   { id: "nodes", label: "Nodes" },
   { id: "annotations", label: "Annotations" },
   { id: "yaml", label: "YAML" },
-  { id: "json", label: "JSON" },
+  { id: "json", label: "JSON" }
 ];
 
 /* eslint-disable complexity */
@@ -397,7 +397,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   onEditTabLeave,
   infoTabContent,
   showInfoTab = false,
-  infoTabTitle,
+  infoTabTitle
 }) => {
   const customNodes = useCustomNodes();
   const customIcons = useCustomIcons();
@@ -537,7 +537,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
     try {
       await executeTopologyCommand({
         command: "setAnnotationsContent",
-        payload: { content: annotationsDraft },
+        payload: { content: annotationsDraft }
       });
       setAnnotationsDirty(false);
       setAnnotationsError(null);
@@ -555,7 +555,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
           justifyContent: "space-between",
           px: 2,
           height: 40,
-          flexShrink: 0,
+          flexShrink: 0
         }}
       >
         <Typography
@@ -610,7 +610,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
           {activeTab === "nodes" && (
             <Box
               sx={{
-                ...(isLocked || isViewMode ? { pointerEvents: "none", opacity: 0.6 } : undefined),
+                ...(isLocked || isViewMode ? { pointerEvents: "none", opacity: 0.6 } : undefined)
               }}
             >
               <Box sx={{ p: 2 }}>
@@ -633,8 +633,8 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
                             <ClearIcon fontSize="small" />
                           </IconButton>
                         </InputAdornment>
-                      ) : undefined,
-                    },
+                      ) : undefined
+                    }
                   }}
                 />
               </Box>

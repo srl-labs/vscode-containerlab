@@ -263,5 +263,5 @@ export const ROLE_SVG_MAP: Record<string, string> = {
   bridge: "bridge",
   ue: "ue",
   cloud: "cloud",
-  client: "client",
+  client: "client"
 };

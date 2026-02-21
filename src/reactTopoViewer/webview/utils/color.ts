@@ -140,6 +140,6 @@ export function normalizeShapeAnnotationColors(
     fillOpacity,
     borderColor: hasBorderColor
       ? normalizeHexColor(annotation.borderColor, "#000000")
-      : annotation.borderColor,
+      : annotation.borderColor
   };
 }

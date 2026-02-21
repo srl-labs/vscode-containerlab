@@ -220,7 +220,7 @@ export function useLayoutControls(canvasRef: React.RefObject<CanvasRef | null>):
     setGridColor,
     gridBgColor,
     setGridBgColor,
-    resetGridColors,
+    resetGridColors
   };
 }
 
@@ -319,6 +319,6 @@ export function useContextMenuHandlers(callbacks: SelectionCallbacks): ContextMe
     handleShowNodeProperties,
     handleShowLinkProperties,
     handleCloseNodePanel,
-    handleCloseLinkPanel,
+    handleCloseLinkPanel
   };
 }

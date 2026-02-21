@@ -13,7 +13,7 @@ export const InheritanceBadge: React.FC = () => (
     variant="outlined"
     sx={{
       ml: 1,
-      height: 18,
+      height: 18
     }}
   />
 );
@@ -29,7 +29,7 @@ export const ReadOnlyBadge: React.FC<{ children: React.ReactNode }> = ({ childre
       px: 1,
       py: 0.5,
       borderRadius: 0.5,
-      bgcolor: "action.hover",
+      bgcolor: "action.hover"
     }}
   >
     {children}

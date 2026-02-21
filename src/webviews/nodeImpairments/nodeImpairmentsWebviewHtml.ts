@@ -15,6 +15,6 @@ export function getNodeImpairmentsWebviewHtml(
     scriptFile: "nodeImpairmentsWebview.js",
     title: `Manage Link Impairments for ${initialData.nodeName}`,
     initialData,
-    webviewKind: "containerlab-node-impairments",
+    webviewKind: "containerlab-node-impairments"
   });
 }

@@ -35,8 +35,8 @@ export function createPanel(config: PanelConfig): vscode.WebviewPanel {
     retainContextWhenHidden: true,
     localResourceRoots: [
       vscode.Uri.joinPath(config.extensionUri, "dist"),
-      vscode.Uri.joinPath(config.extensionUri, "resources"),
-    ],
+      vscode.Uri.joinPath(config.extensionUri, "resources")
+    ]
   };
 
   const panel = vscode.window.createWebviewPanel(

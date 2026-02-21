@@ -10,14 +10,14 @@ import {
   favoriteLabs,
   sshxSessions,
   gottySessions,
-  outputChannel,
+  outputChannel
 } from "../globals";
 import { refreshSshxSessions, refreshGottySessions } from "../services/sessionRefresh";
 import { getCurrentTopoViewer } from "../commands/graph";
 import type {
   ClabInterfaceSnapshot,
   ClabInterfaceSnapshotEntry,
-  ClabInterfaceStats,
+  ClabInterfaceStats
 } from "../types/containerlab";
 
 import * as ins from "./inspector";
@@ -511,7 +511,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     return {
       labChanged,
       branchStructureChanged,
-      containersToRefresh: Array.from(containersToRefresh),
+      containersToRefresh: Array.from(containersToRefresh)
     };
   }
 
@@ -539,7 +539,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
     return {
       containersToRefresh: Array.from(state.containersToRefresh),
-      branchStructureChanged: state.branchStructureChanged,
+      branchStructureChanged: state.branchStructureChanged
     };
   }
 
@@ -565,7 +565,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     return {
       orderedEntries: [],
       containersToRefresh: new Set<c.ClabContainerTreeNode>(),
-      branchStructureChanged: false,
+      branchStructureChanged: false
     };
   }
 
@@ -667,7 +667,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
     return {
       changed,
-      containersToRefresh: Array.from(containersToRefresh),
+      containersToRefresh: Array.from(containersToRefresh)
     };
   }
 
@@ -694,7 +694,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         ["v4Address", source.v4Address],
         ["v6Address", source.v6Address],
         ["nodeType", source.nodeType],
-        ["nodeGroup", source.nodeGroup],
+        ["nodeGroup", source.nodeGroup]
       ])
     ) {
       changed = true;
@@ -784,7 +784,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         ["alias", source.alias],
         ["mac", source.mac],
         ["mtu", source.mtu],
-        ["ifIndex", source.ifIndex],
+        ["ifIndex", source.ifIndex]
       ])
     ) {
       changed = true;
@@ -971,7 +971,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
           node_group: container.Labels["clab-node-group"] ?? undefined,
           root_node_name: container.Labels["clab-root-node-name"] ?? undefined,
           network_name: container.NetworkName ?? undefined,
-          startedAt: container.StartedAt,
+          startedAt: container.StartedAt
         };
       });
     }
@@ -1143,7 +1143,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     const label = `${container.lab_name} (${container.owner})`;
     const labPathObj: c.LabPath = {
       absolute: normPath,
-      relative: utils.getRelativeFolderPath(normPath),
+      relative: utils.getRelativeFolderPath(normPath)
     };
     const containersForThisLab = allContainers.filter(
       (c: c.ClabJSON) => (c.absLabPath ?? utils.normalizeLabPath(c.labPath)) === normPath
@@ -1258,7 +1258,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
       `Kind: ${container.kind}`,
       `Type: ${container.node_type ?? "Unknown"}`,
       `Image: ${container.image}`,
-      `ID: ${container.container_id}`,
+      `ID: ${container.container_id}`
     ];
 
     if (container.node_group !== undefined && container.node_group.trim() !== "") {
@@ -1377,7 +1377,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     for (const [rootName, children] of groups) {
       const labPath: c.LabPath = {
         absolute: absLabPath,
-        relative: utils.getRelLabFolderPath(absLabPath),
+        relative: utils.getRelLabFolderPath(absLabPath)
       };
       const groupNode = new c.ClabContainerGroupTreeNode(rootName, labPath, children);
 
@@ -1455,7 +1455,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         `State: ${intf.state}`,
         `Type: ${intf.type}`,
         `MAC: ${intf.mac}`,
-        `MTU: ${intf.mtu}`,
+        `MTU: ${intf.mtu}`
       ];
 
       let label: string = intf.name;
@@ -1493,7 +1493,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         jitter: intf.netemJitter,
         loss: intf.netemLoss,
         rate: intf.netemRate,
-        corruption: intf.netemCorruption,
+        corruption: intf.netemCorruption
       };
 
       const node = new c.ClabInterfaceTreeNode(

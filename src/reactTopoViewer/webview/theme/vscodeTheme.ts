@@ -14,7 +14,7 @@ const EXPLORER_FONT_FAMILY =
 const EXPLORER_FONT_SIZE = "var(--vscode-font-size, 13px)";
 const EXPLORER_SCOPE_SELECTORS = [
   "body[data-webview-kind='containerlab-explorer']",
-  ".containerlab-explorer-root",
+  ".containerlab-explorer-root"
 ] as const;
 
 const explorerScopedSelector = (suffix: string) =>
@@ -24,7 +24,7 @@ const buildPaletteColor = (main: string, contrastText: string) => ({
   main,
   dark: main,
   light: main,
-  contrastText,
+  contrastText
 });
 
 // Palette — single source of truth for all colors.
@@ -33,12 +33,12 @@ export const vscodePalette = {
   divider: "var(--vscode-panel-border)",
   background: {
     default: "var(--vscode-editor-background)",
-    paper: "var(--vscode-sideBar-background)",
+    paper: "var(--vscode-sideBar-background)"
   },
   text: {
     primary: "var(--vscode-foreground)",
     secondary: "var(--vscode-descriptionForeground)",
-    disabled: "var(--vscode-disabledForeground)",
+    disabled: "var(--vscode-disabledForeground)"
   },
   primary: buildPaletteColor(BUTTON_BACKGROUND, "var(--vscode-button-foreground)"),
   secondary: buildPaletteColor(
@@ -61,8 +61,8 @@ export const vscodePalette = {
     selected: "var(--vscode-list-inactiveSelectionBackground)",
     disabled: "var(--vscode-disabledForeground)",
     disabledBackground: "var(--vscode-input-background)",
-    focus: FOCUS_BORDER,
-  },
+    focus: FOCUS_BORDER
+  }
 } as const;
 
 // Component overrides
@@ -80,58 +80,58 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
         "--topoviewer-edge-label-background": vscodePalette.background.default,
         "--topoviewer-edge-label-foreground": vscodePalette.text.primary,
         "--topoviewer-edge-label-outline": vscodePalette.background.default,
-        "--topoviewer-network-node-background": vscodePalette.background.paper,
+        "--topoviewer-network-node-background": vscodePalette.background.paper
       },
       "*::-webkit-scrollbar": { width: 8, height: 8 },
       "*::-webkit-scrollbar-track": { background: "transparent" },
       "*::-webkit-scrollbar-thumb": { borderRadius: 4 },
       "*::-webkit-scrollbar-corner": { background: "transparent" },
       [explorerScopedSelector("")]: {
-        fontFamily: EXPLORER_FONT_FAMILY,
+        fontFamily: EXPLORER_FONT_FAMILY
       },
       [explorerScopedSelector(" .MuiTypography-root")]: {
-        fontFamily: EXPLORER_FONT_FAMILY,
+        fontFamily: EXPLORER_FONT_FAMILY
       },
       [explorerScopedSelector(" .MuiInputBase-root")]: {
-        fontFamily: EXPLORER_FONT_FAMILY,
+        fontFamily: EXPLORER_FONT_FAMILY
       },
       [explorerScopedSelector(" .MuiInputBase-input")]: {
         fontFamily: EXPLORER_FONT_FAMILY,
-        fontSize: EXPLORER_FONT_SIZE,
+        fontSize: EXPLORER_FONT_SIZE
       },
       [explorerScopedSelector(" .explorer-node-label")]: {
         fontSize: EXPLORER_FONT_SIZE,
         fontWeight: 400,
-        lineHeight: 1.2,
+        lineHeight: 1.2
       },
       [explorerScopedSelector(" .explorer-node-inline-icon")]: {
         fontSize: "13px",
-        flex: "0 0 auto",
+        flex: "0 0 auto"
       },
       [explorerScopedSelector(" .explorer-node-inline-icon-button")]: {
         width: 16,
         height: 16,
         padding: 0,
-        color: "inherit",
+        color: "inherit"
       },
       [explorerScopedSelector(" .explorer-node-inline-icon-favorite")]: {
-        color: "var(--vscode-charts-yellow, var(--vscode-editorWarning-foreground))",
+        color: "var(--vscode-charts-yellow, var(--vscode-editorWarning-foreground))"
       },
       [explorerScopedSelector(" .explorer-node-inline-icon-shared")]: {
-        color: "var(--vscode-icon-foreground, var(--vscode-foreground))",
+        color: "var(--vscode-icon-foreground, var(--vscode-foreground))"
       },
       [explorerScopedSelector(" .explorer-section-title")]: {
         fontSize: EXPLORER_FONT_SIZE,
         fontWeight: 500,
-        lineHeight: 1.2,
+        lineHeight: 1.2
       },
       "@keyframes shortcutFade": {
         "0%": { opacity: 0, transform: "translateY(8px) scale(0.95)" },
         "15%": { opacity: 1, transform: "translateY(0) scale(1)" },
         "85%": { opacity: 1, transform: "translateY(0) scale(1)" },
-        "100%": { opacity: 0, transform: "translateY(-4px) scale(0.98)" },
-      },
-    },
+        "100%": { opacity: 0, transform: "translateY(-4px) scale(0.98)" }
+      }
+    }
   },
   MuiButton: { defaultProps: { disableElevation: true, variant: "contained" } },
   MuiTabs: { styleOverrides: { root: { minHeight: 36 } } },
@@ -139,41 +139,41 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
   MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } },
   MuiAppBar: {
     styleOverrides: {
-      root: { backgroundColor: vscodePalette.background.paper, color: vscodePalette.text.primary },
-    },
+      root: { backgroundColor: vscodePalette.background.paper, color: vscodePalette.text.primary }
+    }
   },
   MuiDrawer: {
     styleOverrides: {
-      paper: { backgroundColor: vscodePalette.background.paper, color: vscodePalette.text.primary },
-    },
+      paper: { backgroundColor: vscodePalette.background.paper, color: vscodePalette.text.primary }
+    }
   },
   MuiInputBase: {
     styleOverrides: {
       root: {
-        color: "var(--vscode-input-foreground)",
-      },
-    },
+        color: "var(--vscode-input-foreground)"
+      }
+    }
   },
   MuiOutlinedInput: {
     defaultProps: {
-      notched: true,
+      notched: true
     },
     styleOverrides: {
       root: {
         "&:hover .MuiOutlinedInput-notchedOutline": {
-          borderColor: FOCUS_BORDER,
+          borderColor: FOCUS_BORDER
         },
         "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-          borderColor: FOCUS_BORDER,
-        },
+          borderColor: FOCUS_BORDER
+        }
       },
       notchedOutline: {
-        borderColor: "var(--vscode-input-border)",
-      },
-    },
+        borderColor: "var(--vscode-input-border)"
+      }
+    }
   },
   MuiInputLabel: {
-    defaultProps: { shrink: true },
+    defaultProps: { shrink: true }
   },
   MuiTextField: { defaultProps: { size: "small", variant: "outlined" } },
   MuiSelect: { defaultProps: { size: "small" } },
@@ -182,32 +182,32 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
       paper: {
         backgroundColor: vscodePalette.background.paper,
         color: vscodePalette.text.primary,
-        border: `1px solid ${vscodePalette.divider}`,
-      },
-    },
+        border: `1px solid ${vscodePalette.divider}`
+      }
+    }
   },
   MuiPopover: {
     styleOverrides: {
       paper: {
         backgroundColor: vscodePalette.background.paper,
         color: vscodePalette.text.primary,
-        border: `1px solid ${vscodePalette.divider}`,
-      },
-    },
+        border: `1px solid ${vscodePalette.divider}`
+      }
+    }
   },
   MuiDialog: {
     styleOverrides: {
       paper: {
         backgroundColor: vscodePalette.background.paper,
         color: vscodePalette.text.primary,
-        border: `1px solid ${vscodePalette.divider}`,
-      },
+        border: `1px solid ${vscodePalette.divider}`
+      }
     },
     defaultProps: {
-      slotProps: { backdrop: { sx: { backgroundColor: "rgba(0, 0, 0, 0.5)" } } },
-    },
+      slotProps: { backdrop: { sx: { backgroundColor: "rgba(0, 0, 0, 0.5)" } } }
+    }
   },
-  MuiBackdrop: { styleOverrides: { root: { backgroundColor: "transparent" } } },
+  MuiBackdrop: { styleOverrides: { root: { backgroundColor: "transparent" } } }
 };
 
 // Theme instance
@@ -215,10 +215,10 @@ const baseTheme = createTheme({
   palette: { ...vscodePalette },
   typography: {
     fontFamily: "'Roboto', sans-serif",
-    overline: { fontWeight: 500, letterSpacing: "0.5px" },
+    overline: { fontWeight: 500, letterSpacing: "0.5px" }
   },
   shape: { borderRadius: 4 },
-  components: structuralOverrides,
+  components: structuralOverrides
 });
 
 // Patch MUI color utils — default implementations crash on CSS var() strings.

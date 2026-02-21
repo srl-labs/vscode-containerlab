@@ -2,7 +2,7 @@
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
-  GroupStyleAnnotation,
+  GroupStyleAnnotation
 } from "../../../../shared/types/topology";
 import {
   DEFAULT_FILL_COLOR,
@@ -11,7 +11,7 @@ import {
   DEFAULT_BORDER_WIDTH,
   DEFAULT_BORDER_STYLE,
   DEFAULT_ARROW_SIZE,
-  DEFAULT_LINE_LENGTH,
+  DEFAULT_LINE_LENGTH
 } from "../../../annotations/constants";
 import { applyAlphaToColor } from "../../../utils/color";
 import { renderMarkdown } from "../../../utils/markdownRenderer";
@@ -76,7 +76,7 @@ function getShapeStyle(shape: FreeShapeAnnotation): ShapeStyle {
     ),
     strokeColor: shape.borderColor ?? DEFAULT_BORDER_COLOR,
     strokeWidth: shape.borderWidth ?? DEFAULT_BORDER_WIDTH,
-    dashArray: getBorderDashArray(shape.borderStyle ?? DEFAULT_BORDER_STYLE),
+    dashArray: getBorderDashArray(shape.borderStyle ?? DEFAULT_BORDER_STYLE)
   };
 }
 
@@ -132,7 +132,7 @@ function calculateLabelPosition(
     "top-right": { x: x + width - sideOffset, y: y - topOffset + labelFontSize, textAnchor: "end" },
     "bottom-left": { x: x + sideOffset, y: y + height + topOffset, textAnchor: "start" },
     "bottom-center": { x: x + width / 2, y: y + height + topOffset, textAnchor: "middle" },
-    "bottom-right": { x: x + width - sideOffset, y: y + height + topOffset, textAnchor: "end" },
+    "bottom-right": { x: x + width - sideOffset, y: y + height + topOffset, textAnchor: "end" }
   };
 
   return positions[labelPosition] ?? positions["top-left"];
@@ -354,7 +354,7 @@ function getTextStyle(text: FreeTextAnnotation): TextStyle {
     fontFamily: text.fontFamily ?? "inherit", // Match FreeTextNode default
     backgroundColor: text.backgroundColor ?? "transparent",
     borderRadius: text.roundedBackground === true ? 4 : 0,
-    padding: 4, // Base padding; increases to 8px horizontal when backgroundColor set
+    padding: 4 // Base padding; increases to 8px horizontal when backgroundColor set
   };
 }
 
@@ -584,7 +584,7 @@ function getCenterBasedBounds(cx: number, cy: number, w: number, h: number) {
     x1: cx - halfW,
     y1: cy - halfH,
     x2: cx + halfW,
-    y2: cy + halfH,
+    y2: cy + halfH
   };
 }
 

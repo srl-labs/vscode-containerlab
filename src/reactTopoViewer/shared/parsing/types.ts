@@ -9,7 +9,7 @@ import type {
   ParsedElement,
   TopologyAnnotations,
   NodeAnnotation,
-  InterfaceStatsPayload,
+  InterfaceStatsPayload
 } from "../types/topology";
 import type { TopologyData } from "../types/graph";
 
@@ -209,7 +209,7 @@ export const nullLogger: ParserLogger = {
   info: () => {},
   warn: () => {},
   debug: () => {},
-  error: () => {},
+  error: () => {}
 };
 
 // ============================================================================
@@ -368,7 +368,7 @@ export const ROUTER_KINDS = new Set([
   "frr",
   "gobgp",
   "bird",
-  "openbgpd",
+  "openbgpd"
 ]);
 
 /**

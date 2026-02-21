@@ -20,7 +20,7 @@ export type {
   TopologyRFEdge,
   AnnotationModeState,
   AnnotationHandlers,
-  MovePositionEntry,
+  MovePositionEntry
 } from "./types";
 export { SELECTION_COLOR, DEFAULT_ICON_COLOR, ROLE_SVG_MAP } from "./types";
 

@@ -34,7 +34,7 @@ const EMPTY_HELPER_LINES: HelperLinePositions = {
   horizontal: null,
   vertical: null,
   horizontalMidpoint: null,
-  verticalMidpoint: null,
+  verticalMidpoint: null
 };
 
 function areHelperLinesEqual(left: HelperLinePositions, right: HelperLinePositions): boolean {
@@ -50,7 +50,7 @@ function areHelperLinesEqual(left: HelperLinePositions, right: HelperLinePositio
 function getNodeDimensions(node: Node): { width: number; height: number } {
   return {
     width: node.measured?.width ?? node.width ?? 40,
-    height: node.measured?.height ?? node.height ?? 40,
+    height: node.measured?.height ?? node.height ?? 40
   };
 }
 
@@ -63,7 +63,7 @@ function getNodeEdges(node: Node) {
     bottom: node.position.y + height,
     left: node.position.x,
     centerX: node.position.x + width / 2,
-    centerY: node.position.y + height / 2,
+    centerY: node.position.y + height / 2
   };
 }
 
@@ -96,7 +96,7 @@ function findClosestAxisAlignment(
   return {
     line: bestDistance <= threshold ? bestLine : null,
     snap: bestDistance <= threshold ? bestSnap : null,
-    distance: bestDistance,
+    distance: bestDistance
   };
 }
 
@@ -151,7 +151,7 @@ function computeMidpointAlignments(
     snapX: closestMidpointXDist <= threshold ? midpointSnapX : null,
     snapY: closestMidpointYDist <= threshold ? midpointSnapY : null,
     distanceX: closestMidpointXDist,
-    distanceY: closestMidpointYDist,
+    distanceY: closestMidpointYDist
   };
 }
 
@@ -170,7 +170,7 @@ export function calculateAlignments(
 ): AlignmentResult {
   const result: AlignmentResult = {
     lines: { horizontal: null, vertical: null, horizontalMidpoint: null, verticalMidpoint: null },
-    snappedPosition: null,
+    snappedPosition: null
   };
 
   // Get dragging node dimensions and edges
@@ -182,12 +182,12 @@ export function calculateAlignments(
   const dragYPositions = [
     { value: draggingEdges.top, snapOffset: 0 },
     { value: draggingEdges.centerY, snapOffset: -draggingDims.height / 2 },
-    { value: draggingEdges.bottom, snapOffset: -draggingDims.height },
+    { value: draggingEdges.bottom, snapOffset: -draggingDims.height }
   ];
   const dragXPositions = [
     { value: draggingEdges.left, snapOffset: 0 },
     { value: draggingEdges.centerX, snapOffset: -draggingDims.width / 2 },
-    { value: draggingEdges.right, snapOffset: -draggingDims.width },
+    { value: draggingEdges.right, snapOffset: -draggingDims.width }
   ];
 
   const targetYPositions = otherNodes.flatMap((node) => {
@@ -236,7 +236,7 @@ export function calculateAlignments(
   if (snapX !== null || snapY !== null) {
     result.snappedPosition = {
       x: snapX ?? draggingNode.position.x,
-      y: snapY ?? draggingNode.position.y,
+      y: snapY ?? draggingNode.position.y
     };
   }
 
@@ -328,6 +328,6 @@ export function useHelperLines() {
   return {
     helperLines,
     updateHelperLines,
-    clearHelperLines,
+    clearHelperLines
   };
 }

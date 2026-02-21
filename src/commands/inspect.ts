@@ -78,7 +78,7 @@ export async function inspectAllLabs(context: InspectCommandContext) {
     // Store context for refresh
     currentContext = {
       type: "all",
-      extensionUri: context.extensionUri,
+      extensionUri: context.extensionUri
     };
 
     showInspectWebview(normalizedContainers, "Inspect - All Labs", context.extensionUri);
@@ -125,7 +125,7 @@ export async function inspectOneLab(node: ClabLabTreeNode, context: InspectComma
     currentContext = {
       type: "single",
       node: node,
-      extensionUri: context.extensionUri,
+      extensionUri: context.extensionUri
     };
 
     showInspectWebview(normalizedContainers, `Inspect - ${node.label}`, context.extensionUri);
@@ -153,7 +153,7 @@ function showInspectWebview(
   if (currentPanel) {
     currentPanel.title = title;
     currentPanel.webview.html = getInspectWebviewHtml(currentPanel.webview, extensionUri, {
-      containers,
+      containers
     });
     return;
   }
@@ -162,8 +162,8 @@ function showInspectWebview(
     enableScripts: true,
     localResourceRoots: [
       vscode.Uri.joinPath(extensionUri, "dist"),
-      vscode.Uri.joinPath(extensionUri, "resources"),
-    ],
+      vscode.Uri.joinPath(extensionUri, "resources")
+    ]
   });
 
   const iconUri = vscode.Uri.joinPath(extensionUri, "resources", "containerlab.svg");
@@ -180,11 +180,11 @@ function showInspectWebview(
           if (currentContext) {
             if (currentContext.type === "all") {
               await inspectAllLabs({
-                extensionUri: currentContext.extensionUri,
+                extensionUri: currentContext.extensionUri
               });
             } else if (currentContext.node !== undefined) {
               await inspectOneLab(currentContext.node, {
-                extensionUri: currentContext.extensionUri,
+                extensionUri: currentContext.extensionUri
               });
             }
           }

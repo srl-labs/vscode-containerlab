@@ -36,7 +36,7 @@ export const FilterableDropdown: React.FC<FilterableDropdownProps> = ({
   disabled = false,
   renderOption,
   helperText,
-  required,
+  required
 }) => {
   const selectedOption = options.find((opt) => opt.value === value) ?? null;
 
@@ -92,8 +92,8 @@ export const FilterableDropdown: React.FC<FilterableDropdownProps> = ({
       )}
       slotProps={{
         listbox: {
-          sx: { maxHeight: 200 },
-        },
+          sx: { maxHeight: 200 }
+        }
       }}
     />
   );

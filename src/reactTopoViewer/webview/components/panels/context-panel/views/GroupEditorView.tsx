@@ -34,7 +34,7 @@ export const GroupEditorView: React.FC<GroupEditorViewProps> = ({
   onDelete,
   onStylePreview,
   readOnly = false,
-  onFooterRef,
+  onFooterRef
 }) => {
   // Stable refs for unmount cleanup
   const previewRef = useRef(onStylePreview);
@@ -115,7 +115,7 @@ export const GroupEditorView: React.FC<GroupEditorViewProps> = ({
     resetInitialData,
     discardChanges: discardWithRevert,
     onFooterRef,
-    hasChangesForFooter: hasChanges,
+    hasChangesForFooter: hasChanges
   });
 
   if (!formData) return null;

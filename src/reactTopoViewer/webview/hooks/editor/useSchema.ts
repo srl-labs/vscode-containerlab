@@ -36,7 +36,7 @@ const EMPTY_SROS_TYPES: SrosComponentTypes = {
   card: [],
   mda: [],
   xiom: [],
-  xiomMda: [],
+  xiomMda: []
 };
 
 interface SchemaData {
@@ -63,7 +63,7 @@ export function useSchema(): UseSchemaResult {
     kindsWithTypeSupport: new Set(),
     srosComponentTypes: EMPTY_SROS_TYPES,
     isLoaded: false,
-    error: null,
+    error: null
   });
 
   // Load schema data from window on mount
@@ -99,7 +99,7 @@ export function useSchema(): UseSchemaResult {
       kindsWithTypeSupport,
       srosComponentTypes,
       isLoaded: true,
-      error: null,
+      error: null
     });
   }, []);
 
@@ -123,7 +123,7 @@ export function useSchema(): UseSchemaResult {
     () => ({
       ...schemaData,
       getTypesForKind,
-      kindSupportsType,
+      kindSupportsType
     }),
     [schemaData, getTypesForKind, kindSupportsType]
   );

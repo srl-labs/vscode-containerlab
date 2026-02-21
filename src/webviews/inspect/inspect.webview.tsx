@@ -16,7 +16,7 @@ import {
   TableRow,
   TableSortLabel,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 import React from "react";
 import { createRoot } from "react-dom/client";
@@ -97,7 +97,7 @@ function toRecord(value: unknown): Record<string, unknown> {
 function parseInitialData(value: unknown): InspectWebviewInitialData {
   const containers = toRecord(value).containers;
   return {
-    containers: Array.isArray(containers) ? containers.filter(isInspectContainerData) : [],
+    containers: Array.isArray(containers) ? containers.filter(isInspectContainerData) : []
   };
 }
 
@@ -133,8 +133,8 @@ const COLUMNS: ReadonlyArray<ColumnDefinition> = [
   {
     id: "ports",
     label: "Ports",
-    value: (row) => row.ports.map((port) => `${port.port}/${port.protocol}`).join(", "),
-  },
+    value: (row) => row.ports.map((port) => `${port.port}/${port.protocol}`).join(", ")
+  }
 ];
 
 function firstTruthyString(...values: Array<string | undefined | null>): string {
@@ -209,7 +209,7 @@ function buildInspectRow(container: InspectContainerData): InspectRow {
     ipv6,
     network,
     owner,
-    ports.map((port) => `${port.port}/${port.protocol}`).join(" "),
+    ports.map((port) => `${port.port}/${port.protocol}`).join(" ")
   ]
     .join(" ")
     .toLowerCase();
@@ -228,7 +228,7 @@ function buildInspectRow(container: InspectContainerData): InspectRow {
     owner,
     ports,
     containerId,
-    searchText,
+    searchText
   };
 }
 
@@ -361,7 +361,7 @@ function PortsCell({ row, onOpenPort }: Readonly<PortsCellProps>): React.JSX.Ele
                 containerName: row.containerName,
                 containerId: row.containerId,
                 port: port.port,
-                protocol: port.protocol,
+                protocol: port.protocol
               });
             }}
           />
@@ -375,7 +375,7 @@ function InspectGroupPanel({
   group,
   activeSort,
   onToggleSort,
-  onOpenPort,
+  onOpenPort
 }: Readonly<InspectGroupPanelProps>): React.JSX.Element {
   return (
     <Paper variant="outlined" sx={{ overflow: "hidden" }}>
@@ -389,7 +389,7 @@ function InspectGroupPanel({
           alignItems: "center",
           justifyContent: "space-between",
           gap: 1,
-          flexWrap: "wrap",
+          flexWrap: "wrap"
         }}
       >
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
@@ -442,7 +442,7 @@ function InspectGroupPanel({
                     sx={{
                       color: stateToColorToken(row.state),
                       borderColor: stateToColorToken(row.state),
-                      fontWeight: 600,
+                      fontWeight: 600
                     }}
                   />
                 </TableCell>
@@ -484,7 +484,7 @@ function InspectApp(): React.JSX.Element {
         if (!hasSearch) {
           return {
             labName: group.labName,
-            rows: sortRows(group.rows, sortByLab[group.labName]),
+            rows: sortRows(group.rows, sortByLab[group.labName])
           };
         }
 
@@ -499,7 +499,7 @@ function InspectApp(): React.JSX.Element {
 
         return {
           labName: group.labName,
-          rows: sortRows(matchingRows, sortByLab[group.labName]),
+          rows: sortRows(matchingRows, sortByLab[group.labName])
         };
       })
       .filter((group): group is InspectGroup => Boolean(group));
@@ -517,8 +517,8 @@ function InspectApp(): React.JSX.Element {
         ...current,
         [labName]: {
           columnId,
-          direction: nextDirection,
-        },
+          direction: nextDirection
+        }
       };
     });
   }, []);
@@ -535,7 +535,7 @@ function InspectApp(): React.JSX.Element {
         containerName: payload.containerName,
         containerId: payload.containerId,
         port: payload.port,
-        protocol: payload.protocol,
+        protocol: payload.protocol
       });
     },
     [postMessage]
@@ -552,7 +552,7 @@ function InspectApp(): React.JSX.Element {
           flexDirection: "column",
           gap: 2,
           overflow: "hidden",
-          bgcolor: "background.default",
+          bgcolor: "background.default"
         }}
       >
         <Paper
@@ -563,7 +563,7 @@ function InspectApp(): React.JSX.Element {
             gap: 1.5,
             alignItems: "center",
             justifyContent: "space-between",
-            flexWrap: "wrap",
+            flexWrap: "wrap"
           }}
         >
           <Typography variant="h6" sx={{ lineHeight: 1.2 }}>
@@ -584,8 +584,8 @@ function InspectApp(): React.JSX.Element {
                     <InputAdornment position="start">
                       <SearchIcon fontSize="small" />
                     </InputAdornment>
-                  ),
-                },
+                  )
+                }
               }}
             />
             <Button

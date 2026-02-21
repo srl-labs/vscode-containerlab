@@ -13,7 +13,7 @@ export {
   copyContainerID,
   copyContainerKind,
   copyContainerImage,
-  copyMACAddress,
+  copyMACAddress
 } from "../copy";
 export { deleteLab } from "../deleteLab";
 export { toggleFavorite } from "../favorite";

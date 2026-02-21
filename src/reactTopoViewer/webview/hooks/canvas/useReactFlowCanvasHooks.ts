@@ -105,7 +105,7 @@ export function useLinkCreation(
         source: linkSourceNode,
         target: targetNodeId,
         sourceEndpoint,
-        targetEndpoint,
+        targetEndpoint
       };
 
       // Use the unified callback which handles:
@@ -136,7 +136,7 @@ export function useLinkCreation(
     startLinkCreation,
     completeLinkCreation,
     cancelLinkCreation,
-    linkCreationSeed: linkCreationSeedRef.current,
+    linkCreationSeed: linkCreationSeedRef.current
   };
 }
 
@@ -162,7 +162,7 @@ export function useSourceNodePosition(linkSourceNode: string | null, nodes: Node
         const nodeWidth = node.measured?.width ?? ICON_SIZE;
         positionRef.current = {
           x: node.position.x + nodeWidth / 2,
-          y: node.position.y + ICON_SIZE / 2,
+          y: node.position.y + ICON_SIZE / 2
         };
       }
     }
@@ -259,7 +259,7 @@ export function useCanvasRefMethods(
         setNodes(createPositionUpdater(positions));
       },
       updateNodes: (updater: (nodes: Node[]) => Node[]) => setNodes(updater),
-      updateEdges: (updater: (edges: Edge[]) => Edge[]) => setEdges(updater),
+      updateEdges: (updater: (edges: Edge[]) => Edge[]) => setEdges(updater)
     }),
     [nodes, edges, setNodes, setEdges, reactFlowInstanceRef]
   );

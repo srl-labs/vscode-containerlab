@@ -9,7 +9,7 @@ import type { LabSettings } from "../../shared/types/labSettings";
 import { upsertEdgeAnnotation } from "../annotations/edgeAnnotations";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
-  clampEndpointLabelOffset,
+  clampEndpointLabelOffset
 } from "../annotations/endpointLabelOffset";
 
 import { useAnnotationUIStore } from "./annotationUIStore";
@@ -165,7 +165,7 @@ const initialState: TopoViewerState = {
   lifecycleStatusMessage: null,
   lifecycleLogs: [],
   editorDataVersion: 0,
-  customNodeError: null,
+  customNodeError: null
 };
 
 const MAX_LIFECYCLE_LOG_LINES = 500;
@@ -210,7 +210,7 @@ export function parseInitialData(data: unknown): Partial<TopoViewerState> {
   return {
     customNodes: parseCustomNodeTemplates(obj.customNodes),
     defaultNode,
-    customIcons: parseCustomIconInfos(obj.customIcons),
+    customIcons: parseCustomIconInfos(obj.customIcons)
   };
 }
 
@@ -238,7 +238,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       editingImpairment: null,
       editingNetwork: null,
       selectedNode: null,
-      selectedEdge: null,
+      selectedEdge: null
     });
   },
 
@@ -249,7 +249,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       editingImpairment: null,
       editingNetwork: null,
       selectedNode: null,
-      selectedEdge: null,
+      selectedEdge: null
     });
   },
 
@@ -260,7 +260,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       editingEdge: null,
       editingNetwork: null,
       selectedNode: null,
-      selectedEdge: null,
+      selectedEdge: null
     });
   },
 
@@ -271,7 +271,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       editingEdge: null,
       editingImpairment: null,
       selectedNode: null,
-      selectedEdge: null,
+      selectedEdge: null
     });
   },
 
@@ -285,7 +285,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       editingEdge: null,
       editingNetwork: null,
       editingImpairment: null,
-      editingCustomTemplate: null,
+      editingCustomTemplate: null
     });
     // Also clear annotation editing state (separate store)
     const annotationUI = useAnnotationUIStore.getState();
@@ -338,7 +338,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
 
   upsertEdgeAnnotation: (annotation) => {
     set((state) => ({
-      edgeAnnotations: upsertEdgeAnnotation(state.edgeAnnotations, annotation),
+      edgeAnnotations: upsertEdgeAnnotation(state.edgeAnnotations, annotation)
     }));
   },
 
@@ -358,7 +358,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       editingEdge: editingCustomTemplate ? null : state.editingEdge,
       editingNetwork: editingCustomTemplate ? null : state.editingNetwork,
       selectedNode: editingCustomTemplate ? null : state.selectedNode,
-      selectedEdge: editingCustomTemplate ? null : state.selectedEdge,
+      selectedEdge: editingCustomTemplate ? null : state.selectedEdge
     }));
   },
 
@@ -374,7 +374,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
   setProcessing: (isProcessing, mode) => {
     set((state) => {
       const next: Partial<TopoViewerState> = {
-        isProcessing,
+        isProcessing
       };
 
       if (isProcessing) {
@@ -428,7 +428,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       lifecycleStatus: null,
       lifecycleStatusMessage: null,
       lifecycleLogs: [],
-      processingMode: null,
+      processingMode: null
     });
   },
 
@@ -442,7 +442,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
     set((state) => ({
       selectedNode: state.selectedNode === nodeId ? null : state.selectedNode,
       editingNode: state.editingNode === nodeId ? null : state.editingNode,
-      editingNetwork: state.editingNetwork === nodeId ? null : state.editingNetwork,
+      editingNetwork: state.editingNetwork === nodeId ? null : state.editingNetwork
     }));
   },
 
@@ -450,7 +450,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
     set((state) => ({
       selectedEdge: state.selectedEdge === edgeId ? null : state.selectedEdge,
       editingEdge: state.editingEdge === edgeId ? null : state.editingEdge,
-      editingImpairment: state.editingImpairment === edgeId ? null : state.editingImpairment,
+      editingImpairment: state.editingImpairment === edgeId ? null : state.editingImpairment
     }));
   },
 
@@ -465,7 +465,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
         editingEdge: null,
         editingNetwork: null,
         editingImpairment: null,
-        editingCustomTemplate: null,
+        editingCustomTemplate: null
       });
       const annotationUI = useAnnotationUIStore.getState();
       if (annotationUI.editingTextAnnotation) annotationUI.setEditingTextAnnotation(null);
@@ -475,7 +475,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
     } else {
       set(data);
     }
-  },
+  }
 }));
 
 // ============================================================================
@@ -575,7 +575,7 @@ export const useTopoViewerState = () =>
       lifecycleStatusMessage: state.lifecycleStatusMessage,
       lifecycleLogs: state.lifecycleLogs,
       editorDataVersion: state.editorDataVersion,
-      customNodeError: state.customNodeError,
+      customNodeError: state.customNodeError
     }),
     shallow
   );
@@ -612,7 +612,7 @@ export const useTopoViewerActions = () =>
       refreshEditorData: state.refreshEditorData,
       clearSelectionForDeletedNode: state.clearSelectionForDeletedNode,
       clearSelectionForDeletedEdge: state.clearSelectionForDeletedEdge,
-      setInitialData: state.setInitialData,
+      setInitialData: state.setInitialData
     }),
     shallow
   );

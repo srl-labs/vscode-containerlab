@@ -8,7 +8,7 @@ import { useNodeEditorForm, hasFieldChanged } from "../../../../hooks/editor/use
 import type {
   NodeEditorData,
   NodeEditorTabId,
-  TabProps as NodeEditorTabProps,
+  TabProps as NodeEditorTabProps
 } from "../../node-editor/types";
 import { BasicTab } from "../../node-editor/BasicTab";
 import { ComponentsTab } from "../../node-editor/ComponentsTab";
@@ -41,13 +41,13 @@ const BASE_TABS: Array<TabConfig<NodeEditorTabProps>> = [
   { id: "config", label: "Configuration", component: ConfigTab },
   { id: "runtime", label: "Runtime", component: RuntimeTab },
   { id: "network", label: "Network", component: NetworkTab },
-  { id: "advanced", label: "Advanced", component: AdvancedTab },
+  { id: "advanced", label: "Advanced", component: AdvancedTab }
 ];
 
 const COMPONENTS_TAB: TabConfig<NodeEditorTabProps> = {
   id: "components",
   label: "Components",
-  component: ComponentsTab,
+  component: ComponentsTab
 };
 
 function getTabsForNode(kind: string | undefined): Array<TabConfig<NodeEditorTabProps>> {
@@ -78,7 +78,7 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
   onPreview,
   inheritedProps = [],
   readOnly = false,
-  onFooterRef,
+  onFooterRef
 }) => {
   const {
     activeTab,
@@ -88,7 +88,7 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
     hasChanges,
     resetAfterApply,
     discardChanges,
-    originalData,
+    originalData
   } = useNodeEditorForm(nodeData, readOnly);
 
   const tabs = useMemo(() => getTabsForNode(formData?.kind), [formData?.kind]);
@@ -124,7 +124,7 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
   const tabProps = {
     data: formData,
     onChange: handleChange,
-    inheritedProps: effectiveInheritedProps,
+    inheritedProps: effectiveInheritedProps
   };
 
   return (

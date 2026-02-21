@@ -25,7 +25,7 @@ export const ColorField: React.FC<ColorFieldProps> = ({
   value,
   onChange,
   disabled,
-  className = "",
+  className = ""
 }) => {
   const normalizedValue = normalizeHexColor(value);
   const colorInputRef = useRef<HTMLInputElement>(null);
@@ -99,7 +99,7 @@ export const ColorField: React.FC<ColorFieldProps> = ({
           height: 0,
           overflow: "hidden",
           opacity: 0,
-          pointerEvents: "none",
+          pointerEvents: "none"
         }}
       />
       <TextField
@@ -123,7 +123,7 @@ export const ColorField: React.FC<ColorFieldProps> = ({
                     borderRadius: 0.5,
                     backgroundColor: normalizedValue,
                     cursor: disabled === true ? "default" : "pointer",
-                    flexShrink: 0,
+                    flexShrink: 0
                   }}
                 />
                 <Box
@@ -146,8 +146,8 @@ export const ColorField: React.FC<ColorFieldProps> = ({
                   <ContentCopyIcon fontSize="small" />
                 </IconButton>
               </InputAdornment>
-            ),
-          },
+            )
+          }
         }}
       />
     </Box>

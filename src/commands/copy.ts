@@ -4,7 +4,7 @@ import * as utils from "../utils";
 import type {
   ClabContainerTreeNode,
   ClabInterfaceTreeNode,
-  ClabLabTreeNode,
+  ClabLabTreeNode
 } from "../treeView/common";
 
 const ERR_NO_LAB_NODE = "No lab node selected.";

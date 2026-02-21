@@ -10,13 +10,13 @@ import type {
   FreeTextAnnotation,
   GroupStyleAnnotation,
   TopologyAnnotations,
-  NodeAnnotation,
+  NodeAnnotation
 } from "../types/topology";
 import type { LabSettings } from "../types/labSettings";
 import type {
   TopologyHostCommand,
   TopologyHostResponseMessage,
-  TopologySnapshot,
+  TopologySnapshot
 } from "../types/messages";
 import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../types/messages";
 import type { TopologyHost } from "../types/topologyHost";
@@ -71,7 +71,7 @@ const noopLogger: IOLogger = {
   debug: () => {},
   info: () => {},
   warn: () => {},
-  error: () => {},
+  error: () => {}
 };
 
 export class TopologyHostCore implements TopologyHost {
@@ -111,7 +111,7 @@ export class TopologyHostCore implements TopologyHost {
       info: (msg) => this.logger.info(msg),
       warn: (msg) => this.logger.warn(msg),
       debug: (msg) => this.logger.debug(msg),
-      error: (msg) => this.logger.error(msg),
+      error: (msg) => this.logger.error(msg)
     };
 
     this.transactionalFs = new TransactionalFileSystemAdapter(this.baseFs);
@@ -120,7 +120,7 @@ export class TopologyHostCore implements TopologyHost {
       fs: this.transactionalFs,
       annotationsIO: this.annotationsIO,
       setInternalUpdate: this.setInternalUpdate,
-      logger: this.logger,
+      logger: this.logger
     });
   }
 
@@ -171,7 +171,7 @@ export class TopologyHostCore implements TopologyHost {
         requestId: "",
         revision: this.revision,
         snapshot,
-        reason: "stale",
+        reason: "stale"
       };
     }
 
@@ -203,7 +203,7 @@ export class TopologyHostCore implements TopologyHost {
         type: "topology-host:error",
         protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
         requestId: "",
-        error: message,
+        error: message
       };
     } finally {
       this.setInternalUpdate?.(false);
@@ -231,7 +231,7 @@ export class TopologyHostCore implements TopologyHost {
       protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
       requestId: "",
       revision: this.revision,
-      snapshot: this.snapshot,
+      snapshot: this.snapshot
     };
   }
 
@@ -419,7 +419,7 @@ export class TopologyHostCore implements TopologyHost {
       case "setEdgeAnnotations":
         await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (current) => ({
           ...current,
-          edgeAnnotations: command.payload,
+          edgeAnnotations: command.payload
         }));
         break;
       case "setViewerSettings":
@@ -427,8 +427,8 @@ export class TopologyHostCore implements TopologyHost {
           ...current,
           viewerSettings: {
             ...(current.viewerSettings ?? {}),
-            ...command.payload,
-          },
+            ...command.payload
+          }
         }));
         break;
     }
@@ -536,7 +536,7 @@ export class TopologyHostCore implements TopologyHost {
         protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
         requestId: "",
         revision: this.revision,
-        snapshot,
+        snapshot
       };
     }
 
@@ -558,7 +558,7 @@ export class TopologyHostCore implements TopologyHost {
         type: "topology-host:error",
         protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
         requestId: "",
-        error: message,
+        error: message
       };
     } finally {
       this.setInternalUpdate?.(false);
@@ -571,7 +571,7 @@ export class TopologyHostCore implements TopologyHost {
       protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
       requestId: "",
       revision: this.revision,
-      snapshot: this.snapshot,
+      snapshot: this.snapshot
     };
   }
 
@@ -652,7 +652,7 @@ export class TopologyHostCore implements TopologyHost {
       deploymentState: this.deploymentState,
       labSettings: Object.keys(labSettings).length > 0 ? labSettings : undefined,
       canUndo: this.past.length > 0,
-      canRedo: this.future.length > 0,
+      canRedo: this.future.length > 0
     };
   }
 
@@ -673,23 +673,23 @@ export class TopologyHostCore implements TopologyHost {
             annotations,
             labName: parserLabName,
             containerDataProvider: this.containerDataProvider,
-            logger: this.parserLogger,
+            logger: this.parserLogger
           })
         : TopologyParser.parseToReactFlow(yamlContent, {
             annotations,
             labName: parserLabName,
             containerDataProvider: this.containerDataProvider,
-            logger: this.parserLogger,
+            logger: this.parserLogger
           });
     }
     return parsed
       ? TopologyParser.parseToReactFlowFromParsed(parsed, {
           annotations,
-          labName: parserLabName,
+          labName: parserLabName
         })
       : TopologyParser.parseToReactFlow(yamlContent, {
           annotations,
-          labName: parserLabName,
+          labName: parserLabName
         });
   }
 
@@ -930,7 +930,7 @@ function normalizeAnnotations(
     networkNodeAnnotations: annotations.networkNodeAnnotations ?? [],
     edgeAnnotations: annotations.edgeAnnotations ?? [],
     aliasEndpointAnnotations: annotations.aliasEndpointAnnotations ?? [],
-    viewerSettings: annotations.viewerSettings ?? {},
+    viewerSettings: annotations.viewerSettings ?? {}
   };
 }
 
@@ -1025,7 +1025,7 @@ function normalizeLegacyFreeTextDimensions(annotation: FreeTextAnnotation): {
   return {
     ...(normalizedWidth !== undefined ? { width: normalizedWidth } : {}),
     ...(normalizedHeight !== undefined ? { height: normalizedHeight } : {}),
-    changed,
+    changed
   };
 }
 
@@ -1089,7 +1089,7 @@ function deriveLegacyGroupBounds(
   return {
     position: { x: minX - LEGACY_GROUP_PADDING, y: minY - LEGACY_GROUP_PADDING },
     width: Math.max(LEGACY_DEFAULT_GROUP_WIDTH, maxX - minX + LEGACY_GROUP_PADDING * 2),
-    height: Math.max(LEGACY_DEFAULT_GROUP_HEIGHT, maxY - minY + LEGACY_GROUP_PADDING * 2),
+    height: Math.max(LEGACY_DEFAULT_GROUP_HEIGHT, maxY - minY + LEGACY_GROUP_PADDING * 2)
   };
 }
 
@@ -1113,7 +1113,7 @@ function resolveLegacyGroupLabelColor(group: GroupStyleAnnotation): {
   const fallbackLabelColor = isNonEmptyString(legacyColor) ? legacyColor : undefined;
   return {
     labelColor: explicitLabelColor ?? fallbackLabelColor,
-    legacyColor,
+    legacyColor
   };
 }
 
@@ -1159,9 +1159,9 @@ function normalizeLegacyGroupStyleAnnotation(
       position: normalizedPosition ?? derivedBounds?.position ?? { x: 0, y: 0 },
       width: normalizedWidth ?? derivedBounds?.width ?? LEGACY_DEFAULT_GROUP_WIDTH,
       height: normalizedHeight ?? derivedBounds?.height ?? LEGACY_DEFAULT_GROUP_HEIGHT,
-      labelColor,
+      labelColor
     },
-    changed: true,
+    changed: true
   };
 }
 
@@ -1182,7 +1182,7 @@ function migrateLegacyAnnotations(annotations: TopologyAnnotations): {
     modifiedCount += 1;
     const normalizedAnnotation: FreeTextAnnotation = {
       ...annotation,
-      position: normalizedPosition ?? { x: 0, y: 0 },
+      position: normalizedPosition ?? { x: 0, y: 0 }
     };
     if (dimensions.width !== undefined) {
       normalizedAnnotation.width = dimensions.width;
@@ -1210,7 +1210,7 @@ function migrateLegacyAnnotations(annotations: TopologyAnnotations): {
     return {
       ...annotation,
       position: normalizedPosition ?? { x: 0, y: 0 },
-      endPosition: normalizedEndPosition,
+      endPosition: normalizedEndPosition
     };
   });
 
@@ -1233,9 +1233,9 @@ function migrateLegacyAnnotations(annotations: TopologyAnnotations): {
       ...annotations,
       freeTextAnnotations,
       freeShapeAnnotations,
-      groupStyleAnnotations,
+      groupStyleAnnotations
     },
-    modified: modifiedCount > 0,
+    modified: modifiedCount > 0
   };
 }
 
@@ -1265,7 +1265,7 @@ function persistGraphLabelMigrations(
   migrations: GraphLabelMigration[]
 ): TopologyAnnotations {
   const nodeAnnotations: Array<Omit<GraphLabelMigration, "nodeId"> & { id: string }> = [
-    ...(annotations.nodeAnnotations ?? []),
+    ...(annotations.nodeAnnotations ?? [])
   ];
 
   const existingIds = new Set(nodeAnnotations.map((na) => na.id));
@@ -1286,7 +1286,7 @@ function mergeAnnotationsPayload(
   if (annotations.viewerSettings) {
     merged.viewerSettings = {
       ...(current.viewerSettings ?? {}),
-      ...annotations.viewerSettings,
+      ...annotations.viewerSettings
     };
   }
   return merged;

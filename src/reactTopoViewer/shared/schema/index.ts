@@ -7,5 +7,5 @@ export {
   extractKindsFromSchema,
   extractTypesByKindFromSchema,
   extractSrosComponentTypes,
-  parseSchemaData,
+  parseSchemaData
 } from "./SchemaParser";
