@@ -73,7 +73,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isTopologyHostCommand(value: unknown): value is TopologyHostCommand {
   if (!isRecord(value)) return false;
-  return typeof value.command === "string" && "payload" in value;
+  if (typeof value.command !== "string") return false;
+  if (value.command === "undo" || value.command === "redo") return true;
+  return "payload" in value;
 }
 
 function asStringArray(value: unknown): string[] {

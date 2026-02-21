@@ -229,7 +229,8 @@ function createNodeYaml(doc: YAML.Document, nodeData: NodeSaveData): YAML.YAMLMa
   const extra = nodeData.extraData ?? {};
 
   // Set kind (required, defaults to nokia_srlinux)
-  const kind = extra.kind?.trim() ?? "nokia_srlinux";
+  const trimmedKind = extra.kind?.trim();
+  const kind = trimmedKind !== undefined && trimmedKind !== "" ? trimmedKind : "nokia_srlinux";
   nodeMap.set("kind", doc.createNode(kind));
 
   // Set all other supported properties from NODE_YAML_PROPERTIES
