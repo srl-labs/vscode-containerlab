@@ -242,13 +242,13 @@ export function collectSpecialNodes(
   const topologyNodeNames = new Set(Object.keys(parsed.topology?.nodes ?? {}));
 
   for (const linkObj of links) {
-    const linkRecord: Record<string, unknown> = { ...linkObj };
-    const norm = normalizeLinkToTwoEndpoints(linkRecord, dummyCtx);
+    if (!isRecord(linkObj)) continue;
+    const norm = normalizeLinkToTwoEndpoints(linkObj, dummyCtx);
     if (!norm) continue;
     const { endA, endB } = norm;
     registerEndpoint(specialNodes, endA, topologyNodeNames);
     registerEndpoint(specialNodes, endB, topologyNodeNames);
-    mergeSpecialNodeProps(linkRecord, endA, endB, specialNodeProps);
+    mergeSpecialNodeProps(linkObj, endA, endB, specialNodeProps);
   }
 
   return { specialNodes, specialNodeProps };

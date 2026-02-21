@@ -707,8 +707,11 @@ export function addEdgeElements(
 
   let linkIndex = 0;
   for (const linkObj of topology.links) {
-    const linkRecord: Record<string, unknown> = { ...linkObj };
-    const norm = normalizeLinkToTwoEndpoints(linkRecord, ctx);
+    if (!isRecord(linkObj)) {
+      log.warn("Link is not an object. Skipping.");
+      continue;
+    }
+    const norm = normalizeLinkToTwoEndpoints(linkObj, ctx);
     if (!norm) {
       log.warn("Link does not have both endpoints. Skipping.");
       continue;
@@ -752,7 +755,7 @@ export function addEdgeElements(
         ? computeEdgeClass(sourceNode, targetNode, sourceIfaceData, targetIfaceData, topology)
         : "";
     const edgeEl = buildEdgeElement({
-      linkObj: linkRecord,
+      linkObj,
       endA,
       endB,
       sourceNode,

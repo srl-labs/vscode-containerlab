@@ -113,7 +113,6 @@ function hasValidHostMessageEnvelope(value: Record<string, unknown>): value is R
   return (
     isHostMessageType(value.type) &&
     typeof value.requestId === "string" &&
-    value.requestId.length > 0 &&
     typeof value.protocolVersion === "number" &&
     Number.isFinite(value.protocolVersion)
   );
