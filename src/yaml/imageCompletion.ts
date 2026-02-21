@@ -225,9 +225,9 @@ function registerAutoTrigger(context: vscode.ExtensionContext): void {
     const lineText = event.document.lineAt(position.line).text;
     const currentFilter = getInlineImageFilter(event.document, position);
     const images = utils.getDockerImages();
-    const isExactMatch =
-      images.length > 0 &&
-      images.some((img) => img.toLowerCase() === currentFilter && lineText.trimEnd().endsWith(img));
+    const isExactMatch = images.some(
+      (img) => img.toLowerCase() === currentFilter && lineText.trimEnd().endsWith(img)
+    );
 
     const shouldTrigger = !isExactMatch && (/\S/.test(lastChar) || inserted.includes("\n"));
     if (!shouldTrigger) {

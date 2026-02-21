@@ -194,6 +194,15 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
     [currentRotation, onRotationStart]
   );
 
+  const handleClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+  }, []);
+
   return (
     <>
       {/* Connecting line */}
@@ -217,13 +226,8 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
         aria-label="Rotate annotation"
         ref={handleRef}
         onMouseDown={handleMouseDown}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-        }}
+        onClick={handleClick}
+        onPointerDown={handlePointerDown}
         className="nodrag nopan nowheel"
         style={{
           appearance: "none",

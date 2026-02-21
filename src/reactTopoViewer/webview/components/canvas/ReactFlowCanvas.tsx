@@ -1481,6 +1481,10 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       [closeContextMenu]
     );
 
+    const handleCanvasContextMenu = useCallback((event: React.MouseEvent) => {
+      event.preventDefault();
+    }, []);
+
     return (
       <div
         ref={canvasContainerRef}
@@ -1488,7 +1492,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         className={getCanvasContainerClassName(isGeoLayout, isGeoInteracting)}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        onContextMenu={(e) => e.preventDefault()}
+        onContextMenu={handleCanvasContextMenu}
       >
         {overlays.geoMapLayer}
         <ReactFlow

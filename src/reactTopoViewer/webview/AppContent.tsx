@@ -1309,6 +1309,11 @@ export const AppContent: React.FC<AppContentProps> = ({
     sendCancelLabLifecycle();
   }, []);
 
+  const handleToggleSplit = React.useCallback(() => {
+    panelVisibility.handleOpenContextPanel("manual");
+    setPaletteTabRequest({ tabId: "yaml" });
+  }, [panelVisibility]);
+
   return (
     <MuiThemeProvider>
       <Box
@@ -1329,10 +1334,7 @@ export const AppContent: React.FC<AppContentProps> = ({
           layout={layoutControls.layout}
           onLayoutChange={layoutControls.setLayout}
           onLabSettings={panelVisibility.handleShowLabSettings}
-          onToggleSplit={() => {
-            panelVisibility.handleOpenContextPanel("manual");
-            setPaletteTabRequest({ tabId: "yaml" });
-          }}
+          onToggleSplit={handleToggleSplit}
           onFindNode={panelVisibility.handleOpenFindPopover}
           onCaptureViewport={panelVisibility.handleShowSvgExport}
           onShowShortcuts={panelVisibility.handleShowShortcuts}

@@ -100,12 +100,14 @@ export function fetchPopularRepos(): Promise<PopularRepo[]> {
           data += chunk;
         });
         res.on("end", () => {
+          let parsed: GitHubSearchResponse;
           try {
-            const parsed = parseGitHubSearchResponse(JSON.parse(data) as unknown);
-            resolve(parsed.items ?? []);
+            parsed = parseGitHubSearchResponse(JSON.parse(data) as unknown);
           } catch (e) {
             reject(e);
+            return;
           }
+          resolve(parsed.items ?? []);
         });
       }
     );

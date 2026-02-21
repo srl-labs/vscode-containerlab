@@ -235,10 +235,10 @@
         "react/react-in-jsx-scope": "off",
         "react-hooks/rules-of-hooks": "error",
         "react-hooks/exhaustive-deps": "warn",
-        "react-perf/jsx-no-jsx-as-prop": "warn",
-        "react-perf/jsx-no-new-array-as-prop": "warn",
-        "react-perf/jsx-no-new-function-as-prop": "warn",
-        "react-perf/jsx-no-new-object-as-prop": "warn",
+        "react-perf/jsx-no-jsx-as-prop": "off",
+        "react-perf/jsx-no-new-array-as-prop": "off",
+        "react-perf/jsx-no-new-function-as-prop": "off",
+        "react-perf/jsx-no-new-object-as-prop": "off",
         "react/jsx-no-constructed-context-values": "error",
         "react/forward-ref-uses-ref": "error",
         "react/checked-requires-onchange-or-readonly": "error",
@@ -247,6 +247,19 @@
       "plugins": [
         "react",
         "jsx-a11y",
+        "react-perf"
+      ]
+    },
+    {
+      "files": [
+        "src/reactTopoViewer/webview/components/canvas/**/*.tsx",
+        "src/reactTopoViewer/webview/AppContent.tsx"
+      ],
+      "rules": {
+        "react-perf/jsx-no-new-array-as-prop": "warn",
+        "react-perf/jsx-no-new-function-as-prop": "warn"
+      },
+      "plugins": [
         "react-perf"
       ]
     },

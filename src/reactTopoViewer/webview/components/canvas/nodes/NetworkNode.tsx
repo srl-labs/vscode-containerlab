@@ -1,7 +1,7 @@
 /**
  * NetworkNode - Custom React Flow node for network endpoint nodes
  */
-import React, { useMemo, memo, useState } from "react";
+import React, { useMemo, memo, useState, useCallback } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 
 import type { NetworkNodeData } from "../types";
@@ -64,6 +64,12 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const easterEggGlow = useEasterEggGlow();
   const [isHovered, setIsHovered] = useState(false);
   const directionRotation = useMemo(() => getNodeDirectionRotation(direction), [direction]);
+  const handleMouseEnter = useCallback(() => {
+    setIsHovered(true);
+  }, []);
+  const handleMouseLeave = useCallback(() => {
+    setIsHovered(false);
+  }, []);
 
   // Check if this node is a valid link target (in link creation mode and not the source node)
   // Network nodes do not support loop/self-referencing links
@@ -151,8 +157,8 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     <div
       style={containerStyle}
       className="network-node"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Hidden handles for edge connections - not interactive */}
       {HANDLE_POSITIONS.map(({ position, id }) => (
