@@ -41,6 +41,7 @@ export { useAppEditorBindings } from "./useAppEditorBindings";
 export { useAppE2EExposure } from "./useAppE2EExposure";
 export { useAppGraphHandlers } from "./useAppGraphHandlers";
 export { useAppToasts } from "./useAppToasts";
+export { useDevMockTrafficStats } from "./useDevMockTrafficStats";
 export { useIconReconciliation } from "./useIconReconciliation";
 export { useUndoRedoControls } from "./useUndoRedoControls";
 export type { InitialGraphData } from "./useInitialGraphData";

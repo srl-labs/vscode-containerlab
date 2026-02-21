@@ -18,6 +18,7 @@ import {
   Remove as RemoveIcon,
   Search as SearchIcon,
   SelectAll as SelectAllIcon,
+  Speed as SpeedIcon,
   Star as StarIcon,
   StarOutline as StarOutlineIcon,
   TextFields as TextFieldsIcon
@@ -171,7 +172,7 @@ const SectionHeader: React.FC<{ title: string; action?: React.ReactNode }> = ({
 );
 
 type AnnotationPayload = {
-  annotationType: "text" | "shape" | "group";
+  annotationType: "text" | "shape" | "group" | "traffic-rate";
   shapeType?: string;
 };
 
@@ -399,10 +400,17 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
 
   // Fall back to "nodes" when current tab is no longer visible
   useEffect(() => {
-    if (!visibleTabs.some((t) => t.id === userTab)) {
-      setUserTab("nodes");
+    if (visibleTabs.some((t) => t.id === userTab)) return;
+    if (showEditTab) {
+      setUserTab("edit");
+      return;
     }
-  }, [visibleTabs, userTab]);
+    if (showInfoTab) {
+      setUserTab("info");
+      return;
+    }
+    setUserTab("nodes");
+  }, [visibleTabs, userTab, showEditTab, showInfoTab]);
 
   const activeTab = userTab;
 
@@ -671,6 +679,16 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
                   kind="annotation"
                   icon={<SelectAllIcon fontSize="small" />}
                   payload={{ annotationType: "group" }}
+                />
+              </Box>
+
+              <SectionHeader title="Monitoring" />
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, p: 2 }}>
+                <DraggableAnnotation
+                  label="Traffic Rate"
+                  kind="monitor"
+                  icon={<SpeedIcon fontSize="small" />}
+                  payload={{ annotationType: "traffic-rate" }}
                 />
               </Box>
             </Box>

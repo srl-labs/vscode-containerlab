@@ -12,6 +12,7 @@ import { MuiThemeProvider } from "./theme";
 import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
+  TRAFFIC_RATE_NODE_TYPE,
   GROUP_NODE_TYPE,
   findEdgeAnnotationInLookup,
   nodesToAnnotations,
@@ -41,6 +42,7 @@ import {
   useAppToasts,
   useClipboardHandlers,
   useCustomNodeCommands,
+  useDevMockTrafficStats,
   useGraphCreation,
   useIconReconciliation,
   useUndoRedoControls
@@ -109,11 +111,18 @@ function collectSelectedIds(
 function splitNodeIdsByType(
   nodeIds: Set<string>,
   nodesById: Map<string, { type?: string }>
-): { graphNodeIds: string[]; groupIds: string[]; textIds: string[]; shapeIds: string[] } {
+): {
+  graphNodeIds: string[];
+  groupIds: string[];
+  textIds: string[];
+  shapeIds: string[];
+  trafficRateIds: string[];
+} {
   const graphNodeIds: string[] = [];
   const groupIds: string[] = [];
   const textIds: string[] = [];
   const shapeIds: string[] = [];
+  const trafficRateIds: string[] = [];
 
   for (const nodeId of nodeIds) {
     const node = nodesById.get(nodeId);
@@ -128,12 +137,15 @@ function splitNodeIdsByType(
       case FREE_SHAPE_NODE_TYPE:
         shapeIds.push(nodeId);
         break;
+      case TRAFFIC_RATE_NODE_TYPE:
+        trafficRateIds.push(nodeId);
+        break;
       default:
         graphNodeIds.push(nodeId);
     }
   }
 
-  return { graphNodeIds, groupIds, textIds, shapeIds };
+  return { graphNodeIds, groupIds, textIds, shapeIds, trafficRateIds };
 }
 
 function applyGraphDeletions(
@@ -174,7 +186,7 @@ function buildDeleteCommands(
 }
 
 function buildAnnotationSaveCommand(graphNodesForSave: TopoNode[]): TopologyHostCommand {
-  const { freeTextAnnotations, freeShapeAnnotations, groups } =
+  const { freeTextAnnotations, freeShapeAnnotations, trafficRateAnnotations, groups } =
     nodesToAnnotations(graphNodesForSave);
   const memberships = collectNodeGroupMemberships(graphNodesForSave);
 
@@ -184,6 +196,7 @@ function buildAnnotationSaveCommand(graphNodesForSave: TopoNode[]): TopologyHost
       annotations: {
         freeTextAnnotations,
         freeShapeAnnotations,
+        trafficRateAnnotations,
         groupStyleAnnotations: groups
       },
       memberships: memberships.map((entry) => ({
@@ -228,6 +241,7 @@ interface ContextSelectionState {
 interface ContextAnnotationState {
   editingTextAnnotation: unknown;
   editingShapeAnnotation: unknown;
+  editingTrafficRateAnnotation: unknown;
   editingGroup: unknown;
 }
 
@@ -244,6 +258,7 @@ function hasContextContentState(
       state.editingImpairment ||
       annotations.editingTextAnnotation ||
       annotations.editingShapeAnnotation ||
+      annotations.editingTrafficRateAnnotation ||
       annotations.editingGroup
   );
 }
@@ -477,10 +492,12 @@ export const AppContent: React.FC<AppContentProps> = ({
   const isProcessing = state.isProcessing;
   const isInteractionLocked = getInteractionLockState(state.isLocked, isProcessing);
   const interactionMode = getInteractionMode(state.mode, isProcessing);
+  const isDevMock = React.useMemo(() => isDevMockWebview(), []);
   const showDevExplorer = React.useMemo(
-    () => isDevMockWebview() && !isDevExplorerDisabledByUrl(),
-    []
+    () => isDevMock && !isDevExplorerDisabledByUrl(),
+    [isDevMock]
   );
+  useDevMockTrafficStats(isDevMock && interactionMode === "view");
   const layoutRef = React.useRef<HTMLDivElement | null>(null);
   const [devExplorerWidth, setDevExplorerWidth] = React.useState(DEV_EXPLORER_DEFAULT_WIDTH);
   const [isDevExplorerDragging, setIsDevExplorerDragging] = React.useState(false);
@@ -610,6 +627,9 @@ export const AppContent: React.FC<AppContentProps> = ({
       createShapeAtPosition: (position: { x: number; y: number }, shapeType?: string) => {
         annotationRuntimeRef.current?.createShapeAtPosition(position, shapeType);
       },
+      createTrafficRateAtPosition: (position: { x: number; y: number }) => {
+        annotationRuntimeRef.current?.createTrafficRateAtPosition(position);
+      },
       getNodeMembership: (nodeId: string) =>
         annotationRuntimeRef.current?.getNodeMembership(nodeId) ?? null,
       addNodeToGroup: (nodeId: string, groupId: string) => {
@@ -636,6 +656,15 @@ export const AppContent: React.FC<AppContentProps> = ({
       },
       deleteShapeAnnotation: (...args: Parameters<AnnotationContextValue["deleteShapeAnnotation"]>) => {
         annotationRuntimeRef.current?.deleteShapeAnnotation(...args);
+      },
+      saveTrafficRateAnnotation: (...args: Parameters<AnnotationContextValue["saveTrafficRateAnnotation"]>) => {
+        annotationRuntimeRef.current?.saveTrafficRateAnnotation(...args);
+      },
+      updateTrafficRateAnnotation: (...args: Parameters<AnnotationContextValue["updateTrafficRateAnnotation"]>) => {
+        annotationRuntimeRef.current?.updateTrafficRateAnnotation(...args);
+      },
+      deleteTrafficRateAnnotation: (...args: Parameters<AnnotationContextValue["deleteTrafficRateAnnotation"]>) => {
+        annotationRuntimeRef.current?.deleteTrafficRateAnnotation(...args);
       },
       saveGroup: (...args: Parameters<AnnotationContextValue["saveGroup"]>) => {
         annotationRuntimeRef.current?.saveGroup(...args);
@@ -670,17 +699,26 @@ export const AppContent: React.FC<AppContentProps> = ({
       onEditFreeShape: (id) => {
         annotationRuntimeRef.current?.editShapeAnnotation(id);
       },
+      onEditTrafficRate: (id) => {
+        annotationRuntimeRef.current?.editTrafficRateAnnotation(id);
+      },
       onDeleteFreeText: (id) => {
         annotationRuntimeRef.current?.deleteTextAnnotation(id);
       },
       onDeleteFreeShape: (id) => {
         annotationRuntimeRef.current?.deleteShapeAnnotation(id);
       },
+      onDeleteTrafficRate: (id) => {
+        annotationRuntimeRef.current?.deleteTrafficRateAnnotation(id);
+      },
       onUpdateFreeTextSize: (id, width, height) => {
         annotationRuntimeRef.current?.updateTextSize(id, width, height);
       },
       onUpdateFreeShapeSize: (id, width, height) => {
         annotationRuntimeRef.current?.updateShapeSize(id, width, height);
+      },
+      onUpdateTrafficRateSize: (id, width, height) => {
+        annotationRuntimeRef.current?.updateTrafficRateSize(id, width, height);
       },
       onUpdateFreeTextRotation: (id, rotation) => {
         annotationRuntimeRef.current?.updateTextRotation(id, rotation);
@@ -950,6 +988,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     topoActions.selectEdge(null);
     annotationUiActions.closeTextEditor();
     annotationUiActions.closeShapeEditor();
+    annotationUiActions.closeTrafficRateEditor();
     annotationUiActions.closeGroupEditor();
   }, [topoActions, annotationUiActions]);
 
@@ -1012,14 +1051,18 @@ export const AppContent: React.FC<AppContentProps> = ({
     const nodesById = new Map(currentNodes.map((node) => [node.id, node]));
     const edgesById = new Map(currentEdges.map((edge) => [edge.id, edge as TopoEdge]));
 
-    const { graphNodeIds, groupIds, textIds, shapeIds } = splitNodeIdsByType(nodeIds, nodesById);
+    const { graphNodeIds, groupIds, textIds, shapeIds, trafficRateIds } = splitNodeIdsByType(
+      nodeIds,
+      nodesById
+    );
 
     applyGraphDeletions(graphActions, menuHandlers, graphNodeIds, edgeIds);
 
     const annotationResult = annotationActions.deleteSelectedForBatch({
       groupIds,
       textIds,
-      shapeIds
+      shapeIds,
+      trafficRateIds
     });
 
     const commands = buildDeleteCommands(graphNodeIds, edgeIds, edgesById);
@@ -1050,6 +1093,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     annotations: {
       selectedTextIds: annotationUiState.selectedTextIds,
       selectedShapeIds: annotationUiState.selectedShapeIds,
+      selectedTrafficRateIds: annotationUiState.selectedTrafficRateIds,
       selectedGroupIds: annotationUiState.selectedGroupIds,
       clearAllSelections: annotationUiActions.clearAllSelections,
       handleAddGroup: annotationActions.handleAddGroup
@@ -1121,6 +1165,7 @@ export const AppContent: React.FC<AppContentProps> = ({
       onAddTextAtPosition: annotationActions.createTextAtPosition,
       onAddGroupAtPosition: annotationActions.createGroupAtPosition,
       onAddShapeAtPosition: annotationActions.createShapeAtPosition,
+      onAddTrafficRateAtPosition: annotationActions.createTrafficRateAtPosition,
       onDropCreateNode: handleDropCreateNode,
       onDropCreateNetwork: handleDropCreateNetwork,
       onLockedAction: handleLockedAction
@@ -1325,6 +1370,15 @@ export const AppContent: React.FC<AppContentProps> = ({
                 onSave: annotationActions.saveShapeAnnotation,
                 onClose: annotationUiActions.closeShapeEditor,
                 onDelete: annotationActions.deleteShapeAnnotation
+              },
+              editingTrafficRateAnnotation: annotationUiState.editingTrafficRateAnnotation,
+              trafficRateAnnotationHandlers: {
+                onSave: annotationActions.saveTrafficRateAnnotation,
+                onPreview: (annotation) => {
+                  annotationActions.updateTrafficRateAnnotation(annotation.id, annotation);
+                },
+                onClose: annotationUiActions.closeTrafficRateEditor,
+                onDelete: annotationActions.deleteTrafficRateAnnotation
               },
               editingGroup: annotationUiState.editingGroup,
               groupHandlers: {

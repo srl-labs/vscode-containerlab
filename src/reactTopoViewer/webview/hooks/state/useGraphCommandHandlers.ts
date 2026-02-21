@@ -288,11 +288,13 @@ export function useGraphHandlersWithContext(
       }
 
       const graphNodes = useGraphStore.getState().nodes;
-      const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodes);
+      const { freeTextAnnotations, freeShapeAnnotations, trafficRateAnnotations, groups } =
+        nodesToAnnotations(graphNodes);
       const networkNodeAnnotations = buildNetworkNodeAnnotations(graphNodes);
       const shouldSaveAnnotations =
         freeTextAnnotations.length > 0 ||
         freeShapeAnnotations.length > 0 ||
+        trafficRateAnnotations.length > 0 ||
         groups.length > 0 ||
         networkNodeAnnotations.length > 0;
 
@@ -302,6 +304,7 @@ export function useGraphHandlersWithContext(
           payload: {
             freeTextAnnotations,
             freeShapeAnnotations,
+            trafficRateAnnotations,
             groupStyleAnnotations: groups,
             networkNodeAnnotations
           }

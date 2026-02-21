@@ -6,6 +6,7 @@
 import type {
   FreeTextAnnotation as _FreeTextAnnotation,
   FreeShapeAnnotation as _FreeShapeAnnotation,
+  TrafficRateAnnotation as _TrafficRateAnnotation,
   GroupStyleAnnotation as _GroupStyleAnnotation,
   NetworkNodeAnnotation as _NetworkNodeAnnotation,
   NodeAnnotation as _NodeAnnotation,
@@ -17,6 +18,7 @@ import type {
 // Re-export types
 export type FreeTextAnnotation = _FreeTextAnnotation;
 export type FreeShapeAnnotation = _FreeShapeAnnotation;
+export type TrafficRateAnnotation = _TrafficRateAnnotation;
 export type GroupStyleAnnotation = _GroupStyleAnnotation;
 export type NetworkNodeAnnotation = _NetworkNodeAnnotation;
 export type NodeAnnotation = _NodeAnnotation;
@@ -31,6 +33,7 @@ export function createEmptyAnnotations(): TopologyAnnotations {
   return {
     freeTextAnnotations: [],
     freeShapeAnnotations: [],
+    trafficRateAnnotations: [],
     groupStyleAnnotations: [],
     networkNodeAnnotations: [],
     nodeAnnotations: [],

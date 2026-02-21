@@ -16,6 +16,11 @@ export { FreeTextEditorView } from "./FreeTextEditorView";
 export type { FreeTextEditorViewProps, FreeTextEditorFooterRef } from "./FreeTextEditorView";
 export { FreeShapeEditorView } from "./FreeShapeEditorView";
 export type { FreeShapeEditorViewProps, FreeShapeEditorFooterRef } from "./FreeShapeEditorView";
+export { TrafficRateEditorView } from "./TrafficRateEditorView";
+export type {
+  TrafficRateEditorViewProps,
+  TrafficRateEditorFooterRef
+} from "./TrafficRateEditorView";
 export { GroupEditorView } from "./GroupEditorView";
 export type { GroupEditorViewProps, GroupEditorFooterRef } from "./GroupEditorView";
 export { InfoTabContent } from "./InfoTabContent";

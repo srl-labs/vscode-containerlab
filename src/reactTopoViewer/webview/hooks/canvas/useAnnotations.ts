@@ -2,10 +2,9 @@ import { useCallback, useMemo } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import { saveAllNodeGroupMemberships, saveAnnotationNodesFromGraph } from "../../services";
-import { useAnnotationUIActions, useAnnotationUIState } from "../../stores/annotationUIStore";
-import { useGraphStore } from "../../stores/graphStore";
-import { useIsLocked } from "../../stores/topoViewerStore";
+import { useAnnotationUIActions, useAnnotationUIState, useGraphStore, useIsLocked } from "../../stores";
 import { collectNodeGroupMemberships } from "../../annotations/groupMembership";
+import { TRAFFIC_RATE_NODE_TYPE } from "../../annotations/annotationNodeConverters";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 
 import type { AnnotationContextValue } from "./annotationTypes";
@@ -19,6 +18,7 @@ import { useDerivedAnnotations } from "./useDerivedAnnotations";
 import { useGroupAnnotations } from "./useGroupAnnotations";
 import { useShapeAnnotations } from "./useShapeAnnotations";
 import { useTextAnnotations } from "./useTextAnnotations";
+import { useTrafficRateAnnotations } from "./useTrafficRateAnnotations";
 
 interface UseAnnotationsParams {
   rfInstance: ReactFlowInstance | null;
@@ -65,6 +65,16 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
     uiActions
   });
 
+  const trafficActions = useTrafficRateAnnotations({
+    isLocked,
+    onLockedAction,
+    derived,
+    uiState: {
+      selectedTrafficRateIds: uiState.selectedTrafficRateIds
+    },
+    uiActions
+  });
+
   const getGroupParentId = useCallback((group: GroupStyleAnnotation): string | null => {
     if (typeof group.parentId === "string") return group.parentId;
     if (typeof group.groupId === "string") return group.groupId;
@@ -94,52 +104,76 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
     [derived.groups, getGroupParentId]
   );
 
+  const handleDroppedGroupReparenting = useCallback(
+    (nodeId: string, position: { x: number; y: number }, droppedGroup: GroupStyleAnnotation) => {
+      const bounds = {
+        x: position.x,
+        y: position.y,
+        width: droppedGroup.width ?? 200,
+        height: droppedGroup.height ?? 150
+      };
+      const excluded = getGroupDescendants(nodeId);
+      excluded.add(nodeId);
+      const candidateGroups = derived.groups.filter((group) => !excluded.has(group.id));
+      const parentGroup = findParentGroupForBounds(bounds, candidateGroups, nodeId);
+      const nextParentId = parentGroup?.id ?? null;
+      const currentParentId = getGroupParentId(droppedGroup);
+
+      if (currentParentId === nextParentId) return;
+      derived.updateGroup(nodeId, {
+        parentId: nextParentId ?? undefined,
+        groupId: nextParentId ?? undefined
+      });
+    },
+    [derived, getGroupDescendants, getGroupParentId]
+  );
+
+  const handleDroppedAnnotationNode = useCallback(
+    (nodeId: string, targetGroupId: string | null): boolean => {
+      const movedNode = useGraphStore.getState().nodes.find((node) => node.id === nodeId);
+      switch (movedNode?.type) {
+        case "free-text-node":
+          handleAnnotationNodeDrop(
+            nodeId,
+            targetGroupId,
+            derived.textAnnotations,
+            derived.updateTextAnnotation
+          );
+          return true;
+        case "free-shape-node":
+          handleAnnotationNodeDrop(
+            nodeId,
+            targetGroupId,
+            derived.shapeAnnotations,
+            derived.updateShapeAnnotation
+          );
+          return true;
+        case TRAFFIC_RATE_NODE_TYPE:
+          handleAnnotationNodeDrop(
+            nodeId,
+            targetGroupId,
+            derived.trafficRateAnnotations,
+            derived.updateTrafficRateAnnotation
+          );
+          return true;
+        default:
+          return false;
+      }
+    },
+    [derived]
+  );
+
   const onNodeDropped = useCallback(
     (nodeId: string, position: { x: number; y: number }) => {
       const droppedGroup = derived.groups.find((group) => group.id === nodeId);
       if (droppedGroup) {
-        const bounds = {
-          x: position.x,
-          y: position.y,
-          width: droppedGroup.width ?? 200,
-          height: droppedGroup.height ?? 150
-        };
-        const excluded = getGroupDescendants(nodeId);
-        excluded.add(nodeId);
-        const candidateGroups = derived.groups.filter((group) => !excluded.has(group.id));
-        const parentGroup = findParentGroupForBounds(bounds, candidateGroups, nodeId);
-        const nextParentId = parentGroup?.id ?? null;
-        const currentParentId = getGroupParentId(droppedGroup);
-
-        if (currentParentId !== nextParentId) {
-          derived.updateGroup(nodeId, {
-            parentId: nextParentId ?? undefined,
-            groupId: nextParentId ?? undefined
-          });
-        }
+        handleDroppedGroupReparenting(nodeId, position, droppedGroup);
         return;
       }
 
       const targetGroup = findDeepestGroupAtPosition(position, derived.groups);
       const targetGroupId = targetGroup?.id ?? null;
-
-      if (nodeId.startsWith("freeText_")) {
-        handleAnnotationNodeDrop(
-          nodeId,
-          targetGroupId,
-          derived.textAnnotations,
-          derived.updateTextAnnotation
-        );
-        return;
-      }
-
-      if (nodeId.startsWith("freeShape_")) {
-        handleAnnotationNodeDrop(
-          nodeId,
-          targetGroupId,
-          derived.shapeAnnotations,
-          derived.updateShapeAnnotation
-        );
+      if (handleDroppedAnnotationNode(nodeId, targetGroupId)) {
         return;
       }
 
@@ -154,7 +188,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       // Membership persistence is handled by persistPositionChanges in onNodeDragStop
       // to keep position + membership as a single undo entry.
     },
-    [derived, getGroupDescendants, getGroupParentId]
+    [derived, handleDroppedAnnotationNode, handleDroppedGroupReparenting]
   );
 
   const deleteSelections = useCallback(
@@ -162,9 +196,15 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       groupIds: Set<string>,
       textIds: Set<string>,
       shapeIds: Set<string>,
+      trafficRateIds: Set<string>,
       options: { persist: boolean }
     ): { didDelete: boolean; membersCleared: boolean } => {
-      if (groupIds.size === 0 && textIds.size === 0 && shapeIds.size === 0) {
+      if (
+        groupIds.size === 0 &&
+        textIds.size === 0 &&
+        shapeIds.size === 0 &&
+        trafficRateIds.size === 0
+      ) {
         return { didDelete: false, membersCleared: false };
       }
 
@@ -184,6 +224,11 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       for (const id of shapeIds) {
         derived.deleteShapeAnnotation(id);
         uiActions.removeFromShapeSelection(id);
+      }
+
+      for (const id of trafficRateIds) {
+        derived.deleteTrafficRateAnnotation(id);
+        uiActions.removeFromTrafficRateSelection(id);
       }
 
       if (membersToClear.size > 0) {
@@ -217,12 +262,14 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       new Set(uiState.selectedGroupIds),
       new Set(uiState.selectedTextIds),
       new Set(uiState.selectedShapeIds),
+      new Set(uiState.selectedTrafficRateIds),
       { persist: true }
     );
   }, [
     uiState.selectedGroupIds,
     uiState.selectedTextIds,
     uiState.selectedShapeIds,
+    uiState.selectedTrafficRateIds,
     deleteSelections
   ]);
 
@@ -231,10 +278,12 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       groupIds?: Iterable<string>;
       textIds?: Iterable<string>;
       shapeIds?: Iterable<string>;
+      trafficRateIds?: Iterable<string>;
     }): { didDelete: boolean; membersCleared: boolean } => {
       const groupIds = new Set(uiState.selectedGroupIds);
       const textIds = new Set(uiState.selectedTextIds);
       const shapeIds = new Set(uiState.selectedShapeIds);
+      const trafficRateIds = new Set(uiState.selectedTrafficRateIds);
 
       for (const id of options?.groupIds ?? []) {
         groupIds.add(id);
@@ -245,10 +294,19 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       for (const id of options?.shapeIds ?? []) {
         shapeIds.add(id);
       }
+      for (const id of options?.trafficRateIds ?? []) {
+        trafficRateIds.add(id);
+      }
 
-      return deleteSelections(groupIds, textIds, shapeIds, { persist: false });
+      return deleteSelections(groupIds, textIds, shapeIds, trafficRateIds, { persist: false });
     },
-    [uiState.selectedGroupIds, uiState.selectedTextIds, uiState.selectedShapeIds, deleteSelections]
+    [
+      uiState.selectedGroupIds,
+      uiState.selectedTextIds,
+      uiState.selectedShapeIds,
+      uiState.selectedTrafficRateIds,
+      deleteSelections
+    ]
   );
 
   const persistAnnotationNodes = useCallback(() => {
@@ -279,6 +337,9 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       editingShapeAnnotation: uiState.editingShapeAnnotation,
       isAddShapeMode: uiState.isAddShapeMode,
       pendingShapeType: uiState.pendingShapeType,
+      trafficRateAnnotations: derived.trafficRateAnnotations,
+      selectedTrafficRateIds: uiState.selectedTrafficRateIds,
+      editingTrafficRateAnnotation: uiState.editingTrafficRateAnnotation,
 
       // Group actions
       selectGroup: uiActions.selectGroup,
@@ -387,6 +448,26 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       updateShapeAnnotation: derived.updateShapeAnnotation,
       handleShapeCanvasClick: shapeActions.handleShapeCanvasClick,
 
+      // Traffic-rate actions
+      createTrafficRateAtPosition: trafficActions.createTrafficRateAtPosition,
+      selectTrafficRateAnnotation: uiActions.selectTrafficRateAnnotation,
+      toggleTrafficRateAnnotationSelection: uiActions.toggleTrafficRateAnnotationSelection,
+      boxSelectTrafficRateAnnotations: uiActions.boxSelectTrafficRateAnnotations,
+      clearTrafficRateAnnotationSelection: uiActions.clearTrafficRateAnnotationSelection,
+      editTrafficRateAnnotation: trafficActions.editTrafficRateAnnotation,
+      closeTrafficRateEditor: uiActions.closeTrafficRateEditor,
+      saveTrafficRateAnnotation: trafficActions.saveTrafficRateAnnotation,
+      deleteTrafficRateAnnotation: trafficActions.deleteTrafficRateAnnotation,
+      deleteSelectedTrafficRateAnnotations: trafficActions.deleteSelectedTrafficRateAnnotations,
+      updateTrafficRateSize: (id, width, height) => {
+        derived.updateTrafficRateAnnotation(id, { width, height });
+      },
+      updateTrafficRateAnnotation: derived.updateTrafficRateAnnotation,
+      updateTrafficRateGeoPosition: (id, coords) => {
+        derived.updateTrafficRateAnnotation(id, { geoCoordinates: coords });
+        persistAnnotationNodes();
+      },
+
       // Membership
       onNodeDropped,
 
@@ -402,6 +483,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       groupActions,
       textActions,
       shapeActions,
+      trafficActions,
       onNodeDropped,
       deleteAllSelected,
       deleteSelectedForBatch,

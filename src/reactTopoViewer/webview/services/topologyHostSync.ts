@@ -8,6 +8,7 @@ import type { TopologySnapshot } from "../../shared/types/messages";
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
+  TrafficRateAnnotation,
   GroupStyleAnnotation,
   NodeAnnotation,
   NetworkNodeAnnotation,
@@ -156,6 +157,75 @@ function normalizeFreeShapeAnnotations(annotations: FreeShapeAnnotation[]): Free
       endPosition: normalizedEnd
     };
   });
+}
+
+function normalizeTrafficRateModeValue(
+  value: unknown
+): TrafficRateAnnotation["mode"] | undefined {
+  if (value === "text") return "text";
+  if (value === "chart" || value === "current") return "chart";
+  return undefined;
+}
+
+function normalizeTrafficRateTextMetricValue(
+  value: unknown
+): TrafficRateAnnotation["textMetric"] | undefined {
+  if (value === "combined" || value === "rx" || value === "tx") return value;
+  return undefined;
+}
+
+function setOptionalTrafficRateField<K extends keyof TrafficRateAnnotation>(
+  normalized: TrafficRateAnnotation,
+  key: K,
+  value: TrafficRateAnnotation[K] | undefined
+): void {
+  if (value === undefined) {
+    delete normalized[key];
+    return;
+  }
+  normalized[key] = value;
+}
+
+function normalizeTrafficRateShowLegend(
+  annotation: TrafficRateAnnotation,
+  normalized: TrafficRateAnnotation
+): void {
+  if (annotation.showLegend === false) {
+    normalized.showLegend = false;
+    return;
+  }
+  delete normalized.showLegend;
+}
+
+function normalizeTrafficRateAnnotation(annotation: TrafficRateAnnotation): TrafficRateAnnotation {
+  const normalized: TrafficRateAnnotation = {
+    ...annotation,
+    position: toPosition(annotation.position) ?? { x: 0, y: 0 }
+  };
+  setOptionalTrafficRateField(normalized, "mode", normalizeTrafficRateModeValue(annotation.mode));
+  setOptionalTrafficRateField(
+    normalized,
+    "textMetric",
+    normalizeTrafficRateTextMetricValue(annotation.textMetric)
+  );
+  setOptionalTrafficRateField(normalized, "width", toFiniteNumber(annotation.width));
+  setOptionalTrafficRateField(normalized, "height", toFiniteNumber(annotation.height));
+  normalizeTrafficRateShowLegend(annotation, normalized);
+  setOptionalTrafficRateField(
+    normalized,
+    "backgroundOpacity",
+    toFiniteNumber(annotation.backgroundOpacity)
+  );
+  setOptionalTrafficRateField(normalized, "borderWidth", toFiniteNumber(annotation.borderWidth));
+  setOptionalTrafficRateField(normalized, "borderRadius", toFiniteNumber(annotation.borderRadius));
+  setOptionalTrafficRateField(normalized, "zIndex", toFiniteNumber(annotation.zIndex));
+  return normalized;
+}
+
+function normalizeTrafficRateAnnotations(
+  annotations: TrafficRateAnnotation[]
+): TrafficRateAnnotation[] {
+  return annotations.map((annotation) => normalizeTrafficRateAnnotation(annotation));
 }
 
 function resolveGroupIdentity(
@@ -313,7 +383,8 @@ function buildMergedNodes(
   networkNodeAnnotations: NetworkNodeAnnotation[] | undefined,
   groupStyleAnnotations: GroupStyleAnnotation[],
   freeTextAnnotations: FreeTextAnnotation[],
-  freeShapeAnnotations: FreeShapeAnnotation[]
+  freeShapeAnnotations: FreeShapeAnnotation[],
+  trafficRateAnnotations: TrafficRateAnnotation[]
 ): Node[] {
   let topoWithMembership = applyGroupMembershipToNodes(
     newNodes,
@@ -328,7 +399,8 @@ function buildMergedNodes(
   const annotationNodes = annotationsToNodes(
     freeTextAnnotations,
     freeShapeAnnotations,
-    groupStyleAnnotations
+    groupStyleAnnotations,
+    trafficRateAnnotations
   );
   const mergedNodes = [...(topoWithMembership as Node[]), ...(annotationNodes as Node[])];
   return Array.from(new Map(mergedNodes.map((n) => [n.id, n])).values());
@@ -338,6 +410,7 @@ function normalizeAnnotations(annotations?: TopologyAnnotations): Required<Topol
   const {
     freeTextAnnotations = [],
     freeShapeAnnotations = [],
+    trafficRateAnnotations = [],
     groupStyleAnnotations = [],
     nodeAnnotations = [],
     networkNodeAnnotations = [],
@@ -350,6 +423,7 @@ function normalizeAnnotations(annotations?: TopologyAnnotations): Required<Topol
   return {
     freeTextAnnotations: normalizeFreeTextAnnotations(freeTextAnnotations),
     freeShapeAnnotations: normalizeFreeShapeAnnotations(freeShapeAnnotations),
+    trafficRateAnnotations: normalizeTrafficRateAnnotations(trafficRateAnnotations),
     groupStyleAnnotations: normalizeGroupStyleAnnotations(
       groupStyleAnnotations,
       normalizedNodeAnnotations
@@ -424,7 +498,8 @@ export function applySnapshotToStores(
     annotations.networkNodeAnnotations,
     annotations.groupStyleAnnotations,
     annotations.freeTextAnnotations,
-    annotations.freeShapeAnnotations
+    annotations.freeShapeAnnotations,
+    annotations.trafficRateAnnotations
   );
 
   // Apply force layout when no preset positions exist and geo coordinates are not driving layout.

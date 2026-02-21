@@ -262,6 +262,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
     const annotationUI = useAnnotationUIStore.getState();
     if (annotationUI.editingTextAnnotation) annotationUI.setEditingTextAnnotation(null);
     if (annotationUI.editingShapeAnnotation) annotationUI.setEditingShapeAnnotation(null);
+    if (annotationUI.editingTrafficRateAnnotation) annotationUI.closeTrafficRateEditor();
     if (annotationUI.editingGroup) annotationUI.closeGroupEditor();
   },
 
@@ -440,6 +441,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       const annotationUI = useAnnotationUIStore.getState();
       if (annotationUI.editingTextAnnotation) annotationUI.setEditingTextAnnotation(null);
       if (annotationUI.editingShapeAnnotation) annotationUI.setEditingShapeAnnotation(null);
+      if (annotationUI.editingTrafficRateAnnotation) annotationUI.closeTrafficRateEditor();
       if (annotationUI.editingGroup) annotationUI.closeGroupEditor();
     } else {
       set(data);

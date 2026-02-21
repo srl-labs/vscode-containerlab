@@ -28,6 +28,7 @@ import {
 import {
   FREE_SHAPE_NODE_TYPE,
   FREE_TEXT_NODE_TYPE,
+  TRAFFIC_RATE_NODE_TYPE,
   GROUP_NODE_TYPE,
   isAnnotationNodeType
 } from "../../annotations/annotationNodeConverters";
@@ -73,6 +74,25 @@ const MIN_ZOOM = 0.1;
 const MAX_FIT_ZOOM = 2;
 
 /** Hook for wrapped node click handling */
+function resolveAltDeleteHandler(
+  nodeType: string | undefined,
+  annotationHandlers?: AnnotationHandlers
+): ((nodeId: string) => void) | undefined {
+  if (!annotationHandlers) return undefined;
+  switch (nodeType) {
+    case FREE_TEXT_NODE_TYPE:
+      return annotationHandlers.onDeleteFreeText;
+    case FREE_SHAPE_NODE_TYPE:
+      return annotationHandlers.onDeleteFreeShape;
+    case GROUP_NODE_TYPE:
+      return annotationHandlers.onDeleteGroup;
+    case TRAFFIC_RATE_NODE_TYPE:
+      return annotationHandlers.onDeleteTrafficRate;
+    default:
+      return undefined;
+  }
+}
+
 function handleAltDelete(
   event: React.MouseEvent,
   node: { id: string; type?: string },
@@ -81,20 +101,19 @@ function handleAltDelete(
   handleDeleteNode: (nodeId: string) => void,
   annotationHandlers?: AnnotationHandlers
 ): boolean {
-  if (!event.altKey || mode !== "edit" || isLocked) return false;
+  if (!event.altKey || isLocked) return false;
+
+  // Annotation overlays are editable in unlocked view mode (running labs).
+  const annotationDelete = resolveAltDeleteHandler(node.type, annotationHandlers);
+  if (annotationDelete) {
+    event.stopPropagation();
+    annotationDelete(node.id);
+    return true;
+  }
+
+  if (mode !== "edit") return false;
+
   event.stopPropagation();
-  if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers?.onDeleteFreeText) {
-    annotationHandlers.onDeleteFreeText(node.id);
-    return true;
-  }
-  if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers?.onDeleteFreeShape) {
-    annotationHandlers.onDeleteFreeShape(node.id);
-    return true;
-  }
-  if (node.type === GROUP_NODE_TYPE && annotationHandlers?.onDeleteGroup) {
-    annotationHandlers.onDeleteGroup(node.id);
-    return true;
-  }
   handleDeleteNode(node.id);
   return true;
 }
@@ -138,6 +157,11 @@ function openAnnotationEditor(
     annotationHandlers.onEditGroup(node.id);
     return true;
   }
+  if (node.type === TRAFFIC_RATE_NODE_TYPE && annotationHandlers.onEditTrafficRate) {
+    clearContextForAnnotationEdit();
+    annotationHandlers.onEditTrafficRate(node.id);
+    return true;
+  }
 
   return false;
 }
@@ -162,8 +186,8 @@ function useWrappedNodeClick(
         clearContextForAnnotationEdit,
         annotationHandlers
       );
-      onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
       if (didOpenAnnotationEditor) return;
+      onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
     },
     [
       linkSourceNode,
@@ -414,6 +438,10 @@ function handleAnnotationDrop(
   }
   if (data.annotationType === "group") {
     handlers.onAddGroupAtPosition?.(snappedPosition);
+    return;
+  }
+  if (data.annotationType === "traffic-rate") {
+    handlers.onAddTrafficRateAtPosition?.(snappedPosition);
   }
 }
 
@@ -445,10 +473,12 @@ function handleCanvasDropEvent(params: {
   const { event, mode, isLocked, reactFlowInstanceRef, handlers } = params;
   event.preventDefault();
 
-  if (mode !== "edit" || isLocked) return;
+  if (isLocked) return;
 
   const data = parseCanvasDropData(event);
   if (!data) return;
+  // Deployed labs run in view mode, but unlocked users can still place annotation overlays.
+  if (mode !== "edit" && data.type !== "annotation") return;
 
   const rfInstance = reactFlowInstanceRef.current;
   if (!rfInstance) return;
@@ -879,6 +909,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onAddTextAtPosition,
       onAddGroupAtPosition,
       onAddShapeAtPosition,
+      onAddTrafficRateAtPosition,
       onDropCreateNode,
       onDropCreateNetwork,
       onLockedAction
@@ -1248,7 +1279,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onAddText,
       onAddTextAtPosition,
       onAddShapes,
-      onAddShapeAtPosition
+      onAddShapeAtPosition,
+      onAddTrafficRateAtPosition
     });
 
     const {
@@ -1338,7 +1370,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
             onDropCreateNetwork,
             onAddTextAtPosition,
             onAddShapeAtPosition,
-            onAddGroupAtPosition
+            onAddGroupAtPosition,
+            onAddTrafficRateAtPosition
           }
         });
       },
@@ -1350,7 +1383,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         onDropCreateNetwork,
         onAddTextAtPosition,
         onAddShapeAtPosition,
-        onAddGroupAtPosition
+        onAddGroupAtPosition,
+        onAddTrafficRateAtPosition
       ]
     );
 

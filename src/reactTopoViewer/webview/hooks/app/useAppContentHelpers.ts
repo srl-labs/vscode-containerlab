@@ -47,10 +47,13 @@ function getAnnotationHandlerSnapshot(annotations: AnnotationContextValue) {
     disableAddShapeMode: annotations.disableAddShapeMode,
     editTextAnnotation: annotations.editTextAnnotation,
     editShapeAnnotation: annotations.editShapeAnnotation,
+    editTrafficRateAnnotation: annotations.editTrafficRateAnnotation,
     deleteTextAnnotation: annotations.deleteTextAnnotation,
     deleteShapeAnnotation: annotations.deleteShapeAnnotation,
+    deleteTrafficRateAnnotation: annotations.deleteTrafficRateAnnotation,
     updateTextSize: annotations.updateTextSize,
     updateShapeSize: annotations.updateShapeSize,
+    updateTrafficRateSize: annotations.updateTrafficRateSize,
     updateTextRotation: annotations.updateTextRotation,
     updateShapeRotation: annotations.updateShapeRotation,
     onTextRotationStart: annotations.onTextRotationStart,
@@ -233,17 +236,26 @@ export function useAnnotationCanvasHandlers(annotations: AnnotationContextValue)
   const onEditFreeShape = React.useCallback((id: string) => {
     latestAnnotationsRef.current.editShapeAnnotation(id);
   }, []);
+  const onEditTrafficRate = React.useCallback((id: string) => {
+    latestAnnotationsRef.current.editTrafficRateAnnotation(id);
+  }, []);
   const onDeleteFreeText = React.useCallback((id: string) => {
     latestAnnotationsRef.current.deleteTextAnnotation(id);
   }, []);
   const onDeleteFreeShape = React.useCallback((id: string) => {
     latestAnnotationsRef.current.deleteShapeAnnotation(id);
   }, []);
+  const onDeleteTrafficRate = React.useCallback((id: string) => {
+    latestAnnotationsRef.current.deleteTrafficRateAnnotation(id);
+  }, []);
   const onUpdateFreeTextSize = React.useCallback((id: string, width: number, height: number) => {
     latestAnnotationsRef.current.updateTextSize(id, width, height);
   }, []);
   const onUpdateFreeShapeSize = React.useCallback((id: string, width: number, height: number) => {
     latestAnnotationsRef.current.updateShapeSize(id, width, height);
+  }, []);
+  const onUpdateTrafficRateSize = React.useCallback((id: string, width: number, height: number) => {
+    latestAnnotationsRef.current.updateTrafficRateSize(id, width, height);
   }, []);
   const onUpdateFreeTextRotation = React.useCallback((id: string, rotation: number) => {
     latestAnnotationsRef.current.updateTextRotation(id, rotation);
@@ -306,12 +318,15 @@ export function useAnnotationCanvasHandlers(annotations: AnnotationContextValue)
       // Edit handlers
       onEditFreeText,
       onEditFreeShape,
+      onEditTrafficRate,
       // Delete handlers
       onDeleteFreeText,
       onDeleteFreeShape,
+      onDeleteTrafficRate,
       // Size update handlers (for resize)
       onUpdateFreeTextSize,
       onUpdateFreeShapeSize,
+      onUpdateTrafficRateSize,
       // Rotation handlers (live updates during drag)
       onUpdateFreeTextRotation,
       onUpdateFreeShapeRotation,
@@ -341,10 +356,13 @@ export function useAnnotationCanvasHandlers(annotations: AnnotationContextValue)
       disableAddShapeMode,
       onEditFreeText,
       onEditFreeShape,
+      onEditTrafficRate,
       onDeleteFreeText,
       onDeleteFreeShape,
+      onDeleteTrafficRate,
       onUpdateFreeTextSize,
       onUpdateFreeShapeSize,
+      onUpdateTrafficRateSize,
       onUpdateFreeTextRotation,
       onUpdateFreeShapeRotation,
       onFreeTextRotationStart,

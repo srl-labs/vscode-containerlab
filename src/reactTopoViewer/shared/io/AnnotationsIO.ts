@@ -208,6 +208,7 @@ export class AnnotationsIO {
   private shouldSaveAnnotations(annotations: TopologyAnnotations): boolean {
     if (this.hasContent(annotations.freeTextAnnotations)) return true;
     if (this.hasContent(annotations.freeShapeAnnotations)) return true;
+    if (this.hasContent(annotations.trafficRateAnnotations)) return true;
     if (this.hasContent(annotations.groupStyleAnnotations)) return true;
     if (this.hasContent(annotations.networkNodeAnnotations)) return true;
     if (this.hasContent(annotations.nodeAnnotations)) return true;

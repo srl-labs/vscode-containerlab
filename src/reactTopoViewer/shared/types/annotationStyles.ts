@@ -29,3 +29,18 @@ export interface BoxStyle {
   labelColor?: string;
   labelPosition?: string;
 }
+
+/**
+ * Shared style properties for traffic-rate annotations and nodes.
+ */
+export interface TrafficRateStyle {
+  backgroundColor?: string;
+  backgroundOpacity?: number;
+  borderColor?: string;
+  borderWidth?: number;
+  borderStyle?: "solid" | "dashed" | "dotted" | "double";
+  borderRadius?: number;
+  titleColor?: string;
+  textColor?: string;
+  zIndex?: number;
+}

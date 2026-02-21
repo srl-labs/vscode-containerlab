@@ -8,12 +8,12 @@ import type { Node } from "@xyflow/react";
 
 import type { NodeSaveData } from "../../shared/io/NodePersistenceIO";
 import type { LinkSaveData } from "../../shared/io/LinkPersistenceIO";
-import { nodesToAnnotations } from "../annotations/annotationNodeConverters";
 import { collectNodeGroupMemberships } from "../annotations/groupMembership";
 import { useGraphStore } from "../stores/graphStore";
 import { BRIDGE_NETWORK_TYPES } from "../utils/networkNodeTypes";
 import { buildNetworkNodeAnnotations } from "../utils/networkNodeAnnotations";
 
+import { buildAnnotationNodesPayload } from "./annotationPayloads";
 import { executeTopologyCommand } from "./topologyHostCommands";
 
 // Re-export types for convenience
@@ -152,18 +152,12 @@ export async function saveNodePositionsWithAnnotations(
   nodes?: Node[]
 ): Promise<void> {
   try {
-    const graphNodes = nodes ?? useGraphStore.getState().nodes;
-    const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodes);
     await executeTopologyCommand(
       {
         command: "savePositionsAndAnnotations",
         payload: {
           positions,
-          annotations: {
-            freeTextAnnotations,
-            freeShapeAnnotations,
-            groupStyleAnnotations: groups
-          }
+          annotations: buildAnnotationNodesPayload(nodes)
         }
       },
       { applySnapshot: false }

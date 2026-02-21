@@ -3,7 +3,7 @@
  * These types define the structure for Containerlab topologies and ReactFlow elements.
  */
 
-import type { TextStyle, BoxStyle } from "./annotationStyles";
+import type { TextStyle, BoxStyle, TrafficRateStyle } from "./annotationStyles";
 
 // ============================================================================
 // Containerlab YAML Types
@@ -129,6 +129,24 @@ export interface FreeShapeAnnotation {
 }
 
 /**
+ * Traffic rate annotation for monitoring a node interface on the canvas.
+ */
+export interface TrafficRateAnnotation extends TrafficRateStyle {
+  id: string;
+  position: { x: number; y: number };
+  geoCoordinates?: { lat: number; lng: number };
+  groupId?: string; // Parent group ID for hierarchy membership
+  nodeId?: string;
+  interfaceName?: string;
+  mode?: "chart" | "text";
+  textMetric?: "combined" | "rx" | "tx";
+  showLegend?: boolean;
+  width?: number;
+  height?: number;
+  [key: string]: unknown;
+}
+
+/**
  * Group annotation for overlay groups (rendered as HTML/SVG overlays).
  * Members are tracked via NodeAnnotation.groupId (preferred) and group/level for legacy display.
  * Groups can be nested via parentId for hierarchical organization.
@@ -227,6 +245,7 @@ export interface AliasEndpointAnnotation {
 export interface TopologyAnnotations {
   freeTextAnnotations?: FreeTextAnnotation[];
   freeShapeAnnotations?: FreeShapeAnnotation[];
+  trafficRateAnnotations?: TrafficRateAnnotation[];
   groupStyleAnnotations?: GroupStyleAnnotation[];
   networkNodeAnnotations?: NetworkNodeAnnotation[];
   nodeAnnotations?: NodeAnnotation[];

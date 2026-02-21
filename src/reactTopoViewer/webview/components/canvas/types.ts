@@ -5,6 +5,7 @@ import type {
   NetworkNodeData,
   FreeShapeNodeData,
   FreeTextNodeData,
+  TrafficRateNodeData,
   GroupNodeData,
   RFNodeData,
   RFNodeType,
@@ -16,6 +17,7 @@ import type {
   NetworkRFNode,
   FreeTextRFNode,
   FreeShapeRFNode,
+  TrafficRateRFNode,
   GroupRFNode
 } from "../../../shared/types/graph";
 import { DEFAULT_ICON_COLOR, ROLE_SVG_MAP } from "../../../shared/types/graph";
@@ -30,6 +32,7 @@ export type {
   NetworkNodeData,
   FreeTextNodeData,
   FreeShapeNodeData,
+  TrafficRateNodeData,
   GroupNodeData,
   TopologyEdgeData,
   RFNodeData,
@@ -38,6 +41,7 @@ export type {
   NetworkRFNode,
   FreeTextRFNode,
   FreeShapeRFNode,
+  TrafficRateRFNode,
   GroupRFNode
 };
 
@@ -66,7 +70,7 @@ export type CanvasDropData = {
   type: "node" | "network" | "annotation";
   templateName?: string;
   networkType?: string;
-  annotationType?: "text" | "shape" | "group";
+  annotationType?: "text" | "shape" | "group" | "traffic-rate";
   shapeType?: string;
 };
 
@@ -76,6 +80,7 @@ export type CanvasDropHandlers = {
   onAddTextAtPosition?: (position: { x: number; y: number }) => void;
   onAddShapeAtPosition?: (position: { x: number; y: number }, shapeType?: string) => void;
   onAddGroupAtPosition?: (position: { x: number; y: number }) => void;
+  onAddTrafficRateAtPosition?: (position: { x: number; y: number }) => void;
 };
 
 /**
@@ -107,6 +112,8 @@ export interface AnnotationHandlers {
   onUpdateFreeTextSize: (id: string, width: number, height: number) => void;
   /** Update free shape size after resize */
   onUpdateFreeShapeSize: (id: string, width: number, height: number) => void;
+  /** Update traffic-rate size after resize */
+  onUpdateTrafficRateSize?: (id: string, width: number, height: number) => void;
   /** Update free text rotation during rotate (live updates) */
   onUpdateFreeTextRotation: (id: string, rotation: number) => void;
   /** Update free shape rotation during rotate (live updates) */
@@ -137,6 +144,10 @@ export interface AnnotationHandlers {
   onEditGroup?: (id: string) => void;
   /** Delete a group annotation */
   onDeleteGroup?: (id: string) => void;
+  /** Edit a traffic-rate annotation */
+  onEditTrafficRate?: (id: string) => void;
+  /** Delete a traffic-rate annotation */
+  onDeleteTrafficRate?: (id: string) => void;
   /** Get members of a group (for group dragging) */
   getGroupMembers?: (groupId: string, options?: { includeNested?: boolean }) => string[];
 }
@@ -210,6 +221,8 @@ export interface ReactFlowCanvasProps {
   onAddGroupAtPosition?: (position: { x: number; y: number }) => void;
   /** Callback to add a shape directly at a position */
   onAddShapeAtPosition?: (position: { x: number; y: number }, shapeType?: string) => void;
+  /** Callback to add a traffic-rate annotation directly at a position */
+  onAddTrafficRateAtPosition?: (position: { x: number; y: number }) => void;
 
   /** Callback for drag-drop node creation from palette */
   onDropCreateNode?: (position: { x: number; y: number }, templateName: string) => void;

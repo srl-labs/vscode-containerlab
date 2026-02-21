@@ -16,7 +16,8 @@ const {
   LinkEditorView,
   LinkImpairmentView,
   NetworkEditorView,
-  NodeEditorView
+  NodeEditorView,
+  TrafficRateEditorView
 } = editorViews;
 
 export interface EditorTabContentProps extends ContextPanelEditorState {
@@ -46,6 +47,8 @@ export const EditorTabContent: React.FC<EditorTabContentProps> = ({
   textAnnotationHandlers,
   editingShapeAnnotation,
   shapeAnnotationHandlers,
+  editingTrafficRateAnnotation,
+  trafficRateAnnotationHandlers,
   editingGroup,
   groupHandlers,
   onFooterRef,
@@ -134,6 +137,18 @@ export const EditorTabContent: React.FC<EditorTabContentProps> = ({
           onClose={groupHandlers.onClose}
           onDelete={groupHandlers.onDelete}
           onStylePreview={groupHandlers.onStylePreview}
+          onFooterRef={onFooterRef}
+          readOnly={isReadOnly}
+        />
+      );
+    case "trafficRateEditor":
+      return (
+        <TrafficRateEditorView
+          annotation={editingTrafficRateAnnotation}
+          onSave={trafficRateAnnotationHandlers.onSave}
+          onPreview={trafficRateAnnotationHandlers.onPreview}
+          onClose={trafficRateAnnotationHandlers.onClose}
+          onDelete={trafficRateAnnotationHandlers.onDelete}
           onFooterRef={onFooterRef}
           readOnly={isReadOnly}
         />

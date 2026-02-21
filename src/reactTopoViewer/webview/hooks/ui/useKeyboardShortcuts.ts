@@ -5,6 +5,12 @@ import { useEffect, useCallback } from "react";
 
 import { log } from "../../utils/logger";
 import { useGraphStore } from "../../stores/graphStore";
+import {
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE,
+  TRAFFIC_RATE_NODE_TYPE,
+  GROUP_NODE_TYPE
+} from "../../annotations/annotationNodeConverters";
 
 interface KeyboardShortcutsOptions {
   mode: "edit" | "view";
@@ -340,6 +346,80 @@ function deleteSelectedElements(
   return handled;
 }
 
+function isAnnotationType(type: string | undefined): boolean {
+  return (
+    type === FREE_TEXT_NODE_TYPE ||
+    type === FREE_SHAPE_NODE_TYPE ||
+    type === GROUP_NODE_TYPE ||
+    type === TRAFFIC_RATE_NODE_TYPE
+  );
+}
+
+function handleDeleteInViewMode(
+  event: KeyboardEvent,
+  selectedNode: string | null,
+  selectedEdge: string | null,
+  onDeleteSelection: (() => void) | undefined,
+  selectedAnnotationIds: Set<string> | undefined,
+  onDeleteAnnotations: (() => void) | undefined
+): boolean {
+  const { nodes, edges } = useGraphStore.getState();
+  const selectedNodes = nodes.filter((node) => node.selected);
+  const hasSelectedEdges = edges.some((edge) => edge.selected) || Boolean(selectedEdge);
+  const hasSelectedAnnotationNodes = selectedNodes.some((node) => isAnnotationType(node.type));
+  const hasSelectedNonAnnotationNode = selectedNodes.some((node) => !isAnnotationType(node.type));
+
+  // If canvas selection includes only annotation nodes, use batched delete path
+  // so deletion works even when annotation UI selection is out of sync.
+  if (
+    onDeleteSelection &&
+    hasSelectedAnnotationNodes &&
+    !hasSelectedEdges &&
+    !hasSelectedNonAnnotationNode &&
+    !selectedNode
+  ) {
+    log.info("[Keyboard] Deleting selected annotation nodes (view mode)");
+    onDeleteSelection();
+    event.preventDefault();
+    return true;
+  }
+
+  const handled = deleteSelectedAnnotations(selectedAnnotationIds, onDeleteAnnotations);
+  if (handled) event.preventDefault();
+  return handled;
+}
+
+function handleBatchedDeleteInEditMode(
+  event: KeyboardEvent,
+  selectedNode: string | null,
+  selectedEdge: string | null,
+  onDeleteSelection: (() => void) | undefined,
+  selectedAnnotationIds: Set<string> | undefined
+): boolean {
+  if (!onDeleteSelection) return false;
+
+  const { nodes, edges } = useGraphStore.getState();
+  const selectedNodeIds = nodes.filter((node) => node.selected).map((node) => node.id);
+  const selectedEdgeIds = edges.filter((edge) => edge.selected).map((edge) => edge.id);
+  let totalSelected = selectedNodeIds.length + selectedEdgeIds.length + (selectedAnnotationIds?.size ?? 0);
+
+  if (selectedNode && !selectedNodeIds.includes(selectedNode)) {
+    totalSelected += 1;
+  }
+  if (selectedEdge && !selectedEdgeIds.includes(selectedEdge)) {
+    totalSelected += 1;
+  }
+
+  if (totalSelected === 0) {
+    return false;
+  }
+
+  log.info(`[Keyboard] Deleting ${totalSelected} selected items (batched)`);
+  onDeleteSelection();
+  event.preventDefault();
+  return true;
+}
+
 /**
  * Handle Delete/Backspace: Delete selected element (nodes/edges and/or annotations)
  */
@@ -356,28 +436,30 @@ function handleDelete(
   onDeleteAnnotations?: () => void
 ): boolean {
   if (event.key !== "Delete" && event.key !== "Backspace") return false;
-  if (mode !== "edit" || isLocked) return false;
+  if (isLocked) return false;
 
-  if (onDeleteSelection) {
-    const { nodes, edges } = useGraphStore.getState();
-    const selectedNodeIds = nodes.filter((n) => n.selected).map((n) => n.id);
-    const selectedEdgeIds = edges.filter((e) => e.selected).map((e) => e.id);
-    let totalSelected =
-      selectedNodeIds.length + selectedEdgeIds.length + (selectedAnnotationIds?.size ?? 0);
+  // In view mode (running/deployed labs), allow deleting annotations only when unlocked.
+  if (mode !== "edit") {
+    return handleDeleteInViewMode(
+      event,
+      selectedNode,
+      selectedEdge,
+      onDeleteSelection,
+      selectedAnnotationIds,
+      onDeleteAnnotations
+    );
+  }
 
-    if (selectedNode && !selectedNodeIds.includes(selectedNode)) {
-      totalSelected += 1;
-    }
-    if (selectedEdge && !selectedEdgeIds.includes(selectedEdge)) {
-      totalSelected += 1;
-    }
-
-    if (totalSelected > 0) {
-      log.info(`[Keyboard] Deleting ${totalSelected} selected items (batched)`);
-      onDeleteSelection();
-      event.preventDefault();
-      return true;
-    }
+  if (
+    handleBatchedDeleteInEditMode(
+      event,
+      selectedNode,
+      selectedEdge,
+      onDeleteSelection,
+      selectedAnnotationIds
+    )
+  ) {
+    return true;
   }
 
   let handled = deleteSelectedAnnotations(selectedAnnotationIds, onDeleteAnnotations);

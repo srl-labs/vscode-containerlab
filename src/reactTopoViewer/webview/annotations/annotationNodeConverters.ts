@@ -15,11 +15,13 @@ import type { Node } from "@xyflow/react";
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
+  TrafficRateAnnotation,
   GroupStyleAnnotation
 } from "../../shared/types/topology";
 import type {
   FreeTextNodeData,
   FreeShapeNodeData,
+  TrafficRateNodeData,
   GroupNodeData
 } from "../components/canvas/types";
 
@@ -38,12 +40,14 @@ import {
 /** Node type constants */
 export const FREE_TEXT_NODE_TYPE = "free-text-node" as const;
 export const FREE_SHAPE_NODE_TYPE = "free-shape-node" as const;
+export const TRAFFIC_RATE_NODE_TYPE = "traffic-rate-node" as const;
 export const GROUP_NODE_TYPE = "group-node" as const;
 
 /** Set of annotation node types for quick lookup */
 const ANNOTATION_NODE_TYPES: Set<string> = new Set([
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
+  TRAFFIC_RATE_NODE_TYPE,
   GROUP_NODE_TYPE
 ]);
 
@@ -53,6 +57,10 @@ const LINE_PADDING = 20;
 const DEFAULT_SHAPE_Z_INDEX = -1;
 const DEFAULT_GROUP_WIDTH = 200;
 const DEFAULT_GROUP_HEIGHT = 150;
+const DEFAULT_TRAFFIC_RATE_CHART_WIDTH = 280;
+const DEFAULT_TRAFFIC_RATE_CHART_HEIGHT = 170;
+const DEFAULT_TRAFFIC_RATE_TEXT_WIDTH = 100;
+const DEFAULT_TRAFFIC_RATE_TEXT_HEIGHT = 30;
 
 // ============================================================================
 // Helper Functions
@@ -76,6 +84,130 @@ export function resolveGroupParentId(
   if (typeof parentId === "string") return parentId;
   if (typeof groupId === "string") return groupId;
   return undefined;
+}
+
+function normalizeTrafficRateMode(value: unknown): TrafficRateAnnotation["mode"] | undefined {
+  if (value === "text") return "text";
+  if (value === "chart" || value === "current") return "chart";
+  return undefined;
+}
+
+function normalizeTrafficRateTextMetric(
+  value: unknown
+): TrafficRateAnnotation["textMetric"] | undefined {
+  if (value === "combined" || value === "rx" || value === "tx") return value;
+  return undefined;
+}
+
+function toOptionalString(value: unknown): string | undefined {
+  return isNonEmptyString(value) ? value : undefined;
+}
+
+function toOptionalTrafficRateBorderStyle(
+  value: unknown
+): TrafficRateAnnotation["borderStyle"] | undefined {
+  return isNonEmptyString(value) ? (value as TrafficRateAnnotation["borderStyle"]) : undefined;
+}
+
+function setFiniteNumberIfPresent<T extends object, K extends keyof T>(
+  target: T,
+  key: K,
+  value: unknown
+): void {
+  const parsed = toFiniteNumber(value);
+  if (parsed !== undefined) {
+    target[key] = parsed as T[K];
+  }
+}
+
+function resolveTrafficRateDimensions(
+  annotation: TrafficRateAnnotation,
+  mode: TrafficRateAnnotation["mode"] | undefined
+): { width: number; height: number } {
+  const width =
+    toFiniteNumber(annotation.width) ??
+    (mode === "text" ? DEFAULT_TRAFFIC_RATE_TEXT_WIDTH : DEFAULT_TRAFFIC_RATE_CHART_WIDTH);
+  const height =
+    toFiniteNumber(annotation.height) ??
+    (mode === "text" ? DEFAULT_TRAFFIC_RATE_TEXT_HEIGHT : DEFAULT_TRAFFIC_RATE_CHART_HEIGHT);
+  return { width, height };
+}
+
+function buildTrafficRateNodeData(
+  annotation: TrafficRateAnnotation,
+  mode: TrafficRateAnnotation["mode"] | undefined,
+  textMetric: TrafficRateAnnotation["textMetric"] | undefined,
+  width: number,
+  height: number,
+  zIndex: number | undefined
+): TrafficRateNodeData {
+  const data: TrafficRateNodeData = {
+    width,
+    height,
+    groupId: annotation.groupId,
+    geoCoordinates: annotation.geoCoordinates,
+    backgroundOpacity: toFiniteNumber(annotation.backgroundOpacity),
+    borderWidth: toFiniteNumber(annotation.borderWidth),
+    borderRadius: toFiniteNumber(annotation.borderRadius)
+  };
+
+  const nodeId = toOptionalString(annotation.nodeId);
+  if (nodeId !== undefined) data.nodeId = nodeId;
+  const interfaceName = toOptionalString(annotation.interfaceName);
+  if (interfaceName !== undefined) data.interfaceName = interfaceName;
+  if (mode !== undefined) data.mode = mode;
+  if (textMetric !== undefined) data.textMetric = textMetric;
+  if (annotation.showLegend === false) data.showLegend = false;
+  const backgroundColor = toOptionalString(annotation.backgroundColor);
+  if (backgroundColor !== undefined) data.backgroundColor = backgroundColor;
+  const borderColor = toOptionalString(annotation.borderColor);
+  if (borderColor !== undefined) data.borderColor = borderColor;
+  const borderStyle = toOptionalTrafficRateBorderStyle(annotation.borderStyle);
+  if (borderStyle !== undefined) data.borderStyle = borderStyle;
+  const titleColor = toOptionalString(annotation.titleColor);
+  if (titleColor !== undefined) data.titleColor = titleColor;
+  const textColor = toOptionalString(annotation.textColor);
+  if (textColor !== undefined) data.textColor = textColor;
+  if (zIndex !== undefined) data.zIndex = zIndex;
+  return data;
+}
+
+function buildTrafficRateAnnotationBase(
+  node: Node<TrafficRateNodeData>,
+  mode: TrafficRateAnnotation["mode"] | undefined,
+  textMetric: TrafficRateAnnotation["textMetric"] | undefined
+): TrafficRateAnnotation {
+  const data = node.data;
+  const annotation: TrafficRateAnnotation = {
+    id: node.id,
+    position: node.position,
+    geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined
+  };
+
+  const nodeId = toOptionalString(data.nodeId);
+  if (nodeId !== undefined) annotation.nodeId = nodeId;
+  const interfaceName = toOptionalString(data.interfaceName);
+  if (interfaceName !== undefined) annotation.interfaceName = interfaceName;
+  if (mode !== undefined) annotation.mode = mode;
+  if (textMetric !== undefined) annotation.textMetric = textMetric;
+  if (data.showLegend === false) annotation.showLegend = false;
+  const groupId = toOptionalString(data.groupId);
+  if (groupId !== undefined) annotation.groupId = groupId;
+  const backgroundColor = toOptionalString(data.backgroundColor);
+  if (backgroundColor !== undefined) annotation.backgroundColor = backgroundColor;
+  setFiniteNumberIfPresent(annotation, "backgroundOpacity", data.backgroundOpacity);
+  const borderColor = toOptionalString(data.borderColor);
+  if (borderColor !== undefined) annotation.borderColor = borderColor;
+  setFiniteNumberIfPresent(annotation, "borderWidth", data.borderWidth);
+  const borderStyle = toOptionalTrafficRateBorderStyle(data.borderStyle);
+  if (borderStyle !== undefined) annotation.borderStyle = borderStyle;
+  setFiniteNumberIfPresent(annotation, "borderRadius", data.borderRadius);
+  const titleColor = toOptionalString(data.titleColor);
+  if (titleColor !== undefined) annotation.titleColor = titleColor;
+  const textColor = toOptionalString(data.textColor);
+  if (textColor !== undefined) annotation.textColor = textColor;
+
+  return annotation;
 }
 
 // ============================================================================
@@ -246,6 +378,42 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
 }
 
 /**
+ * Convert a TrafficRateAnnotation to a React Flow Node
+ */
+export function trafficRateToNode(annotation: TrafficRateAnnotation): Node<TrafficRateNodeData> {
+  const position = normalizePosition(annotation.position);
+  const modeRaw = annotation.mode as unknown;
+  const resolvedMode = normalizeTrafficRateMode(modeRaw);
+  const resolvedTextMetric = normalizeTrafficRateTextMetric(annotation.textMetric);
+  const { width: resolvedWidth, height: resolvedHeight } = resolveTrafficRateDimensions(
+    annotation,
+    resolvedMode
+  );
+  const resolvedZIndex = toFiniteNumber(annotation.zIndex);
+  const data = buildTrafficRateNodeData(
+    annotation,
+    resolvedMode,
+    resolvedTextMetric,
+    resolvedWidth,
+    resolvedHeight,
+    resolvedZIndex
+  );
+  const node: Node<TrafficRateNodeData> = {
+    id: annotation.id,
+    type: TRAFFIC_RATE_NODE_TYPE,
+    position,
+    width: resolvedWidth,
+    height: resolvedHeight,
+    draggable: true,
+    selectable: true,
+    data
+  };
+
+  if (resolvedZIndex !== undefined) node.zIndex = resolvedZIndex;
+  return node;
+}
+
+/**
  * Convert a GroupStyleAnnotation to a React Flow Node
  * Groups are rendered with zIndex: -1 so they appear behind topology nodes
  */
@@ -379,6 +547,21 @@ export function nodeToFreeShape(node: Node<FreeShapeNodeData>): FreeShapeAnnotat
 }
 
 /**
+ * Convert a React Flow Node back to TrafficRateAnnotation
+ */
+export function nodeToTrafficRate(node: Node<TrafficRateNodeData>): TrafficRateAnnotation {
+  const data = node.data;
+  const mode = normalizeTrafficRateMode(data.mode);
+  const textMetric = normalizeTrafficRateTextMetric(data.textMetric);
+  const annotation = buildTrafficRateAnnotationBase(node, mode, textMetric);
+  setFiniteNumberIfPresent(annotation, "width", node.width ?? data.width);
+  setFiniteNumberIfPresent(annotation, "height", node.height ?? data.height);
+  const resolvedZIndex = typeof node.zIndex === "number" ? node.zIndex : data.zIndex;
+  setFiniteNumberIfPresent(annotation, "zIndex", resolvedZIndex);
+  return annotation;
+}
+
+/**
  * Convert a React Flow Node back to GroupStyleAnnotation
  */
 export function nodeToGroup(node: Node<GroupNodeData>): GroupStyleAnnotation {
@@ -420,7 +603,8 @@ export function nodeToGroup(node: Node<GroupNodeData>): GroupStyleAnnotation {
 export function annotationsToNodes(
   freeTextAnnotations: FreeTextAnnotation[],
   freeShapeAnnotations: FreeShapeAnnotation[],
-  groups: GroupStyleAnnotation[]
+  groups: GroupStyleAnnotation[],
+  trafficRateAnnotations: TrafficRateAnnotation[] = []
 ): Node[] {
   const nodes: Node[] = [];
 
@@ -439,6 +623,11 @@ export function annotationsToNodes(
     nodes.push(freeShapeToNode(annotation));
   }
 
+  // Add traffic-rate nodes
+  for (const annotation of trafficRateAnnotations) {
+    nodes.push(trafficRateToNode(annotation));
+  }
+
   return nodes;
 }
 
@@ -448,10 +637,12 @@ export function annotationsToNodes(
 export function nodesToAnnotations(nodes: Node[]): {
   freeTextAnnotations: FreeTextAnnotation[];
   freeShapeAnnotations: FreeShapeAnnotation[];
+  trafficRateAnnotations: TrafficRateAnnotation[];
   groups: GroupStyleAnnotation[];
 } {
   const freeTextAnnotations: FreeTextAnnotation[] = [];
   const freeShapeAnnotations: FreeShapeAnnotation[] = [];
+  const trafficRateAnnotations: TrafficRateAnnotation[] = [];
   const groups: GroupStyleAnnotation[] = [];
 
   for (const node of nodes) {
@@ -462,11 +653,14 @@ export function nodesToAnnotations(nodes: Node[]): {
       case FREE_SHAPE_NODE_TYPE:
         freeShapeAnnotations.push(nodeToFreeShape(node as Node<FreeShapeNodeData>));
         break;
+      case TRAFFIC_RATE_NODE_TYPE:
+        trafficRateAnnotations.push(nodeToTrafficRate(node as Node<TrafficRateNodeData>));
+        break;
       case GROUP_NODE_TYPE:
         groups.push(nodeToGroup(node as Node<GroupNodeData>));
         break;
     }
   }
 
-  return { freeTextAnnotations, freeShapeAnnotations, groups };
+  return { freeTextAnnotations, freeShapeAnnotations, trafficRateAnnotations, groups };
 }

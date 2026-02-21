@@ -1,7 +1,7 @@
 // ReactFlow type definitions for the topology viewer.
 import type { Node, Edge } from "@xyflow/react";
 
-import type { TextStyle, BoxStyle } from "./annotationStyles";
+import type { TextStyle, BoxStyle, TrafficRateStyle } from "./annotationStyles";
 
 // ============================================================================
 // Node Data Types
@@ -102,6 +102,22 @@ export interface FreeShapeNodeData {
   [key: string]: unknown;
 }
 
+/**
+ * Node data for traffic-rate annotations.
+ */
+export interface TrafficRateNodeData extends TrafficRateStyle {
+  nodeId?: string;
+  interfaceName?: string;
+  mode?: "chart" | "text";
+  textMetric?: "combined" | "rx" | "tx";
+  showLegend?: boolean;
+  width?: number;
+  height?: number;
+  groupId?: string;
+  geoCoordinates?: { lat: number; lng: number };
+  [key: string]: unknown;
+}
+
 // ============================================================================
 // Edge Data Types
 // ============================================================================
@@ -131,7 +147,8 @@ export type RFNodeData =
   | NetworkNodeData
   | GroupNodeData
   | FreeTextNodeData
-  | FreeShapeNodeData;
+  | FreeShapeNodeData
+  | TrafficRateNodeData;
 
 /**
  * Custom node type string literals
@@ -141,7 +158,8 @@ export type RFNodeType =
   | "network-node"
   | "group-node"
   | "free-text-node"
-  | "free-shape-node";
+  | "free-shape-node"
+  | "traffic-rate-node";
 
 // ============================================================================
 // Typed Node Aliases
@@ -155,6 +173,7 @@ export type NetworkRFNode = Node<NetworkNodeData, "network-node">;
 export type GroupRFNode = Node<GroupNodeData, "group-node">;
 export type FreeTextRFNode = Node<FreeTextNodeData, "free-text-node">;
 export type FreeShapeRFNode = Node<FreeShapeNodeData, "free-shape-node">;
+export type TrafficRateRFNode = Node<TrafficRateNodeData, "traffic-rate-node">;
 
 /**
  * Union of all typed nodes
@@ -164,7 +183,8 @@ export type TopoNode =
   | NetworkRFNode
   | GroupRFNode
   | FreeTextRFNode
-  | FreeShapeRFNode;
+  | FreeShapeRFNode
+  | TrafficRateRFNode;
 
 /**
  * React Flow edge with topology data

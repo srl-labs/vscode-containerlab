@@ -30,6 +30,7 @@ export interface AppKeyboardShortcutsConfig {
   annotations: {
     selectedTextIds: Set<string>;
     selectedShapeIds: Set<string>;
+    selectedTrafficRateIds: Set<string>;
     selectedGroupIds: Set<string>;
     clearAllSelections: () => void;
     handleAddGroup: () => void;
@@ -56,11 +57,17 @@ export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): voi
   const combinedSelectedAnnotationIds = React.useMemo(() => {
     const combined = new Set<string>([
       ...annotations.selectedTextIds,
-      ...annotations.selectedShapeIds
+      ...annotations.selectedShapeIds,
+      ...annotations.selectedTrafficRateIds
     ]);
     annotations.selectedGroupIds.forEach((id) => combined.add(id));
     return combined;
-  }, [annotations.selectedTextIds, annotations.selectedShapeIds, annotations.selectedGroupIds]);
+  }, [
+    annotations.selectedTextIds,
+    annotations.selectedShapeIds,
+    annotations.selectedTrafficRateIds,
+    annotations.selectedGroupIds
+  ]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
