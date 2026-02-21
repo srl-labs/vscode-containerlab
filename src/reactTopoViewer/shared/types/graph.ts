@@ -1,7 +1,7 @@
 // ReactFlow type definitions for the topology viewer.
 import type { Node, Edge } from "@xyflow/react";
 
-import type { TextStyle, BoxStyle } from "./annotationStyles";
+import type { TextStyle, BoxStyle, TrafficRateStyle } from "./annotationStyles";
 
 // ============================================================================
 // Node Data Types
@@ -105,7 +105,7 @@ export interface FreeShapeNodeData {
 /**
  * Node data for traffic-rate annotations.
  */
-export interface TrafficRateNodeData {
+export interface TrafficRateNodeData extends TrafficRateStyle {
   nodeId?: string;
   interfaceName?: string;
   mode?: "chart" | "text";
@@ -115,15 +115,6 @@ export interface TrafficRateNodeData {
   height?: number;
   groupId?: string;
   geoCoordinates?: { lat: number; lng: number };
-  backgroundColor?: string;
-  backgroundOpacity?: number;
-  borderColor?: string;
-  borderWidth?: number;
-  borderStyle?: "solid" | "dashed" | "dotted" | "double";
-  borderRadius?: number;
-  titleColor?: string;
-  textColor?: string;
-  zIndex?: number;
   [key: string]: unknown;
 }
 

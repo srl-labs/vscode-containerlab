@@ -74,6 +74,25 @@ const MIN_ZOOM = 0.1;
 const MAX_FIT_ZOOM = 2;
 
 /** Hook for wrapped node click handling */
+function resolveAltDeleteHandler(
+  nodeType: string | undefined,
+  annotationHandlers?: AnnotationHandlers
+): ((nodeId: string) => void) | undefined {
+  if (!annotationHandlers) return undefined;
+  switch (nodeType) {
+    case FREE_TEXT_NODE_TYPE:
+      return annotationHandlers.onDeleteFreeText;
+    case FREE_SHAPE_NODE_TYPE:
+      return annotationHandlers.onDeleteFreeShape;
+    case GROUP_NODE_TYPE:
+      return annotationHandlers.onDeleteGroup;
+    case TRAFFIC_RATE_NODE_TYPE:
+      return annotationHandlers.onDeleteTrafficRate;
+    default:
+      return undefined;
+  }
+}
+
 function handleAltDelete(
   event: React.MouseEvent,
   node: { id: string; type?: string },
@@ -85,24 +104,10 @@ function handleAltDelete(
   if (!event.altKey || isLocked) return false;
 
   // Annotation overlays are editable in unlocked view mode (running labs).
-  if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers?.onDeleteFreeText) {
+  const annotationDelete = resolveAltDeleteHandler(node.type, annotationHandlers);
+  if (annotationDelete) {
     event.stopPropagation();
-    annotationHandlers.onDeleteFreeText(node.id);
-    return true;
-  }
-  if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers?.onDeleteFreeShape) {
-    event.stopPropagation();
-    annotationHandlers.onDeleteFreeShape(node.id);
-    return true;
-  }
-  if (node.type === GROUP_NODE_TYPE && annotationHandlers?.onDeleteGroup) {
-    event.stopPropagation();
-    annotationHandlers.onDeleteGroup(node.id);
-    return true;
-  }
-  if (node.type === TRAFFIC_RATE_NODE_TYPE && annotationHandlers?.onDeleteTrafficRate) {
-    event.stopPropagation();
-    annotationHandlers.onDeleteTrafficRate(node.id);
+    annotationDelete(node.id);
     return true;
   }
 

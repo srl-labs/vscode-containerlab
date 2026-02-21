@@ -174,70 +174,58 @@ function normalizeTrafficRateTextMetricValue(
   return undefined;
 }
 
+function setOptionalTrafficRateField<K extends keyof TrafficRateAnnotation>(
+  normalized: TrafficRateAnnotation,
+  key: K,
+  value: TrafficRateAnnotation[K] | undefined
+): void {
+  if (value === undefined) {
+    delete normalized[key];
+    return;
+  }
+  normalized[key] = value;
+}
+
+function normalizeTrafficRateShowLegend(
+  annotation: TrafficRateAnnotation,
+  normalized: TrafficRateAnnotation
+): void {
+  if (annotation.showLegend === false) {
+    normalized.showLegend = false;
+    return;
+  }
+  delete normalized.showLegend;
+}
+
+function normalizeTrafficRateAnnotation(annotation: TrafficRateAnnotation): TrafficRateAnnotation {
+  const normalized: TrafficRateAnnotation = {
+    ...annotation,
+    position: toPosition(annotation.position) ?? { x: 0, y: 0 }
+  };
+  setOptionalTrafficRateField(normalized, "mode", normalizeTrafficRateModeValue(annotation.mode));
+  setOptionalTrafficRateField(
+    normalized,
+    "textMetric",
+    normalizeTrafficRateTextMetricValue(annotation.textMetric)
+  );
+  setOptionalTrafficRateField(normalized, "width", toFiniteNumber(annotation.width));
+  setOptionalTrafficRateField(normalized, "height", toFiniteNumber(annotation.height));
+  normalizeTrafficRateShowLegend(annotation, normalized);
+  setOptionalTrafficRateField(
+    normalized,
+    "backgroundOpacity",
+    toFiniteNumber(annotation.backgroundOpacity)
+  );
+  setOptionalTrafficRateField(normalized, "borderWidth", toFiniteNumber(annotation.borderWidth));
+  setOptionalTrafficRateField(normalized, "borderRadius", toFiniteNumber(annotation.borderRadius));
+  setOptionalTrafficRateField(normalized, "zIndex", toFiniteNumber(annotation.zIndex));
+  return normalized;
+}
+
 function normalizeTrafficRateAnnotations(
   annotations: TrafficRateAnnotation[]
 ): TrafficRateAnnotation[] {
-  return annotations.map((annotation) => {
-    const width = toFiniteNumber(annotation.width);
-    const height = toFiniteNumber(annotation.height);
-    const showLegendDisabled = annotation.showLegend === false;
-    const mode = normalizeTrafficRateModeValue(annotation.mode);
-    const textMetric = normalizeTrafficRateTextMetricValue(annotation.textMetric);
-    const backgroundOpacity = toFiniteNumber(annotation.backgroundOpacity);
-    const borderWidth = toFiniteNumber(annotation.borderWidth);
-    const borderRadius = toFiniteNumber(annotation.borderRadius);
-    const zIndex = toFiniteNumber(annotation.zIndex);
-    const normalized: TrafficRateAnnotation = {
-      ...annotation,
-      position: toPosition(annotation.position) ?? { x: 0, y: 0 }
-    };
-    if (mode !== undefined) {
-      normalized.mode = mode;
-    } else {
-      delete normalized.mode;
-    }
-    if (textMetric !== undefined) {
-      normalized.textMetric = textMetric;
-    } else {
-      delete normalized.textMetric;
-    }
-    if (width !== undefined) {
-      normalized.width = width;
-    } else {
-      delete normalized.width;
-    }
-    if (height !== undefined) {
-      normalized.height = height;
-    } else {
-      delete normalized.height;
-    }
-    if (showLegendDisabled) {
-      normalized.showLegend = false;
-    } else {
-      delete normalized.showLegend;
-    }
-    if (backgroundOpacity !== undefined) {
-      normalized.backgroundOpacity = backgroundOpacity;
-    } else {
-      delete normalized.backgroundOpacity;
-    }
-    if (borderWidth !== undefined) {
-      normalized.borderWidth = borderWidth;
-    } else {
-      delete normalized.borderWidth;
-    }
-    if (borderRadius !== undefined) {
-      normalized.borderRadius = borderRadius;
-    } else {
-      delete normalized.borderRadius;
-    }
-    if (zIndex !== undefined) {
-      normalized.zIndex = zIndex;
-    } else {
-      delete normalized.zIndex;
-    }
-    return normalized;
-  });
+  return annotations.map((annotation) => normalizeTrafficRateAnnotation(annotation));
 }
 
 function resolveGroupIdentity(

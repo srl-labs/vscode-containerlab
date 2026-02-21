@@ -2,9 +2,7 @@ import { useCallback, useMemo } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import { saveAllNodeGroupMemberships, saveAnnotationNodesFromGraph } from "../../services";
-import { useAnnotationUIActions, useAnnotationUIState } from "../../stores/annotationUIStore";
-import { useGraphStore } from "../../stores/graphStore";
-import { useIsLocked } from "../../stores/topoViewerStore";
+import { useAnnotationUIActions, useAnnotationUIState, useGraphStore, useIsLocked } from "../../stores";
 import { collectNodeGroupMemberships } from "../../annotations/groupMembership";
 import { TRAFFIC_RATE_NODE_TYPE } from "../../annotations/annotationNodeConverters";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
@@ -106,63 +104,76 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
     [derived.groups, getGroupParentId]
   );
 
+  const handleDroppedGroupReparenting = useCallback(
+    (nodeId: string, position: { x: number; y: number }, droppedGroup: GroupStyleAnnotation) => {
+      const bounds = {
+        x: position.x,
+        y: position.y,
+        width: droppedGroup.width ?? 200,
+        height: droppedGroup.height ?? 150
+      };
+      const excluded = getGroupDescendants(nodeId);
+      excluded.add(nodeId);
+      const candidateGroups = derived.groups.filter((group) => !excluded.has(group.id));
+      const parentGroup = findParentGroupForBounds(bounds, candidateGroups, nodeId);
+      const nextParentId = parentGroup?.id ?? null;
+      const currentParentId = getGroupParentId(droppedGroup);
+
+      if (currentParentId === nextParentId) return;
+      derived.updateGroup(nodeId, {
+        parentId: nextParentId ?? undefined,
+        groupId: nextParentId ?? undefined
+      });
+    },
+    [derived, getGroupDescendants, getGroupParentId]
+  );
+
+  const handleDroppedAnnotationNode = useCallback(
+    (nodeId: string, targetGroupId: string | null): boolean => {
+      const movedNode = useGraphStore.getState().nodes.find((node) => node.id === nodeId);
+      switch (movedNode?.type) {
+        case "free-text-node":
+          handleAnnotationNodeDrop(
+            nodeId,
+            targetGroupId,
+            derived.textAnnotations,
+            derived.updateTextAnnotation
+          );
+          return true;
+        case "free-shape-node":
+          handleAnnotationNodeDrop(
+            nodeId,
+            targetGroupId,
+            derived.shapeAnnotations,
+            derived.updateShapeAnnotation
+          );
+          return true;
+        case TRAFFIC_RATE_NODE_TYPE:
+          handleAnnotationNodeDrop(
+            nodeId,
+            targetGroupId,
+            derived.trafficRateAnnotations,
+            derived.updateTrafficRateAnnotation
+          );
+          return true;
+        default:
+          return false;
+      }
+    },
+    [derived]
+  );
+
   const onNodeDropped = useCallback(
     (nodeId: string, position: { x: number; y: number }) => {
       const droppedGroup = derived.groups.find((group) => group.id === nodeId);
       if (droppedGroup) {
-        const bounds = {
-          x: position.x,
-          y: position.y,
-          width: droppedGroup.width ?? 200,
-          height: droppedGroup.height ?? 150
-        };
-        const excluded = getGroupDescendants(nodeId);
-        excluded.add(nodeId);
-        const candidateGroups = derived.groups.filter((group) => !excluded.has(group.id));
-        const parentGroup = findParentGroupForBounds(bounds, candidateGroups, nodeId);
-        const nextParentId = parentGroup?.id ?? null;
-        const currentParentId = getGroupParentId(droppedGroup);
-
-        if (currentParentId !== nextParentId) {
-          derived.updateGroup(nodeId, {
-            parentId: nextParentId ?? undefined,
-            groupId: nextParentId ?? undefined
-          });
-        }
+        handleDroppedGroupReparenting(nodeId, position, droppedGroup);
         return;
       }
 
       const targetGroup = findDeepestGroupAtPosition(position, derived.groups);
       const targetGroupId = targetGroup?.id ?? null;
-
-      const movedNode = useGraphStore.getState().nodes.find((node) => node.id === nodeId);
-      if (movedNode?.type === "free-text-node") {
-        handleAnnotationNodeDrop(
-          nodeId,
-          targetGroupId,
-          derived.textAnnotations,
-          derived.updateTextAnnotation
-        );
-        return;
-      }
-
-      if (movedNode?.type === "free-shape-node") {
-        handleAnnotationNodeDrop(
-          nodeId,
-          targetGroupId,
-          derived.shapeAnnotations,
-          derived.updateShapeAnnotation
-        );
-        return;
-      }
-
-      if (movedNode?.type === TRAFFIC_RATE_NODE_TYPE) {
-        handleAnnotationNodeDrop(
-          nodeId,
-          targetGroupId,
-          derived.trafficRateAnnotations,
-          derived.updateTrafficRateAnnotation
-        );
+      if (handleDroppedAnnotationNode(nodeId, targetGroupId)) {
         return;
       }
 
@@ -177,7 +188,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       // Membership persistence is handled by persistPositionChanges in onNodeDragStop
       // to keep position + membership as a single undo entry.
     },
-    [derived, getGroupDescendants, getGroupParentId]
+    [derived, handleDroppedAnnotationNode, handleDroppedGroupReparenting]
   );
 
   const deleteSelections = useCallback(

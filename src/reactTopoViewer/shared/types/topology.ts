@@ -3,7 +3,7 @@
  * These types define the structure for Containerlab topologies and ReactFlow elements.
  */
 
-import type { TextStyle, BoxStyle } from "./annotationStyles";
+import type { TextStyle, BoxStyle, TrafficRateStyle } from "./annotationStyles";
 
 // ============================================================================
 // Containerlab YAML Types
@@ -131,7 +131,7 @@ export interface FreeShapeAnnotation {
 /**
  * Traffic rate annotation for monitoring a node interface on the canvas.
  */
-export interface TrafficRateAnnotation {
+export interface TrafficRateAnnotation extends TrafficRateStyle {
   id: string;
   position: { x: number; y: number };
   geoCoordinates?: { lat: number; lng: number };
@@ -143,15 +143,6 @@ export interface TrafficRateAnnotation {
   showLegend?: boolean;
   width?: number;
   height?: number;
-  backgroundColor?: string;
-  backgroundOpacity?: number;
-  borderColor?: string;
-  borderWidth?: number;
-  borderStyle?: "solid" | "dashed" | "dotted" | "double";
-  borderRadius?: number;
-  titleColor?: string;
-  textColor?: string;
-  zIndex?: number;
   [key: string]: unknown;
 }
 

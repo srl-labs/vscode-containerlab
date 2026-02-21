@@ -2,6 +2,7 @@
 import React, { useRef, useMemo } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import type { SxProps, Theme } from "@mui/material/styles";
 import { LineChart } from "@mui/x-charts/LineChart";
 
 import type { InterfaceStatsPayload, EndpointStatsHistory } from "../../../shared/types/topology";
@@ -134,6 +135,214 @@ function resolveLegendSlotProps(compact: boolean, showLegend: boolean, scale: nu
 // Global history store per endpoint key
 const historyStore = new Map<string, EndpointStatsHistory>();
 
+function getOrCreateHistory(endpointKey: string): EndpointStatsHistory {
+  let history = historyStore.get(endpointKey);
+  if (!history) {
+    history = createEmptyHistory();
+    historyStore.set(endpointKey, history);
+  }
+  return history;
+}
+
+function trimHistory(history: EndpointStatsHistory): void {
+  while (history.timestamps.length > MAX_GRAPH_POINTS) {
+    history.timestamps.shift();
+    history.rxBps.shift();
+    history.txBps.shift();
+    history.rxPps.shift();
+    history.txPps.shift();
+  }
+}
+
+function appendStatsSample(
+  history: EndpointStatsHistory,
+  stats: InterfaceStatsPayload | undefined,
+  lastStatsRef: { current: InterfaceStatsPayload | undefined }
+): void {
+  if (!stats || stats === lastStatsRef.current) {
+    return;
+  }
+
+  lastStatsRef.current = stats;
+  history.timestamps.push(resolveNextTimestampSeconds(history, stats, Date.now() / 1000));
+  history.rxBps.push(stats.rxBps ?? 0);
+  history.txBps.push(stats.txBps ?? 0);
+  history.rxPps.push(stats.rxPps ?? 0);
+  history.txPps.push(stats.txPps ?? 0);
+  trimHistory(history);
+}
+
+function resolveWindowIntervalSeconds(
+  history: EndpointStatsHistory,
+  stats: InterfaceStatsPayload | undefined
+): number {
+  const configuredInterval = resolveValidIntervalSeconds(stats);
+  if (configuredInterval !== undefined) {
+    return configuredInterval;
+  }
+
+  if (history.timestamps.length < 2) {
+    return 1;
+  }
+
+  const nextToLast = history.timestamps[history.timestamps.length - 2];
+  const last = history.timestamps[history.timestamps.length - 1];
+  return Math.max(last - nextToLast, MIN_TIMESTAMP_STEP_SECONDS);
+}
+
+function resolveXAxisWindow(
+  history: EndpointStatsHistory,
+  stats: InterfaceStatsPayload | undefined
+): { xMin: Date | undefined; xMax: Date | undefined } {
+  const lastTimestamp = history.timestamps[history.timestamps.length - 1];
+  if (typeof lastTimestamp !== "number" || !Number.isFinite(lastTimestamp)) {
+    return { xMin: undefined, xMax: undefined };
+  }
+
+  const intervalSeconds = resolveWindowIntervalSeconds(history, stats);
+  const visiblePointSpan = Math.max(1, Math.min(history.timestamps.length - 1, MAX_GRAPH_POINTS - 1));
+  const windowSeconds = intervalSeconds * visiblePointSpan;
+  return {
+    xMin: new Date((lastTimestamp - windowSeconds) * 1000),
+    xMax: new Date(lastTimestamp * 1000)
+  };
+}
+
+function buildChartData(
+  history: EndpointStatsHistory,
+  stats: InterfaceStatsPayload | undefined
+): {
+  xData: Date[];
+  rxBpsData: number[];
+  txBpsData: number[];
+  rxPpsData: number[];
+  txPpsData: number[];
+  unitLabel: string;
+  xMin: Date | undefined;
+  xMax: Date | undefined;
+} {
+  const maxBps = Math.max(...history.rxBps, ...history.txBps, 1);
+  const unit = determineBpsUnit(maxBps);
+  const divisor = unit.divisor;
+  const xData = history.timestamps.map((ts) => new Date(ts * 1000));
+  const { xMin, xMax } = resolveXAxisWindow(history, stats);
+  return {
+    xData,
+    rxBpsData: history.rxBps.map((v) => v / divisor),
+    txBpsData: history.txBps.map((v) => v / divisor),
+    rxPpsData: [...history.rxPps],
+    txPpsData: [...history.txPps],
+    unitLabel: unit.label,
+    xMin,
+    xMax
+  };
+}
+
+function buildXAxis(
+  compact: boolean,
+  xData: Date[],
+  xMin: Date | undefined,
+  xMax: Date | undefined
+) {
+  const baseAxis = {
+    data: xData,
+    scaleType: "time" as const,
+    min: xMin,
+    max: xMax,
+    disableLine: true,
+    disableTicks: true,
+    valueFormatter: (value: Date) =>
+      value.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+  };
+  if (compact) {
+    return [{ ...baseAxis, position: "none" as const, height: 0 }];
+  }
+  return [{ ...baseAxis, tickLabelStyle: { fontSize: 10, fill: "#cccccc" }, height: 20 }];
+}
+
+function buildYAxis(compact: boolean, scale: number, unitLabel: string) {
+  if (compact) {
+    return [
+      {
+        id: "bps",
+        position: "left" as const,
+        disableTicks: true,
+        tickLabelStyle: { fontSize: Math.round(8 * scale), fill: "#9aa0a6" },
+        valueFormatter: (value: number) => `${value} ${unitLabel}`
+      },
+      {
+        id: "pps",
+        position: "none" as const,
+        width: 0
+      }
+    ];
+  }
+
+  return [
+    {
+      id: "bps",
+      label: unitLabel,
+      labelStyle: { fontSize: 11 },
+      tickLabelStyle: { fontSize: 10, fill: "#cccccc" }
+    },
+    {
+      id: "pps",
+      label: "PPS",
+      labelStyle: { fontSize: 11 },
+      tickLabelStyle: { fontSize: 10, fill: "#cccccc" }
+    }
+  ];
+}
+
+function resolveSeriesLabel(compact: boolean, showLegend: boolean, label: string): string | undefined {
+  return compact && !showLegend ? undefined : label;
+}
+
+function buildSeries(params: {
+  compact: boolean;
+  showLegend: boolean;
+  unitLabel: string;
+  rxBpsData: number[];
+  txBpsData: number[];
+  rxPpsData: number[];
+  txPpsData: number[];
+}) {
+  return [
+    {
+      data: params.rxBpsData,
+      label: resolveSeriesLabel(params.compact, params.showLegend, `RX ${params.unitLabel}`),
+      color: "#4ec9b0",
+      showMark: false,
+      curve: "linear" as const,
+      yAxisId: "bps"
+    },
+    {
+      data: params.txBpsData,
+      label: resolveSeriesLabel(params.compact, params.showLegend, `TX ${params.unitLabel}`),
+      color: "#569cd6",
+      showMark: false,
+      curve: "linear" as const,
+      yAxisId: "bps"
+    },
+    {
+      data: params.rxPpsData,
+      label: resolveSeriesLabel(params.compact, params.showLegend, "RX PPS"),
+      color: "#b5cea8",
+      showMark: false,
+      curve: "linear" as const,
+      yAxisId: "pps"
+    },
+    {
+      data: params.txPpsData,
+      label: resolveSeriesLabel(params.compact, params.showLegend, "TX PPS"),
+      color: "#9cdcfe",
+      showMark: false,
+      curve: "linear" as const,
+      yAxisId: "pps"
+    }
+  ];
+}
+
 export const TrafficChart: React.FC<TrafficChartProps> = ({
   stats,
   endpointKey,
@@ -157,79 +366,35 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
     xMin,
     xMax
   } = useMemo(() => {
-    let history = historyStore.get(endpointKey);
-    if (!history) {
-      history = createEmptyHistory();
-      historyStore.set(endpointKey, history);
-    }
-
-    // Only push new data if stats actually changed (reference check)
-    if (stats && stats !== lastStatsRef.current) {
-      lastStatsRef.current = stats;
-
-      history.timestamps.push(resolveNextTimestampSeconds(history, stats, Date.now() / 1000));
-      history.rxBps.push(stats.rxBps ?? 0);
-      history.txBps.push(stats.txBps ?? 0);
-      history.rxPps.push(stats.rxPps ?? 0);
-      history.txPps.push(stats.txPps ?? 0);
-
-      // Trim to max points
-      while (history.timestamps.length > MAX_GRAPH_POINTS) {
-        history.timestamps.shift();
-        history.rxBps.shift();
-        history.txBps.shift();
-        history.rxPps.shift();
-        history.txPps.shift();
-      }
-    }
-
-    // Determine unit scaling
-    const maxBps = Math.max(...history.rxBps, ...history.txBps, 1);
-    const unit = determineBpsUnit(maxBps);
-    const { divisor } = unit;
-
-    // Scale BPS values
-    const rxScaled = history.rxBps.map((v) => v / divisor);
-    const txScaled = history.txBps.map((v) => v / divisor);
-
-    // Convert epoch seconds to Date objects for the time axis
-    const x = history.timestamps.map((ts) => new Date(ts * 1000));
-    const lastTimestamp = history.timestamps[history.timestamps.length - 1];
-
-    let xMinValue: Date | undefined;
-    let xMaxValue: Date | undefined;
-    if (typeof lastTimestamp === "number" && Number.isFinite(lastTimestamp)) {
-      const intervalSeconds =
-        resolveValidIntervalSeconds(stats) ??
-        (history.timestamps.length >= 2
-          ? Math.max(
-              history.timestamps[history.timestamps.length - 1] -
-                history.timestamps[history.timestamps.length - 2],
-              MIN_TIMESTAMP_STEP_SECONDS
-            )
-          : 1);
-      const visiblePointSpan = Math.max(
-        1,
-        Math.min(history.timestamps.length - 1, MAX_GRAPH_POINTS - 1)
-      );
-      const windowSeconds = intervalSeconds * visiblePointSpan;
-      xMinValue = new Date((lastTimestamp - windowSeconds) * 1000);
-      xMaxValue = new Date(lastTimestamp * 1000);
-    }
-
-    return {
-      xData: x,
-      rxBpsData: rxScaled,
-      txBpsData: txScaled,
-      rxPpsData: [...history.rxPps],
-      txPpsData: [...history.txPps],
-      unitLabel: unit.label,
-      xMin: xMinValue,
-      xMax: xMaxValue
-    };
+    const history = getOrCreateHistory(endpointKey);
+    appendStatsSample(history, stats, lastStatsRef);
+    return buildChartData(history, stats);
   }, [stats, endpointKey]);
   const margin = resolveChartMargin(compact, showLegend, scale);
   const legendSlotProps = resolveLegendSlotProps(compact, showLegend, scale);
+  const xAxis = buildXAxis(compact, xData, xMin, xMax);
+  const yAxis = buildYAxis(compact, scale, unitLabel);
+  const series = buildSeries({
+    compact,
+    showLegend,
+    unitLabel,
+    rxBpsData,
+    txBpsData,
+    rxPpsData,
+    txPpsData
+  });
+  const chartSx: SxProps<Theme> = compact
+    ? {
+        "& .MuiChartsGrid-line": { stroke: "#3e3e42" },
+        "& .MuiChartsAxis-line": { stroke: "#3e3e42" }
+      }
+    : {
+        "& .MuiChartsGrid-line": { stroke: "#3e3e42" },
+        "& .MuiChartsAxis-line": { stroke: "#cccccc" },
+        "& .MuiChartsAxis-tick": { stroke: "#3e3e42" },
+        "& .MuiChartsAxisHighlight-root": { stroke: "#cccccc" },
+        "& .MuiChartsAxis-label": { fill: "#cccccc" }
+      };
 
   if (xData.length === 0) {
     if (emptyMessage === null) return null;
@@ -246,87 +411,13 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
   return (
     <Box sx={{ width: "100%", height: resolvedHeight }}>
       <LineChart
-        xAxis={[
-          {
-            data: xData,
-            scaleType: "time",
-            min: xMin,
-            max: xMax,
-            disableLine: true,
-            disableTicks: true,
-            valueFormatter: (v: Date) => v.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-            ...(compact
-              ? { position: "none" as const, height: 0 }
-              : { tickLabelStyle: { fontSize: 10, fill: "#cccccc" }, height: 20 })
-          }
-        ]}
-        yAxis={[
-          {
-            id: "bps",
-            ...(compact
-              ? {
-                  position: "left" as const,
-                  disableTicks: true,
-                  tickLabelStyle: { fontSize: Math.round(8 * scale), fill: "#9aa0a6" },
-                  valueFormatter: (v: number) => `${v} ${unitLabel}`
-                }
-              : { label: unitLabel, labelStyle: { fontSize: 11 }, tickLabelStyle: { fontSize: 10, fill: "#cccccc" } })
-          },
-          {
-            id: "pps",
-            ...(compact
-              ? { position: "none" as const, width: 0 }
-              : { label: "PPS", labelStyle: { fontSize: 11 }, tickLabelStyle: { fontSize: 10, fill: "#cccccc" } })
-          }
-        ]}
-        series={[
-          {
-            data: rxBpsData,
-            label: compact && !showLegend ? undefined : `RX ${unitLabel}`,
-            color: "#4ec9b0",
-            showMark: false,
-            curve: "linear",
-            yAxisId: "bps"
-          },
-          {
-            data: txBpsData,
-            label: compact && !showLegend ? undefined : `TX ${unitLabel}`,
-            color: "#569cd6",
-            showMark: false,
-            curve: "linear",
-            yAxisId: "bps"
-          },
-          {
-            data: rxPpsData,
-            label: compact && !showLegend ? undefined : "RX PPS",
-            color: "#b5cea8",
-            showMark: false,
-            curve: "linear",
-            yAxisId: "pps"
-          },
-          {
-            data: txPpsData,
-            label: compact && !showLegend ? undefined : "TX PPS",
-            color: "#9cdcfe",
-            showMark: false,
-            curve: "linear",
-            yAxisId: "pps"
-          }
-        ]}
+        xAxis={xAxis}
+        yAxis={yAxis}
+        series={series}
         grid={{ horizontal: true }}
         margin={margin}
         slotProps={legendSlotProps}
-        sx={{
-          "& .MuiChartsGrid-line": { stroke: "#3e3e42" },
-          ...(compact ? {
-            "& .MuiChartsAxis-line": { stroke: "#3e3e42" }
-          } : {
-            "& .MuiChartsAxis-line": { stroke: "#cccccc" },
-            "& .MuiChartsAxis-tick": { stroke: "#3e3e42" },
-            "& .MuiChartsAxisHighlight-root": { stroke: "#cccccc" },
-            "& .MuiChartsAxis-label": { fill: "#cccccc" }
-          })
-        }}
+        sx={chartSx}
       />
     </Box>
   );

@@ -25,6 +25,20 @@ const DEFAULT_BORDER_STYLE: NonNullable<TrafficRateNodeData["borderStyle"]> = "s
 const DEFAULT_BORDER_RADIUS = 8;
 const DEFAULT_BACKGROUND_OPACITY = 20;
 const FALLBACK_TEXT_COLOR = "#9aa0a6";
+const TEXT_BORDER_RADIUS = 4;
+
+type TrafficRateMode = "text" | "chart";
+type TrafficRateTextMetric = "combined" | "rx" | "tx";
+
+interface TrafficRateLayout {
+  minWidth: number;
+  minHeight: number;
+  nodeWidth: number;
+  nodeHeight: number;
+  scale: number;
+  borderRadius: number;
+  padding: string;
+}
 
 /** Compute a scale factor from current dimensions relative to reference size. */
 function computeScale(width: number, height: number, minScale = 0.65, maxScale = 2.0): number {
@@ -71,6 +85,113 @@ function getBackgroundWithOpacity(color: string, opacity?: number): string {
   return color;
 }
 
+function resolveMode(mode: TrafficRateNodeData["mode"]): TrafficRateMode {
+  return mode === "text" ? "text" : "chart";
+}
+
+function resolveTextMetric(textMetric: TrafficRateNodeData["textMetric"]): TrafficRateTextMetric {
+  if (textMetric === "rx" || textMetric === "tx") return textMetric;
+  return "combined";
+}
+
+function resolveLayout(nodeData: TrafficRateNodeData, mode: TrafficRateMode): TrafficRateLayout {
+  const minWidth = mode === "text" ? TEXT_MIN_WIDTH : CHART_MIN_WIDTH;
+  const minHeight = mode === "text" ? TEXT_MIN_HEIGHT : CHART_MIN_HEIGHT;
+  const defaultWidth = mode === "text" ? TEXT_REF_WIDTH : REF_WIDTH;
+  const defaultHeight = mode === "text" ? TEXT_REF_HEIGHT : REF_HEIGHT;
+  const nodeWidth = typeof nodeData.width === "number" ? nodeData.width : defaultWidth;
+  const nodeHeight = typeof nodeData.height === "number" ? nodeData.height : defaultHeight;
+  const scale = mode === "text" ? computeTextScale(nodeWidth, nodeHeight) : computeScale(nodeWidth, nodeHeight);
+  const borderRadius = nodeData.borderRadius ?? (mode === "text" ? TEXT_BORDER_RADIUS : DEFAULT_BORDER_RADIUS);
+  const padding = mode === "text" ? "1px 3px" : "6px 8px";
+  return { minWidth, minHeight, nodeWidth, nodeHeight, scale, borderRadius, padding };
+}
+
+function resolveTextModeRateBps(
+  metric: TrafficRateTextMetric,
+  stats: ReturnType<typeof resolveTrafficRateStats>["stats"]
+): number | undefined {
+  const rxBps = stats?.rxBps;
+  const txBps = stats?.txBps;
+  const hasRx = typeof rxBps === "number";
+  const hasTx = typeof txBps === "number";
+
+  if (metric === "rx") return hasRx ? rxBps : undefined;
+  if (metric === "tx") return hasTx ? txBps : undefined;
+  if (!hasRx && !hasTx) return undefined;
+  return (hasRx ? rxBps : 0) + (hasTx ? txBps : 0);
+}
+
+function renderTrafficRateBody(params: {
+  id: string;
+  isConfigured: boolean;
+  mode: TrafficRateMode;
+  resolution: ReturnType<typeof resolveTrafficRateStats>;
+  showLegend: boolean;
+  scale: number;
+  textColor: string;
+  hintColor: string;
+  textModeRate: string;
+  textModeFontSize: number;
+}): React.JSX.Element {
+  if (!params.isConfigured) {
+    return (
+      <div style={{ fontSize: Math.round(12 * params.scale), color: params.hintColor, marginTop: 4 }}>
+        Select node and interface in the editor.
+      </div>
+    );
+  }
+
+  if (params.mode === "text") {
+    return (
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          fontSize: `${params.textModeFontSize}px`,
+          lineHeight: 1.1,
+          fontWeight: 600,
+          color: params.textColor,
+          width: "100%",
+          whiteSpace: "nowrap",
+          overflow: "hidden"
+        }}
+      >
+        {params.textModeRate}
+      </div>
+    );
+  }
+
+  const hintFontSize = Math.round(11 * params.scale);
+  return (
+    <>
+      <div style={{ width: "100%", flex: 1, minHeight: 0, overflow: "hidden" }}>
+        <TrafficChart
+          stats={params.resolution.stats}
+          endpointKey={`${params.resolution.endpointKey}:${params.id}`}
+          compact
+          showLegend={params.showLegend}
+          scale={params.scale}
+          emptyMessage={null}
+        />
+      </div>
+      {params.resolution.endpointCount === 0 && (
+        <div style={{ fontSize: hintFontSize, color: params.hintColor, flexShrink: 0 }}>
+          No live interface stats available yet.
+        </div>
+      )}
+      {params.resolution.endpointCount > 1 && (
+        <div style={{ fontSize: hintFontSize, color: params.hintColor, flexShrink: 0 }}>
+          Aggregated from {params.resolution.endpointCount} matching endpoints.
+        </div>
+      )}
+    </>
+  );
+}
+
 const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = data as TrafficRateNodeData;
   const edges = useGraphStore((state) => state.edges);
@@ -93,10 +214,12 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
     [annotationHandlers, id]
   );
 
+  const mode = resolveMode(nodeData.mode);
+  const textMetric = resolveTextMetric(nodeData.textMetric);
+  const layout = resolveLayout(nodeData, mode);
   const isConfigured = Boolean(nodeData.nodeId && nodeData.interfaceName);
-  const subtitle = isConfigured
-    ? `${nodeData.nodeId}:${nodeData.interfaceName}`
-    : "Double-click to configure";
+  const subtitle = isConfigured ? `${nodeData.nodeId}:${nodeData.interfaceName}` : "Double-click to configure";
+  const showSubtitle = !isConfigured || mode === "chart";
   const defaultBackgroundColor = resolveComputedColor("--vscode-editor-background", FALLBACK_BACKGROUND);
   const defaultBorderColor = resolveComputedColor("--vscode-panel-border", FALLBACK_BORDER_COLOR);
   const defaultTextColor = resolveComputedColor("--vscode-descriptionForeground", FALLBACK_TEXT_COLOR);
@@ -107,108 +230,46 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
   const borderColor = nodeData.borderColor ?? defaultBorderColor;
   const borderWidth = nodeData.borderWidth ?? DEFAULT_BORDER_WIDTH;
   const borderStyle = nodeData.borderStyle ?? DEFAULT_BORDER_STYLE;
-  const mode = nodeData.mode === "text" ? "text" : "chart";
-  const borderRadius = nodeData.borderRadius ?? (mode === "text" ? 4 : DEFAULT_BORDER_RADIUS);
   const showLegend = nodeData.showLegend !== false;
-  const textMetric =
-    nodeData.textMetric === "rx" || nodeData.textMetric === "tx" ? nodeData.textMetric : "combined";
   const textColor = nodeData.textColor ?? defaultTextColor;
-  const hintColor = nodeData.textColor ?? defaultTextColor;
-  const minWidth = mode === "text" ? TEXT_MIN_WIDTH : CHART_MIN_WIDTH;
-  const minHeight = mode === "text" ? TEXT_MIN_HEIGHT : CHART_MIN_HEIGHT;
-  const defaultWidth = mode === "text" ? TEXT_REF_WIDTH : REF_WIDTH;
-  const defaultHeight = mode === "text" ? TEXT_REF_HEIGHT : REF_HEIGHT;
-  const nodeWidth = typeof nodeData.width === "number" ? nodeData.width : defaultWidth;
-  const nodeHeight = typeof nodeData.height === "number" ? nodeData.height : defaultHeight;
-  const scale = mode === "text" ? computeTextScale(nodeWidth, nodeHeight) : computeScale(nodeWidth, nodeHeight);
-  const subtitleFontSize = Math.round(11 * scale);
-  const hintFontSize = Math.round(11 * scale);
-  const rxBps = resolution.stats?.rxBps;
-  const txBps = resolution.stats?.txBps;
-  const hasRx = typeof rxBps === "number";
-  const hasTx = typeof txBps === "number";
-  let textModeRateBps: number | undefined;
-  if (textMetric === "rx") {
-    textModeRateBps = hasRx ? rxBps : undefined;
-  } else if (textMetric === "tx") {
-    textModeRateBps = hasTx ? txBps : undefined;
-  } else if (hasRx || hasTx) {
-    textModeRateBps = (hasRx ? rxBps : 0) + (hasTx ? txBps : 0);
-  }
+  const hintColor = textColor;
+  const subtitleFontSize = Math.round(11 * layout.scale);
+  const textModeRateBps = resolveTextModeRateBps(textMetric, resolution.stats);
   const textModeRate = formatMegabitsPerSecond(textModeRateBps);
-  const textModeFontSize = computeFittedTextFontSize(textModeRate, nodeWidth, nodeHeight, 26 * scale);
-  const showSubtitle = !isConfigured || mode === "chart";
-  let body: React.ReactNode;
-
-  if (!isConfigured) {
-    body = (
-      <div style={{ fontSize: Math.round(12 * scale), color: hintColor, marginTop: 4 }}>
-        Select node and interface in the editor.
-      </div>
-    );
-  } else if (mode === "text") {
-    body = (
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
-          fontSize: `${textModeFontSize}px`,
-          lineHeight: 1.1,
-          fontWeight: 600,
-          color: textColor,
-          width: "100%",
-          whiteSpace: "nowrap",
-          overflow: "hidden"
-        }}
-      >
-        {textModeRate}
-      </div>
-    );
-  } else {
-    body = (
-      <>
-        <div style={{ width: "100%", flex: 1, minHeight: 0, overflow: "hidden" }}>
-          <TrafficChart
-            stats={resolution.stats}
-            endpointKey={`${resolution.endpointKey}:${id}`}
-            compact
-            showLegend={showLegend}
-            scale={scale}
-            emptyMessage={null}
-          />
-        </div>
-        {resolution.endpointCount === 0 && (
-          <div style={{ fontSize: hintFontSize, color: hintColor, flexShrink: 0 }}>
-            No live interface stats available yet.
-          </div>
-        )}
-        {resolution.endpointCount > 1 && (
-          <div style={{ fontSize: hintFontSize, color: hintColor, flexShrink: 0 }}>
-            Aggregated from {resolution.endpointCount} matching endpoints.
-          </div>
-        )}
-      </>
-    );
-  }
+  const textModeFontSize = computeFittedTextFontSize(
+    textModeRate,
+    layout.nodeWidth,
+    layout.nodeHeight,
+    26 * layout.scale
+  );
+  const body = renderTrafficRateBody({
+    id,
+    isConfigured,
+    mode,
+    resolution,
+    showLegend,
+    scale: layout.scale,
+    textColor,
+    hintColor,
+    textModeRate,
+    textModeFontSize
+  });
 
   return (
     <div
       style={{
         width: "100%",
         height: "100%",
-        minWidth,
-        minHeight,
-        borderRadius,
+        minWidth: layout.minWidth,
+        minHeight: layout.minHeight,
+        borderRadius: layout.borderRadius,
         border: `${borderWidth}px ${borderStyle} ${borderColor}`,
         outline: isSelected ? `2px solid ${SELECTION_COLOR}` : "none",
         outlineOffset: 0,
         background,
         color: textColor,
         boxShadow: "0 1px 3px rgba(0, 0, 0, 0.25)",
-        padding: mode === "text" ? "1px 3px" : "6px 8px",
+        padding: layout.padding,
         display: "flex",
         flexDirection: "column",
         cursor: "move",
@@ -216,8 +277,8 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
       }}
     >
       <NodeResizer
-        minWidth={minWidth}
-        minHeight={minHeight}
+        minWidth={layout.minWidth}
+        minHeight={layout.minHeight}
         isVisible={showResizer}
         lineClassName="nodrag"
         handleClassName="nodrag"

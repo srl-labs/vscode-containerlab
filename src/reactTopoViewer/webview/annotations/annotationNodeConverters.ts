@@ -99,6 +99,117 @@ function normalizeTrafficRateTextMetric(
   return undefined;
 }
 
+function toOptionalString(value: unknown): string | undefined {
+  return isNonEmptyString(value) ? value : undefined;
+}
+
+function toOptionalTrafficRateBorderStyle(
+  value: unknown
+): TrafficRateAnnotation["borderStyle"] | undefined {
+  return isNonEmptyString(value) ? (value as TrafficRateAnnotation["borderStyle"]) : undefined;
+}
+
+function setFiniteNumberIfPresent<T extends object, K extends keyof T>(
+  target: T,
+  key: K,
+  value: unknown
+): void {
+  const parsed = toFiniteNumber(value);
+  if (parsed !== undefined) {
+    target[key] = parsed as T[K];
+  }
+}
+
+function resolveTrafficRateDimensions(
+  annotation: TrafficRateAnnotation,
+  mode: TrafficRateAnnotation["mode"] | undefined
+): { width: number; height: number } {
+  const width =
+    toFiniteNumber(annotation.width) ??
+    (mode === "text" ? DEFAULT_TRAFFIC_RATE_TEXT_WIDTH : DEFAULT_TRAFFIC_RATE_CHART_WIDTH);
+  const height =
+    toFiniteNumber(annotation.height) ??
+    (mode === "text" ? DEFAULT_TRAFFIC_RATE_TEXT_HEIGHT : DEFAULT_TRAFFIC_RATE_CHART_HEIGHT);
+  return { width, height };
+}
+
+function buildTrafficRateNodeData(
+  annotation: TrafficRateAnnotation,
+  mode: TrafficRateAnnotation["mode"] | undefined,
+  textMetric: TrafficRateAnnotation["textMetric"] | undefined,
+  width: number,
+  height: number,
+  zIndex: number | undefined
+): TrafficRateNodeData {
+  const data: TrafficRateNodeData = {
+    width,
+    height,
+    groupId: annotation.groupId,
+    geoCoordinates: annotation.geoCoordinates,
+    backgroundOpacity: toFiniteNumber(annotation.backgroundOpacity),
+    borderWidth: toFiniteNumber(annotation.borderWidth),
+    borderRadius: toFiniteNumber(annotation.borderRadius)
+  };
+
+  const nodeId = toOptionalString(annotation.nodeId);
+  if (nodeId !== undefined) data.nodeId = nodeId;
+  const interfaceName = toOptionalString(annotation.interfaceName);
+  if (interfaceName !== undefined) data.interfaceName = interfaceName;
+  if (mode !== undefined) data.mode = mode;
+  if (textMetric !== undefined) data.textMetric = textMetric;
+  if (annotation.showLegend === false) data.showLegend = false;
+  const backgroundColor = toOptionalString(annotation.backgroundColor);
+  if (backgroundColor !== undefined) data.backgroundColor = backgroundColor;
+  const borderColor = toOptionalString(annotation.borderColor);
+  if (borderColor !== undefined) data.borderColor = borderColor;
+  const borderStyle = toOptionalTrafficRateBorderStyle(annotation.borderStyle);
+  if (borderStyle !== undefined) data.borderStyle = borderStyle;
+  const titleColor = toOptionalString(annotation.titleColor);
+  if (titleColor !== undefined) data.titleColor = titleColor;
+  const textColor = toOptionalString(annotation.textColor);
+  if (textColor !== undefined) data.textColor = textColor;
+  if (zIndex !== undefined) data.zIndex = zIndex;
+  return data;
+}
+
+function buildTrafficRateAnnotationBase(
+  node: Node<TrafficRateNodeData>,
+  mode: TrafficRateAnnotation["mode"] | undefined,
+  textMetric: TrafficRateAnnotation["textMetric"] | undefined
+): TrafficRateAnnotation {
+  const data = node.data;
+  const annotation: TrafficRateAnnotation = {
+    id: node.id,
+    position: node.position,
+    geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined
+  };
+
+  const nodeId = toOptionalString(data.nodeId);
+  if (nodeId !== undefined) annotation.nodeId = nodeId;
+  const interfaceName = toOptionalString(data.interfaceName);
+  if (interfaceName !== undefined) annotation.interfaceName = interfaceName;
+  if (mode !== undefined) annotation.mode = mode;
+  if (textMetric !== undefined) annotation.textMetric = textMetric;
+  if (data.showLegend === false) annotation.showLegend = false;
+  const groupId = toOptionalString(data.groupId);
+  if (groupId !== undefined) annotation.groupId = groupId;
+  const backgroundColor = toOptionalString(data.backgroundColor);
+  if (backgroundColor !== undefined) annotation.backgroundColor = backgroundColor;
+  setFiniteNumberIfPresent(annotation, "backgroundOpacity", data.backgroundOpacity);
+  const borderColor = toOptionalString(data.borderColor);
+  if (borderColor !== undefined) annotation.borderColor = borderColor;
+  setFiniteNumberIfPresent(annotation, "borderWidth", data.borderWidth);
+  const borderStyle = toOptionalTrafficRateBorderStyle(data.borderStyle);
+  if (borderStyle !== undefined) annotation.borderStyle = borderStyle;
+  setFiniteNumberIfPresent(annotation, "borderRadius", data.borderRadius);
+  const titleColor = toOptionalString(data.titleColor);
+  if (titleColor !== undefined) annotation.titleColor = titleColor;
+  const textColor = toOptionalString(data.textColor);
+  if (textColor !== undefined) annotation.textColor = textColor;
+
+  return annotation;
+}
+
 // ============================================================================
 // Line Bounding Box Computation
 // ============================================================================
@@ -274,48 +385,32 @@ export function trafficRateToNode(annotation: TrafficRateAnnotation): Node<Traff
   const modeRaw = annotation.mode as unknown;
   const resolvedMode = normalizeTrafficRateMode(modeRaw);
   const resolvedTextMetric = normalizeTrafficRateTextMetric(annotation.textMetric);
-  const resolvedWidth =
-    toFiniteNumber(annotation.width) ??
-    (resolvedMode === "text" ? DEFAULT_TRAFFIC_RATE_TEXT_WIDTH : DEFAULT_TRAFFIC_RATE_CHART_WIDTH);
-  const resolvedHeight =
-    toFiniteNumber(annotation.height) ??
-    (resolvedMode === "text" ? DEFAULT_TRAFFIC_RATE_TEXT_HEIGHT : DEFAULT_TRAFFIC_RATE_CHART_HEIGHT);
+  const { width: resolvedWidth, height: resolvedHeight } = resolveTrafficRateDimensions(
+    annotation,
+    resolvedMode
+  );
   const resolvedZIndex = toFiniteNumber(annotation.zIndex);
-
-  return {
+  const data = buildTrafficRateNodeData(
+    annotation,
+    resolvedMode,
+    resolvedTextMetric,
+    resolvedWidth,
+    resolvedHeight,
+    resolvedZIndex
+  );
+  const node: Node<TrafficRateNodeData> = {
     id: annotation.id,
     type: TRAFFIC_RATE_NODE_TYPE,
     position,
     width: resolvedWidth,
     height: resolvedHeight,
-    ...(resolvedZIndex !== undefined ? { zIndex: resolvedZIndex } : {}),
     draggable: true,
     selectable: true,
-    data: {
-      nodeId: isNonEmptyString(annotation.nodeId) ? annotation.nodeId : undefined,
-      interfaceName: isNonEmptyString(annotation.interfaceName) ? annotation.interfaceName : undefined,
-      ...(resolvedMode !== undefined ? { mode: resolvedMode } : {}),
-      ...(resolvedTextMetric !== undefined ? { textMetric: resolvedTextMetric } : {}),
-      showLegend: annotation.showLegend === false ? false : undefined,
-      width: resolvedWidth,
-      height: resolvedHeight,
-      groupId: annotation.groupId,
-      geoCoordinates: annotation.geoCoordinates,
-      backgroundColor: isNonEmptyString(annotation.backgroundColor)
-        ? annotation.backgroundColor
-        : undefined,
-      backgroundOpacity: toFiniteNumber(annotation.backgroundOpacity),
-      borderColor: isNonEmptyString(annotation.borderColor) ? annotation.borderColor : undefined,
-      borderWidth: toFiniteNumber(annotation.borderWidth),
-      borderStyle: isNonEmptyString(annotation.borderStyle)
-        ? annotation.borderStyle
-        : undefined,
-      borderRadius: toFiniteNumber(annotation.borderRadius),
-      titleColor: isNonEmptyString(annotation.titleColor) ? annotation.titleColor : undefined,
-      textColor: isNonEmptyString(annotation.textColor) ? annotation.textColor : undefined,
-      ...(resolvedZIndex !== undefined ? { zIndex: resolvedZIndex } : {})
-    }
+    data
   };
+
+  if (resolvedZIndex !== undefined) node.zIndex = resolvedZIndex;
+  return node;
 }
 
 /**
@@ -456,44 +551,13 @@ export function nodeToFreeShape(node: Node<FreeShapeNodeData>): FreeShapeAnnotat
  */
 export function nodeToTrafficRate(node: Node<TrafficRateNodeData>): TrafficRateAnnotation {
   const data = node.data;
-  const width = node.width ?? data.width;
-  const height = node.height ?? data.height;
-  const zIndex = typeof node.zIndex === "number" ? node.zIndex : toFiniteNumber(data.zIndex);
   const mode = normalizeTrafficRateMode(data.mode);
   const textMetric = normalizeTrafficRateTextMetric(data.textMetric);
-
-  const annotation: TrafficRateAnnotation = {
-    id: node.id,
-    position: node.position,
-    nodeId: isNonEmptyString(data.nodeId) ? data.nodeId : undefined,
-    interfaceName: isNonEmptyString(data.interfaceName) ? data.interfaceName : undefined,
-    ...(mode !== undefined ? { mode } : {}),
-    ...(textMetric !== undefined ? { textMetric } : {}),
-    showLegend: data.showLegend === false ? false : undefined,
-    groupId: isNonEmptyString(data.groupId) ? data.groupId : undefined,
-    geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined,
-    backgroundColor: isNonEmptyString(data.backgroundColor) ? data.backgroundColor : undefined,
-    backgroundOpacity: toFiniteNumber(data.backgroundOpacity),
-    borderColor: isNonEmptyString(data.borderColor) ? data.borderColor : undefined,
-    borderWidth: toFiniteNumber(data.borderWidth),
-    borderStyle: isNonEmptyString(data.borderStyle)
-      ? (data.borderStyle as TrafficRateAnnotation["borderStyle"])
-      : undefined,
-    borderRadius: toFiniteNumber(data.borderRadius),
-    titleColor: isNonEmptyString(data.titleColor) ? data.titleColor : undefined,
-    textColor: isNonEmptyString(data.textColor) ? data.textColor : undefined
-  };
-
-  if (typeof width === "number" && Number.isFinite(width)) {
-    annotation.width = width;
-  }
-  if (typeof height === "number" && Number.isFinite(height)) {
-    annotation.height = height;
-  }
-  if (typeof zIndex === "number" && Number.isFinite(zIndex)) {
-    annotation.zIndex = zIndex;
-  }
-
+  const annotation = buildTrafficRateAnnotationBase(node, mode, textMetric);
+  setFiniteNumberIfPresent(annotation, "width", node.width ?? data.width);
+  setFiniteNumberIfPresent(annotation, "height", node.height ?? data.height);
+  const resolvedZIndex = typeof node.zIndex === "number" ? node.zIndex : data.zIndex;
+  setFiniteNumberIfPresent(annotation, "zIndex", resolvedZIndex);
   return annotation;
 }
 

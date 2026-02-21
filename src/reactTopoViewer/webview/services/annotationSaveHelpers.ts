@@ -11,9 +11,8 @@ import type {
   EdgeAnnotation,
   TopologyAnnotations
 } from "../../shared/types/topology";
-import { useGraphStore } from "../stores/graphStore";
-import { nodesToAnnotations } from "../annotations/annotationNodeConverters";
 
+import { buildAnnotationNodesPayload } from "./annotationPayloads";
 import { executeTopologyCommand } from "./topologyHostCommands";
 
 const WARN_COMMAND_FAILED = "[Host] Annotation command failed";
@@ -39,18 +38,10 @@ export async function saveAnnotationNodesFromGraph(
   options: SaveAnnotationNodesOptions = {}
 ): Promise<void> {
   try {
-    const graphNodes = nodes ?? useGraphStore.getState().nodes;
-    const { freeTextAnnotations, freeShapeAnnotations, trafficRateAnnotations, groups } =
-      nodesToAnnotations(graphNodes);
     await executeTopologyCommand(
       {
         command: "setAnnotations",
-        payload: {
-          freeTextAnnotations,
-          freeShapeAnnotations,
-          trafficRateAnnotations,
-          groupStyleAnnotations: groups
-        }
+        payload: buildAnnotationNodesPayload(nodes)
       },
       { applySnapshot: options.applySnapshot ?? true }
     );
@@ -64,18 +55,10 @@ export async function saveAnnotationNodesWithMemberships(
   nodes?: Node[]
 ): Promise<void> {
   try {
-    const graphNodes = nodes ?? useGraphStore.getState().nodes;
-    const { freeTextAnnotations, freeShapeAnnotations, trafficRateAnnotations, groups } =
-      nodesToAnnotations(graphNodes);
     await executeTopologyCommand({
       command: "setAnnotationsWithMemberships",
       payload: {
-        annotations: {
-          freeTextAnnotations,
-          freeShapeAnnotations,
-          trafficRateAnnotations,
-          groupStyleAnnotations: groups
-        },
+        annotations: buildAnnotationNodesPayload(nodes),
         memberships: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId ?? null }))
       }
     });
