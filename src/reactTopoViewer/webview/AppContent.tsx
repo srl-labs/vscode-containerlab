@@ -17,9 +17,12 @@ import {
   findEdgeAnnotationInLookup,
   nodesToAnnotations,
   collectNodeGroupMemberships,
-  parseEndpointLabelOffset
+  parseEndpointLabelOffset,
 } from "./annotations";
-import { buildEdgeAnnotationLookup, type EdgeAnnotationLookup } from "./annotations/edgeAnnotations";
+import {
+  buildEdgeAnnotationLookup,
+  type EdgeAnnotationLookup,
+} from "./annotations/edgeAnnotations";
 import type { ReactFlowCanvasRef } from "./components/canvas";
 import { ReactFlowCanvas } from "./components/canvas";
 import { Navbar } from "./components/navbar/Navbar";
@@ -45,7 +48,7 @@ import {
   useDevMockTrafficStats,
   useGraphCreation,
   useIconReconciliation,
-  useUndoRedoControls
+  useUndoRedoControls,
 } from "./hooks/app";
 import { useFilteredGraphElements, useSelectionData } from "./hooks/app/useAppContentHelpers";
 import { useAnnotations, useDerivedAnnotations, type AnnotationContextValue } from "./hooks/canvas";
@@ -55,7 +58,7 @@ import {
   usePanelVisibility,
   useShakeAnimation,
   useShortcutDisplay,
-  type useLayoutControls
+  type useLayoutControls,
 } from "./hooks/ui";
 import {
   useAnnotationUIActions,
@@ -64,14 +67,14 @@ import {
   useGraphState,
   useGraphStore,
   useTopoViewerActions,
-  useTopoViewerState
+  useTopoViewerState,
 } from "./stores";
 import { sendCancelLabLifecycle } from "./messaging/extensionMessaging";
 import { executeTopologyCommand, toLinkSaveData, getCustomIconMap } from "./services";
 import {
   PENDING_NETEM_KEY,
   areNetemEquivalent,
-  createPendingNetemOverride
+  createPendingNetemOverride,
 } from "./utils/netemOverrides";
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;
@@ -84,7 +87,7 @@ const TOPO_NODE_TYPES = new Set<string>([
   GROUP_NODE_TYPE,
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
-  TRAFFIC_RATE_NODE_TYPE
+  TRAFFIC_RATE_NODE_TYPE,
 ]);
 const NETWORK_TYPE_VALUES = new Set<string>([
   "host",
@@ -94,7 +97,7 @@ const NETWORK_TYPE_VALUES = new Set<string>([
   "vxlan-stitch",
   "dummy",
   "bridge",
-  "ovs-bridge"
+  "ovs-bridge",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -253,13 +256,13 @@ function buildAnnotationSaveCommand(graphNodesForSave: TopoNode[]): TopologyHost
         freeTextAnnotations,
         freeShapeAnnotations,
         trafficRateAnnotations,
-        groupStyleAnnotations: groups
+        groupStyleAnnotations: groups,
       },
       memberships: memberships.map((entry) => ({
         nodeId: entry.id,
-        groupId: entry.groupId
-      }))
-    }
+        groupId: entry.groupId,
+      })),
+    },
   };
 }
 
@@ -322,7 +325,7 @@ function hasContextContentState(
     annotations.editingTextAnnotation,
     annotations.editingShapeAnnotation,
     annotations.editingTrafficRateAnnotation,
-    annotations.editingGroup
+    annotations.editingGroup,
   ];
   return candidates.some((value) => value !== null && value !== undefined);
 }
@@ -380,8 +383,9 @@ function useGraphNodeById(nodeId: string | null): TopoNode | null {
     React.useCallback(
       (graphState) =>
         nodeId != null && nodeId.length > 0
-          ? (graphState.nodes.find((node): node is TopoNode => node.id === nodeId && isTopoNode(node)) ??
-            null)
+          ? (graphState.nodes.find(
+              (node): node is TopoNode => node.id === nodeId && isTopoNode(node)
+            ) ?? null)
           : null,
       [nodeId]
     ),
@@ -394,8 +398,9 @@ function useGraphEdgeById(edgeId: string | null): TopoEdge | null {
     React.useCallback(
       (graphState) =>
         edgeId != null && edgeId.length > 0
-          ? (graphState.edges.find((edge): edge is TopoEdge => edge.id === edgeId && isTopoEdge(edge)) ??
-            null)
+          ? (graphState.edges.find(
+              (edge): edge is TopoEdge => edge.id === edgeId && isTopoEdge(edge)
+            ) ?? null)
           : null,
       [edgeId]
     ),
@@ -442,7 +447,7 @@ const GraphCanvasMain: React.FC<GraphCanvasMainProps> = React.memo(
     showDummyLinks,
     edgeAnnotationLookup,
     endpointLabelOffsetEnabled,
-    endpointLabelOffset
+    endpointLabelOffset,
   }) => {
     const { nodes, edges } = useGraphState();
     const graphNodes = React.useMemo(() => nodes.filter(isTopoNode), [nodes]);
@@ -467,7 +472,7 @@ const GraphCanvasMain: React.FC<GraphCanvasMainProps> = React.memo(
           source: edge.source,
           target: edge.target,
           sourceEndpoint,
-          targetEndpoint
+          targetEndpoint,
         });
         const annotationOffset = parseEndpointLabelOffset(annotation?.endpointLabelOffset);
         const annotationEnabled =
@@ -488,13 +493,20 @@ const GraphCanvasMain: React.FC<GraphCanvasMainProps> = React.memo(
           data: {
             ...data,
             endpointLabelOffsetEnabled: enabled,
-            endpointLabelOffset: resolvedOffset
-          }
+            endpointLabelOffset: resolvedOffset,
+          },
         };
       });
     }, [filteredEdges, edgeAnnotationLookup, endpointLabelOffset, endpointLabelOffsetEnabled]);
 
-    return <ReactFlowCanvas ref={canvasRef} {...canvasProps} nodes={filteredNodes} edges={renderedEdges} />;
+    return (
+      <ReactFlowCanvas
+        ref={canvasRef}
+        {...canvasProps}
+        nodes={filteredNodes}
+        edges={renderedEdges}
+      />
+    );
   }
 );
 GraphCanvasMain.displayName = "GraphCanvasMain";
@@ -508,7 +520,7 @@ interface AnnotationRuntimeBridgeProps {
 const AnnotationRuntimeBridge: React.FC<AnnotationRuntimeBridgeProps> = ({
   rfInstance,
   onLockedAction,
-  runtimeRef
+  runtimeRef,
 }) => {
   const annotations = useAnnotations({ rfInstance, onLockedAction });
   runtimeRef.current = annotations;
@@ -552,7 +564,7 @@ export const AppContent: React.FC<AppContentProps> = ({
   reactFlowRef,
   rfInstance,
   layoutControls,
-  onInit
+  onInit,
 }) => {
   const state = useTopoViewerState();
   const topoActions = useTopoViewerActions();
@@ -639,9 +651,7 @@ export const AppContent: React.FC<AppContentProps> = ({
       vars[trimmed.slice(0, colonIdx).trim()] = trimmed.slice(colonIdx + 1).trim();
     }
     if (Object.keys(vars).length === 0) return;
-    const sorted = Object.fromEntries(
-      Object.entries(vars).sort(([a], [b]) => a.localeCompare(b))
-    );
+    const sorted = Object.fromEntries(Object.entries(vars).sort(([a], [b]) => a.localeCompare(b)));
     window.vscode?.postMessage({ command: "dump-css-vars", vars: sorted });
   }, []);
 
@@ -650,7 +660,7 @@ export const AppContent: React.FC<AppContentProps> = ({
 
   const { toasts, dismissToast, addToast } = useAppToasts({
     customNodeError: state.customNodeError,
-    clearCustomNodeError: topoActions.clearCustomNodeError
+    clearCustomNodeError: topoActions.clearCustomNodeError,
   });
 
   const handleLockedAction = React.useCallback(() => {
@@ -667,12 +677,12 @@ export const AppContent: React.FC<AppContentProps> = ({
       isAddShapeMode: annotationUiState.isAddShapeMode,
       pendingShapeType: annotationUiState.isAddShapeMode
         ? annotationUiState.pendingShapeType
-        : undefined
+        : undefined,
     }),
     [
       annotationUiState.isAddTextMode,
       annotationUiState.isAddShapeMode,
-      annotationUiState.pendingShapeType
+      annotationUiState.pendingShapeType,
     ]
   );
 
@@ -712,27 +722,37 @@ export const AppContent: React.FC<AppContentProps> = ({
       ) =>
         annotationRuntimeRef.current?.deleteSelectedForBatch(options) ?? {
           didDelete: false,
-          membersCleared: false
+          membersCleared: false,
         },
       saveTextAnnotation: (...args: Parameters<AnnotationContextValue["saveTextAnnotation"]>) => {
         annotationRuntimeRef.current?.saveTextAnnotation(...args);
       },
-      deleteTextAnnotation: (...args: Parameters<AnnotationContextValue["deleteTextAnnotation"]>) => {
+      deleteTextAnnotation: (
+        ...args: Parameters<AnnotationContextValue["deleteTextAnnotation"]>
+      ) => {
         annotationRuntimeRef.current?.deleteTextAnnotation(...args);
       },
       saveShapeAnnotation: (...args: Parameters<AnnotationContextValue["saveShapeAnnotation"]>) => {
         annotationRuntimeRef.current?.saveShapeAnnotation(...args);
       },
-      deleteShapeAnnotation: (...args: Parameters<AnnotationContextValue["deleteShapeAnnotation"]>) => {
+      deleteShapeAnnotation: (
+        ...args: Parameters<AnnotationContextValue["deleteShapeAnnotation"]>
+      ) => {
         annotationRuntimeRef.current?.deleteShapeAnnotation(...args);
       },
-      saveTrafficRateAnnotation: (...args: Parameters<AnnotationContextValue["saveTrafficRateAnnotation"]>) => {
+      saveTrafficRateAnnotation: (
+        ...args: Parameters<AnnotationContextValue["saveTrafficRateAnnotation"]>
+      ) => {
         annotationRuntimeRef.current?.saveTrafficRateAnnotation(...args);
       },
-      updateTrafficRateAnnotation: (...args: Parameters<AnnotationContextValue["updateTrafficRateAnnotation"]>) => {
+      updateTrafficRateAnnotation: (
+        ...args: Parameters<AnnotationContextValue["updateTrafficRateAnnotation"]>
+      ) => {
         annotationRuntimeRef.current?.updateTrafficRateAnnotation(...args);
       },
-      deleteTrafficRateAnnotation: (...args: Parameters<AnnotationContextValue["deleteTrafficRateAnnotation"]>) => {
+      deleteTrafficRateAnnotation: (
+        ...args: Parameters<AnnotationContextValue["deleteTrafficRateAnnotation"]>
+      ) => {
         annotationRuntimeRef.current?.deleteTrafficRateAnnotation(...args);
       },
       saveGroup: (...args: Parameters<AnnotationContextValue["saveGroup"]>) => {
@@ -743,12 +763,14 @@ export const AppContent: React.FC<AppContentProps> = ({
       },
       updateGroup: (...args: Parameters<AnnotationContextValue["updateGroup"]>) => {
         annotationRuntimeRef.current?.updateGroup(...args);
-      }
+      },
     }),
     []
   );
 
-  const canvasAnnotationHandlers = React.useMemo<NonNullable<CanvasPropsWithoutGraph["annotationHandlers"]>>(
+  const canvasAnnotationHandlers = React.useMemo<
+    NonNullable<CanvasPropsWithoutGraph["annotationHandlers"]>
+  >(
     () => ({
       onAddTextClick: (position) => {
         annotationRuntimeRef.current?.handleTextCanvasClick(position);
@@ -829,7 +851,7 @@ export const AppContent: React.FC<AppContentProps> = ({
         annotationRuntimeRef.current?.deleteGroup(id);
       },
       getGroupMembers: (groupId, options) =>
-        annotationRuntimeRef.current?.getGroupMembers(groupId, options) ?? []
+        annotationRuntimeRef.current?.getGroupMembers(groupId, options) ?? [],
     }),
     []
   );
@@ -851,7 +873,7 @@ export const AppContent: React.FC<AppContentProps> = ({
       editingNode: state.editingNode,
       editingEdge: state.editingEdge,
       editingNetwork: state.editingNetwork,
-      endpointLabelOffset: state.endpointLabelOffset
+      endpointLabelOffset: state.endpointLabelOffset,
     },
     edgeAnnotationLookup
   );
@@ -871,7 +893,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     editEdge: topoActions.editEdge,
     editNetwork: topoActions.editNetwork,
     onDeleteNode: topoActions.clearSelectionForDeletedNode,
-    onDeleteEdge: topoActions.clearSelectionForDeletedEdge
+    onDeleteEdge: topoActions.clearSelectionForDeletedEdge,
   });
 
   const graphHandlers = useAppGraphHandlers({
@@ -884,8 +906,8 @@ export const AppContent: React.FC<AppContentProps> = ({
       removeEdge: graphActions.removeEdge,
       updateNodeData: graphActions.updateNodeData,
       updateEdge: graphActions.updateEdge,
-      renameNode: graphActions.renameNode
-    }
+      renameNode: graphActions.renameNode,
+    },
   });
 
   const updateEdgeNetemData = React.useCallback(
@@ -903,7 +925,7 @@ export const AppContent: React.FC<AppContentProps> = ({
       const nextExtraData: Record<string, unknown> = {
         ...extraData,
         clabSourceNetem: data.sourceNetem,
-        clabTargetNetem: data.targetNetem
+        clabTargetNetem: data.targetNetem,
       };
       if (hasNetemChanges) {
         nextExtraData[PENDING_NETEM_KEY] = createPendingNetemOverride(
@@ -912,7 +934,7 @@ export const AppContent: React.FC<AppContentProps> = ({
         );
       }
       graphActions.updateEdgeData(data.id, {
-        extraData: nextExtraData
+        extraData: nextExtraData,
       });
     },
     [graphActions]
@@ -940,28 +962,27 @@ export const AppContent: React.FC<AppContentProps> = ({
     [addToast]
   );
 
-  const {
-    nodeEditorHandlers,
-    linkEditorHandlers,
-    networkEditorHandlers
-  } = useAppEditorBindings({
+  const { nodeEditorHandlers, linkEditorHandlers, networkEditorHandlers } = useAppEditorBindings({
     selectionData,
     state: {
-      edgeAnnotations: state.edgeAnnotations
+      edgeAnnotations: state.edgeAnnotations,
     },
     actions: {
       editNode: topoActions.editNode,
       editEdge: topoActions.editEdge,
       editNetwork: topoActions.editNetwork,
       setEdgeAnnotations: topoActions.setEdgeAnnotations,
-      refreshEditorData: topoActions.refreshEditorData
+      refreshEditorData: topoActions.refreshEditorData,
     },
     renameNodeInGraph: graphHandlers.renameNodeInGraph,
     handleUpdateNodeData: graphHandlers.handleUpdateNodeData,
-    handleUpdateEdgeData: graphHandlers.handleUpdateEdgeData
+    handleUpdateEdgeData: graphHandlers.handleUpdateEdgeData,
   });
 
-  const getGraphNodes = React.useCallback(() => useGraphStore.getState().nodes.filter(isTopoNode), []);
+  const getGraphNodes = React.useCallback(
+    () => useGraphStore.getState().nodes.filter(isTopoNode),
+    []
+  );
 
   const graphCreation = useGraphCreation({
     rfInstance,
@@ -971,12 +992,12 @@ export const AppContent: React.FC<AppContentProps> = ({
       isLocked: isInteractionLocked,
       customNodes: state.customNodes,
       defaultNode: state.defaultNode,
-      getNodes: getGraphNodes
+      getNodes: getGraphNodes,
     },
     onEdgeCreated: graphHandlers.handleEdgeCreated,
     onNodeCreated: graphHandlers.handleNodeCreatedCallback,
     addNode: graphHandlers.addNodeDirect,
-    onNewCustomNode: customNodeCommands.onNewCustomNode
+    onNewCustomNode: customNodeCommands.onNewCustomNode,
   });
 
   // Drag-drop handlers for node palette
@@ -1012,7 +1033,7 @@ export const AppContent: React.FC<AppContentProps> = ({
       isLocked: isInteractionLocked,
       mode: interactionMode,
       selectedNode: state.selectedNode,
-      selectedEdge: state.selectedEdge
+      selectedEdge: state.selectedEdge,
     },
     actions: {
       toggleLock: topoActions.toggleLock,
@@ -1020,17 +1041,17 @@ export const AppContent: React.FC<AppContentProps> = ({
       editNode: topoActions.editNode,
       editNetwork: topoActions.editNetwork,
       selectNode: topoActions.selectNode,
-      selectEdge: topoActions.selectEdge
+      selectEdge: topoActions.selectEdge,
     },
     undoRedo,
     graphHandlers,
     annotations: {
       handleAddGroup: annotationActions.handleAddGroup,
-      getGroups: getAnnotationGroups
+      getGroups: getAnnotationGroups,
     },
     graphCreation,
     layoutControls,
-    rfInstance
+    rfInstance,
   });
 
   const { handleDeselectAll } = useAppHandlers({
@@ -1038,9 +1059,9 @@ export const AppContent: React.FC<AppContentProps> = ({
       selectNode: topoActions.selectNode,
       selectEdge: topoActions.selectEdge,
       editNode: topoActions.editNode,
-      editEdge: topoActions.editEdge
+      editEdge: topoActions.editEdge,
     },
-    rfInstance
+    rfInstance,
   });
 
   const shortcutDisplay = useShortcutDisplay();
@@ -1097,12 +1118,12 @@ export const AppContent: React.FC<AppContentProps> = ({
     annotations: {
       getNodeMembership: annotationActions.getNodeMembership,
       addNodeToGroup: annotationActions.addNodeToGroup,
-      deleteAllSelected: annotationActions.deleteAllSelected
+      deleteAllSelected: annotationActions.deleteAllSelected,
     },
     rfInstance,
     handleNodeCreatedCallback: graphHandlers.handleNodeCreatedCallback,
     handleEdgeCreated: graphHandlers.handleEdgeCreated,
-    handleBatchPaste: graphHandlers.handleBatchPaste
+    handleBatchPaste: graphHandlers.handleBatchPaste,
   });
 
   const handleDeleteSelection = React.useCallback(() => {
@@ -1129,7 +1150,7 @@ export const AppContent: React.FC<AppContentProps> = ({
       groupIds,
       textIds,
       shapeIds,
-      trafficRateIds
+      trafficRateIds,
     });
 
     const commands = buildDeleteCommands(graphNodeIds, edgeIds, edgesById);
@@ -1154,7 +1175,7 @@ export const AppContent: React.FC<AppContentProps> = ({
       mode: interactionMode,
       isLocked: isInteractionLocked,
       selectedNode: state.selectedNode,
-      selectedEdge: state.selectedEdge
+      selectedEdge: state.selectedEdge,
     },
     undoRedo,
     annotations: {
@@ -1163,15 +1184,15 @@ export const AppContent: React.FC<AppContentProps> = ({
       selectedTrafficRateIds: annotationUiState.selectedTrafficRateIds,
       selectedGroupIds: annotationUiState.selectedGroupIds,
       clearAllSelections: annotationUiActions.clearAllSelections,
-      handleAddGroup: annotationActions.handleAddGroup
+      handleAddGroup: annotationActions.handleAddGroup,
     },
     clipboardHandlers,
     deleteHandlers: {
       handleDeleteNode: graphHandlers.handleDeleteNode,
       handleDeleteLink: graphHandlers.handleDeleteLink,
-      handleDeleteSelection
+      handleDeleteSelection,
     },
-    handleDeselectAll
+    handleDeselectAll,
   });
 
   const easterEgg = useEasterEgg({});
@@ -1235,7 +1256,7 @@ export const AppContent: React.FC<AppContentProps> = ({
       onAddTrafficRateAtPosition: annotationActions.createTrafficRateAtPosition,
       onDropCreateNode: handleDropCreateNode,
       onDropCreateNetwork: handleDropCreateNetwork,
-      onLockedAction: handleLockedAction
+      onLockedAction: handleLockedAction,
     }),
     [
       panelVisibility.isContextPanelOpen,
@@ -1258,7 +1279,7 @@ export const AppContent: React.FC<AppContentProps> = ({
       annotationActions,
       handleDropCreateNode,
       handleDropCreateNetwork,
-      handleLockedAction
+      handleLockedAction,
     ]
   );
 
@@ -1345,7 +1366,7 @@ export const AppContent: React.FC<AppContentProps> = ({
                 borderRight: "1px solid",
                 borderColor: "divider",
                 bgcolor: "background.paper",
-                overflow: "hidden"
+                overflow: "hidden",
               }}
             >
               <ContainerlabExplorerView />
@@ -1363,9 +1384,9 @@ export const AppContent: React.FC<AppContentProps> = ({
                   ...(isDevExplorerDragging
                     ? {
                         bgcolor: "primary.main",
-                        opacity: 0.28
+                        opacity: 0.28,
                       }
-                    : {})
+                    : {}),
                 }}
               />
             </Box>
@@ -1384,11 +1405,11 @@ export const AppContent: React.FC<AppContentProps> = ({
 
               onEditCustomNode: customNodeCommands.onEditCustomNode,
               onDeleteCustomNode: customNodeCommands.onDeleteCustomNode,
-              onSetDefaultCustomNode: customNodeCommands.onSetDefaultCustomNode
+              onSetDefaultCustomNode: customNodeCommands.onSetDefaultCustomNode,
             }}
             view={{
               selectedNodeData: selectionData.selectedNodeData,
-              selectedLinkData: selectionData.selectedLinkData
+              selectedLinkData: selectionData.selectedLinkData,
             }}
             editor={{
               editingNodeData: selectionData.editingNodeData,
@@ -1400,7 +1421,7 @@ export const AppContent: React.FC<AppContentProps> = ({
                 previewVisuals: nodeEditorHandlers.previewVisuals,
                 handleDelete: selectionData.editingNodeData
                   ? () => graphHandlers.handleDeleteNode(selectionData.editingNodeData!.id)
-                  : undefined
+                  : undefined,
               },
               editingLinkData: selectionData.editingLinkData,
               linkEditorHandlers: {
@@ -1411,32 +1432,32 @@ export const AppContent: React.FC<AppContentProps> = ({
                 revertOffset: linkEditorHandlers.revertOffset,
                 handleDelete: selectionData.editingLinkData
                   ? () => graphHandlers.handleDeleteLink(selectionData.editingLinkData!.id)
-                  : undefined
+                  : undefined,
               },
               editingNetworkData: selectionData.editingNetworkData,
               networkEditorHandlers: {
                 handleClose: networkEditorHandlers.handleClose,
                 handleSave: handleNetworkSave,
-                handleApply: handleNetworkApply
+                handleApply: handleNetworkApply,
               },
               linkImpairmentData: selectionData.selectedLinkImpairmentData,
               linkImpairmentHandlers: {
                 onError: handleLinkImpairmentError,
                 onApply: handleLinkImpairmentApply,
                 onSave: handleLinkImpairmentSave,
-                onClose: () => topoActions.editImpairment(null)
+                onClose: () => topoActions.editImpairment(null),
               },
               editingTextAnnotation: annotationUiState.editingTextAnnotation,
               textAnnotationHandlers: {
                 onSave: annotationActions.saveTextAnnotation,
                 onClose: annotationUiActions.closeTextEditor,
-                onDelete: annotationActions.deleteTextAnnotation
+                onDelete: annotationActions.deleteTextAnnotation,
               },
               editingShapeAnnotation: annotationUiState.editingShapeAnnotation,
               shapeAnnotationHandlers: {
                 onSave: annotationActions.saveShapeAnnotation,
                 onClose: annotationUiActions.closeShapeEditor,
-                onDelete: annotationActions.deleteShapeAnnotation
+                onDelete: annotationActions.deleteShapeAnnotation,
               },
               editingTrafficRateAnnotation: annotationUiState.editingTrafficRateAnnotation,
               trafficRateAnnotationHandlers: {
@@ -1445,15 +1466,15 @@ export const AppContent: React.FC<AppContentProps> = ({
                   annotationActions.updateTrafficRateAnnotation(annotation.id, annotation);
                 },
                 onClose: annotationUiActions.closeTrafficRateEditor,
-                onDelete: annotationActions.deleteTrafficRateAnnotation
+                onDelete: annotationActions.deleteTrafficRateAnnotation,
               },
               editingGroup: annotationUiState.editingGroup,
               groupHandlers: {
                 onSave: annotationActions.saveGroup,
                 onClose: annotationUiActions.closeGroupEditor,
                 onDelete: annotationActions.deleteGroup,
-                onStylePreview: annotationActions.updateGroup
-              }
+                onStylePreview: annotationActions.updateGroup,
+              },
             }}
           />
           <Box
@@ -1461,7 +1482,7 @@ export const AppContent: React.FC<AppContentProps> = ({
             sx={{
               flexGrow: 1,
               overflow: "hidden",
-              position: "relative"
+              position: "relative",
             }}
           >
             <GraphCanvasMain

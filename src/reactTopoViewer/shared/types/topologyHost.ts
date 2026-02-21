@@ -9,7 +9,7 @@
 import type {
   TopologySnapshot,
   TopologyHostCommand,
-  TopologyHostResponseMessage
+  TopologyHostResponseMessage,
 } from "./messages";
 
 export interface TopologyHost {

@@ -8,7 +8,7 @@ export {
   generateAdapterNodeId,
   generateSpecialNodeId,
   generateRegularNodeId,
-  getUniqueId
+  getUniqueId,
 } from "../idUtils";
 
 // Link types and utilities
@@ -27,5 +27,5 @@ export {
   HOSTY_TYPES,
   isSpecialEndpointId,
   isSpecialNodeOrBridge,
-  splitEndpointLike
+  splitEndpointLike,
 } from "../LinkTypes";

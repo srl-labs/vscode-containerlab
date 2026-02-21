@@ -36,7 +36,7 @@ function resolveDefaultTarget(): { nodeId?: string; interfaceName?: string } {
   const interfaceName = options.interfacesByNode.get(nodeId)?.[0];
   return {
     nodeId,
-    interfaceName
+    interfaceName,
   };
 }
 
@@ -82,7 +82,7 @@ export function useTrafficRateAnnotations(
         backgroundOpacity: 20,
         borderWidth: 1,
         borderRadius: 8,
-        groupId: parentGroup?.id
+        groupId: parentGroup?.id,
       };
 
       uiActions.setEditingTrafficRateAnnotation(annotation);
@@ -137,14 +137,14 @@ export function useTrafficRateAnnotations(
       editTrafficRateAnnotation,
       saveTrafficRateAnnotation,
       deleteTrafficRateAnnotation,
-      deleteSelectedTrafficRateAnnotations
+      deleteSelectedTrafficRateAnnotations,
     }),
     [
       createTrafficRateAtPosition,
       editTrafficRateAnnotation,
       saveTrafficRateAnnotation,
       deleteTrafficRateAnnotation,
-      deleteSelectedTrafficRateAnnotations
+      deleteSelectedTrafficRateAnnotations,
     ]
   );
 }

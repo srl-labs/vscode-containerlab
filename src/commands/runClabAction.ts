@@ -7,7 +7,7 @@ import { ClabCommand } from "./clabCommand";
 import {
   notifyCurrentTopoViewerOfCommandLog,
   notifyCurrentTopoViewerOfCommandFailure,
-  notifyCurrentTopoViewerOfCommandSuccess
+  notifyCurrentTopoViewerOfCommandSuccess,
 } from "./graph";
 
 export async function runClabAction(

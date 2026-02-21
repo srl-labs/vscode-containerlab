@@ -7,7 +7,7 @@ import type { ContextMenuItem } from "../context-menu/ContextMenu";
 import {
   buildEdgeContextMenu,
   buildNodeContextMenu,
-  buildPaneContextMenu
+  buildPaneContextMenu,
 } from "./contextMenuBuilders";
 import type { AnnotationHandlers } from "./types";
 
@@ -75,7 +75,7 @@ function buildNodeItems(
     editGroup: params.annotationHandlers?.onEditGroup,
     deleteGroup: params.annotationHandlers?.onDeleteGroup,
     editTrafficRate: params.annotationHandlers?.onEditTrafficRate,
-    deleteTrafficRate: params.annotationHandlers?.onDeleteTrafficRate
+    deleteTrafficRate: params.annotationHandlers?.onDeleteTrafficRate,
   });
 }
 
@@ -100,7 +100,7 @@ function buildEdgeItems(
     editEdge: params.editEdge,
     handleDeleteEdge: params.handleDeleteEdge,
     showLinkInfo: params.showLinkInfo,
-    showLinkImpairment: params.showLinkImpairment
+    showLinkImpairment: params.showLinkImpairment,
   });
 }
 
@@ -118,7 +118,7 @@ function buildPaneItems(params: ResolveContextMenuItemsParams): ContextMenuItem[
     onAddTextAtPosition: params.onAddTextAtPosition,
     onAddShapes: params.onAddShapes,
     onAddShapeAtPosition: params.onAddShapeAtPosition,
-    onAddTrafficRateAtPosition: params.onAddTrafficRateAtPosition
+    onAddTrafficRateAtPosition: params.onAddTrafficRateAtPosition,
   });
 }
 
@@ -166,7 +166,7 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
     onAddTextAtPosition,
     onAddShapes,
     onAddShapeAtPosition,
-    onAddTrafficRateAtPosition
+    onAddTrafficRateAtPosition,
   } = params;
   const { type, targetId, position: menuPosition } = handlers.contextMenu;
 
@@ -179,7 +179,7 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
       nodes: nodesRef.current,
       edges: edgesRef.current,
       isEditMode: state.mode === "edit",
-      isLocked: state.isLocked
+      isLocked: state.isLocked,
     });
   }, [
     type,
@@ -210,6 +210,6 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
     onAddTextAtPosition,
     onAddShapes,
     onAddShapeAtPosition,
-    onAddTrafficRateAtPosition
+    onAddTrafficRateAtPosition,
   ]);
 }

@@ -39,7 +39,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onBackdropContextMenu,
   compact = false,
   openSubmenuOnHover = true,
-  openToLeft = false
+  openToLeft = false,
 }) => {
   const handleBackdropContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -72,24 +72,24 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       anchorPosition={{ top: position.y, left: position.x }}
       transformOrigin={{
         vertical: "top",
-        horizontal: openToLeft ? "right" : "left"
+        horizontal: openToLeft ? "right" : "left",
       }}
       data-testid="context-menu"
       slotProps={{
         backdrop: {
           invisible: true,
-          onContextMenu: handleBackdropContextMenu
+          onContextMenu: handleBackdropContextMenu,
         },
         paper: {
           sx: compact
             ? {
                 minWidth: 150,
                 maxWidth: 248,
-                "& .MuiDivider-root": { my: 0.1 }
+                "& .MuiDivider-root": { my: 0.1 },
               }
             : { minWidth: 180 },
-          onContextMenu: suppressNativeMenu
-        }
+          onContextMenu: suppressNativeMenu,
+        },
       }}
     >
       {items.map((item) => {
@@ -140,7 +140,7 @@ function submenuGutterSx(compact: boolean) {
     alignItems: "center",
     justifyContent: "center",
     flex: "0 0 auto",
-    mr: compact ? 0.35 : 0.8
+    mr: compact ? 0.35 : 0.8,
   };
 }
 
@@ -240,7 +240,7 @@ function resolveSubmenuClickHandler(
 function submenuItemSx(compact: boolean, openToLeft: boolean) {
   return {
     justifyContent: openToLeft ? "flex-start" : "space-between",
-    ...(compact ? { minHeight: 28, py: 0.2, px: 0.85 } : {})
+    ...(compact ? { minHeight: 28, py: 0.2, px: 0.85 } : {}),
   };
 }
 
@@ -248,7 +248,7 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({
   item,
   onClose,
   compact = false,
-  openToLeft = false
+  openToLeft = false,
 }) => {
   const handleClick = useMenuItemClick(item, onClose);
   const hasIcon = item.icon !== undefined && item.icon !== null;
@@ -262,7 +262,7 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({
       data-testid={`context-menu-item-${item.id}`}
       sx={{
         ...(compact ? { minHeight: 28, py: 0.2, px: 0.85 } : {}),
-        ...(isDanger ? { color: "error.main" } : {})
+        ...(isDanger ? { color: "error.main" } : {}),
       }}
     >
       {openToLeft && <Box sx={submenuGutterSx(compact)} />}
@@ -270,7 +270,7 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({
         <ListItemIcon
           sx={{
             ...(compact ? { minWidth: 22 } : {}),
-            ...(isDanger ? { color: "error.main" } : {})
+            ...(isDanger ? { color: "error.main" } : {}),
           }}
         >
           {item.icon}
@@ -284,9 +284,9 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({
                   noWrap: true,
                   sx: {
                     fontSize: 12.5,
-                    lineHeight: 1.25
-                  }
-                }
+                    lineHeight: 1.25,
+                  },
+                },
               }
             : undefined
         }
@@ -302,7 +302,7 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
   onClose,
   compact = false,
   openSubmenuOnHover = true,
-  openToLeft = false
+  openToLeft = false,
 }) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const submenuOpen = Boolean(anchorEl);
@@ -328,7 +328,7 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
         event,
         openSubmenuOnHover,
         cancelClose,
-        setAnchorEl
+        setAnchorEl,
       });
     },
     [cancelClose, openSubmenuOnHover]
@@ -349,7 +349,7 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
         disabled: item.disabled,
         hasClickHandler: Boolean(item.onClick),
         cancelClose,
-        setAnchorEl
+        setAnchorEl,
       });
     },
     [cancelClose, item.disabled, item.onClick, openSubmenuOnHover]
@@ -362,7 +362,7 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
         onClose,
         compact,
         openSubmenuOnHover,
-        openToLeft
+        openToLeft,
       }),
     [compact, onClose, openSubmenuOnHover, openToLeft]
   );
@@ -392,7 +392,9 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
             <ChevronLeftIcon fontSize="small" />
           </Box>
         )}
-        {hasIcon && <ListItemIcon sx={compact ? { minWidth: 22 } : undefined}>{item.icon}</ListItemIcon>}
+        {hasIcon && (
+          <ListItemIcon sx={compact ? { minWidth: 22 } : undefined}>{item.icon}</ListItemIcon>
+        )}
         <ListItemText
           slotProps={
             compact
@@ -401,9 +403,9 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
                     noWrap: true,
                     sx: {
                       fontSize: 12.5,
-                      lineHeight: 1.25
-                    }
-                  }
+                      lineHeight: 1.25,
+                    },
+                  },
                 }
               : undefined
           }
@@ -418,11 +420,11 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
         onClose={() => setAnchorEl(null)}
         anchorOrigin={{
           vertical: "top",
-          horizontal: anchorHorizontal
+          horizontal: anchorHorizontal,
         }}
         transformOrigin={{
           vertical: "top",
-          horizontal: transformHorizontal
+          horizontal: transformHorizontal,
         }}
         hideBackdrop
         sx={{ pointerEvents: "none" }}
@@ -433,12 +435,12 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
                   minWidth: 150,
                   maxWidth: 240,
                   pointerEvents: "auto",
-                  "& .MuiDivider-root": { my: 0.1 }
+                  "& .MuiDivider-root": { my: 0.1 },
                 }
               : { minWidth: 150, pointerEvents: "auto" },
             onMouseEnter: cancelClose,
-            onMouseLeave: scheduleClose
-          }
+            onMouseLeave: scheduleClose,
+          },
         }}
       >
         {item.children?.map(renderChild)}

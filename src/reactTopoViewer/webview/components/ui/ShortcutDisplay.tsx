@@ -29,7 +29,7 @@ export const ShortcutDisplay: React.FC<ShortcutDisplayProps> = ({ shortcuts }) =
         alignItems: "flex-start",
         gap: 0.5,
         zIndex: 100000,
-        pointerEvents: "none"
+        pointerEvents: "none",
       }}
     >
       {shortcuts.map((shortcut) => (
@@ -44,7 +44,7 @@ export const ShortcutDisplay: React.FC<ShortcutDisplayProps> = ({ shortcuts }) =
             fontFamily: "sans-serif",
             fontSize: "0.875rem",
             letterSpacing: "0.025em",
-            animation: "shortcutFade 2s ease-in-out forwards"
+            animation: "shortcutFade 2s ease-in-out forwards",
           }}
         >
           {shortcut.text}

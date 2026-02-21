@@ -47,7 +47,7 @@ export const HelperLines: React.FC<HelperLinesProps> = React.memo(({ lines }) =>
         height: "100%",
         pointerEvents: "none",
         zIndex: 1000,
-        overflow: "visible"
+        overflow: "visible",
       }}
     >
       {horizontalScreenY !== null && (
@@ -116,7 +116,7 @@ const OverlayIndicator: React.FC<{ children: React.ReactNode }> = ({ children })
       py: 0.75,
       fontSize: 12,
       zIndex: 1000,
-      pointerEvents: "none"
+      pointerEvents: "none",
     }}
   >
     {children}

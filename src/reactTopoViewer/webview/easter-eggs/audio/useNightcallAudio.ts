@@ -34,13 +34,13 @@ function buildMelody(): MelodyNote[] {
     { sd: 6, octave: -1, beat: 24.5, duration: 3.5 },
     { sd: 5, octave: -1, beat: 28, duration: 0.5 },
     { sd: 4, octave: -1, beat: 28.5, duration: 4 },
-    { sd: 3, octave: -1, beat: 32.5, duration: 0.5 }
+    { sd: 3, octave: -1, beat: 32.5, duration: 0.5 },
   ];
 
   return rawNotes.map((note) => ({
     frequency: getAMinorFrequency(note.sd, note.octave),
     beat: note.beat,
-    duration: note.duration
+    duration: note.duration,
   }));
 }
 
@@ -63,7 +63,7 @@ const ARPEGGIO_PATTERNS = {
     { sd: 1, octave: -1 },
     { sd: 5, octave: -1 },
     { sd: 1, octave: 0 },
-    { sd: 5, octave: -1 }
+    { sd: 5, octave: -1 },
   ],
   GB: [
     { sd: 2, octave: -1 },
@@ -81,7 +81,7 @@ const ARPEGGIO_PATTERNS = {
     { sd: 2, octave: -1 },
     { sd: 7, octave: -1 },
     { sd: 2, octave: 0 },
-    { sd: 7, octave: -1 }
+    { sd: 7, octave: -1 },
   ],
   F: [
     { sd: 6, octave: -2 },
@@ -99,7 +99,7 @@ const ARPEGGIO_PATTERNS = {
     { sd: 6, octave: -2 },
     { sd: 3, octave: -1 },
     { sd: 6, octave: -1 },
-    { sd: 3, octave: -1 }
+    { sd: 3, octave: -1 },
   ],
   Dm: [
     { sd: 4, octave: -1 },
@@ -117,15 +117,15 @@ const ARPEGGIO_PATTERNS = {
     { sd: 4, octave: -1 },
     { sd: 1, octave: 0 },
     { sd: 4, octave: 0 },
-    { sd: 1, octave: 0 }
-  ]
+    { sd: 1, octave: 0 },
+  ],
 };
 
 const BASS_NOTES = {
   Am: getAMinorFrequency(1, -2),
   GB: getAMinorFrequency(7, -2),
   F: getAMinorFrequency(6, -2),
-  Dm: getAMinorFrequency(4, -2)
+  Dm: getAMinorFrequency(4, -2),
 };
 
 type NightcallChord = "Am" | "GB" | "F" | "Dm";
@@ -454,7 +454,7 @@ export function useNightcallAudio(): UseNightcallAudioReturn {
     loop: true,
     loopEnd: LOOP_DURATION,
     fftSize: 256,
-    smoothingTimeConstant: 0.85
+    smoothingTimeConstant: 0.85,
   });
 
   const getCurrentChord = useCallback((): string => {
@@ -496,6 +496,6 @@ export function useNightcallAudio(): UseNightcallAudioReturn {
     getFrequencyData: engine.getFrequencyData,
     getTimeDomainData: engine.getTimeDomainData,
     getBeatIntensity,
-    getCurrentChord
+    getCurrentChord,
   };
 }

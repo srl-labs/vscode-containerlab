@@ -66,7 +66,7 @@ function defaultNetemFields(): NetemFields {
     jitter: "0ms",
     loss: "0.00%",
     rate: "0",
-    corruption: "0.00%"
+    corruption: "0.00%",
   };
 }
 
@@ -84,7 +84,7 @@ function parseNetemItem(item: NetemRawItem): [string, NetemFields] | null {
         : "0.00%",
     rate: typeof item.rate === "number" && item.rate > 0 ? String(item.rate) : "0",
     corruption:
-      typeof item.corruption === "number" && item.corruption > 0 ? `${item.corruption}%` : "0.00%"
+      typeof item.corruption === "number" && item.corruption > 0 ? `${item.corruption}%` : "0.00%",
   };
   return [key, fields];
 }
@@ -235,22 +235,18 @@ export async function manageNodeImpairments(
       enableScripts: true,
       localResourceRoots: [
         vscode.Uri.joinPath(context.extensionUri, "dist"),
-        vscode.Uri.joinPath(context.extensionUri, "resources")
-      ]
+        vscode.Uri.joinPath(context.extensionUri, "resources"),
+      ],
     }
   );
 
   const iconUri = vscode.Uri.joinPath(context.extensionUri, "resources", "containerlab.svg");
   panel.iconPath = iconUri;
 
-  panel.webview.html = getNodeImpairmentsWebviewHtml(
-    panel.webview,
-    context.extensionUri,
-    {
-      nodeName: node.name,
-      interfacesData: netemMap
-    }
-  );
+  panel.webview.html = getNodeImpairmentsWebviewHtml(panel.webview, context.extensionUri, {
+    nodeName: node.name,
+    interfacesData: netemMap,
+  });
 
   panel.webview.onDidReceiveMessage(
     async (msg: { command: string; data?: Record<string, NetemFields> }) => {

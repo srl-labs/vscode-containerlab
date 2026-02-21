@@ -26,7 +26,7 @@ export const BasicTab: React.FC<BasicTabProps> = ({
   isViewMode,
   onLabNameChange,
   onPrefixTypeChange,
-  onCustomPrefixChange
+  onCustomPrefixChange,
 }) => {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>

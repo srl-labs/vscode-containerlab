@@ -5,7 +5,7 @@ import {
   getEdgePoints,
   calculateControlPoint,
   getLabelPosition,
-  getNodeIntersection
+  getNodeIntersection,
 } from "../../canvas/edgeGeometry";
 
 import {
@@ -14,7 +14,7 @@ import {
   EDGE_STYLE,
   EDGE_LABEL,
   CONTROL_POINT_STEP_SIZE,
-  escapeXml
+  escapeXml,
 } from "./constants";
 
 // ============================================================================
@@ -103,9 +103,7 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function resolveEdgeRenderOptions(
-  renderOptions?: EdgeSvgRenderOptions
-): ResolvedEdgeRenderOptions {
+function resolveEdgeRenderOptions(renderOptions?: EdgeSvgRenderOptions): ResolvedEdgeRenderOptions {
   const nodeIconSizeRaw = renderOptions?.nodeIconSize;
   const interfaceScaleRaw = renderOptions?.interfaceScale;
   const nodeIconSize =
@@ -136,14 +134,14 @@ function getNodeRect(node: Node, nodeIconSize: number): NodeRect {
     x: node.position.x,
     y: node.position.y,
     width: nodeIconSize,
-    height: nodeIconSize
+    height: nodeIconSize,
   };
 }
 
 function getRectCenter(rect: NodeRect): { x: number; y: number } {
   return {
     x: rect.x + rect.width / 2,
-    y: rect.y + rect.height / 2
+    y: rect.y + rect.height / 2,
   };
 }
 
@@ -526,7 +524,11 @@ function getAutoCompactInterfaceLabel(endpoint: string): string {
     return trimmed.slice(start + 1, end + 1);
   }
 
-  const token = trimmed.split(/[:/.-]/).filter((part) => part.length > 0).pop() ?? trimmed;
+  const token =
+    trimmed
+      .split(/[:/.-]/)
+      .filter((part) => part.length > 0)
+      .pop() ?? trimmed;
   return token.length <= 3 ? token : token.slice(-3);
 }
 
@@ -587,7 +589,7 @@ function getRegularEdgeLabelPositions(
   if (ctx.nodeProximateLabels && sourceAnchor && targetAnchor) {
     return {
       sourceLabelPos: sourceAnchor,
-      targetLabelPos: targetAnchor
+      targetLabelPos: targetAnchor,
     };
   }
 
@@ -620,7 +622,7 @@ function getRegularEdgeLabelPositions(
       points.sy,
       targetOffset,
       controlPoint ?? undefined
-    )
+    ),
   };
 }
 
@@ -665,7 +667,7 @@ function buildLoopEdgePath(
   return {
     path,
     sourceLabelPos: { x: labelX, y: centerY - 10 },
-    targetLabelPos: { x: labelX, y: centerY + 10 }
+    targetLabelPos: { x: labelX, y: centerY + 10 },
   };
 }
 
@@ -749,12 +751,14 @@ function resolveRegularEdgeAnchors(
   const sourceEndpoint = normalizeEndpoint(ctx.edgeData?.sourceEndpoint);
   const targetEndpoint = normalizeEndpoint(ctx.edgeData?.targetEndpoint);
   return {
-    sourceAnchor: sourceEndpoint !== null
-      ? ctx.interfaceAnchors?.get(sourceNode.id)?.get(sourceEndpoint)
-      : undefined,
-    targetAnchor: targetEndpoint !== null
-      ? ctx.interfaceAnchors?.get(targetNode.id)?.get(targetEndpoint)
-      : undefined
+    sourceAnchor:
+      sourceEndpoint !== null
+        ? ctx.interfaceAnchors?.get(sourceNode.id)?.get(sourceEndpoint)
+        : undefined,
+    targetAnchor:
+      targetEndpoint !== null
+        ? ctx.interfaceAnchors?.get(targetNode.id)?.get(targetEndpoint)
+        : undefined,
   };
 }
 
@@ -789,11 +793,7 @@ function renderRegularEdge(
 ): string {
   const sourceRect = getNodeRect(sourceNode, ctx.nodeIconSize);
   const targetRect = getNodeRect(targetNode, ctx.nodeIconSize);
-  const { sourceAnchor, targetAnchor } = resolveRegularEdgeAnchors(
-    ctx,
-    sourceNode,
-    targetNode
-  );
+  const { sourceAnchor, targetAnchor } = resolveRegularEdgeAnchors(ctx, sourceNode, targetNode);
   const points = resolveEdgePointsWithInterfaceAnchors(
     sourceRect,
     targetRect,
@@ -843,7 +843,7 @@ export function edgeToSvg(
     nodeIconSize: resolvedRenderOptions.nodeIconSize,
     interfaceScale: resolvedRenderOptions.interfaceScale,
     interfaceLabelOverrides: resolvedRenderOptions.interfaceLabelOverrides,
-    interfaceAnchors
+    interfaceAnchors,
   };
 
   // Handle loop edges (self-referencing)

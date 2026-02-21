@@ -61,6 +61,6 @@ export function useAppHandlers({ selectionCallbacks, rfInstance }: UseAppHandler
   }, [selectNode, selectEdge, editNode, editEdge, rfInstance]);
 
   return {
-    handleDeselectAll
+    handleDeselectAll,
   };
 }

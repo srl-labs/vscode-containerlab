@@ -16,7 +16,7 @@ import {
   type Edge,
   type NodeChange,
   type NodePositionChange,
-  type XYPosition
+  type XYPosition,
 } from "@xyflow/react";
 
 import type { TopoNode, TopoEdge, FreeShapeNodeData } from "../../../shared/types/graph";
@@ -25,14 +25,14 @@ import { isLineHandleActive } from "../../components/canvas/nodes/AnnotationHand
 import {
   FREE_SHAPE_NODE_TYPE,
   GROUP_NODE_TYPE,
-  isAnnotationNodeType
+  isAnnotationNodeType,
 } from "../../annotations/annotationNodeConverters";
 import { DEFAULT_LINE_LENGTH } from "../../annotations/constants";
 import {
   saveAnnotationNodesFromGraph,
   saveNodePositions,
   saveNodePositionsWithAnnotations,
-  saveNodePositionsWithMemberships
+  saveNodePositionsWithMemberships,
 } from "../../services";
 import { useGraphStore } from "../../stores/graphStore";
 import { allocateEndpointsForLink } from "../../utils/endpointAllocator";
@@ -172,11 +172,11 @@ function getLineEndpoints(node: Node): { start: XYPosition; end: XYPosition } | 
   const start = data.startPosition ?? node.position;
   const end = data.endPosition ?? {
     x: start.x + DEFAULT_LINE_LENGTH,
-    y: start.y
+    y: start.y,
   };
   return {
     start: { x: start.x, y: start.y },
-    end: { x: end.x, y: end.y }
+    end: { x: end.x, y: end.y },
   };
 }
 
@@ -186,7 +186,7 @@ function recordLineDragSnapshot(snapshots: Map<string, LineDragSnapshot>, node: 
   snapshots.set(node.id, {
     nodePosition: { x: node.position.x, y: node.position.y },
     startPosition: endpoints.start,
-    endPosition: endpoints.end
+    endPosition: endpoints.end,
   });
 }
 
@@ -227,13 +227,13 @@ function applyLineDragSnapshots(snapshots: Map<string, LineDragSnapshot>): void 
       data: {
         startPosition: {
           x: snapshot.startPosition.x + dx,
-          y: snapshot.startPosition.y + dy
+          y: snapshot.startPosition.y + dy,
         },
         endPosition: {
           x: snapshot.endPosition.x + dx,
-          y: snapshot.endPosition.y + dy
-        }
-      }
+          y: snapshot.endPosition.y + dy,
+        },
+      },
     });
   }
 
@@ -258,7 +258,7 @@ function buildGroupMemberChanges(
         type: "position",
         id: memberId,
         position: memberNode.position,
-        dragging: false
+        dragging: false,
       });
     }
   }
@@ -329,8 +329,8 @@ function applyGeoUpdateToNodeList(
       data: {
         ...data,
         ...(update.geoCoordinates ? { geoCoordinates: update.geoCoordinates } : {}),
-        ...(update.endGeoCoordinates ? { endGeoCoordinates: update.endGeoCoordinates } : {})
-      }
+        ...(update.endGeoCoordinates ? { endGeoCoordinates: update.endGeoCoordinates } : {}),
+      },
     };
   });
 }
@@ -372,7 +372,7 @@ function handleGeoDragStop(
   );
 
   const changes: NodeChange[] = [
-    { type: "position", id: node.id, position: draggedPosition, dragging: false }
+    { type: "position", id: node.id, position: draggedPosition, dragging: false },
   ];
   onNodesChangeBase(changes);
 
@@ -485,8 +485,8 @@ function useNodeDragHandlers(
           ...n,
           position: {
             x: n.position.x + pending.dx,
-            y: n.position.y + pending.dy
-          }
+            y: n.position.y + pending.dy,
+          },
         };
       })
     );
@@ -578,13 +578,13 @@ function useNodeDragHandlers(
       const shouldSnap = !isAnnotationNodeType(node.type);
       const finalPosition = isGroupNode || !shouldSnap ? node.position : snapToGrid(node.position);
       const changes: NodeChange[] = [
-        { type: "position", id: node.id, position: finalPosition, dragging: false }
+        { type: "position", id: node.id, position: finalPosition, dragging: false },
       ];
       const delta = isGroupNode
         ? null
         : {
             x: finalPosition.x - node.position.x,
-            y: finalPosition.y - node.position.y
+            y: finalPosition.y - node.position.y,
           };
 
       // Handle group node members
@@ -624,7 +624,15 @@ function useNodeDragHandlers(
       applyLineDragSnapshots(lineDragStartRef.current);
       persistPositionChanges(changes);
     },
-    [isLockedRef, nodes, onNodesChangeBase, groupMemberHandlers, geoLayout, setNodes, flushPendingGroupMove]
+    [
+      isLockedRef,
+      nodes,
+      onNodesChangeBase,
+      groupMemberHandlers,
+      geoLayout,
+      setNodes,
+      flushPendingGroupMove,
+    ]
   );
 
   return { onNodeDragStart, onNodeDrag, onNodeDragStop };
@@ -678,7 +686,7 @@ function useContextMenuState() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     type: null,
     position: { x: 0, y: 0 },
-    targetId: null
+    targetId: null,
   });
 
   const closeContextMenu = useCallback(() => {
@@ -799,7 +807,7 @@ function usePaneClickHandler(
       onPaneClickExtra,
       reactFlowInstance,
       modeRef,
-      isLockedRef
+      isLockedRef,
     ]
   );
 }
@@ -854,7 +862,7 @@ function useConnectionHandler(
         source: connection.source,
         target: connection.target,
         sourceEndpoint,
-        targetEndpoint
+        targetEndpoint,
       };
 
       // Use unified callback which handles:
@@ -931,7 +939,7 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     onEdgeCreated,
     groupMemberHandlers,
     reactFlowInstanceRef,
-    geoLayout
+    geoLayout,
   } = config;
 
   const reactFlowInstance = reactFlowInstanceRef ?? useRef<ReactFlowInstance | null>(null);
@@ -1042,6 +1050,6 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     onNodeDrag,
     onNodeDragStop,
     contextMenu,
-    closeContextMenu
+    closeContextMenu,
   };
 }

@@ -145,7 +145,7 @@ const NODE_YAML_PROPERTIES = [
   "image-pull-policy",
   "runtime",
   "components",
-  "stages"
+  "stages",
 ] as const;
 
 /**
@@ -290,7 +290,7 @@ function endpointReferencesNode(ep: unknown, nodeId: string): boolean {
     return str === nodeId || str.startsWith(`${nodeId}:`);
   }
   if (YAML.isMap(ep)) {
-    return (ep).get("node") === nodeId;
+    return ep.get("node") === nodeId;
   }
   return false;
 }
@@ -397,7 +397,10 @@ function findNodeForEdit(
   if (isRename) {
     return {
       nodeMap: null,
-      earlyResult: { success: false, error: `Cannot rename: source node "${originalId}" not found` }
+      earlyResult: {
+        success: false,
+        error: `Cannot rename: source node "${originalId}" not found`,
+      },
     };
   }
 
@@ -590,7 +593,8 @@ export function buildAnnotationProps(data?: NodeAnnotationData): Record<string, 
   if (data.iconCornerRadius !== undefined) props.iconCornerRadius = data.iconCornerRadius;
   if (data.labelPosition !== undefined) props.labelPosition = data.labelPosition;
   if (data.direction !== undefined) props.direction = data.direction;
-  if (data.labelBackgroundColor !== undefined) props.labelBackgroundColor = data.labelBackgroundColor;
+  if (data.labelBackgroundColor !== undefined)
+    props.labelBackgroundColor = data.labelBackgroundColor;
   if (data.interfacePattern !== undefined && data.interfacePattern.length > 0) {
     props.interfacePattern = data.interfacePattern;
   }

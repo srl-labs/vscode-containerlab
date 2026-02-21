@@ -34,7 +34,7 @@ function parseInitialData(value: unknown): WiresharkVncInitialData {
     typeof value === "object" && value !== null ? Reflect.get(value, "showVolumeTip") : undefined;
   return {
     iframeUrl: typeof iframeUrlRaw === "string" ? iframeUrlRaw : "",
-    showVolumeTip: showVolumeTipRaw === true
+    showVolumeTip: showVolumeTipRaw === true,
   };
 }
 
@@ -130,7 +130,9 @@ function WiresharkVncApp(): React.JSX.Element {
 
   return (
     <MuiThemeProvider>
-      <Box sx={{ position: "relative", width: "100%", height: "100%", bgcolor: "background.default" }}>
+      <Box
+        sx={{ position: "relative", width: "100%", height: "100%", bgcolor: "background.default" }}
+      >
         <Box
           component="iframe"
           title="Wireshark VNC"
@@ -157,7 +159,7 @@ function WiresharkVncApp(): React.JSX.Element {
             inset: 0,
             width: "100%",
             height: "100%",
-            display: isFrameVisible ? "block" : "none"
+            display: isFrameVisible ? "block" : "none",
           }}
         />
 
@@ -169,7 +171,7 @@ function WiresharkVncApp(): React.JSX.Element {
               alignItems: "center",
               justifyContent: "center",
               p: 2,
-              textAlign: "center"
+              textAlign: "center",
             }}
           >
             <Paper
@@ -178,7 +180,7 @@ function WiresharkVncApp(): React.JSX.Element {
                 px: 3,
                 py: 2.5,
                 maxWidth: 460,
-                bgcolor: (theme) => theme.alpha(theme.palette.background.paper, 0.92)
+                bgcolor: (theme) => theme.alpha(theme.palette.background.paper, 0.92),
               }}
             >
               <Stack spacing={1.5} alignItems="center">

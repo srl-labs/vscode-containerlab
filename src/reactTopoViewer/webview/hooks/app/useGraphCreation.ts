@@ -121,7 +121,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     onNodeCreated,
     // addNode is kept in interface for backwards compatibility but not used here
     // Network nodes now use onNodeCreated for undo/redo support
-    onNewCustomNode
+    onNewCustomNode,
   } = config;
 
   const getUsedNodeIds = React.useCallback(() => {
@@ -168,7 +168,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   const nodeCreationState: NodeCreationState = {
     isLocked: state.isLocked,
     customNodes: state.customNodes,
-    defaultNode: state.defaultNode
+    defaultNode: state.defaultNode,
   };
 
   // Node creation
@@ -177,7 +177,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     defaultNode: state.defaultNode,
     getUsedNodeIds,
     onNodeCreated,
-    onLockedClick: onLockedAction
+    onLockedClick: onLockedAction,
   });
 
   // Node creation handlers (for toolbar)
@@ -209,7 +209,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     getExistingNodeIds: getUsedNodeIds,
     getExistingNetworkNodes,
     onNetworkCreated: handleNetworkCreatedCallback,
-    onLockedClick: onLockedAction
+    onLockedClick: onLockedAction,
   });
 
   // Handle adding network from toolbar
@@ -233,6 +233,6 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     createNodeAtPosition,
     handleAddNodeFromPanel,
     createNetworkAtPosition,
-    handleAddNetworkFromPanel
+    handleAddNetworkFromPanel,
   };
 }

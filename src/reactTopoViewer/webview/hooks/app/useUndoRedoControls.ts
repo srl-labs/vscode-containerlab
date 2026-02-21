@@ -26,7 +26,7 @@ export function useUndoRedoControls(canUndo: boolean, canRedo: boolean): UndoRed
       undo,
       redo,
       canUndo,
-      canRedo
+      canRedo,
     }),
     [undo, redo, canUndo, canRedo]
   );

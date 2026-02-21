@@ -44,7 +44,7 @@ export const GROUP_LABEL_POSITIONS = [
   "top-right",
   "bottom-left",
   "bottom-center",
-  "bottom-right"
+  "bottom-right",
 ] as const;
 
 /** Convert GroupStyleAnnotation to GroupEditorData */
@@ -72,8 +72,8 @@ export function groupToEditorData(group: GroupStyleAnnotation): GroupEditorData 
       borderRadius: group.borderRadius,
       color: group.color,
       labelColor: group.labelColor,
-      labelPosition: group.labelPosition
-    }
+      labelPosition: group.labelPosition,
+    },
   };
 }
 
@@ -97,6 +97,6 @@ export function editorDataToGroup(data: GroupEditorData): GroupStyleAnnotation {
     borderRadius: data.style.borderRadius,
     color: data.style.color,
     labelColor: data.style.labelColor,
-    labelPosition: data.style.labelPosition
+    labelPosition: data.style.labelPosition,
   };
 }

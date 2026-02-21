@@ -11,7 +11,7 @@ import {
   Divider,
   IconButton,
   TextField,
-  Typography
+  Typography,
 } from "@mui/material";
 import { Close as CloseIcon } from "@mui/icons-material";
 
@@ -60,18 +60,18 @@ const EXAMPLES: readonly ExampleDefinition[] = [
   {
     title: "All leaves to all spines:",
     source: <CopyableCode>leaf*</CopyableCode>,
-    target: <CopyableCode>spine*</CopyableCode>
+    target: <CopyableCode>spine*</CopyableCode>,
   },
   {
     title: "Pair by number (leaf1→spine1):",
     source: <CopyableCode>{"leaf(\\d+)"}</CopyableCode>,
-    target: <CopyableCode>spine$1</CopyableCode>
+    target: <CopyableCode>spine$1</CopyableCode>,
   },
   {
     title: "Single char match:",
     source: <CopyableCode>srl?</CopyableCode>,
-    target: <CopyableCode>client*</CopyableCode>
-  }
+    target: <CopyableCode>client*</CopyableCode>,
+  },
 ] as const;
 
 const ExampleRow: React.FC<{ index: number; def: ExampleDefinition }> = ({ index, def }) => (
@@ -124,7 +124,7 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
   isOpen,
   mode,
   isLocked,
-  onClose
+  onClose,
 }) => {
   const { addEdge } = useGraphActions();
   const getCurrentNodes = React.useCallback(
@@ -182,7 +182,7 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
       addEdge,
       setStatus,
       setPendingCandidates,
-      onClose
+      onClose,
     });
   }, [getCurrentNodes, getCurrentEdges, pendingCandidates, canApply, addEdge, onClose]);
 
@@ -247,11 +247,7 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button
-            size="small"
-            onClick={handleCompute}
-            data-testid="bulk-link-apply-btn"
-          >
+          <Button size="small" onClick={handleCompute} data-testid="bulk-link-apply-btn">
             Apply
           </Button>
         </DialogActions>

@@ -12,7 +12,7 @@ import {
   getBoolean,
   getStringArray,
   getRecord,
-  getRecordUnknown
+  getRecordUnknown,
 } from "./typeHelpers";
 
 // ============================================================================
@@ -51,7 +51,7 @@ function parseBasicProps(
     labelPosition: getString(rawData.labelPosition) ?? getString(extra.labelPosition),
     direction: getString(rawData.direction) ?? getString(extra.direction),
     labelBackgroundColor:
-      getString(rawData.labelBackgroundColor) ?? getString(extra.labelBackgroundColor)
+      getString(rawData.labelBackgroundColor) ?? getString(extra.labelBackgroundColor),
   };
 }
 
@@ -77,7 +77,7 @@ function parseConfigProps(
     binds: getStringArray(extra.binds),
     env: getRecord(extra.env),
     envFiles: getStringArray(extra["env-files"]),
-    labels: getRecord(extra.labels)
+    labels: getRecord(extra.labels),
   };
 }
 
@@ -95,7 +95,7 @@ function parseRuntimeProps(
     exec: getStringArray(extra.exec),
     restartPolicy: getString(extra["restart-policy"]),
     autoRemove: getBoolean(extra["auto-remove"]),
-    startupDelay: getNumber(extra["startup-delay"])
+    startupDelay: getNumber(extra["startup-delay"]),
   };
 }
 
@@ -112,7 +112,7 @@ function parseNetworkProps(
     networkMode: getString(extra["network-mode"]),
     ports: getStringArray(extra.ports),
     dnsServers: getStringArray(extra.dns),
-    aliases: getStringArray(extra.aliases)
+    aliases: getStringArray(extra.aliases),
   };
 }
 
@@ -140,7 +140,7 @@ function parseAdvancedProps(
     sysctls: getRecord(extra.sysctls),
     devices: getStringArray(extra.devices),
     imagePullPolicy: getString(extra["image-pull-policy"]),
-    runtime: getString(extra.runtime)
+    runtime: getString(extra.runtime),
   };
 }
 
@@ -155,7 +155,7 @@ function parseCertProps(
     certIssue: certRaw.issue !== undefined ? Boolean(certRaw.issue) : undefined,
     certKeySize: getString(certRaw["key-size"]),
     certValidity: getString(certRaw["validity-duration"]),
-    sans: getStringArray(certRaw.SANs)
+    sans: getStringArray(certRaw.SANs),
   };
 }
 
@@ -172,8 +172,8 @@ function parseHealthCheckProps(extra: Record<string, unknown>): {
       startPeriod: getNumber(healthcheckRaw["start-period"]),
       interval: getNumber(healthcheckRaw.interval),
       timeout: getNumber(healthcheckRaw.timeout),
-      retries: getNumber(healthcheckRaw.retries)
-    }
+      retries: getNumber(healthcheckRaw.retries),
+    },
   };
 }
 
@@ -183,7 +183,7 @@ function parseMdaItems(arr: unknown[]): { slot?: number; type?: string }[] {
     .filter((m): m is Record<string, unknown> => m !== null && typeof m === "object")
     .map((m) => ({
       slot: getNumber(m.slot),
-      type: getString(m.type)
+      type: getString(m.type),
     }));
 }
 
@@ -207,9 +207,9 @@ function parseComponentsProps(extra: Record<string, unknown>): { components?: Sr
               .map((x) => ({
                 slot: getNumber(x.slot),
                 type: getString(x.type),
-                mda: Array.isArray(x.mda) ? parseMdaItems(x.mda) : undefined
+                mda: Array.isArray(x.mda) ? parseMdaItems(x.mda) : undefined,
               }))
-          : undefined
+          : undefined,
       };
     });
 
@@ -234,7 +234,7 @@ export function convertToEditorData(
     ...parseAdvancedProps(extra),
     ...parseCertProps(extra),
     ...parseHealthCheckProps(extra),
-    ...parseComponentsProps(extra)
+    ...parseComponentsProps(extra),
   };
 }
 
@@ -387,8 +387,7 @@ function convertRuntimeToYaml(data: Record<string, unknown>, extraData: YamlExtr
   if ("cmd" in data) extraData.cmd = toStringOrNull(data.cmd);
   const exec = getStringArray(data.exec);
   if (exec !== undefined) extraData.exec = toArrayOrNull(exec);
-  if ("restartPolicy" in data)
-    extraData["restart-policy"] = toStringOrNull(data.restartPolicy);
+  if ("restartPolicy" in data) extraData["restart-policy"] = toStringOrNull(data.restartPolicy);
   // Boolean field: only write true, otherwise delete (null)
   if ("autoRemove" in data) {
     extraData["auto-remove"] = toBooleanOrNull(data.autoRemove);
@@ -674,13 +673,13 @@ export function convertEditorDataToNodeSaveData(
     interfacePattern: data.interfacePattern,
     labelPosition,
     direction,
-    labelBackgroundColor
+    labelBackgroundColor,
   };
 
   const saveData: NodeSaveData = {
     id: data.id,
     name: data.name,
-    extraData
+    extraData,
   };
 
   // If renaming, include the old name so TopologyIO can find and rename the node

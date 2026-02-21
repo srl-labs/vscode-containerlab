@@ -8,7 +8,7 @@ export {
   captureEdgesharkVNC,
   killAllWiresharkVNCCtrs,
   getHostname,
-  setSessionHostname
+  setSessionHostname,
 } from "../capture";
 export {
   setLinkDelay,
@@ -16,7 +16,7 @@ export {
   setLinkLoss,
   setLinkRate,
   setLinkCorruption,
-  setImpairment
+  setImpairment,
 } from "../impairments";
 export {
   getEdgesharkInstallCmd,
@@ -24,5 +24,5 @@ export {
   EDGESHARK_INSTALL_CMD,
   EDGESHARK_UNINSTALL_CMD,
   installEdgeshark,
-  uninstallEdgeshark
+  uninstallEdgeshark,
 } from "../edgeshark";

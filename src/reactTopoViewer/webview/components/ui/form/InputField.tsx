@@ -46,7 +46,7 @@ export const InputField: React.FC<InputFieldProps> = ({
   required,
   error,
   suffix,
-  clearable
+  clearable,
 }) => {
   const showClear = clearable === true && value.length > 0 && disabled !== true;
   const hasTooltip = tooltip !== undefined && tooltip.length > 0;
@@ -72,15 +72,13 @@ export const InputField: React.FC<InputFieldProps> = ({
         htmlInput: {
           min,
           max,
-          step
+          step,
         },
         input: hasEndAdornment
           ? {
               endAdornment: (
                 <InputAdornment position="end">
-                  {hasSuffix && (
-                    <Typography color="text.secondary">{suffix}</Typography>
-                  )}
+                  {hasSuffix && <Typography color="text.secondary">{suffix}</Typography>}
                   {showClear && (
                     <IconButton size="small" onClick={() => onChange("")} edge="end" tabIndex={-1}>
                       <ClearIcon fontSize="small" />
@@ -94,9 +92,9 @@ export const InputField: React.FC<InputFieldProps> = ({
                     </Tooltip>
                   )}
                 </InputAdornment>
-              )
+              ),
             }
-          : undefined
+          : undefined,
       }}
     />
   );

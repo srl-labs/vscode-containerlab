@@ -31,7 +31,7 @@ export function useEditorHandlersWithFooterRef<T extends { id: string }>(
     discardChanges,
     canSave,
     onFooterRef,
-    hasChangesForFooter
+    hasChangesForFooter,
   } = options;
 
   const handlers = useEditorHandlers<T>({
@@ -41,7 +41,7 @@ export function useEditorHandlersWithFooterRef<T extends { id: string }>(
     onDelete,
     resetInitialData,
     discardChanges,
-    canSave
+    canSave,
   });
 
   useFooterControlsRef(

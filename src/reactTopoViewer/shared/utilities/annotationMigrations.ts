@@ -30,10 +30,7 @@ export function applyInterfacePatternMigrations(
   for (const { nodeId, interfacePattern } of migrations) {
     const existing = annotations.nodeAnnotations.find((n) => n.id === nodeId);
     if (existing) {
-      if (
-        existing.interfacePattern === undefined ||
-        existing.interfacePattern.length === 0
-      ) {
+      if (existing.interfacePattern === undefined || existing.interfacePattern.length === 0) {
         existing.interfacePattern = interfacePattern;
         modified = true;
       }

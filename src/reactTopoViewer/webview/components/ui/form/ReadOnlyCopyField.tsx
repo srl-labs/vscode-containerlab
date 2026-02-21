@@ -15,7 +15,7 @@ export interface ReadOnlyCopyFieldProps {
 export const ReadOnlyCopyField: React.FC<ReadOnlyCopyFieldProps> = ({
   label,
   value,
-  mono = false
+  mono = false,
 }) => {
   const handleCopy = useCallback(() => {
     if (value) {
@@ -46,9 +46,9 @@ export const ReadOnlyCopyField: React.FC<ReadOnlyCopyFieldProps> = ({
             WebkitUserSelect: "none",
             caretColor: "transparent",
             cursor: "default",
-            ...(mono ? { fontFamily: "monospace" } : undefined)
-          }
-        }
+            ...(mono ? { fontFamily: "monospace" } : undefined),
+          },
+        },
       }}
     />
   );

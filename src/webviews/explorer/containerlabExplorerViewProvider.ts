@@ -3,10 +3,7 @@ import { randomBytes } from "crypto";
 import * as vscode from "vscode";
 
 import { hideNonOwnedLabsState } from "../../globals";
-import {
-  EXPLORER_SECTION_LABELS,
-  EXPLORER_SECTION_ORDER
-} from "../shared/explorer/types";
+import { EXPLORER_SECTION_LABELS, EXPLORER_SECTION_ORDER } from "../shared/explorer/types";
 import type {
   ExplorerIncomingMessage,
   ExplorerInvokeActionMessage,
@@ -14,15 +11,19 @@ import type {
   ExplorerPersistUiStateMessage,
   ExplorerSetFilterMessage,
   ExplorerSnapshotMessage,
-  ExplorerUiState
+  ExplorerUiState,
 } from "../shared/explorer/types";
-import type { HelpFeedbackProvider, LocalLabTreeDataProvider, RunningLabTreeDataProvider } from "../../treeView";
+import type {
+  HelpFeedbackProvider,
+  LocalLabTreeDataProvider,
+  RunningLabTreeDataProvider,
+} from "../../treeView";
 
 import { buildExplorerSnapshot } from "./explorerSnapshotAdapter";
 import type {
   ExplorerActionInvocation,
   ExplorerSnapshotOptions,
-  ExplorerSnapshotProviders
+  ExplorerSnapshotProviders,
 } from "./explorerSnapshotAdapter";
 
 const REFRESH_DEBOUNCE_MS = 120;
@@ -85,11 +86,11 @@ export class ContainerlabExplorerViewProvider
     this.providers = {
       runningProvider: args.runningProvider,
       localProvider: args.localProvider,
-      helpProvider: args.helpProvider
+      helpProvider: args.helpProvider,
     };
     this.options = {
       hideNonOwnedLabs: hideNonOwnedLabsState,
-      isLocalCaptureAllowed: args.isLocalCaptureAllowed
+      isLocalCaptureAllowed: args.isLocalCaptureAllowed,
     };
     this.filterableProviders = [args.runningProvider, args.localProvider];
     const savedFilter = context.workspaceState.get<string>(FILTER_STATE_KEY, "");
@@ -104,7 +105,11 @@ export class ContainerlabExplorerViewProvider
   }
 
   private registerDataListeners(): void {
-    const allProviders = [this.providers.runningProvider, this.providers.localProvider, this.providers.helpProvider];
+    const allProviders = [
+      this.providers.runningProvider,
+      this.providers.localProvider,
+      this.providers.helpProvider,
+    ];
     for (const provider of allProviders) {
       const disposable = provider.onDidChangeTreeData(() => {
         this.scheduleSnapshot();
@@ -121,8 +126,8 @@ export class ContainerlabExplorerViewProvider
       enableScripts: true,
       localResourceRoots: [
         vscode.Uri.joinPath(this.context.extensionUri, "dist"),
-        vscode.Uri.joinPath(this.context.extensionUri, "resources")
-      ]
+        vscode.Uri.joinPath(this.context.extensionUri, "resources"),
+      ],
     };
     webviewView.webview.html = this.getWebviewHtml(webviewView.webview);
 
@@ -153,7 +158,11 @@ export class ContainerlabExplorerViewProvider
     );
 
     this.visibilityEmitter.fire(webviewView.visible);
-    void vscode.commands.executeCommand("setContext", "containerlabExplorerVisible", webviewView.visible);
+    void vscode.commands.executeCommand(
+      "setContext",
+      "containerlabExplorerVisible",
+      webviewView.visible
+    );
   }
 
   public async setFilter(filterText: string): Promise<void> {
@@ -238,7 +247,7 @@ export class ContainerlabExplorerViewProvider
     const state = this.context.workspaceState.get<ExplorerUiState>(UI_STATE_KEY, {});
     const message: ExplorerIncomingMessage = {
       command: "uiState",
-      state
+      state,
     };
     void this.webviewView.webview.postMessage(message);
   }
@@ -250,7 +259,7 @@ export class ContainerlabExplorerViewProvider
 
     const message: ExplorerIncomingMessage = {
       command: "filterState",
-      filterText: this.filterText
+      filterText: this.filterText,
     };
     void this.webviewView.webview.postMessage(message);
   }
@@ -323,8 +332,8 @@ export class ContainerlabExplorerViewProvider
         label: EXPLORER_SECTION_LABELS[sectionId],
         count: 0,
         nodes: [],
-        toolbarActions: []
-      }))
+        toolbarActions: [],
+      })),
     };
     void this.webviewView.webview.postMessage(snapshot);
   }

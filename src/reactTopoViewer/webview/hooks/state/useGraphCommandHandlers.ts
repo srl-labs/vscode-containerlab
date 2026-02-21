@@ -10,7 +10,7 @@ import type {
   TopologyEdgeData,
   EdgeCreatedData,
   EdgeCreatedHandler,
-  NodeCreatedHandler
+  NodeCreatedHandler,
 } from "../../../shared/types/graph";
 import type { NodeSaveData } from "../../../shared/io/NodePersistenceIO";
 import type { TopologyHostCommand } from "../../../shared/types/messages";
@@ -21,17 +21,17 @@ import {
   deleteNode,
   saveAnnotationNodesFromGraph,
   saveNetworkNodesFromGraph,
-  executeTopologyCommand
+  executeTopologyCommand,
 } from "../../services";
 import {
   isAnnotationNodeType,
-  nodesToAnnotations
+  nodesToAnnotations,
 } from "../../annotations/annotationNodeConverters";
 import { toLinkSaveData } from "../../services/linkSaveData";
 import {
   BRIDGE_NETWORK_TYPES,
   SPECIAL_NETWORK_TYPES,
-  getNetworkType
+  getNetworkType,
 } from "../../utils/networkNodeTypes";
 import { buildNetworkNodeAnnotations } from "../../utils/networkNodeAnnotations";
 import { useGraphStore } from "../../stores/graphStore";
@@ -105,13 +105,13 @@ const NODE_FALLBACK_PROPS = [
   "labelPosition",
   "direction",
   "labelBackgroundColor",
-  "interfacePattern"
+  "interfacePattern",
 ] as const;
 
 const NETWORK_NODE_TYPE = "network-node";
 
 function mergeNodeExtraData(data: NodeElementData): NodeSaveData["extraData"] {
-  const ed = (data.extraData ?? {});
+  const ed = data.extraData ?? {};
   const result: Record<string, unknown> = { ...ed };
   for (const key of NODE_FALLBACK_PROPS) {
     if (result[key] === undefined) {
@@ -141,7 +141,7 @@ function toNodeSaveData(node: TopoNode): NodeSaveData {
     id: node.id,
     name,
     position: node.position,
-    extraData: mergeNodeExtraData(data)
+    extraData: mergeNodeExtraData(data),
   };
 }
 
@@ -214,11 +214,7 @@ export function useGraphHandlersWithContext(
   const handleEdgeCreated = React.useCallback(
     (_sourceId: string, _targetId: string, edgeData: EdgeCreatedData) => {
       const nodes = getNodes().filter(isTopoNode);
-      const detection = detectSpecialLinkType(
-        nodes,
-        edgeData.source,
-        edgeData.target
-      );
+      const detection = detectSpecialLinkType(nodes, edgeData.source, edgeData.target);
       const edgeExtraData: Record<string, unknown> = {};
       if (detection) {
         edgeExtraData.extType = detection.linkType;
@@ -240,8 +236,8 @@ export function useGraphHandlersWithContext(
         data: {
           sourceEndpoint: edgeData.sourceEndpoint,
           targetEndpoint: edgeData.targetEndpoint,
-          ...(extraData ? { extraData } : {})
-        } as TopologyEdgeData
+          ...(extraData ? { extraData } : {}),
+        } as TopologyEdgeData,
       };
       addEdge(edge);
       void createLink(toLinkSaveData(edge));
@@ -253,7 +249,7 @@ export function useGraphHandlersWithContext(
           ...existingExtra,
           extRemote: existingExtra.extRemote ?? VXLAN_DEFAULTS.extRemote,
           extVni: existingExtra.extVni ?? VXLAN_DEFAULTS.extVni,
-          extDstPort: existingExtra.extDstPort ?? VXLAN_DEFAULTS.extDstPort
+          extDstPort: existingExtra.extDstPort ?? VXLAN_DEFAULTS.extDstPort,
         };
         useGraphStore.getState().updateNodeData(detection.networkNodeId, nextExtra);
       }
@@ -323,8 +319,8 @@ export function useGraphHandlersWithContext(
             freeShapeAnnotations,
             trafficRateAnnotations,
             groupStyleAnnotations: groups,
-            networkNodeAnnotations
-          }
+            networkNodeAnnotations,
+          },
         });
       }
 
@@ -342,7 +338,7 @@ export function useGraphHandlersWithContext(
       isSpecialNetworkNode,
       nodesToAnnotations,
       toLinkSaveData,
-      toNodeSaveData
+      toNodeSaveData,
     ]
   );
 
@@ -388,6 +384,6 @@ export function useGraphHandlersWithContext(
     handleNodeCreatedCallback,
     handleBatchPaste,
     handleDeleteNode,
-    handleDeleteLink
+    handleDeleteLink,
   };
 }

@@ -36,10 +36,15 @@ function hasId(value: string | null): value is string {
 }
 
 function resolveEditingView(
-  state: Pick<TopoViewerState, "editingNode" | "editingEdge" | "editingNetwork" | "editingImpairment">
+  state: Pick<
+    TopoViewerState,
+    "editingNode" | "editingEdge" | "editingNetwork" | "editingImpairment"
+  >
 ): PanelView | null {
-  if (hasId(state.editingNode)) return { kind: "nodeEditor", title: "Node Editor", hasFooter: true };
-  if (hasId(state.editingEdge)) return { kind: "linkEditor", title: "Link Editor", hasFooter: true };
+  if (hasId(state.editingNode))
+    return { kind: "nodeEditor", title: "Node Editor", hasFooter: true };
+  if (hasId(state.editingEdge))
+    return { kind: "linkEditor", title: "Link Editor", hasFooter: true };
   if (hasId(state.editingNetwork))
     return { kind: "networkEditor", title: "Network Editor", hasFooter: true };
   if (hasId(state.editingImpairment))

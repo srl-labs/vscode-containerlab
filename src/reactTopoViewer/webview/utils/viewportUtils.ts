@@ -28,6 +28,6 @@ export function getViewportCenter(rfInstance: ReactFlowInstance | null): { x: nu
   // Model coords = (screenCoords - pan) / zoom
   return {
     x: (width / 2 - viewport.x) / viewport.zoom,
-    y: (height / 2 - viewport.y) / viewport.zoom
+    y: (height / 2 - viewport.y) / viewport.zoom,
   };
 }

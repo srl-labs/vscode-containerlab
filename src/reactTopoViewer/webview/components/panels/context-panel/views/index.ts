@@ -19,7 +19,7 @@ export type { FreeShapeEditorViewProps, FreeShapeEditorFooterRef } from "./FreeS
 export { TrafficRateEditorView } from "./TrafficRateEditorView";
 export type {
   TrafficRateEditorViewProps,
-  TrafficRateEditorFooterRef
+  TrafficRateEditorFooterRef,
 } from "./TrafficRateEditorView";
 export { GroupEditorView } from "./GroupEditorView";
 export type { GroupEditorViewProps, GroupEditorFooterRef } from "./GroupEditorView";

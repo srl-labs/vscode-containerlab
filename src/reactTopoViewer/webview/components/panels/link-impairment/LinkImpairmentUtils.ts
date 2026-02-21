@@ -23,7 +23,7 @@ const NETEM_FIELD_FORMAT: Record<keyof NetemState, FormatCheck> = {
   jitter: { format: TIME_UNIT_RE, error: ERR_TIME_UNIT },
   loss: { format: PERCENTAGE_RE, error: ERR_PERCENTAGE },
   rate: { format: NUMBER_RE, error: ERR_NUMBER },
-  corruption: { format: PERCENTAGE_RE, error: ERR_PERCENTAGE }
+  corruption: { format: PERCENTAGE_RE, error: ERR_PERCENTAGE },
 };
 
 function isNetemKey(value: string): value is keyof NetemState {
@@ -64,7 +64,7 @@ function stripNetemDataUnit(data: NetemState): NetemState {
     jitter: data.jitter,
     loss: normalizeNetemPercentage(data.loss),
     rate: data.rate,
-    corruption: normalizeNetemPercentage(data.corruption)
+    corruption: normalizeNetemPercentage(data.corruption),
   };
 }
 
@@ -98,7 +98,7 @@ export function applyNetemSettings(data: LinkImpairmentData): void {
     postCommand("clab-link-impairment", {
       nodeName: data.extraData?.clabSourceLongName ?? data.source,
       interfaceName: data.sourceEndpoint,
-      data: data.sourceNetem
+      data: data.sourceNetem,
     });
   }
 
@@ -106,7 +106,7 @@ export function applyNetemSettings(data: LinkImpairmentData): void {
     postCommand("clab-link-impairment", {
       nodeName: data.extraData?.clabTargetLongName ?? data.target,
       interfaceName: data.targetEndpoint,
-      data: data.targetNetem
+      data: data.targetNetem,
     });
   }
 }

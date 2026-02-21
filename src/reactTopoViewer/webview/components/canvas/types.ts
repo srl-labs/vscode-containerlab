@@ -18,7 +18,7 @@ import type {
   FreeTextRFNode,
   FreeShapeRFNode,
   TrafficRateRFNode,
-  GroupRFNode
+  GroupRFNode,
 } from "../../../shared/types/graph";
 import { DEFAULT_ICON_COLOR, ROLE_SVG_MAP } from "../../../shared/types/graph";
 import { vscodePalette } from "../../theme/vscodeTheme";
@@ -42,7 +42,7 @@ export type {
   FreeTextRFNode,
   FreeShapeRFNode,
   TrafficRateRFNode,
-  GroupRFNode
+  GroupRFNode,
 };
 
 export type TopologyRFEdge = TopoEdge;

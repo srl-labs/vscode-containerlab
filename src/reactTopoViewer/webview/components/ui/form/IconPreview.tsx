@@ -18,7 +18,7 @@ export const IconPreview: FC<IconPreviewProps> = ({ src, alt = "", size, cornerR
       width: size,
       height: size,
       borderRadius:
-        cornerRadius !== undefined && cornerRadius > 0 ? `${(cornerRadius / 48) * size}px` : 0
+        cornerRadius !== undefined && cornerRadius > 0 ? `${(cornerRadius / 48) * size}px` : 0,
     }}
   />
 );

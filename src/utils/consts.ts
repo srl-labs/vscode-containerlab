@@ -7,12 +7,12 @@ export const DEFAULT_ATTACH_TELNET_PORT = 5000;
 export const enum ImagePullPolicy {
   Never = "never",
   Missing = "missing",
-  Always = "always"
+  Always = "always",
 }
 
 export const enum ContainerAction {
   Start = "start",
   Stop = "stop",
   Pause = "pause",
-  Unpause = "unpause"
+  Unpause = "unpause",
 }

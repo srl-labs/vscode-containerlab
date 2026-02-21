@@ -29,7 +29,7 @@ export const noopLogger: IOLogger = {
   debug: () => {},
   info: () => {},
   warn: () => {},
-  error: () => {}
+  error: () => {},
 };
 
 /**

@@ -25,7 +25,7 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
   onClose,
   mode,
   isLocked,
-  labSettings
+  labSettings,
 }) => {
   const saveRef = useRef<(() => Promise<void>) | null>(null);
   const isReadOnly = mode === "view" || isLocked;

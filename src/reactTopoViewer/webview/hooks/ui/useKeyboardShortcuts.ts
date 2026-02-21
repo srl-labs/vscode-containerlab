@@ -9,7 +9,7 @@ import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   TRAFFIC_RATE_NODE_TYPE,
-  GROUP_NODE_TYPE
+  GROUP_NODE_TYPE,
 } from "../../annotations/annotationNodeConverters";
 
 interface KeyboardShortcutsOptions {
@@ -74,7 +74,7 @@ function isInputElement(target: EventTarget | null): boolean {
         "[role='textbox']",
         ".monaco-editor",
         ".monaco-inputbox",
-        ".monaco-findInput"
+        ".monaco-findInput",
       ].join(",")
     )
   );
@@ -271,11 +271,7 @@ function handleSelectAll(event: KeyboardEvent): boolean {
 
   const target = event.target;
   if (target instanceof HTMLElement) {
-    if (
-      target.tagName === "INPUT" ||
-      target.tagName === "TEXTAREA" ||
-      target.isContentEditable
-    ) {
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
       return false;
     }
   }
@@ -372,7 +368,8 @@ function handleDeleteInViewMode(
 ): boolean {
   const { nodes, edges } = useGraphStore.getState();
   const selectedNodes = nodes.filter((node) => node.selected === true);
-  const hasSelectedEdges = edges.some((edge) => edge.selected === true) || hasSelectedId(selectedEdge);
+  const hasSelectedEdges =
+    edges.some((edge) => edge.selected === true) || hasSelectedId(selectedEdge);
   const hasSelectedAnnotationNodes = selectedNodes.some((node) => isAnnotationType(node.type));
   const hasSelectedNonAnnotationNode = selectedNodes.some((node) => !isAnnotationType(node.type));
 
@@ -408,7 +405,8 @@ function handleBatchedDeleteInEditMode(
   const { nodes, edges } = useGraphStore.getState();
   const selectedNodeIds = nodes.filter((node) => node.selected === true).map((node) => node.id);
   const selectedEdgeIds = edges.filter((edge) => edge.selected === true).map((edge) => edge.id);
-  let totalSelected = selectedNodeIds.length + selectedEdgeIds.length + (selectedAnnotationIds?.size ?? 0);
+  let totalSelected =
+    selectedNodeIds.length + selectedEdgeIds.length + (selectedAnnotationIds?.size ?? 0);
 
   if (hasSelectedId(selectedNode) && !selectedNodeIds.includes(selectedNode)) {
     totalSelected += 1;
@@ -544,7 +542,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     onClearAnnotationSelection,
     hasAnnotationClipboard,
     hasGraphClipboard,
-    onCreateGroup
+    onCreateGroup,
   } = options;
 
   const handleKeyDown = useCallback(
@@ -631,7 +629,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
       onClearAnnotationSelection,
       hasAnnotationClipboard,
       hasGraphClipboard,
-      onCreateGroup
+      onCreateGroup,
     ]
   );
 

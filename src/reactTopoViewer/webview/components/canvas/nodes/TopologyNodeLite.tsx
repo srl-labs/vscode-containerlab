@@ -14,7 +14,7 @@ function toTopologyNodeData(data: NodeProps["data"]): TopologyNodeData {
   return {
     ...data,
     label: typeof data.label === "string" ? data.label : "",
-    role: typeof data.role === "string" ? data.role : ""
+    role: typeof data.role === "string" ? data.role : "",
   };
 }
 
@@ -31,7 +31,7 @@ const TopologyNodeLiteComponent: React.FC<NodeProps> = ({ data, selected }) => {
     borderRadius: corner,
     transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
     outline: selected ? `2px solid ${SELECTION_COLOR}` : "none",
-    outlineOffset: 1
+    outlineOffset: 1,
   };
 
   return <LiteNodeShell className="topology-node-lite" iconStyle={iconStyle} />;

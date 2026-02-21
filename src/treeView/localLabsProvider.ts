@@ -74,7 +74,6 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
         this.refresh();
       }
     });
-
   }
 
   private performScan(): Promise<void> {
@@ -92,13 +91,11 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
         const uris = (
           await Promise.race([
             vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN),
-            timeout
+            timeout,
           ])
         ).filter((u) => !u.scheme || u.scheme === "file");
         this.cachedUris = new Map(uris.map((u) => [u.fsPath, u]));
-        outputChannel.debug(
-          `[LocalTreeDataProvider] Scan found ${this.cachedUris.size} lab files`
-        );
+        outputChannel.debug(`[LocalTreeDataProvider] Scan found ${this.cachedUris.size} lab files`);
         this.refresh();
       } catch (err: unknown) {
         outputChannel.error(`[LocalTreeDataProvider] File scan failed: ${err}`);
@@ -159,12 +156,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
 
     uris.forEach((uri) =>
-      this.addLab(
-        labs,
-        labPaths,
-        uri.fsPath,
-        favoriteLabs.has(utils.normalizeLabPath(uri.fsPath))
-      )
+      this.addLab(labs, labPaths, uri.fsPath, favoriteLabs.has(utils.normalizeLabPath(uri.fsPath)))
     );
     this.includeFavoriteLabs(uris, labs, labPaths);
     this.applyTreeFilter(labs, workspaceRoot);
@@ -212,7 +204,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
       vscode.TreeItemCollapsibleState.None,
       {
         relative: filePath,
-        absolute: normPath
+        absolute: normPath,
       },
       undefined,
       undefined,

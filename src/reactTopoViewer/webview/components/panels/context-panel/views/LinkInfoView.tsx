@@ -58,7 +58,7 @@ function getEndpoints(linkData: LinkInfoData): { a: EndpointData; b: EndpointDat
     mac: sourceMac,
     mtu: extraData.clabSourceMtu ?? "",
     type: sourceType,
-    stats: extraData.clabSourceStats
+    stats: extraData.clabSourceStats,
   };
 
   const b: EndpointData = linkData.endpointB ?? {
@@ -67,7 +67,7 @@ function getEndpoints(linkData: LinkInfoData): { a: EndpointData; b: EndpointDat
     mac: targetMac,
     mtu: extraData.clabTargetMtu ?? "",
     type: targetType,
-    stats: extraData.clabTargetStats
+    stats: extraData.clabTargetStats,
   };
 
   return { a, b };
@@ -84,7 +84,7 @@ export const LinkInfoView: React.FC<LinkInfoViewProps> = ({ linkData }) => {
 
   const endpointTabs: TabDefinition[] = [
     { id: "a", label: `${linkData.source}:${linkData.sourceEndpoint ?? "eth"}` },
-    { id: "b", label: `${linkData.target}:${linkData.targetEndpoint ?? "eth"}` }
+    { id: "b", label: `${linkData.target}:${linkData.targetEndpoint ?? "eth"}` },
   ];
 
   return (

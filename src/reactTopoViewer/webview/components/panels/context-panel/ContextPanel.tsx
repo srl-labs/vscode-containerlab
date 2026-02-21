@@ -7,7 +7,7 @@ import {
   EditOutlined as EditOutlinedIcon,
   ErrorOutline as ErrorOutlineIcon,
   Lock as LockIcon,
-  SwapHoriz as SwapHorizIcon
+  SwapHoriz as SwapHorizIcon,
 } from "@mui/icons-material";
 import { Box, Button, Divider, Drawer, Tooltip, Typography } from "@mui/material";
 
@@ -15,7 +15,11 @@ import { useIsLocked } from "../../../stores/topoViewerStore";
 import type { NodeData, LinkData } from "../../../hooks/ui";
 import { useContextPanelContent } from "../../../hooks/ui/useContextPanelContent";
 
-import type { ContextPanelEditorState, EditorFooterRef, EditorBannerRef } from "./views/editorTypes";
+import type {
+  ContextPanelEditorState,
+  EditorFooterRef,
+  EditorBannerRef,
+} from "./views/editorTypes";
 import { PaletteView } from "./views";
 
 const MIN_WIDTH = 500;
@@ -49,7 +53,7 @@ function getSideConfig(side: "left" | "right"): SideConfig {
       closeIcon: ChevronLeftIcon,
       borderRadius: "0 4px 4px 0",
       borderZeroProp: "borderLeft",
-      moveTargetLabel: "right"
+      moveTargetLabel: "right",
     };
   }
 
@@ -61,7 +65,7 @@ function getSideConfig(side: "left" | "right"): SideConfig {
     closeIcon: ChevronRightIcon,
     borderRadius: "4px 0 0 4px",
     borderZeroProp: "borderRight",
-    moveTargetLabel: "left"
+    moveTargetLabel: "left",
   };
 }
 
@@ -136,7 +140,7 @@ const ToggleHandle: React.FC<{
     [sideConfig.borderZeroProp]: 0,
     borderColor: "divider",
     bgcolor: "background.paper",
-    "&:hover": { bgcolor: ACTION_HOVER }
+    "&:hover": { bgcolor: ACTION_HOVER },
   };
 
   return (
@@ -150,17 +154,21 @@ const ToggleHandle: React.FC<{
           ? "none"
           : (theme) =>
               theme.transitions.create(sideConfig.positionProp, {
-                duration: theme.transitions.duration.short
+                duration: theme.transitions.duration.short,
               }),
         zIndex: 15,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 0.5
+        gap: 0.5,
       }}
     >
       <Tooltip title={toggleTitle} placement={sideConfig.tooltipPlacement}>
-        <Box onClick={handleToggle} data-testid="panel-toggle-btn" sx={{ ...handleStyle, height: 48 }}>
+        <Box
+          onClick={handleToggle}
+          data-testid="panel-toggle-btn"
+          sx={{ ...handleStyle, height: 48 }}
+        >
           <ActiveIcon sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
         </Box>
       </Tooltip>
@@ -248,7 +256,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   onToggleSide,
   palette,
   view,
-  editor
+  editor,
 }) => {
   const panelView = useContextPanelContent();
   const isLocked = useIsLocked();
@@ -319,8 +327,8 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             boxShadow: 4,
             [sideLayout.border]: 1,
             borderColor: "divider",
-            pointerEvents: "auto"
-          }
+            pointerEvents: "auto",
+          },
         }}
       >
         {isLocked && (
@@ -334,7 +342,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                 px: 2,
                 py: 0.5,
                 bgcolor: "action.hover",
-                color: "text.secondary"
+                color: "text.secondary",
               }}
             >
               <LockIcon sx={{ fontSize: 14 }} />
@@ -355,7 +363,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                   px: 2,
                   py: 0.5,
                   bgcolor: ACTION_HOVER,
-                  color: "error.main"
+                  color: "error.main",
                 }}
               >
                 <ErrorOutlineIcon sx={{ fontSize: 14 }} />
@@ -374,7 +382,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                 gap: 0.5,
                 px: 2,
                 py: 0.5,
-                bgcolor: ACTION_HOVER
+                bgcolor: ACTION_HOVER,
               }}
             >
               <EditOutlinedIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
@@ -389,7 +397,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
         <Box
           sx={{
             flexGrow: 1,
-            overflow: "auto"
+            overflow: "auto",
           }}
         >
           {content}
@@ -399,11 +407,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           <>
             <Divider />
             <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, p: 1.5 }}>
-              <Button
-                size="small"
-                onClick={footer.handleApply}
-                data-testid="panel-apply-btn"
-              >
+              <Button size="small" onClick={footer.handleApply} data-testid="panel-apply-btn">
                 Apply
               </Button>
             </Box>
@@ -420,7 +424,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             width: 4,
             cursor: "col-resize",
             zIndex: 1,
-            "&:hover": { bgcolor: "primary.main", opacity: 0.3 }
+            "&:hover": { bgcolor: "primary.main", opacity: 0.3 },
           }}
         />
       </Drawer>

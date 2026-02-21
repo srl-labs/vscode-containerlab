@@ -27,38 +27,38 @@ const LAB_ACTIONS: Partial<Record<string, LabAction>> = {
     command: "containerlab.lab.deploy",
     resultMsg: "Lab deployment initiated",
     errorMsg: "Error deploying lab",
-    noLabPath: "No lab path provided for deployment"
+    noLabPath: "No lab path provided for deployment",
   },
   destroyLab: {
     command: "containerlab.lab.destroy",
     resultMsg: "Lab destruction initiated",
     errorMsg: "Error destroying lab",
-    noLabPath: "No lab path provided for destruction"
+    noLabPath: "No lab path provided for destruction",
   },
   deployLabCleanup: {
     command: "containerlab.lab.deploy.cleanup",
     resultMsg: "Lab deployment with cleanup initiated",
     errorMsg: "Error deploying lab with cleanup",
-    noLabPath: "No lab path provided for deployment with cleanup"
+    noLabPath: "No lab path provided for deployment with cleanup",
   },
   destroyLabCleanup: {
     command: "containerlab.lab.destroy.cleanup",
     resultMsg: "Lab destruction with cleanup initiated",
     errorMsg: "Error destroying lab with cleanup",
-    noLabPath: "No lab path provided for destruction with cleanup"
+    noLabPath: "No lab path provided for destruction with cleanup",
   },
   redeployLab: {
     command: "containerlab.lab.redeploy",
     resultMsg: "Lab redeploy initiated",
     errorMsg: "Error redeploying lab",
-    noLabPath: "No lab path provided for redeploy"
+    noLabPath: "No lab path provided for redeploy",
   },
   redeployLabCleanup: {
     command: "containerlab.lab.redeploy.cleanup",
     resultMsg: "Lab redeploy with cleanup initiated",
     errorMsg: "Error redeploying lab with cleanup",
-    noLabPath: "No lab path provided for redeploy with cleanup"
-  }
+    noLabPath: "No lab path provided for redeploy with cleanup",
+  },
 };
 
 /**
@@ -87,7 +87,7 @@ export class LabLifecycleService {
       const { ClabLabTreeNode } = await import("../../../treeView/common");
       const tempNode = new ClabLabTreeNode("", vscode.TreeItemCollapsibleState.None, {
         absolute: labPath,
-        relative: ""
+        relative: "",
       });
       vscode.commands.executeCommand(action.command, tempNode);
       return { result: `${action.resultMsg} for ${labPath}`, error: null };

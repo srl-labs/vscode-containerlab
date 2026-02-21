@@ -15,6 +15,6 @@ export function toLinkSaveData(edge: TopoEdge): LinkSaveData {
     target: typeof yamlTarget === "string" && yamlTarget.length > 0 ? yamlTarget : edge.target,
     sourceEndpoint: data?.sourceEndpoint,
     targetEndpoint: data?.targetEndpoint,
-    ...(data?.extraData ? { extraData: data.extraData } : {})
+    ...(data?.extraData ? { extraData: data.extraData } : {}),
   };
 }

@@ -4,9 +4,14 @@ export {
   TRAFFIC_RATE_NODE_TYPE,
   GROUP_NODE_TYPE,
   annotationsToNodes,
-  nodesToAnnotations
+  nodesToAnnotations,
 } from "./annotationNodeConverters";
 export { applyGroupMembershipToNodes, collectNodeGroupMemberships } from "./groupMembership";
 export { findEdgeAnnotationInLookup, pruneEdgeAnnotations } from "./edgeAnnotations";
 export { parseEndpointLabelOffset } from "./endpointLabelOffset";
-export { isNonEmptyString, parseLegacyGroupIdentity, toFiniteNumber, toPosition } from "./valueParsers";
+export {
+  isNonEmptyString,
+  parseLegacyGroupIdentity,
+  toFiniteNumber,
+  toPosition,
+} from "./valueParsers";

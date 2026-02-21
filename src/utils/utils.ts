@@ -111,7 +111,7 @@ export function getUserInfo(): {
         isRoot: true,
         userGroups,
         username,
-        uid
+        uid,
       };
     }
 
@@ -124,7 +124,7 @@ export function getUserInfo(): {
         isRoot: false,
         userGroups,
         username,
-        uid
+        uid,
       };
     } else {
       return {
@@ -132,7 +132,7 @@ export function getUserInfo(): {
         isRoot: false,
         userGroups,
         username,
-        uid
+        uid,
       };
     }
   } catch (err) {
@@ -143,7 +143,7 @@ export function getUserInfo(): {
       isRoot: false,
       userGroups: [],
       username: "",
-      uid: -1
+      uid: -1,
     };
   }
 }
@@ -334,7 +334,7 @@ export async function getSelectedLabNode(
   const fileName = path.basename(labPath);
   return new ClabLabTreeNode(fileName, vscode.TreeItemCollapsibleState.None, {
     absolute: labPath,
-    relative: fileName
+    relative: fileName,
   });
 }
 

@@ -2,7 +2,12 @@ import { useCallback, useMemo } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import { saveAllNodeGroupMemberships, saveAnnotationNodesFromGraph } from "../../services";
-import { useAnnotationUIActions, useAnnotationUIState, useGraphStore, useIsLocked } from "../../stores";
+import {
+  useAnnotationUIActions,
+  useAnnotationUIState,
+  useGraphStore,
+  useIsLocked,
+} from "../../stores";
 import { collectNodeGroupMemberships } from "../../annotations/groupMembership";
 import { TRAFFIC_RATE_NODE_TYPE } from "../../annotations/annotationNodeConverters";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
@@ -12,7 +17,7 @@ import { handleAnnotationNodeDrop, handleTopologyNodeDrop } from "./annotationHe
 import {
   findDeepestGroupAtPosition,
   findParentGroupForBounds,
-  generateGroupId
+  generateGroupId,
 } from "./groupUtils";
 import { useDerivedAnnotations } from "./useDerivedAnnotations";
 import { useGroupAnnotations } from "./useGroupAnnotations";
@@ -39,7 +44,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
     onLockedAction,
     rfInstance,
     derived,
-    uiActions
+    uiActions,
   });
 
   const textActions = useTextAnnotations({
@@ -48,9 +53,9 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
     derived,
     uiState: {
       isAddTextMode: uiState.isAddTextMode,
-      selectedTextIds: uiState.selectedTextIds
+      selectedTextIds: uiState.selectedTextIds,
     },
-    uiActions
+    uiActions,
   });
 
   const shapeActions = useShapeAnnotations({
@@ -60,9 +65,9 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
     uiState: {
       isAddShapeMode: uiState.isAddShapeMode,
       pendingShapeType: uiState.pendingShapeType,
-      selectedShapeIds: uiState.selectedShapeIds
+      selectedShapeIds: uiState.selectedShapeIds,
     },
-    uiActions
+    uiActions,
   });
 
   const trafficActions = useTrafficRateAnnotations({
@@ -70,9 +75,9 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
     onLockedAction,
     derived,
     uiState: {
-      selectedTrafficRateIds: uiState.selectedTrafficRateIds
+      selectedTrafficRateIds: uiState.selectedTrafficRateIds,
     },
-    uiActions
+    uiActions,
   });
 
   const getGroupParentId = useCallback((group: GroupStyleAnnotation): string | null => {
@@ -110,7 +115,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
         x: position.x,
         y: position.y,
         width: droppedGroup.width,
-        height: droppedGroup.height
+        height: droppedGroup.height,
       };
       const excluded = getGroupDescendants(nodeId);
       excluded.add(nodeId);
@@ -122,7 +127,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       if (currentParentId === nextParentId) return;
       derived.updateGroup(nodeId, {
         parentId: nextParentId ?? undefined,
-        groupId: nextParentId ?? undefined
+        groupId: nextParentId ?? undefined,
       });
     },
     [derived, getGroupDescendants, getGroupParentId]
@@ -270,7 +275,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
     uiState.selectedTextIds,
     uiState.selectedShapeIds,
     uiState.selectedTrafficRateIds,
-    deleteSelections
+    deleteSelections,
   ]);
 
   const deleteSelectedForBatch = useCallback(
@@ -305,7 +310,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       uiState.selectedTextIds,
       uiState.selectedShapeIds,
       uiState.selectedTrafficRateIds,
-      deleteSelections
+      deleteSelections,
     ]
   );
 
@@ -354,7 +359,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       updateGroupParent: (id, parentId) => {
         derived.updateGroup(id, {
           parentId: parentId ?? undefined,
-          groupId: parentId ?? undefined
+          groupId: parentId ?? undefined,
         });
         persistAnnotationNodes();
       },
@@ -385,8 +390,9 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       deleteTextAnnotation: textActions.deleteTextAnnotation,
       deleteSelectedTextAnnotations: textActions.deleteSelectedTextAnnotations,
       updateTextRotation: (id: string, rotation: number) => {
-        const currentRotation = derived.textAnnotations.find((annotation) => annotation.id === id)
-          ?.rotation;
+        const currentRotation = derived.textAnnotations.find(
+          (annotation) => annotation.id === id
+        )?.rotation;
         if ((currentRotation ?? 0) === rotation) return;
         derived.updateTextAnnotation(id, { rotation });
       },
@@ -416,8 +422,9 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       deleteShapeAnnotation: shapeActions.deleteShapeAnnotation,
       deleteSelectedShapeAnnotations: shapeActions.deleteSelectedShapeAnnotations,
       updateShapeRotation: (id, rotation) => {
-        const currentRotation = derived.shapeAnnotations.find((annotation) => annotation.id === id)
-          ?.rotation;
+        const currentRotation = derived.shapeAnnotations.find(
+          (annotation) => annotation.id === id
+        )?.rotation;
         if ((currentRotation ?? 0) === rotation) return;
         derived.updateShapeAnnotation(id, { rotation });
       },
@@ -474,7 +481,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       // Utilities
       clearAllSelections: uiActions.clearAllSelections,
       deleteAllSelected,
-      deleteSelectedForBatch
+      deleteSelectedForBatch,
     }),
     [
       derived,
@@ -488,7 +495,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       deleteAllSelected,
       deleteSelectedForBatch,
       persistAnnotationNodes,
-      persistAnnotationNodesQuiet
+      persistAnnotationNodesQuiet,
     ]
   );
 }

@@ -6,7 +6,7 @@ export async function cloneRepo() {
   const choice = await vscode.window.showQuickPick(
     [
       { label: "Clone via Git URL", action: "url" },
-      { label: "Clone popular lab", action: "popular" }
+      { label: "Clone popular lab", action: "popular" },
     ],
     { title: "Clone repository" }
   );

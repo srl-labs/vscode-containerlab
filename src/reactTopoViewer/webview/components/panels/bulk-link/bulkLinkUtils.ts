@@ -177,8 +177,8 @@ export function buildBulkEdges(
       data: {
         sourceEndpoint,
         targetEndpoint,
-        isSpecialLink
-      }
+        isSpecialLink,
+      },
     });
   }
 

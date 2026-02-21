@@ -10,14 +10,14 @@ import {
   favoriteLabs,
   sshxSessions,
   gottySessions,
-  outputChannel
+  outputChannel,
 } from "../globals";
 import { refreshSshxSessions, refreshGottySessions } from "../services/sessionRefresh";
 import { getCurrentTopoViewer } from "../commands/graph";
 import type {
   ClabInterfaceSnapshot,
   ClabInterfaceSnapshotEntry,
-  ClabInterfaceStats
+  ClabInterfaceStats,
 } from "../types/containerlab";
 
 import * as ins from "./inspector";
@@ -36,7 +36,11 @@ interface LightDarkIcon {
   dark: vscode.Uri;
 }
 
-type RunningTreeNode = c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabContainerGroupTreeNode | c.ClabInterfaceTreeNode;
+type RunningTreeNode =
+  | c.ClabLabTreeNode
+  | c.ClabContainerTreeNode
+  | c.ClabContainerGroupTreeNode
+  | c.ClabInterfaceTreeNode;
 
 interface LabDiscoveryResult {
   rootChanged: boolean;
@@ -181,9 +185,9 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   private findContainerNode(containerShortId: string): c.ClabContainerTreeNode | undefined {
     for (const lab of this.treeItems) {
       const entries = lab.containers ?? [];
-      const found = this
-        .flattenContainerNodes(entries)
-        .find((container) => container.cID === containerShortId);
+      const found = this.flattenContainerNodes(entries).find(
+        (container) => container.cID === containerShortId
+      );
       if (found) {
         return found;
       }
@@ -287,8 +291,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
           filter(String(cn.label)) ||
           cn.children.some(
             (child) =>
-              filter(String(child.label)) ||
-              child.interfaces.some((it) => filter(String(it.label)))
+              filter(String(child.label)) || child.interfaces.some((it) => filter(String(it.label)))
           )
         );
       }
@@ -297,8 +300,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   }
 
   private getLabChildren(element: c.ClabLabTreeNode) {
-    let containers: (c.ClabContainerTreeNode | c.ClabContainerGroupTreeNode | c.ClabSshxLinkTreeNode | c.ClabGottyLinkTreeNode)[] =
-      element.containers ?? [];
+    let containers: (
+      | c.ClabContainerTreeNode
+      | c.ClabContainerGroupTreeNode
+      | c.ClabSshxLinkTreeNode
+      | c.ClabGottyLinkTreeNode
+    )[] = element.containers ?? [];
     if (element.sshxNode) containers = [element.sshxNode, ...containers];
     if (element.gottyNode) containers = [element.gottyNode, ...containers];
     if (!this.treeFilter) return containers;
@@ -504,7 +511,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     return {
       labChanged,
       branchStructureChanged,
-      containersToRefresh: Array.from(containersToRefresh)
+      containersToRefresh: Array.from(containersToRefresh),
     };
   }
 
@@ -532,7 +539,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
     return {
       containersToRefresh: Array.from(state.containersToRefresh),
-      branchStructureChanged: state.branchStructureChanged
+      branchStructureChanged: state.branchStructureChanged,
     };
   }
 
@@ -558,7 +565,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     return {
       orderedEntries: [],
       containersToRefresh: new Set<c.ClabContainerTreeNode>(),
-      branchStructureChanged: false
+      branchStructureChanged: false,
     };
   }
 
@@ -660,7 +667,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
     return {
       changed,
-      containersToRefresh: Array.from(containersToRefresh)
+      containersToRefresh: Array.from(containersToRefresh),
     };
   }
 
@@ -687,7 +694,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         ["v4Address", source.v4Address],
         ["v6Address", source.v6Address],
         ["nodeType", source.nodeType],
-        ["nodeGroup", source.nodeGroup]
+        ["nodeGroup", source.nodeGroup],
       ])
     ) {
       changed = true;
@@ -777,7 +784,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         ["alias", source.alias],
         ["mac", source.mac],
         ["mtu", source.mtu],
-        ["ifIndex", source.ifIndex]
+        ["ifIndex", source.ifIndex],
       ])
     ) {
       changed = true;
@@ -807,12 +814,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     return changed;
   }
 
-  private getNodeKey(
-    node: {
-      name?: string;
-      label?: vscode.TreeItemLabel | string;
-    }
-  ): string {
+  private getNodeKey(node: { name?: string; label?: vscode.TreeItemLabel | string }): string {
     return node.name ?? String(node.label ?? "");
   }
 
@@ -842,10 +844,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     return false;
   }
 
-  private applySimpleUpdates(
-    target: object,
-    updates: Array<[string, unknown, boolean?]>
-  ): boolean {
+  private applySimpleUpdates(target: object, updates: Array<[string, unknown, boolean?]>): boolean {
     let changed = false;
     for (const [key, value, compareAsString] of updates) {
       if (this.updateIfChanged(target, key, value, compareAsString ?? false)) {
@@ -938,19 +937,13 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         // Construct IPv4 and IPv6 addresses with prefix length
         let ipv4Address = "N/A";
         const ipv4 = container.NetworkSettings.IPv4addr;
-        if (
-          hasNonEmptyString(ipv4) &&
-          container.NetworkSettings.IPv4pLen !== undefined
-        ) {
+        if (hasNonEmptyString(ipv4) && container.NetworkSettings.IPv4pLen !== undefined) {
           ipv4Address = `${ipv4}/${container.NetworkSettings.IPv4pLen}`;
         }
 
         let ipv6Address = "N/A";
         const ipv6 = container.NetworkSettings.IPv6addr;
-        if (
-          hasNonEmptyString(ipv6) &&
-          container.NetworkSettings.IPv6pLen !== undefined
-        ) {
+        if (hasNonEmptyString(ipv6) && container.NetworkSettings.IPv6pLen !== undefined) {
           ipv6Address = `${ipv6}/${container.NetworkSettings.IPv6pLen}`;
         }
 
@@ -978,7 +971,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
           node_group: container.Labels["clab-node-group"] ?? undefined,
           root_node_name: container.Labels["clab-root-node-name"] ?? undefined,
           network_name: container.NetworkName ?? undefined,
-          startedAt: container.StartedAt
+          startedAt: container.StartedAt,
         };
       });
     }
@@ -1150,7 +1143,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     const label = `${container.lab_name} (${container.owner})`;
     const labPathObj: c.LabPath = {
       absolute: normPath,
-      relative: utils.getRelativeFolderPath(normPath)
+      relative: utils.getRelativeFolderPath(normPath),
     };
     const containersForThisLab = allContainers.filter(
       (c: c.ClabJSON) => (c.absLabPath ?? utils.normalizeLabPath(c.labPath)) === normPath
@@ -1265,7 +1258,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
       `Kind: ${container.kind}`,
       `Type: ${container.node_type ?? "Unknown"}`,
       `Image: ${container.image}`,
-      `ID: ${container.container_id}`
+      `ID: ${container.container_id}`,
     ];
 
     if (container.node_group !== undefined && container.node_group.trim() !== "") {
@@ -1384,7 +1377,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     for (const [rootName, children] of groups) {
       const labPath: c.LabPath = {
         absolute: absLabPath,
-        relative: utils.getRelLabFolderPath(absLabPath)
+        relative: utils.getRelLabFolderPath(absLabPath),
       };
       const groupNode = new c.ClabContainerGroupTreeNode(rootName, labPath, children);
 
@@ -1462,7 +1455,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         `State: ${intf.state}`,
         `Type: ${intf.type}`,
         `MAC: ${intf.mac}`,
-        `MTU: ${intf.mtu}`
+        `MTU: ${intf.mtu}`,
       ];
 
       let label: string = intf.name;
@@ -1500,7 +1493,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         jitter: intf.netemJitter,
         loss: intf.netemLoss,
         rate: intf.netemRate,
-        corruption: intf.netemCorruption
+        corruption: intf.netemCorruption,
       };
 
       const node = new c.ClabInterfaceTreeNode(

@@ -3,5 +3,5 @@ export type {
   ContextPanelProps,
   ContextPanelPaletteProps,
   ContextPanelViewProps,
-  ContextPanelEditorProps
+  ContextPanelEditorProps,
 } from "./ContextPanel";

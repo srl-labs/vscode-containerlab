@@ -9,7 +9,7 @@ import { ReadOnlyBadge, InputField, PanelSection } from "../../ui/form";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   ENDPOINT_LABEL_OFFSET_MIN,
-  ENDPOINT_LABEL_OFFSET_MAX
+  ENDPOINT_LABEL_OFFSET_MAX,
 } from "../../../annotations/endpointLabelOffset";
 
 import type { LinkTabProps } from "./types";
@@ -27,7 +27,7 @@ const EndpointInterfaceField: React.FC<EndpointInterfaceFieldProps> = ({
   nodeName,
   inputId,
   endpoint,
-  onChange
+  onChange,
 }) => {
   if (isNetwork) {
     return (
@@ -61,7 +61,7 @@ interface LabelOffsetSectionProps {
 const LabelOffsetSection: React.FC<LabelOffsetSectionProps> = ({
   endpointOffsetValue,
   onOffsetChange,
-  onOffsetReset
+  onOffsetReset,
 }) => {
   return (
     <PanelSection
@@ -115,11 +115,11 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onPreviewOffs
     const nextData = {
       ...data,
       endpointLabelOffset: nextOffset,
-      endpointLabelOffsetEnabled: true
+      endpointLabelOffsetEnabled: true,
     };
     onChange({
       endpointLabelOffset: nextOffset,
-      endpointLabelOffsetEnabled: true
+      endpointLabelOffsetEnabled: true,
     });
     onPreviewOffset?.(nextData);
   };
@@ -128,11 +128,11 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onPreviewOffs
     const nextData = {
       ...data,
       endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
-      endpointLabelOffsetEnabled: true
+      endpointLabelOffsetEnabled: true,
     };
     onChange({
       endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
-      endpointLabelOffsetEnabled: true
+      endpointLabelOffsetEnabled: true,
     });
     onPreviewOffset?.(nextData);
   };

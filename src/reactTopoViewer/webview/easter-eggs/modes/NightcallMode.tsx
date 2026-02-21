@@ -15,7 +15,7 @@ import {
   BTN_BLUR,
   lerpColor,
   useNodeGlow,
-  MuteButton
+  MuteButton,
 } from "../shared";
 import type { RGBColor, BaseModeProps } from "../shared";
 
@@ -25,7 +25,7 @@ const COLORS = {
   magenta: { r: 255, g: 0, b: 128 }, // Hot pink
   cyan: { r: 0, g: 255, b: 255 }, // Cyan
   darkPurple: { r: 48, g: 25, b: 88 }, // Dark purple
-  pink: { r: 255, g: 105, b: 180 } // Hot pink
+  pink: { r: 255, g: 105, b: 180 }, // Hot pink
 };
 
 /** Chord to color mapping */
@@ -33,7 +33,7 @@ const CHORD_COLORS: Record<string, RGBColor> = {
   Am: COLORS.purple,
   GB: COLORS.cyan,
   F: COLORS.magenta,
-  Dm: COLORS.pink
+  Dm: COLORS.pink,
 };
 
 /**
@@ -137,7 +137,7 @@ const NightcallCanvas: React.FC<{
         pointerEvents: "none",
         zIndex: 99998,
         width: "100%",
-        height: "100%"
+        height: "100%",
       }}
     />
   );
@@ -338,7 +338,7 @@ function drawFloatingParticles(
         vy: -0.2 - Math.random() * 0.3,
         size: 1 + Math.random() * 2,
         alpha: 0.2 + Math.random() * 0.3,
-        hue: 260 + Math.random() * 60 // Purple to pink range
+        hue: 260 + Math.random() * 60, // Purple to pink range
       });
       /* eslint-enable sonarjs/pseudo-random */
     }
@@ -382,7 +382,7 @@ export const NightcallMode: React.FC<BaseModeProps> = ({
   isActive,
   onClose,
   onSwitchMode,
-  modeName
+  modeName,
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useNightcallAudio();
@@ -442,7 +442,7 @@ export const NightcallMode: React.FC<BaseModeProps> = ({
           alignItems: "flex-end",
           justifyContent: "center",
           pb: 4,
-          gap: 2
+          gap: 2,
         }}
       >
         <Box
@@ -464,7 +464,7 @@ export const NightcallMode: React.FC<BaseModeProps> = ({
             fontSize: "14px",
             fontWeight: 600,
             textShadow: "0 0 10px rgba(255, 0, 128, 0.8)",
-            boxShadow: "0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(255, 0, 128, 0.1)"
+            boxShadow: "0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(255, 0, 128, 0.1)",
           }}
           title={`Current: ${modeName}`}
         >
@@ -497,7 +497,7 @@ export const NightcallMode: React.FC<BaseModeProps> = ({
             fontSize: "14px",
             fontWeight: 600,
             textShadow: "0 0 10px rgba(0, 255, 255, 0.8)",
-            boxShadow: "0 0 20px rgba(138, 43, 226, 0.5), inset 0 0 20px rgba(0, 255, 255, 0.1)"
+            boxShadow: "0 0 20px rgba(138, 43, 226, 0.5), inset 0 0 20px rgba(0, 255, 255, 0.1)",
           }}
         >
           End Nightcall

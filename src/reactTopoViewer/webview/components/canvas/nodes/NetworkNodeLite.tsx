@@ -32,7 +32,7 @@ function toNetworkNodeData(data: NodeProps["data"]): NetworkNodeData {
   return {
     ...data,
     label: typeof data.label === "string" ? data.label : "",
-    nodeType: typeof data.nodeType === "string" ? data.nodeType : "host"
+    nodeType: typeof data.nodeType === "string" ? data.nodeType : "host",
   };
 }
 
@@ -48,7 +48,7 @@ const NetworkNodeLiteComponent: React.FC<NodeProps> = ({ data, selected }) => {
     borderRadius: 4,
     transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
     outline: selected ? `2px solid ${SELECTION_COLOR}` : "none",
-    outlineOffset: 1
+    outlineOffset: 1,
   };
 
   return <LiteNodeShell className="network-node-lite" iconStyle={iconStyle} />;

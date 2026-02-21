@@ -34,14 +34,14 @@ export function getNodeIntersection(
     const sign = dx > 0 ? 1 : -1;
     return {
       x: nodeX + sign * w,
-      y: nodeY + (dy * w) / absDx
+      y: nodeY + (dy * w) / absDx,
     };
   }
 
   const sign = dy > 0 ? 1 : -1;
   return {
     x: nodeX + (dx * h) / absDy,
-    y: nodeY + sign * h
+    y: nodeY + sign * h,
   };
 }
 
@@ -51,11 +51,11 @@ export function getNodeIntersection(
 export function getEdgePoints(sourceNode: NodeRect, targetNode: NodeRect) {
   const sourceCenter = {
     x: sourceNode.x + sourceNode.width / 2,
-    y: sourceNode.y + sourceNode.height / 2
+    y: sourceNode.y + sourceNode.height / 2,
   };
   const targetCenter = {
     x: targetNode.x + targetNode.width / 2,
-    y: targetNode.y + targetNode.height / 2
+    y: targetNode.y + targetNode.height / 2,
   };
 
   const sourcePoint = getNodeIntersection(
@@ -80,7 +80,7 @@ export function getEdgePoints(sourceNode: NodeRect, targetNode: NodeRect) {
     sx: sourcePoint.x,
     sy: sourcePoint.y,
     tx: targetPoint.x,
-    ty: targetPoint.y
+    ty: targetPoint.y,
   };
 }
 
@@ -109,13 +109,13 @@ export function getLabelPosition(
     const oneMinusT = 1 - t;
     return {
       x: oneMinusT * oneMinusT * startX + 2 * oneMinusT * t * controlPoint.x + t * t * endX,
-      y: oneMinusT * oneMinusT * startY + 2 * oneMinusT * t * controlPoint.y + t * t * endY
+      y: oneMinusT * oneMinusT * startY + 2 * oneMinusT * t * controlPoint.y + t * t * endY,
     };
   }
 
   return {
     x: startX + dx * ratio,
-    y: startY + dy * ratio
+    y: startY + dy * ratio,
   };
 }
 
@@ -153,6 +153,6 @@ export function calculateControlPoint(
 
   return {
     x: midX + normalX * offset,
-    y: midY + normalY * offset
+    y: midY + normalY * offset,
   };
 }

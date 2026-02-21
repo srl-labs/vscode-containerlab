@@ -27,7 +27,7 @@ export const INTEGRATED_SROS_TYPES = new Set([
   "ixr-r6",
   "ixr-ec",
   "ixr-e2",
-  "ixr-e2c"
+  "ixr-e2c",
 ]);
 
 /**
@@ -199,7 +199,7 @@ export const NETWORK_TYPES: NetworkType[] = [
   "vxlan-stitch",
   "dummy",
   "bridge",
-  "ovs-bridge"
+  "ovs-bridge",
 ];
 
 /** VXLAN network types */

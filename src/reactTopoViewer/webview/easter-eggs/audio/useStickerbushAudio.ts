@@ -34,7 +34,7 @@ const NOTES = {
   E5: 659.25,
   F5: 698.46,
   G4: 392.0,
-  G5: 783.99
+  G5: 783.99,
 } as const;
 
 const BEAT = 0.8;
@@ -50,7 +50,7 @@ const OCTAVE_0_FREQS: Record<number, number> = {
   4: NOTES.D5,
   5: NOTES.E5,
   6: NOTES.F5,
-  7: NOTES.G4
+  7: NOTES.G4,
 };
 
 const OCTAVE_NEG1_FREQS: Record<number, number> = {
@@ -60,7 +60,7 @@ const OCTAVE_NEG1_FREQS: Record<number, number> = {
   4: NOTES.D4,
   5: NOTES.E4,
   6: NOTES.F4,
-  7: NOTES.G3
+  7: NOTES.G3,
 };
 
 function getFrequency(sd: number, octave: number): number {
@@ -113,13 +113,13 @@ function buildMelody(): MelodyNote[] {
     { sd: 3, octave: 0, beat: 31.5, duration: 0.5 },
     { sd: 7, octave: -1, beat: 32, duration: 0.5 },
     { sd: 7, octave: 0, beat: 32.5, duration: 0.25 },
-    { sd: 7, octave: 0, beat: 32.75, duration: 0.25 }
+    { sd: 7, octave: 0, beat: 32.75, duration: 0.25 },
   ];
 
   return rawNotes.map((note) => ({
     frequency: getFrequency(note.sd, note.octave),
     beat: note.beat,
-    duration: note.duration
+    duration: note.duration,
   }));
 }
 
@@ -127,7 +127,7 @@ const FULL_MELODY = buildMelody();
 
 const CHORD_PADS = {
   Am7: [NOTES.A3, NOTES.C4, NOTES.E4, NOTES.G3],
-  Cmaj7: [NOTES.C4, NOTES.E4, NOTES.G4, NOTES.B4]
+  Cmaj7: [NOTES.C4, NOTES.E4, NOTES.G4, NOTES.B4],
 };
 
 // Module-level audio buffer cache
@@ -467,7 +467,7 @@ export function useStickerbushAudio(): UseStickerbushAudioReturn {
     fftSize: 256,
     smoothingTimeConstant: 0.93,
     onPlay: () => startTracking(engine.refs.audioContextRef, engine.refs.startTimeRef),
-    onStop: stopTracking
+    onStop: stopTracking,
   });
 
   const getBeatIntensity = useCallback((): number => {
@@ -488,6 +488,6 @@ export function useStickerbushAudio(): UseStickerbushAudioReturn {
     getFrequencyData: engine.getFrequencyData,
     getTimeDomainData: engine.getTimeDomainData,
     getBeatIntensity,
-    getCurrentSection
+    getCurrentSection,
   };
 }

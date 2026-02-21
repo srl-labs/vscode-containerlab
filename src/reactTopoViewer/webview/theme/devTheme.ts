@@ -85,7 +85,7 @@ export const DARK_VARS: VarMap = {
   "--vscode-charts-green": "#4ec9b0",
   "--vscode-progressBar-background": "#0e70c0",
   "--vscode-font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  "--vscode-font-size": "13px"
+  "--vscode-font-size": "13px",
 };
 
 // Light palette
@@ -169,7 +169,7 @@ export const LIGHT_VARS: VarMap = {
   "--vscode-charts-green": "#16825d",
   "--vscode-progressBar-background": "#007acc",
   "--vscode-font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  "--vscode-font-size": "13px"
+  "--vscode-font-size": "13px",
 };
 
 // Apply CSS variable map as inline styles on <html> for dev mode.

@@ -16,13 +16,13 @@ import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
   TrafficRateAnnotation,
-  GroupStyleAnnotation
+  GroupStyleAnnotation,
 } from "../../shared/types/topology";
 import type {
   FreeTextNodeData,
   FreeShapeNodeData,
   TrafficRateNodeData,
-  GroupNodeData
+  GroupNodeData,
 } from "../components/canvas/types";
 
 import { DEFAULT_LINE_LENGTH } from "./constants";
@@ -30,7 +30,7 @@ import {
   isNonEmptyString,
   normalizePosition,
   parseLegacyGroupIdentity,
-  toFiniteNumber
+  toFiniteNumber,
 } from "./valueParsers";
 
 // ============================================================================
@@ -48,7 +48,7 @@ const ANNOTATION_NODE_TYPES: Set<string> = new Set([
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   TRAFFIC_RATE_NODE_TYPE,
-  GROUP_NODE_TYPE
+  GROUP_NODE_TYPE,
 ]);
 
 /** Padding for line bounding box to accommodate arrows and stroke */
@@ -163,7 +163,7 @@ function buildTrafficRateNodeData(
     geoCoordinates: annotation.geoCoordinates,
     backgroundOpacity: toFiniteNumber(annotation.backgroundOpacity),
     borderWidth: toFiniteNumber(annotation.borderWidth),
-    borderRadius: toFiniteNumber(annotation.borderRadius)
+    borderRadius: toFiniteNumber(annotation.borderRadius),
   };
 
   const nodeId = toOptionalString(annotation.nodeId);
@@ -196,7 +196,7 @@ function buildTrafficRateAnnotationBase(
   const annotation: TrafficRateAnnotation = {
     id: node.id,
     position: node.position,
-    geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined
+    geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined,
   };
 
   const nodeId = toOptionalString(data.nodeId);
@@ -248,7 +248,7 @@ function computeLineBounds(
   const startY = startPosition.y;
   const endPosition = normalizePosition(annotation.endPosition, {
     x: startX + DEFAULT_LINE_LENGTH,
-    y: startY
+    y: startY,
   });
   const endX = endPosition.x;
   const endY = endPosition.y;
@@ -266,7 +266,7 @@ function computeLineBounds(
     width: maxX - minX,
     height: Math.max(maxY - minY, LINE_PADDING * 2),
     relativeEndPosition: { x: endX - startX, y: endY - startY },
-    lineStartInNode: { x: startX - minX, y: startY - minY }
+    lineStartInNode: { x: startX - minX, y: startY - minY },
   };
 }
 
@@ -305,8 +305,8 @@ export function freeTextToNode(annotation: FreeTextAnnotation): Node<FreeTextNod
       // Store groupId for membership tracking
       groupId: annotation.groupId,
       geoCoordinates: annotation.geoCoordinates,
-      zIndex: annotation.zIndex
-    }
+      zIndex: annotation.zIndex,
+    },
   };
 }
 
@@ -321,8 +321,10 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
     typeof annotation.zIndex === "number" ? annotation.zIndex : DEFAULT_SHAPE_Z_INDEX;
 
   if (isLine) {
-    const { nodePosition, width, height, relativeEndPosition, lineStartInNode } =
-      computeLineBounds(annotation, startPosition);
+    const { nodePosition, width, height, relativeEndPosition, lineStartInNode } = computeLineBounds(
+      annotation,
+      startPosition
+    );
 
     return {
       id: annotation.id,
@@ -339,7 +341,7 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
         height,
         endPosition: normalizePosition(annotation.endPosition, {
           x: startPosition.x + DEFAULT_LINE_LENGTH,
-          y: startPosition.y
+          y: startPosition.y,
         }),
         relativeEndPosition,
         startPosition,
@@ -358,8 +360,8 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
         groupId: annotation.groupId,
         geoCoordinates: annotation.geoCoordinates,
         endGeoCoordinates: annotation.endGeoCoordinates,
-        zIndex: resolvedZIndex
-      }
+        zIndex: resolvedZIndex,
+      },
     };
   }
 
@@ -387,8 +389,8 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
       // Store groupId for membership tracking
       groupId: annotation.groupId,
       geoCoordinates: annotation.geoCoordinates,
-      zIndex: resolvedZIndex
-    }
+      zIndex: resolvedZIndex,
+    },
   };
 }
 
@@ -421,7 +423,7 @@ export function trafficRateToNode(annotation: TrafficRateAnnotation): Node<Traff
     height: resolvedHeight,
     draggable: true,
     selectable: true,
-    data
+    data,
   };
 
   if (resolvedZIndex !== undefined) node.zIndex = resolvedZIndex;
@@ -474,8 +476,8 @@ export function groupToNode(group: GroupStyleAnnotation): Node<GroupNodeData> {
       parentId: resolvedParentId,
       groupId: resolvedGroupId,
       zIndex: group.zIndex,
-      geoCoordinates: group.geoCoordinates
-    }
+      geoCoordinates: group.geoCoordinates,
+    },
   };
 }
 
@@ -503,7 +505,7 @@ export function nodeToFreeText(node: Node<FreeTextNodeData>): FreeTextAnnotation
     rotation: data.rotation,
     width: node.width ?? data.width,
     height: node.height ?? data.height,
-    roundedBackground: data.roundedBackground
+    roundedBackground: data.roundedBackground,
   };
   const groupId = toOptionalString(data.groupId);
   if (groupId !== undefined) annotation.groupId = groupId;
@@ -538,7 +540,7 @@ export function nodeToFreeShape(node: Node<FreeShapeNodeData>): FreeShapeAnnotat
       lineStartArrow: data.lineStartArrow,
       lineEndArrow: data.lineEndArrow,
       lineArrowSize: data.lineArrowSize,
-      zIndex
+      zIndex,
     };
     const groupId = toOptionalString(data.groupId);
     if (groupId !== undefined) annotation.groupId = groupId;
@@ -563,7 +565,7 @@ export function nodeToFreeShape(node: Node<FreeShapeNodeData>): FreeShapeAnnotat
     borderStyle: data.borderStyle,
     rotation: data.rotation,
     cornerRadius: data.cornerRadius,
-    zIndex
+    zIndex,
   };
   const groupId = toOptionalString(data.groupId);
   if (groupId !== undefined) annotation.groupId = groupId;
@@ -615,7 +617,7 @@ export function nodeToGroup(node: Node<GroupNodeData>): GroupStyleAnnotation {
     parentId,
     groupId,
     zIndex,
-    geoCoordinates: toLatLng(data.geoCoordinates)
+    geoCoordinates: toLatLng(data.geoCoordinates),
   };
 }
 

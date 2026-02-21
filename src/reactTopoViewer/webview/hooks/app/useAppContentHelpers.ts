@@ -9,7 +9,7 @@ import { convertToEditorData, convertToNetworkEditorData } from "../../../shared
 import type { AnnotationHandlers } from "../../components/canvas/types";
 import {
   findEdgeAnnotationInLookup,
-  type EdgeAnnotationLookup
+  type EdgeAnnotationLookup,
 } from "../../annotations/edgeAnnotations";
 import { convertToLinkEditorData } from "../../utils/linkEditorConversions";
 import { parseEndpointLabelOffset } from "../../annotations/endpointLabelOffset";
@@ -37,7 +37,7 @@ function getEdgeRawData(edgeId: string | null, edges: TopoEdge[]): EdgeRawData |
     id: edge.id,
     source: edge.source,
     target: edge.target,
-    ...getRecordUnknown(edge.data)
+    ...getRecordUnknown(edge.data),
   };
 }
 
@@ -80,7 +80,7 @@ function getAnnotationHandlerSnapshot(annotations: AnnotationContextValue) {
     updateGroupSize: annotations.updateGroupSize,
     editGroup: annotations.editGroup,
     deleteGroup: annotations.deleteGroup,
-    getGroupMembers: annotations.getGroupMembers
+    getGroupMembers: annotations.getGroupMembers,
   };
 }
 
@@ -177,7 +177,7 @@ export function useSelectionData(
       source: base.source,
       target: base.target,
       sourceEndpoint: base.sourceEndpoint,
-      targetEndpoint: base.targetEndpoint
+      targetEndpoint: base.targetEndpoint,
     });
     const offset =
       parseEndpointLabelOffset(annotation?.endpointLabelOffset) ?? state.endpointLabelOffset;
@@ -187,7 +187,7 @@ export function useSelectionData(
     return {
       ...base,
       endpointLabelOffsetEnabled: enabled,
-      endpointLabelOffset: offset
+      endpointLabelOffset: offset,
     };
   }, [editingLinkRawData, edgeAnnotationLookup, state.endpointLabelOffset]);
 
@@ -198,7 +198,7 @@ export function useSelectionData(
     editingNodeData,
     editingNetworkData,
     editingLinkData,
-    editingNodeInheritedProps
+    editingNodeInheritedProps,
   };
 }
 
@@ -214,7 +214,7 @@ export function useAnnotationCanvasHandlers(annotations: AnnotationContextValue)
     () => ({
       isAddTextMode: annotations.isAddTextMode,
       isAddShapeMode: annotations.isAddShapeMode,
-      pendingShapeType: annotations.isAddShapeMode ? annotations.pendingShapeType : undefined
+      pendingShapeType: annotations.isAddShapeMode ? annotations.pendingShapeType : undefined,
     }),
     [annotations.isAddTextMode, annotations.isAddShapeMode, annotations.pendingShapeType]
   );
@@ -352,7 +352,7 @@ export function useAnnotationCanvasHandlers(annotations: AnnotationContextValue)
       onEditGroup,
       onDeleteGroup,
       // Get group members (for group dragging)
-      getGroupMembers
+      getGroupMembers,
     }),
     [
       onAddTextClick,
@@ -381,7 +381,7 @@ export function useAnnotationCanvasHandlers(annotations: AnnotationContextValue)
       onUpdateGroupSize,
       onEditGroup,
       onDeleteGroup,
-      getGroupMembers
+      getGroupMembers,
     ]
   );
 

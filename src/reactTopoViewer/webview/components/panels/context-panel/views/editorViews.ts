@@ -15,5 +15,5 @@ export const editorViews = {
   LinkImpairmentView,
   NetworkEditorView,
   NodeEditorView,
-  TrafficRateEditorView
+  TrafficRateEditorView,
 } as const;

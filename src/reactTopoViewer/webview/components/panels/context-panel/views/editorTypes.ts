@@ -2,7 +2,7 @@ import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
   TrafficRateAnnotation,
-  GroupStyleAnnotation
+  GroupStyleAnnotation,
 } from "../../../../../shared/types/topology";
 import type { GroupEditorData } from "../../../../hooks/canvas";
 import type { LinkImpairmentData } from "../../link-impairment/types";

@@ -23,7 +23,7 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
   isLocked,
   labSettings,
   onClose,
-  saveRef
+  saveRef,
 }) => {
   const [activeTab, setActiveTab] = useState("basic");
   const isReadOnly = mode === "view" || isLocked;

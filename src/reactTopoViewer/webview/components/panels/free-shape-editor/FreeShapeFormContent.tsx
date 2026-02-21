@@ -12,7 +12,7 @@ import {
   DEFAULT_BORDER_WIDTH,
   DEFAULT_BORDER_STYLE,
   DEFAULT_ARROW_SIZE,
-  DEFAULT_CORNER_RADIUS
+  DEFAULT_CORNER_RADIUS,
 } from "../../../annotations/constants";
 import { InputField, SelectField, Toggle, ColorField, PanelSection } from "../../ui/form";
 
@@ -58,7 +58,7 @@ const ShapeSection: React.FC<SectionProps> = ({ formData, updateField, isLine })
           options={[
             { value: "rectangle", label: "Rectangle" },
             { value: "circle", label: "Circle" },
-            { value: "line", label: "Line" }
+            { value: "line", label: "Line" },
           ]}
         />
         {!isLine && (
@@ -106,7 +106,10 @@ const FillSection: React.FC<SectionProps> = ({ formData, updateField, isLine }) 
   const opacity = formData.fillOpacity ?? DEFAULT_FILL_OPACITY;
 
   return (
-    <PanelSection title="Fill" bodySx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, p: 2 }}>
+    <PanelSection
+      title="Fill"
+      bodySx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, p: 2 }}
+    >
       <>
         <ColorField
           label="Fill Color"
@@ -133,7 +136,7 @@ const BorderSection: React.FC<BorderSectionProps> = ({
   formData,
   updateField,
   isLine,
-  isRectangle
+  isRectangle,
 }) => {
   const borderWidth = formData.borderWidth ?? DEFAULT_BORDER_WIDTH;
 
@@ -179,7 +182,7 @@ const BorderSection: React.FC<BorderSectionProps> = ({
             options={[
               { value: "solid", label: "Solid" },
               { value: "dashed", label: "Dashed" },
-              { value: "dotted", label: "Dotted" }
+              { value: "dotted", label: "Dotted" },
             ]}
           />
         </Box>

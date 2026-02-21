@@ -11,7 +11,7 @@ import {
   DEFAULT_ICON_COLOR,
   getNetworkTypeColor,
   getRoleSvgType,
-  escapeXml
+  escapeXml,
 } from "./constants";
 
 // ============================================================================
@@ -59,7 +59,7 @@ const NODE_TYPE_SET: ReadonlySet<string> = new Set([
   "ue",
   "cloud",
   "client",
-  "bridge"
+  "bridge",
 ]);
 
 function isNodeType(value: string): value is NodeType {

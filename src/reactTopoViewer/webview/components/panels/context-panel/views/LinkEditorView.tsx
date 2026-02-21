@@ -36,11 +36,11 @@ export interface LinkEditorFooterRef {
 
 const ALL_TABS: Array<TabConfig<LinkTabProps>> = [
   { id: "basic", label: "Basic", component: BasicTab },
-  { id: "extended", label: "Extended", component: ExtendedTab }
+  { id: "extended", label: "Extended", component: ExtendedTab },
 ];
 
 const BASIC_ONLY_TABS: Array<TabConfig<LinkTabProps>> = [
-  { id: "basic", label: "Basic", component: BasicTab }
+  { id: "basic", label: "Basic", component: BasicTab },
 ];
 
 function isLinkEditorTabId(value: string): value is LinkEditorTabId {
@@ -55,7 +55,7 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
   revertOffset,
   readOnly = false,
   onFooterRef,
-  onBannerRef
+  onBannerRef,
 }) => {
   const {
     activeTab,
@@ -64,7 +64,7 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
     handleChange,
     hasChanges,
     resetAfterApply,
-    discardChanges
+    discardChanges,
   } = useLinkEditorForm(linkData, readOnly);
 
   // Stable refs for unmount cleanup
@@ -146,7 +146,7 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
   const tabProps = {
     data: formData,
     onChange: handleChange,
-    onPreviewOffset: handlePreviewOffset
+    onPreviewOffset: handlePreviewOffset,
   };
 
   return (

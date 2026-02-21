@@ -9,7 +9,7 @@ export type {
   TerminalOptions,
   CmdOptions,
   SpinnerMsg,
-  CommandFailureHandler
+  CommandFailureHandler,
 } from "./base";
 
 // Lifecycle commands (deploy, destroy, redeploy, save)
@@ -23,7 +23,7 @@ export {
   redeployCleanup,
   saveLab,
   saveNode,
-  runClabAction
+  runClabAction,
 } from "./lifecycle";
 
 // Node-related commands
@@ -45,7 +45,7 @@ export {
   gottyAttach,
   gottyDetach,
   gottyReattach,
-  gottyCopyLink
+  gottyCopyLink,
 } from "./node";
 
 // Network and interface commands
@@ -67,7 +67,7 @@ export {
   EDGESHARK_INSTALL_CMD,
   EDGESHARK_UNINSTALL_CMD,
   installEdgeshark,
-  uninstallEdgeshark
+  uninstallEdgeshark,
 } from "./network";
 
 // Workspace and file management commands
@@ -84,7 +84,7 @@ export {
   copyContainerImage,
   copyMACAddress,
   deleteLab,
-  toggleFavorite
+  toggleFavorite,
 } from "./workspace";
 
 // External tool and repo commands
@@ -112,5 +112,5 @@ export {
   fcliNi,
   fcliSubif,
   fcliSysInfo,
-  fcliCustom
+  fcliCustom,
 } from "./external";

@@ -72,9 +72,7 @@ const DEFAULT_GRAFANA_TARGETS: GrafanaDashboardTargetConfig[] = [
 ];
 
 function asString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0
-    ? value.trim()
-    : null;
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -109,7 +107,7 @@ function toCellMapping(edge: Edge): GrafanaEdgeCellMapping | null {
 function isAnnotationNode(
   nodeId: string,
   nodeTypesById: Map<string, string>,
-  annotationNodeTypes: Set<string>,
+  annotationNodeTypes: Set<string>
 ): boolean {
   const nodeType = nodeTypesById.get(nodeId) ?? "";
   return annotationNodeTypes.has(nodeType);
@@ -118,20 +116,16 @@ function isAnnotationNode(
 export function collectGrafanaEdgeCellMappings(
   edges: Edge[],
   nodes: Node[],
-  annotationNodeTypes: Set<string>,
+  annotationNodeTypes: Set<string>
 ): GrafanaEdgeCellMapping[] {
-  const nodeTypesById = new Map(
-    nodes.map((node) => [node.id, node.type ?? ""]),
-  );
+  const nodeTypesById = new Map(nodes.map((node) => [node.id, node.type ?? ""]));
   const seenTraffic = new Set<string>();
   const seenOperstate = new Set<string>();
   const mappings: GrafanaEdgeCellMapping[] = [];
 
   for (const edge of edges) {
-    if (isAnnotationNode(edge.source, nodeTypesById, annotationNodeTypes))
-      continue;
-    if (isAnnotationNode(edge.target, nodeTypesById, annotationNodeTypes))
-      continue;
+    if (isAnnotationNode(edge.source, nodeTypesById, annotationNodeTypes)) continue;
+    if (isAnnotationNode(edge.target, nodeTypesById, annotationNodeTypes)) continue;
 
     const mapping = toCellMapping(edge);
     if (!mapping) continue;
@@ -157,20 +151,15 @@ export function collectGrafanaEdgeCellMappings(
 export function collectLinkedNodeIds(
   edges: Edge[],
   nodes: Node[],
-  annotationNodeTypes: Set<string>,
+  annotationNodeTypes: Set<string>
 ): Set<string> {
-  const nodeTypesById = new Map(
-    nodes.map((node) => [node.id, node.type ?? ""]),
-  );
+  const nodeTypesById = new Map(nodes.map((node) => [node.id, node.type ?? ""]));
   const linkedNodeIds = new Set<string>();
 
   for (const edge of edges) {
-    if (!nodeTypesById.has(edge.source) || !nodeTypesById.has(edge.target))
-      continue;
-    if (isAnnotationNode(edge.source, nodeTypesById, annotationNodeTypes))
-      continue;
-    if (isAnnotationNode(edge.target, nodeTypesById, annotationNodeTypes))
-      continue;
+    if (!nodeTypesById.has(edge.source) || !nodeTypesById.has(edge.target)) continue;
+    if (isAnnotationNode(edge.source, nodeTypesById, annotationNodeTypes)) continue;
+    if (isAnnotationNode(edge.target, nodeTypesById, annotationNodeTypes)) continue;
 
     linkedNodeIds.add(edge.source);
     linkedNodeIds.add(edge.target);
@@ -213,7 +202,7 @@ function includeBoundsRect(
   x: number,
   y: number,
   width: number,
-  height: number,
+  height: number
 ): void {
   includeBoundsPoint(bounds, x, y);
   includeBoundsPoint(bounds, x + width, y + height);
@@ -231,7 +220,7 @@ function hasBounds(bounds: Bounds): boolean {
 function applyGraphTransform(
   transform: GraphTransform,
   x: number,
-  y: number,
+  y: number
 ): { x: number; y: number } {
   return {
     x: x * transform.scale + transform.tx,
@@ -246,10 +235,7 @@ function parseNumericAttr(el: Element, attrName: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function parseTransformFunctionArgs(
-  transformAttr: string,
-  functionName: string,
-): number[] {
+function parseTransformFunctionArgs(transformAttr: string, functionName: string): number[] {
   const normalizedAttr = transformAttr.toLowerCase();
   const normalizedFunctionName = functionName.toLowerCase();
   const startIdx = normalizedAttr.indexOf(`${normalizedFunctionName}(`);
@@ -268,8 +254,7 @@ function parseTransformFunctionArgs(
 
 function parseGraphTransform(svgEl: Element): GraphTransform {
   const transformedRoot = Array.from(svgEl.children).find(
-    (child) =>
-      child.tagName.toLowerCase() === "g" && child.hasAttribute("transform"),
+    (child) => child.tagName.toLowerCase() === "g" && child.hasAttribute("transform")
   );
   const transformAttr = transformedRoot?.getAttribute("transform") ?? "";
 
@@ -287,11 +272,7 @@ function parseGraphTransform(svgEl: Element): GraphTransform {
   };
 }
 
-function includePathBounds(
-  bounds: Bounds,
-  transform: GraphTransform,
-  pathData: string,
-): void {
+function includePathBounds(bounds: Bounds, transform: GraphTransform, pathData: string): void {
   const numberMatches = pathData.match(/[-+]?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? [];
   if (numberMatches.length < 2) return;
   const points = numberMatches
@@ -304,14 +285,8 @@ function includePathBounds(
   }
 }
 
-function includeNodeRectBounds(
-  doc: XMLDocument,
-  bounds: Bounds,
-  transform: GraphTransform,
-): void {
-  for (const rect of Array.from(
-    doc.querySelectorAll("g.export-node rect[x][y][width][height]"),
-  )) {
+function includeNodeRectBounds(doc: XMLDocument, bounds: Bounds, transform: GraphTransform): void {
+  for (const rect of Array.from(doc.querySelectorAll("g.export-node rect[x][y][width][height]"))) {
     const x = parseNumericAttr(rect, "x");
     const y = parseNumericAttr(rect, "y");
     const width = parseNumericAttr(rect, "width");
@@ -319,24 +294,16 @@ function includeNodeRectBounds(
     if (x === null || y === null || width === null || height === null) continue;
 
     const p = applyGraphTransform(transform, x, y);
-    includeBoundsRect(
-      bounds,
-      p.x,
-      p.y,
-      width * transform.scale,
-      height * transform.scale,
-    );
+    includeBoundsRect(bounds, p.x, p.y, width * transform.scale, height * transform.scale);
   }
 }
 
 function includeEdgeCircleBounds(
   doc: XMLDocument,
   bounds: Bounds,
-  transform: GraphTransform,
+  transform: GraphTransform
 ): void {
-  for (const circle of Array.from(
-    doc.querySelectorAll("g.export-edge circle[cx][cy][r]"),
-  )) {
+  for (const circle of Array.from(doc.querySelectorAll("g.export-edge circle[cx][cy][r]"))) {
     const cx = parseNumericAttr(circle, "cx");
     const cy = parseNumericAttr(circle, "cy");
     const r = parseNumericAttr(circle, "r");
@@ -344,21 +311,11 @@ function includeEdgeCircleBounds(
 
     const p = applyGraphTransform(transform, cx, cy);
     const radius = Math.abs(r * transform.scale);
-    includeBoundsRect(
-      bounds,
-      p.x - radius,
-      p.y - radius,
-      radius * 2,
-      radius * 2,
-    );
+    includeBoundsRect(bounds, p.x - radius, p.y - radius, radius * 2, radius * 2);
   }
 }
 
-function includeEdgePathBounds(
-  doc: XMLDocument,
-  bounds: Bounds,
-  transform: GraphTransform,
-): void {
+function includeEdgePathBounds(doc: XMLDocument, bounds: Bounds, transform: GraphTransform): void {
   for (const edgePath of Array.from(doc.querySelectorAll("g.export-edge path[d]"))) {
     const pathData = edgePath.getAttribute("d");
     if (pathData === null || pathData.length === 0) continue;
@@ -366,14 +323,8 @@ function includeEdgePathBounds(
   }
 }
 
-export function trimGrafanaSvgToTopologyContent(
-  svgContent: string,
-  padding = 12,
-): string {
-  if (
-    typeof DOMParser === "undefined" ||
-    typeof XMLSerializer === "undefined"
-  ) {
+export function trimGrafanaSvgToTopologyContent(svgContent: string, padding = 12): string {
+  if (typeof DOMParser === "undefined" || typeof XMLSerializer === "undefined") {
     return svgContent;
   }
 
@@ -414,7 +365,7 @@ function formatTrafficMbps(valueBps: number): string {
 }
 
 function createLegendTextRows(
-  thresholds: GrafanaTrafficThresholds,
+  thresholds: GrafanaTrafficThresholds
 ): Array<{ color: string; text: string }> {
   const green = formatTrafficMbps(thresholds.green);
   const yellow = formatTrafficMbps(thresholds.yellow);
@@ -459,12 +410,9 @@ function parseViewBox(svgEl: Element): {
 
 export function addGrafanaTrafficLegend(
   svgContent: string,
-  trafficThresholds: GrafanaTrafficThresholds,
+  trafficThresholds: GrafanaTrafficThresholds
 ): string {
-  if (
-    typeof DOMParser === "undefined" ||
-    typeof XMLSerializer === "undefined"
-  ) {
+  if (typeof DOMParser === "undefined" || typeof XMLSerializer === "undefined") {
     return svgContent;
   }
 
@@ -483,7 +431,7 @@ export function addGrafanaTrafficLegend(
   const startX = viewBox.x + 12 * legendScale;
   let topNodeY = Number.POSITIVE_INFINITY;
   for (const rect of Array.from(
-    doc.querySelectorAll("g.export-node > g > rect[x][y][width][height]"),
+    doc.querySelectorAll("g.export-node > g > rect[x][y][width][height]")
   )) {
     const x = parseNumericAttr(rect, "x");
     const y = parseNumericAttr(rect, "y");
@@ -499,10 +447,7 @@ export function addGrafanaTrafficLegend(
   for (let i = 0; i < legendRows.length; i++) {
     const row = legendRows[i];
     const rowGroup = doc.createElementNS(SVG_NS, "g");
-    rowGroup.setAttribute(
-      "transform",
-      `translate(${startX} ${startY + i * rowHeight})`,
-    );
+    rowGroup.setAttribute("transform", `translate(${startX} ${startY + i * rowHeight})`);
 
     const bullet = doc.createElementNS(SVG_NS, "circle");
     bullet.setAttribute("cx", "0");
@@ -533,10 +478,7 @@ export function addGrafanaTrafficLegend(
 }
 
 export function makeGrafanaSvgResponsive(svgContent: string): string {
-  if (
-    typeof DOMParser === "undefined" ||
-    typeof XMLSerializer === "undefined"
-  ) {
+  if (typeof DOMParser === "undefined" || typeof XMLSerializer === "undefined") {
     return svgContent;
   }
 
@@ -556,9 +498,7 @@ function setCellIdAttributes(element: Element, shortCellId: string): void {
   element.setAttribute("data-cell-id", shortCellId);
 }
 
-function parsePathStart(
-  pathData: string | null,
-): { x: number; y: number } | null {
+function parsePathStart(pathData: string | null): { x: number; y: number } | null {
   if (pathData === null || pathData.length === 0) return null;
   const trimmed = pathData.trim();
   if (trimmed.length === 0) return null;
@@ -575,10 +515,7 @@ function parsePathStart(
   return { x, y };
 }
 
-function createFallbackOperstateMarker(
-  doc: XMLDocument,
-  sourceGroup: Element,
-): SVGElement {
+function createFallbackOperstateMarker(doc: XMLDocument, sourceGroup: Element): SVGElement {
   const firstPath = sourceGroup.querySelector("path");
   const startPoint = parsePathStart(firstPath?.getAttribute("d") ?? null);
   const marker = doc.createElementNS(SVG_NS, "rect");
@@ -598,7 +535,7 @@ function createFallbackOperstateMarker(
 function createOperstateCellGroup(
   doc: XMLDocument,
   sourceGroup: Element,
-  shortCellId: string,
+  shortCellId: string
 ): Element {
   const operstateGroup = doc.createElementNS(SVG_NS, "g");
   operstateGroup.setAttribute("class", "export-edge grafana-operstate-cell");
@@ -610,7 +547,7 @@ function createOperstateCellGroup(
 
 function resolveTrafficCellElement(edgeGroup: Element): Element {
   const directPath = Array.from(edgeGroup.children).find(
-    (child) => child.tagName.toLowerCase() === "path",
+    (child) => child.tagName.toLowerCase() === "path"
   );
   if (directPath) return directPath;
 
@@ -654,7 +591,7 @@ type ParsedPathCommand =
 function parseNumericPathArgs(
   tokens: string[],
   startIndex: number,
-  count: number,
+  count: number
 ): number[] | null {
   const args: number[] = [];
   for (let i = 0; i < count; i++) {
@@ -700,11 +637,7 @@ function parsePathCommand(pathData: string): ParsedPathCommand | null {
   }
 }
 
-function midpointForLinePath(
-  sx: number,
-  sy: number,
-  args: [number, number],
-): Point {
+function midpointForLinePath(sx: number, sy: number, args: [number, number]): Point {
   const [tx, ty] = args;
   return lerp({ x: sx, y: sy }, { x: tx, y: ty }, 0.5);
 }
@@ -712,7 +645,7 @@ function midpointForLinePath(
 function midpointForQuadraticPath(
   sx: number,
   sy: number,
-  args: [number, number, number, number],
+  args: [number, number, number, number]
 ): Point {
   const [cx, cy, tx, ty] = args;
   const t = 0.5;
@@ -726,7 +659,7 @@ function midpointForQuadraticPath(
 function midpointForCubicPath(
   sx: number,
   sy: number,
-  args: [number, number, number, number, number, number],
+  args: [number, number, number, number, number, number]
 ): Point {
   const [c1x, c1y, c2x, c2y, tx, ty] = args;
   const t = 0.5;
@@ -761,7 +694,7 @@ function midpointForPath(pathData: string): Point | null {
 function splitLinePath(
   sx: number,
   sy: number,
-  args: [number, number],
+  args: [number, number]
 ): { first: string; second: string } {
   const [tx, ty] = args;
   const p0 = { x: sx, y: sy };
@@ -776,7 +709,7 @@ function splitLinePath(
 function splitQuadraticPath(
   sx: number,
   sy: number,
-  args: [number, number, number, number],
+  args: [number, number, number, number]
 ): { first: string; second: string } {
   const [cx, cy, tx, ty] = args;
   const p0 = { x: sx, y: sy };
@@ -794,7 +727,7 @@ function splitQuadraticPath(
 function splitCubicPath(
   sx: number,
   sy: number,
-  args: [number, number, number, number, number, number],
+  args: [number, number, number, number, number, number]
 ): { first: string; second: string } {
   const [c1x, c1y, c2x, c2y, tx, ty] = args;
   const p0 = { x: sx, y: sy };
@@ -817,9 +750,7 @@ function splitCubicPath(
   };
 }
 
-function splitPathIntoHalves(
-  pathData: string,
-): { first: string; second: string } | null {
+function splitPathIntoHalves(pathData: string): { first: string; second: string } | null {
   const parsed = parsePathCommand(pathData);
   if (!parsed) return null;
   switch (parsed.command) {
@@ -832,9 +763,7 @@ function splitPathIntoHalves(
   }
 }
 
-function parsePathEndpoints(
-  pathData: string,
-): { start: Point; end: Point } | null {
+function parsePathEndpoints(pathData: string): { start: Point; end: Point } | null {
   const tokens = pathData.match(/[A-Za-z]|[-+]?\d*\.?\d+(?:e[-+]?\d+)?/g);
   if (!tokens || tokens.length < 6) return null;
 
@@ -859,7 +788,7 @@ function isLabelCollision(
   point: Point,
   occupiedPoints: Point[],
   minDx: number,
-  minDy: number,
+  minDy: number
 ): boolean {
   return occupiedPoints.some((other) => {
     const dx = point.x - other.x;
@@ -871,10 +800,9 @@ function isLabelCollision(
 function resolveTrafficLabelPoint(
   halfPathData: string,
   occupiedPoints: Point[],
-  graphScale: number,
+  graphScale: number
 ): Point {
-  const base = midpointForPath(halfPathData) ??
-    parsePathStart(halfPathData) ?? { x: 0, y: 0 };
+  const base = midpointForPath(halfPathData) ?? parsePathStart(halfPathData) ?? { x: 0, y: 0 };
   const endpoints = parsePathEndpoints(halfPathData);
 
   let tangent = { x: 1, y: 0 };
@@ -940,7 +868,7 @@ function createTrafficHalfCell(
   halfPathData: string,
   shortCellId: string,
   occupiedLabelPoints: Point[],
-  graphScale: number,
+  graphScale: number
 ): Element {
   const trafficLabelPlaceholder = "rate";
 
@@ -958,11 +886,7 @@ function createTrafficHalfCell(
   path.removeAttribute("data-cell-id");
   group.appendChild(path);
 
-  const mid = resolveTrafficLabelPoint(
-    halfPathData,
-    occupiedLabelPoints,
-    graphScale,
-  );
+  const mid = resolveTrafficLabelPoint(halfPathData, occupiedLabelPoints, graphScale);
   const text = doc.createElementNS(SVG_NS, "text");
   text.setAttribute("x", fmt(mid.x));
   text.setAttribute("y", fmt(mid.y));
@@ -986,9 +910,7 @@ function resolveOperstateCellElements(edgeGroup: Element): {
   target: Element | null;
 } {
   const labelRects = Array.from(edgeGroup.querySelectorAll("g.edge-label"))
-    .map((labelGroup) =>
-      labelGroup.querySelector("circle,ellipse,rect,path,polygon,polyline"),
-    )
+    .map((labelGroup) => labelGroup.querySelector("circle,ellipse,rect,path,polygon,polyline"))
     .filter((shape): shape is Element => shape !== null);
   return {
     source: labelRects[0] ?? null,
@@ -1013,7 +935,7 @@ function replaceTrafficPathWithHalfCells(
   trafficPath: Element,
   mapping: GrafanaEdgeCellMapping,
   occupiedTrafficLabelPoints: Point[],
-  graphScale: number,
+  graphScale: number
 ): void {
   const parent = trafficPath.parentNode;
   if (!parent) return;
@@ -1029,7 +951,7 @@ function replaceTrafficPathWithHalfCells(
     firstHalfData,
     mapping.trafficCellId,
     occupiedTrafficLabelPoints,
-    graphScale,
+    graphScale
   );
   const secondHalf = createTrafficHalfCell(
     doc,
@@ -1037,7 +959,7 @@ function replaceTrafficPathWithHalfCells(
     secondHalfData,
     mapping.reverseTrafficCellId,
     occupiedTrafficLabelPoints,
-    graphScale,
+    graphScale
   );
   parent.insertBefore(firstHalf, trafficPath);
   parent.insertBefore(secondHalf, trafficPath);
@@ -1049,7 +971,7 @@ function applyTrafficCellsToEdgeGroup(
   mapping: GrafanaEdgeCellMapping,
   trafficGroup: Element,
   occupiedTrafficLabelPoints: Point[],
-  graphScale: number,
+  graphScale: number
 ): void {
   const trafficCellEl = resolveTrafficCellElement(trafficGroup);
   if (trafficCellEl.tagName.toLowerCase() !== "path") {
@@ -1062,25 +984,21 @@ function applyTrafficCellsToEdgeGroup(
     trafficCellEl,
     mapping,
     occupiedTrafficLabelPoints,
-    graphScale,
+    graphScale
   );
 }
 
 function applyOperstateCellsToEdgeGroup(
   doc: XMLDocument,
   mapping: GrafanaEdgeCellMapping,
-  trafficGroup: Element,
+  trafficGroup: Element
 ): void {
   const operstateCellEls = resolveOperstateCellElements(trafficGroup);
   if (operstateCellEls.source) {
     setCellIdAttributes(operstateCellEls.source, mapping.operstateCellId);
     operstateCellEls.source.classList.add("grafana-operstate-cell");
   } else {
-    const operstateGroup = createOperstateCellGroup(
-      doc,
-      trafficGroup,
-      mapping.operstateCellId,
-    );
+    const operstateGroup = createOperstateCellGroup(doc, trafficGroup, mapping.operstateCellId);
     trafficGroup.parentNode?.insertBefore(operstateGroup, trafficGroup);
   }
 
@@ -1091,7 +1009,7 @@ function applyOperstateCellsToEdgeGroup(
 
 export function applyGrafanaCellIdsToSvg(
   svgContent: string,
-  mappings: GrafanaEdgeCellMapping[],
+  mappings: GrafanaEdgeCellMapping[]
 ): string {
   if (mappings.length === 0) return svgContent;
 
@@ -1110,7 +1028,7 @@ export function applyGrafanaCellIdsToSvg(
       mapping,
       trafficGroup,
       occupiedTrafficLabelPoints,
-      graphScale,
+      graphScale
     );
     applyOperstateCellsToEdgeGroup(doc, mapping, trafficGroup);
   }
@@ -1119,10 +1037,7 @@ export function applyGrafanaCellIdsToSvg(
 }
 
 export function sanitizeSvgForGrafana(svgContent: string): string {
-  if (
-    typeof DOMParser === "undefined" ||
-    typeof XMLSerializer === "undefined"
-  ) {
+  if (typeof DOMParser === "undefined" || typeof XMLSerializer === "undefined") {
     return svgContent
       .replace(/\sfilter=(["'])url\(#text-shadow\)\1/gi, "")
       .replace(/<filter[^>]*id=(["'])text-shadow\1[\s\S]*?<\/filter>/gi, "");
@@ -1135,16 +1050,12 @@ export function sanitizeSvgForGrafana(svgContent: string): string {
     textEl.removeAttribute("filter");
   }
 
-  for (const filterEl of Array.from(
-    doc.querySelectorAll("defs filter#text-shadow"),
-  )) {
+  for (const filterEl of Array.from(doc.querySelectorAll("defs filter#text-shadow"))) {
     filterEl.remove();
   }
 
   // Keep interface labels readable while minimally affecting operstate color.
-  for (const edgeLabelBg of Array.from(
-    doc.querySelectorAll("g.edge-label rect"),
-  )) {
+  for (const edgeLabelBg of Array.from(doc.querySelectorAll("g.edge-label rect"))) {
     edgeLabelBg.setAttribute("fill", "rgba(0, 0, 0, 0.36)");
     edgeLabelBg.setAttribute("stroke", "none");
   }
@@ -1152,27 +1063,19 @@ export function sanitizeSvgForGrafana(svgContent: string): string {
   return new XMLSerializer().serializeToString(doc.documentElement);
 }
 
-export function removeUnlinkedNodesFromSvg(
-  svgContent: string,
-  linkedNodeIds: Set<string>,
-): string {
-  if (
-    typeof DOMParser === "undefined" ||
-    typeof XMLSerializer === "undefined"
-  ) {
+export function removeUnlinkedNodesFromSvg(svgContent: string, linkedNodeIds: Set<string>): string {
+  if (typeof DOMParser === "undefined" || typeof XMLSerializer === "undefined") {
     return svgContent.replace(
       /<g\b[^>]*class=(["'])[^"']*\bexport-node\b[^"']*\1[^>]*data-id=(["'])([^"']+)\2[^>]*>[\s\S]*?<\/g>/gi,
       (match, _classQuote: string, _idQuote: string, nodeId: string) =>
-        linkedNodeIds.has(nodeId) ? match : "",
+        linkedNodeIds.has(nodeId) ? match : ""
     );
   }
 
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgContent, SVG_MIME_TYPE);
 
-  for (const nodeEl of Array.from(
-    doc.querySelectorAll("g.export-node[data-id]"),
-  )) {
+  for (const nodeEl of Array.from(doc.querySelectorAll("g.export-node[data-id]"))) {
     const nodeId = nodeEl.getAttribute("data-id");
     if (nodeId === null || nodeId.length === 0 || linkedNodeIds.has(nodeId)) continue;
     nodeEl.remove();
@@ -1192,25 +1095,24 @@ function asValidYamlNumber(value: number, fallback: number): number {
 
 export function buildGrafanaPanelYaml(
   mappings: GrafanaEdgeCellMapping[],
-  options: GrafanaPanelYamlOptions = {},
+  options: GrafanaPanelYamlOptions = {}
 ): string {
-  const trafficThresholds =
-    options.trafficThresholds ?? DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS;
+  const trafficThresholds = options.trafficThresholds ?? DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS;
   const greenThreshold = asValidYamlNumber(
     trafficThresholds.green,
-    DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS.green,
+    DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS.green
   );
   const yellowThreshold = asValidYamlNumber(
     trafficThresholds.yellow,
-    DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS.yellow,
+    DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS.yellow
   );
   const orangeThreshold = asValidYamlNumber(
     trafficThresholds.orange,
-    DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS.orange,
+    DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS.orange
   );
   const redThreshold = asValidYamlNumber(
     trafficThresholds.red,
-    DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS.red,
+    DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS.red
   );
   const lines: string[] = [
     "---",
@@ -1283,7 +1185,7 @@ function buildDashboardTargets() {
 export function buildGrafanaDashboardJson(
   panelConfigYaml: string,
   svgContent: string,
-  dashboardTitle: string,
+  dashboardTitle: string
 ): string {
   const title = dashboardTitle.trim() || "Network Telemetry";
   const dashboard = {

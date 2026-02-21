@@ -58,7 +58,7 @@ function isValidNetworkType(type: string): type is NetworkType {
     "vxlan-stitch",
     "dummy",
     "bridge",
-    "ovs-bridge"
+    "ovs-bridge",
   ].includes(type);
 }
 
@@ -129,7 +129,7 @@ export function convertToNetworkEditorData(
     mtu: getStringOrEmpty(extra.extMtu),
     // Optional metadata (check extVars/extLabels first, fall back to vars/labels)
     vars: getRecord(extra.extVars) ?? getRecord(extra.vars),
-    labels: getRecord(extra.extLabels) ?? getRecord(extra.labels)
+    labels: getRecord(extra.extLabels) ?? getRecord(extra.labels),
   };
 }
 
@@ -141,7 +141,7 @@ export function convertNetworkEditorDataToYaml(data: NetworkEditorData): Record<
     value !== undefined && value.length > 0;
 
   const result: Record<string, unknown> = {
-    kind: data.networkType
+    kind: data.networkType,
   };
 
   // VXLAN-specific fields

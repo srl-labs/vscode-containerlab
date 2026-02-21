@@ -10,7 +10,7 @@ import { getSelectedLabNode } from "../utils/utils";
 import * as ins from "../treeView/inspector";
 import {
   MSG_LAB_LIFECYCLE_LOG,
-  MSG_LAB_LIFECYCLE_STATUS
+  MSG_LAB_LIFECYCLE_STATUS,
 } from "../reactTopoViewer/shared/messages/webview";
 
 import { ClabCommand } from "./clabCommand";
@@ -199,7 +199,7 @@ async function postLifecycleStatus(
   try {
     await currentTopoViewer.currentPanel.webview.postMessage({
       type: MSG_LAB_LIFECYCLE_STATUS,
-      data: { commandType, status, errorMessage }
+      data: { commandType, status, errorMessage },
     });
   } catch (err) {
     console.error(`Failed to publish lifecycle status (${status}) for ${commandType}:`, err);
@@ -218,7 +218,7 @@ async function postLifecycleLog(
   try {
     await currentTopoViewer.currentPanel.webview.postMessage({
       type: MSG_LAB_LIFECYCLE_LOG,
-      data: { commandType, line, stream }
+      data: { commandType, line, stream },
     });
   } catch (err) {
     console.error(`Failed to publish lifecycle log for ${commandType}:`, err);

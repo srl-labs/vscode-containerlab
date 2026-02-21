@@ -13,12 +13,12 @@ export {
   useTopoViewerActions,
   useTopoViewerState,
   useMode,
-  useIsLocked
+  useIsLocked,
 } from "./topoViewerStore";
 export {
   useAnnotationUIStore,
   useAnnotationUIActions,
-  useAnnotationUIState
+  useAnnotationUIState,
 } from "./annotationUIStore";
 export { useCanvasStore, useFitViewRequestId, buildEdgeInfo, useEdgeInfo } from "./canvasStore";
 

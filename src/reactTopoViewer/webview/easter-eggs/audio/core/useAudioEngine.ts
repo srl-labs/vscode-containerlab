@@ -19,7 +19,7 @@ import type { AudioEngineConfig, AudioEngineRefs, AudioEngineReturn } from "./ty
 const DEFAULTS: Required<Omit<AudioEngineConfig, "onPlay" | "onStop" | "loopEnd">> = {
   loop: false,
   fftSize: 256,
-  smoothingTimeConstant: 0.85
+  smoothingTimeConstant: 0.85,
 };
 
 /**
@@ -45,7 +45,7 @@ export function useAudioEngine(
     fftSize = DEFAULTS.fftSize,
     smoothingTimeConstant = DEFAULTS.smoothingTimeConstant,
     onPlay,
-    onStop
+    onStop,
   } = config;
 
   // React state - initialize mute from global state
@@ -222,7 +222,7 @@ export function useAudioEngine(
     refs: {
       audioContextRef,
       startTimeRef,
-      analyserRef
-    }
+      analyserRef,
+    },
   };
 }

@@ -7,7 +7,7 @@ import type {
   ParsedElement,
   ClabTopology,
   TopologyAnnotations,
-  NodeAnnotation
+  NodeAnnotation,
 } from "../types/topology";
 
 import { NODE_KIND_BRIDGE, NODE_KIND_OVS_BRIDGE } from "./LinkNormalizer";
@@ -171,8 +171,8 @@ export function buildBridgeAliasElement(
         shortname: displayName,
         state: "",
         weight: "3",
-        extYamlNodeId: yamlRefId
-      }
+        extYamlNodeId: yamlRefId,
+      },
     },
     position,
     removed: false,
@@ -181,7 +181,7 @@ export function buildBridgeAliasElement(
     locked: false,
     grabbed: false,
     grabbable: true,
-    classes: ""
+    classes: "",
   };
 }
 
@@ -205,7 +205,7 @@ export function createAliasElement(
       : aliasId;
   return buildBridgeAliasElement(
     aliasId,
-    (refNode.kind ?? NODE_KIND_BRIDGE),
+    refNode.kind ?? NODE_KIND_BRIDGE,
     position,
     yamlRefId,
     aliasDisplayName
@@ -286,13 +286,7 @@ export function addAliasNodesFromAnnotations(
   if (aliasList.length === 0) return result;
 
   const created = new Set<string>();
-  appendAliasElements(
-    aliasList,
-    created,
-    nodeMap,
-    nodeAnnById,
-    result
-  );
+  appendAliasElements(aliasList, created, nodeMap, nodeAnnById, result);
   return result;
 }
 

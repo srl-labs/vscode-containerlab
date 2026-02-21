@@ -17,7 +17,7 @@ import {
   resolveActualNode,
   buildContainerName,
   shouldOmitEndpoint,
-  extractEndpointMac
+  extractEndpointMac,
 } from "./LinkNormalizer";
 import { isDistributedSrosNode, findDistributedSrosInterface } from "./DistributedSrosMapper";
 import type {
@@ -26,7 +26,7 @@ import type {
   DummyContext,
   SpecialNodeInfo,
   ParserLogger,
-  NetemState
+  NetemState,
 } from "./types";
 import { nullLogger } from "./types";
 
@@ -182,7 +182,12 @@ export function computeEdgeClassFromStates(
   if (specialClass !== null) {
     return specialClass;
   }
-  if (sourceState !== undefined && sourceState !== "" && targetState !== undefined && targetState !== "") {
+  if (
+    sourceState !== undefined &&
+    sourceState !== "" &&
+    targetState !== undefined &&
+    targetState !== ""
+  ) {
     return sourceState === "up" && targetState === "up" ? "link-up" : "link-down";
   }
   return "";
@@ -281,7 +286,7 @@ export function resolveContainerAndInterface(params: {
     labName,
     includeContainerData,
     containerDataProvider,
-    logger
+    logger,
   } = params;
 
   const log = logger ?? nullLogger;
@@ -309,7 +314,7 @@ export function resolveContainerAndInterface(params: {
       fullPrefix,
       labName,
       provider: containerDataProvider,
-      components
+      components,
     });
     if (distributedMatch) {
       return distributedMatch;
@@ -342,7 +347,7 @@ export function extractEdgeInterfaceStats(ifaceData: unknown): Record<string, nu
     "txPps",
     "txBytes",
     "txPackets",
-    "statsIntervalSeconds"
+    "statsIntervalSeconds",
   ];
 
   const stats: Record<string, number> = {};
@@ -375,7 +380,7 @@ function extractIfaceProps(ifaceData?: InterfaceInfo): {
     state: ifaceData?.state ?? "",
     mtu: ifaceData?.mtu ?? "",
     type: ifaceData?.type ?? "",
-    netemState: ifaceData?.netemState ?? {}
+    netemState: ifaceData?.netemState ?? {},
   };
 }
 
@@ -396,7 +401,7 @@ export function createClabInfo(params: {
     sourceIface,
     targetIface,
     sourceIfaceData,
-    targetIfaceData
+    targetIfaceData,
   } = params;
 
   const src = extractIfaceProps(sourceIfaceData);
@@ -419,7 +424,7 @@ export function createClabInfo(params: {
     clabSourceType: src.type,
     clabTargetType: tgt.type,
     clabSourceNetem: src.netemState,
-    clabTargetNetem: tgt.netemState
+    clabTargetNetem: tgt.netemState,
   };
 
   if (sourceStats) info.clabSourceStats = sourceStats;
@@ -442,7 +447,7 @@ export function extractExtLinkProps(linkObj: Record<string, unknown>): Record<st
     remote: extRemote = "",
     vni: extVni = "",
     "dst-port": extDstPort = "",
-    "src-port": extSrcPort = ""
+    "src-port": extSrcPort = "",
   } = linkObj;
 
   return {
@@ -455,7 +460,7 @@ export function extractExtLinkProps(linkObj: Record<string, unknown>): Record<st
     extRemote,
     extVni,
     extDstPort,
-    extSrcPort
+    extSrcPort,
   };
 }
 
@@ -471,7 +476,7 @@ export function extractExtMacs(
   return {
     extSourceMac: extractEndpointMac(endA),
     extTargetMac: extractEndpointMac(endB),
-    extMac: endpoint?.mac ?? ""
+    extMac: endpoint?.mac ?? "",
   };
 }
 
@@ -505,7 +510,7 @@ export function extractExtIps(
     extSourceIpv4: endpointIp(endA, "ipv4") || indexedIp(linkObj, "ipv4", 0),
     extSourceIpv6: endpointIp(endA, "ipv6") || indexedIp(linkObj, "ipv6", 0),
     extTargetIpv4: endpointIp(endB, "ipv4") || indexedIp(linkObj, "ipv4", 1),
-    extTargetIpv6: endpointIp(endB, "ipv6") || indexedIp(linkObj, "ipv6", 1)
+    extTargetIpv6: endpointIp(endB, "ipv6") || indexedIp(linkObj, "ipv6", 1),
   };
 }
 
@@ -571,11 +576,10 @@ export function buildEdgeExtraData(params: {
     targetIfaceData,
     extValidationErrors,
     sourceNodeId,
-    targetNodeId
+    targetNodeId,
   } = params;
 
-  const yamlFormat =
-    typeof linkObj.type === "string" && linkObj.type !== "" ? "extended" : "short";
+  const yamlFormat = typeof linkObj.type === "string" && linkObj.type !== "" ? "extended" : "short";
   const extErrors = extValidationErrors.length ? extValidationErrors : undefined;
 
   const clabInfo = createClabInfo({
@@ -584,7 +588,7 @@ export function buildEdgeExtraData(params: {
     sourceIface,
     targetIface,
     sourceIfaceData,
-    targetIfaceData
+    targetIfaceData,
   });
 
   const extInfo = createExtInfo({ linkObj, endA, endB });
@@ -595,7 +599,7 @@ export function buildEdgeExtraData(params: {
     yamlFormat,
     extValidationErrors: extErrors,
     yamlSourceNodeId: sourceNodeId,
-    yamlTargetNodeId: targetNodeId
+    yamlTargetNodeId: targetNodeId,
   };
 }
 
@@ -636,7 +640,7 @@ export function buildEdgeElement(params: {
     targetIfaceData,
     edgeId,
     edgeClass,
-    specialNodes
+    specialNodes,
   } = params;
 
   const sourceEndpoint = shouldOmitEndpoint(sourceNode) ? "" : sourceIface;
@@ -655,7 +659,7 @@ export function buildEdgeElement(params: {
     targetIfaceData,
     extValidationErrors,
     sourceNodeId: sourceNode,
-    targetNodeId: targetNode
+    targetNodeId: targetNode,
   });
 
   return {
@@ -672,7 +676,7 @@ export function buildEdgeElement(params: {
       lng: "",
       source: actualSourceNode,
       target: actualTargetNode,
-      extraData
+      extraData,
     },
     position: { x: 0, y: 0 },
     removed: false,
@@ -681,7 +685,7 @@ export function buildEdgeElement(params: {
     locked: false,
     grabbed: false,
     grabbable: true,
-    classes
+    classes,
   };
 }
 
@@ -727,7 +731,7 @@ export function addEdgeElements(
       labName,
       includeContainerData: opts.includeContainerData,
       containerDataProvider: opts.containerDataProvider,
-      logger: opts.logger
+      logger: opts.logger,
     });
     const targetInfo = resolveContainerAndInterface({
       parsed,
@@ -738,14 +742,15 @@ export function addEdgeElements(
       labName,
       includeContainerData: opts.includeContainerData,
       containerDataProvider: opts.containerDataProvider,
-      logger: opts.logger
+      logger: opts.logger,
     });
     const { containerName: sourceContainerName, ifaceData: sourceIfaceData } = sourceInfo;
     const { containerName: targetContainerName, ifaceData: targetIfaceData } = targetInfo;
     const edgeId = `Clab-Link${linkIndex}`;
-    const edgeClass = opts.includeContainerData === true
-      ? computeEdgeClass(sourceNode, targetNode, sourceIfaceData, targetIfaceData, topology)
-      : "";
+    const edgeClass =
+      opts.includeContainerData === true
+        ? computeEdgeClass(sourceNode, targetNode, sourceIfaceData, targetIfaceData, topology)
+        : "";
     const edgeEl = buildEdgeElement({
       linkObj: linkRecord,
       endA,
@@ -762,7 +767,7 @@ export function addEdgeElements(
       targetIfaceData,
       edgeId,
       edgeClass,
-      specialNodes
+      specialNodes,
     });
     elements.push(edgeEl);
     linkIndex++;

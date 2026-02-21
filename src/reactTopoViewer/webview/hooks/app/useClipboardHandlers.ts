@@ -76,7 +76,7 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
     handleNodeCreatedCallback,
     handleEdgeCreated,
     handleBatchPaste,
-    rfInstance
+    rfInstance,
   } = config;
 
   // Build clipboard options with persistence callbacks
@@ -87,7 +87,7 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
       onEdgeCreated: handleEdgeCreated,
       getNodeMembership: annotations.getNodeMembership,
       addNodeToGroup: annotations.addNodeToGroup,
-      onPasteComplete: handleBatchPaste
+      onPasteComplete: handleBatchPaste,
     }),
     [
       rfInstance,
@@ -95,7 +95,7 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
       handleEdgeCreated,
       handleBatchPaste,
       annotations.getNodeMembership,
-      annotations.addNodeToGroup
+      annotations.addNodeToGroup,
     ]
   );
 
@@ -161,6 +161,6 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
     handleUnifiedPaste,
     handleUnifiedDuplicate,
     handleUnifiedDelete,
-    hasClipboardData
+    hasClipboardData,
   };
 }

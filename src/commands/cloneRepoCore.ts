@@ -12,7 +12,7 @@ export async function cloneRepoFromUrl(repoUrl?: string) {
     const input = await vscode.window.showInputBox({
       title: "Git repository URL",
       placeHolder: "https://github.com/user/repo.git",
-      prompt: "Enter the repository to clone"
+      prompt: "Enter the repository to clone",
     });
     if (input === undefined || input.length === 0) {
       return;

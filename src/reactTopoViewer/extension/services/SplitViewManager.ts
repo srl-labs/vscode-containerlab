@@ -33,14 +33,14 @@ export class SplitViewManager {
 
       await vscode.window.showTextDocument(document, {
         preview: false,
-        viewColumn: vscode.ViewColumn.Beside
+        viewColumn: vscode.ViewColumn.Beside,
       });
 
       await sleep(100);
 
       await vscode.commands.executeCommand("vscode.setEditorLayout", {
         orientation: 0,
-        groups: [{ size: 0.6 }, { size: 0.4 }]
+        groups: [{ size: 0.6 }, { size: 0.4 }],
       });
 
       this.isSplitViewOpen = true;
@@ -102,7 +102,7 @@ export class SplitViewManager {
 
     await vscode.commands.executeCommand("vscode.setEditorLayout", {
       orientation: 0,
-      groups: [{ size: 1 }]
+      groups: [{ size: 1 }],
     });
 
     this.isSplitViewOpen = false;

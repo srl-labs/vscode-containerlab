@@ -7,13 +7,13 @@ import type { SystemStyleObject } from "@mui/system";
 /** Button visible state sx */
 export const BTN_VISIBLE_SX: SystemStyleObject<Theme> = {
   opacity: 1,
-  transform: "translateY(0)"
+  transform: "translateY(0)",
 };
 
 /** Button hidden state sx */
 export const BTN_HIDDEN_SX: SystemStyleObject<Theme> = {
   opacity: 0,
-  transform: "translateY(16px)"
+  transform: "translateY(16px)",
 };
 
 /** Button backdrop blur value */

@@ -54,16 +54,18 @@ function seededFraction(seed: number): number {
   return raw - Math.floor(raw);
 }
 
-function resolveRateProfile(
-  seed: number
-): { baseRxBps: number; baseTxBps: number; avgPacketBytes: number } {
+function resolveRateProfile(seed: number): {
+  baseRxBps: number;
+  baseTxBps: number;
+  avgPacketBytes: number;
+} {
   const profile = seed % 3;
 
   if (profile === 0) {
     return {
       baseRxBps: 80_000 + Math.round(seededFraction(seed + 1) * 900_000),
       baseTxBps: 60_000 + Math.round(seededFraction(seed + 2) * 700_000),
-      avgPacketBytes: 350 + Math.round(seededFraction(seed + 3) * 500)
+      avgPacketBytes: 350 + Math.round(seededFraction(seed + 3) * 500),
     };
   }
 
@@ -71,14 +73,14 @@ function resolveRateProfile(
     return {
       baseRxBps: 900_000 + Math.round(seededFraction(seed + 1) * 8_000_000),
       baseTxBps: 700_000 + Math.round(seededFraction(seed + 2) * 6_000_000),
-      avgPacketBytes: 500 + Math.round(seededFraction(seed + 3) * 700)
+      avgPacketBytes: 500 + Math.round(seededFraction(seed + 3) * 700),
     };
   }
 
   return {
     baseRxBps: 4_000_000 + Math.round(seededFraction(seed + 1) * 24_000_000),
     baseTxBps: 3_000_000 + Math.round(seededFraction(seed + 2) * 20_000_000),
-    avgPacketBytes: 700 + Math.round(seededFraction(seed + 3) * 800)
+    avgPacketBytes: 700 + Math.round(seededFraction(seed + 3) * 800),
   };
 }
 
@@ -99,7 +101,7 @@ function createEndpointState(key: string): MockEndpointState {
     rxPackets: 0,
     txPackets: 0,
     avgPacketBits: avgPacketBytes * 8,
-    phase: seededFraction(seed + 4) * Math.PI * 2
+    phase: seededFraction(seed + 4) * Math.PI * 2,
   };
 }
 
@@ -146,7 +148,7 @@ function buildMockStats(state: MockEndpointState, stepSeconds: number): Interfac
     txBytes: state.txBytes,
     rxPackets: state.rxPackets,
     txPackets: state.txPackets,
-    statsIntervalSeconds: stepSeconds
+    statsIntervalSeconds: stepSeconds,
   };
 }
 
@@ -176,9 +178,9 @@ function applyMockStatsToEdge(
       extraData: {
         ...extraData,
         clabSourceStats: sourceStats,
-        clabTargetStats: targetStats
-      }
-    }
+        clabTargetStats: targetStats,
+      },
+    },
   };
 }
 

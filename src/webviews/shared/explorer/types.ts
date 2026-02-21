@@ -3,13 +3,13 @@ export type ExplorerSectionId = "runningLabs" | "localLabs" | "helpFeedback";
 export const EXPLORER_SECTION_ORDER: ExplorerSectionId[] = [
   "runningLabs",
   "localLabs",
-  "helpFeedback"
+  "helpFeedback",
 ];
 
 export const EXPLORER_SECTION_LABELS: Record<ExplorerSectionId, string> = {
   runningLabs: "Running Labs",
   localLabs: "Undeployed Local Labs",
-  helpFeedback: "Help & Feedback"
+  helpFeedback: "Help & Feedback",
 };
 
 export interface ExplorerAction {

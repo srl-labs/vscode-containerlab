@@ -26,7 +26,7 @@ export function useFooterControlsRef(
       handleApply,
       handleSave,
       handleDiscard: handleDiscard ?? (() => {}),
-      hasChanges
+      hasChanges,
     });
   }, [onFooterRef, enabled, handleApply, handleSave, handleDiscard, hasChanges]);
 

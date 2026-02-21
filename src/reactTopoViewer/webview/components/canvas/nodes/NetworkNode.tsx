@@ -10,7 +10,7 @@ import { generateEncodedSVG } from "../../../icons/SvgGenerator";
 import {
   useLinkCreationContext,
   useNodeRenderConfig,
-  useEasterEggGlow
+  useEasterEggGlow,
 } from "../../../stores/canvasStore";
 
 import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE, getNodeDirectionRotation } from "./nodeStyles";
@@ -42,14 +42,14 @@ const HANDLE_POSITIONS = [
   { position: Position.Top, id: "top" },
   { position: Position.Right, id: "right" },
   { position: Position.Bottom, id: "bottom" },
-  { position: Position.Left, id: "left" }
+  { position: Position.Left, id: "left" },
 ] as const;
 
 function toNetworkNodeData(data: NodeProps["data"]): NetworkNodeData {
   return {
     ...data,
     label: typeof data.label === "string" ? data.label : "",
-    nodeType: typeof data.nodeType === "string" ? data.nodeType : "host"
+    nodeType: typeof data.nodeType === "string" ? data.nodeType : "host",
   };
 }
 
@@ -85,7 +85,7 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     width: ICON_SIZE,
     height: ICON_SIZE,
     overflow: "visible",
-    cursor: isLinkTarget ? "crosshair" : undefined
+    cursor: isLinkTarget ? "crosshair" : undefined,
   };
 
   // Determine outline based on state - use outline to avoid layout shift
@@ -98,24 +98,24 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
       return {
         outline: selected ? `2px solid ${SELECTION_COLOR}` : "none",
         outlineOffset: 1,
-        boxShadow: `0 0 ${glowRadius}px rgba(${color.r}, ${color.g}, ${color.b}, ${glowAlpha})`
+        boxShadow: `0 0 ${glowRadius}px rgba(${color.r}, ${color.g}, ${color.b}, ${glowAlpha})`,
       };
     }
     if (showLinkTargetHighlight) {
       return {
         outline: `2px solid ${SELECTION_COLOR}`,
         outlineOffset: 1,
-        boxShadow: `0 0 12px 4px ${SELECTION_COLOR}88`
+        boxShadow: `0 0 12px 4px ${SELECTION_COLOR}88`,
       };
     }
     if (selected) {
       return {
         outline: `2px solid ${SELECTION_COLOR}`,
-        outlineOffset: 1
+        outlineOffset: 1,
       };
     }
     return {
-      outline: "none"
+      outline: "none",
     };
   };
 
@@ -131,7 +131,7 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     backgroundColor: "var(--topoviewer-network-node-background)",
     borderRadius: 4,
     transform: directionRotation !== 0 ? `rotate(${directionRotation}deg)` : undefined,
-    ...getOutlineStyle()
+    ...getOutlineStyle(),
   };
 
   const labelStyle = useMemo(
@@ -142,7 +142,7 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
         backgroundColor: labelBackgroundColor,
         iconSize: ICON_SIZE,
         fontSize: "0.65rem",
-        maxWidth: 110
+        maxWidth: 110,
       }),
     [labelPosition, direction, labelBackgroundColor]
   );

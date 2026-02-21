@@ -109,10 +109,7 @@ function getNodeInterfacePattern(
   extraData: NodeExtraData | undefined,
   interfacePatternMapping: Record<string, string> = DEFAULT_INTERFACE_PATTERNS
 ): string {
-  if (
-    extraData?.interfacePattern !== undefined &&
-    extraData.interfacePattern.length > 0
-  ) {
+  if (extraData?.interfacePattern !== undefined && extraData.interfacePattern.length > 0) {
     return extraData.interfacePattern;
   }
 

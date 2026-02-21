@@ -57,7 +57,7 @@ const networkCounters: Record<NetworkType, number> = {
   "vxlan-stitch": 0,
   dummy: 0,
   bridge: 0,
-  "ovs-bridge": 0
+  "ovs-bridge": 0,
 };
 
 // Regex patterns for extracting counter values from network IDs
@@ -207,8 +207,8 @@ function createNetworkData(networkId: string, networkType: NetworkType): Network
     type: networkType,
     extraData: {
       kind: networkType,
-      extType: networkType
-    }
+      extType: networkType,
+    },
   };
 }
 
@@ -219,13 +219,13 @@ function networkDataToTopoNode(data: NetworkData, position: { x: number; y: numb
   const networkNodeData: NetworkNodeData = {
     label: data.name,
     nodeType: data.kind,
-    extraData: data.extraData
+    extraData: data.extraData,
   };
   return {
     id: data.id,
     type: "network-node",
     position,
-    data: networkNodeData
+    data: networkNodeData,
   };
 }
 

@@ -46,7 +46,7 @@ function extractNodeDisplayProps(nodeData: NodeData) {
     image: getNodeProperty(extraData, nodeData, "image", "image"),
     mgmtIpv4: getNodeProperty(extraData, nodeData, "mgmtIpv4Address", "mgmtIpv4"),
     mgmtIpv6: getNodeProperty(extraData, nodeData, "mgmtIpv6Address", "mgmtIpv6"),
-    fqdn: getNodeProperty(extraData, nodeData, "fqdn", "fqdn")
+    fqdn: getNodeProperty(extraData, nodeData, "fqdn", "fqdn"),
   };
 }
 

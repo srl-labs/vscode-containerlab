@@ -10,7 +10,7 @@ import {
   StickerbushMode,
   AquaticAmbienceMode,
   VaporwaveMode,
-  DeusExMode
+  DeusExMode,
 } from "./modes";
 import type { UseEasterEggReturn } from "./useEasterEgg";
 
@@ -31,7 +31,7 @@ export const EasterEggRenderer: React.FC<EasterEggRendererProps> = ({ easterEgg 
     isActive: isPartyMode,
     onClose: endPartyMode,
     onSwitchMode: nextMode,
-    modeName: getModeName()
+    modeName: getModeName(),
   };
 
   switch (easterEggMode) {

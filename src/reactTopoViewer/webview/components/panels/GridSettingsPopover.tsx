@@ -39,7 +39,7 @@ export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
   onGridColorChange,
   gridBgColor,
   onGridBgColorChange,
-  onResetColors
+  onResetColors,
 }) => {
   const open = Boolean(anchorPosition);
   const isGridStyle = (value: unknown): value is GridStyle =>
@@ -123,10 +123,7 @@ export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             Grid Color
           </Typography>
-          <ColorField
-            value={gridColor ?? defaultGridColor}
-            onChange={handleGridColorChange}
-          />
+          <ColorField value={gridColor ?? defaultGridColor} onChange={handleGridColorChange} />
         </Box>
 
         <Divider />
@@ -135,10 +132,7 @@ export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             Background Color
           </Typography>
-          <ColorField
-            value={gridBgColor ?? themeBgColor}
-            onChange={handleBgColorChange}
-          />
+          <ColorField value={gridBgColor ?? themeBgColor} onChange={handleBgColorChange} />
         </Box>
 
         {hasCustomColors && (

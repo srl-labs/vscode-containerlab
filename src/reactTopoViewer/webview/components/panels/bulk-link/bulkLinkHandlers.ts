@@ -57,7 +57,7 @@ export async function confirmAndCreateLinks({
   addEdge,
   setStatus,
   setPendingCandidates,
-  onClose
+  onClose,
 }: ConfirmCreateParams): Promise<void> {
   if (nodes.length === 0 || !pendingCandidates) return;
   if (!canApply) {
@@ -79,7 +79,7 @@ export async function confirmAndCreateLinks({
 
   const commands = builtEdges.map((edge) => ({
     command: "addLink" as const,
-    payload: toLinkSaveData(edge)
+    payload: toLinkSaveData(edge),
   }));
 
   if (commands.length > 0) {

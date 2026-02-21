@@ -30,7 +30,7 @@ export class ClabCommand extends cmd.Command {
         command: binaryPath,
         useSpinner: false,
         terminalName: terminalName ?? "Containerlab",
-        onOutputLine
+        onOutputLine,
       };
     } else {
       options = {
@@ -38,9 +38,9 @@ export class ClabCommand extends cmd.Command {
         useSpinner: true,
         spinnerMsg: spinnerMsg ?? {
           progressMsg: `Running ${action}...`,
-          successMsg: `${action} completed successfully`
+          successMsg: `${action} completed successfully`,
         },
-        onOutputLine
+        onOutputLine,
       };
     }
     super(options);

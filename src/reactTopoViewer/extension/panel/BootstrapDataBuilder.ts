@@ -53,6 +53,6 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
     defaultNode,
     schemaData,
     dockerImages,
-    customIcons
+    customIcons,
   };
 }

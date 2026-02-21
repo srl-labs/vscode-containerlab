@@ -156,17 +156,13 @@ function addInterfaceRequirementErrors(
   isSelfLoop: boolean
 ): void {
   const needsSourceInterface =
-    data.sourceEndpoint.length === 0 &&
-    data.sourceIsNetwork !== true &&
-    !isSelfLoop;
+    data.sourceEndpoint.length === 0 && data.sourceIsNetwork !== true && !isSelfLoop;
   if (needsSourceInterface) {
     errors.push(`${data.source || "Source"} interface is required`);
   }
 
   const needsTargetInterface =
-    data.targetEndpoint.length === 0 &&
-    data.targetIsNetwork !== true &&
-    !isSelfLoop;
+    data.targetEndpoint.length === 0 && data.targetIsNetwork !== true && !isSelfLoop;
   if (needsTargetInterface) {
     errors.push(`${data.target || "Target"} interface is required`);
   }

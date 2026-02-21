@@ -19,7 +19,7 @@ const COLORS: Record<string, RGBColor> = {
   dark: { r: 15, g: 18, b: 22 },
   highlight: { r: 255, g: 255, b: 255 },
   cyan: { r: 0, g: 255, b: 255 },
-  magenta: { r: 255, g: 0, b: 255 }
+  magenta: { r: 255, g: 0, b: 255 },
 };
 
 /** Containerlab SVG content with original blue water/bubbles */
@@ -113,7 +113,7 @@ const DeusExCanvas: React.FC<{
         pointerEvents: "none",
         zIndex: 99998,
         width: "100%",
-        height: "100%"
+        height: "100%",
       }}
     />
   );
@@ -208,7 +208,7 @@ export const DeusExMode: React.FC<BaseModeProps> = ({
   isActive,
   onClose,
   onSwitchMode,
-  modeName
+  modeName,
 }) => {
   const [visible, setVisible] = useState(false);
   const timeRef = useRef<number>(0);
@@ -276,7 +276,7 @@ export const DeusExMode: React.FC<BaseModeProps> = ({
           alignItems: "flex-end",
           justifyContent: "center",
           pb: 4,
-          gap: 2
+          gap: 2,
         }}
       >
         <Box
@@ -300,7 +300,7 @@ export const DeusExMode: React.FC<BaseModeProps> = ({
             fontSize: "14px",
             fontWeight: 600,
             textShadow: "0 0 10px rgba(220, 220, 225, 0.8)",
-            boxShadow: "0 0 20px rgba(113, 121, 126, 0.3), inset 0 0 20px rgba(192, 192, 192, 0.1)"
+            boxShadow: "0 0 20px rgba(113, 121, 126, 0.3), inset 0 0 20px rgba(192, 192, 192, 0.1)",
           }}
           title={`Current: ${modeName}`}
         >
@@ -327,7 +327,7 @@ export const DeusExMode: React.FC<BaseModeProps> = ({
             fontSize: "14px",
             fontWeight: 600,
             textShadow: "0 0 10px rgba(255, 255, 255, 0.8)",
-            boxShadow: "0 0 20px rgba(192, 192, 192, 0.5), inset 0 0 20px rgba(220, 220, 225, 0.1)"
+            boxShadow: "0 0 20px rgba(192, 192, 192, 0.5), inset 0 0 20px rgba(220, 220, 225, 0.1)",
           }}
         >
           Shutdown

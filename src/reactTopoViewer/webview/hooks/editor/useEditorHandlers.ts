@@ -8,24 +8,24 @@ import type {
   CustomNodeTemplate,
   LinkEditorData,
   NetworkEditorData,
-  NodeEditorData
+  NodeEditorData,
 } from "../../../shared/types/editors";
 import type { EdgeAnnotation, NodeAnnotation } from "../../../shared/types/topology";
 import {
   convertEditorDataToYaml,
   convertEditorDataToNodeSaveData,
-  convertNetworkEditorDataToYaml
+  convertNetworkEditorDataToYaml,
 } from "../../../shared/utilities";
 import {
   executeTopologyCommand,
   saveEdgeAnnotations,
-  buildNetworkNodeAnnotations
+  buildNetworkNodeAnnotations,
 } from "../../services";
 import { requestSnapshot } from "../../services/topologyHostClient";
 import { useGraphStore } from "../../stores/graphStore";
 import {
   findEdgeAnnotation,
-  upsertEdgeLabelOffsetAnnotation
+  upsertEdgeLabelOffsetAnnotation,
 } from "../../annotations/edgeAnnotations";
 import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
 import { BRIDGE_NETWORK_TYPES, getNetworkType } from "../../utils/networkNodeTypes";
@@ -84,7 +84,7 @@ function getEdgeData(edge: BasicEdge): {
   return {
     sourceEndpoint: typeof data?.sourceEndpoint === "string" ? data.sourceEndpoint : undefined,
     targetEndpoint: typeof data?.targetEndpoint === "string" ? data.targetEndpoint : undefined,
-    extraData: toRecord(data?.extraData)
+    extraData: toRecord(data?.extraData),
   };
 }
 
@@ -154,8 +154,8 @@ function updateNodeVisualPreview(
     data: {
       labelPosition,
       direction,
-      labelBackgroundColor
-    }
+      labelBackgroundColor,
+    },
   });
 }
 
@@ -301,8 +301,8 @@ function buildAliasLinkCommand(
       originalSource: yamlSource,
       originalTarget: yamlTarget,
       originalSourceEndpoint: edgeData.sourceEndpoint,
-      originalTargetEndpoint: edgeData.targetEndpoint
-    }
+      originalTargetEndpoint: edgeData.targetEndpoint,
+    },
   };
 }
 
@@ -318,7 +318,7 @@ function updateAliasNodeInGraph(
   const nextExtra = {
     ...existingExtra,
     ...convertNetworkEditorDataToYaml(data),
-    extYamlNodeId: newNodeId
+    extYamlNodeId: newNodeId,
   };
   graphState.updateNode(aliasId, { data: { label: aliasLabel, name: aliasLabel } });
   graphState.updateNodeData(aliasId, nextExtra);
@@ -340,7 +340,7 @@ function buildUpdatedAliasAnnotations(
     id: aliasId,
     yamlNodeId: newNodeId,
     yamlInterface: primaryInterface,
-    label: aliasLabel
+    label: aliasLabel,
   };
   if (!aliasAnnotation.position && aliasPosition) {
     aliasAnnotation.position = aliasPosition;
@@ -415,7 +415,7 @@ function updateGraphEdgesForAlias(
     graphState.updateEdge(info.edge.id, {
       source: nextSource,
       target: nextTarget,
-      data: { ...edgeData, extraData: extra }
+      data: { ...edgeData, extraData: extra },
     });
   }
 }
@@ -562,7 +562,7 @@ function mergeOffsetBaseline(
   return {
     ...current,
     endpointLabelOffset: next.endpointLabelOffset,
-    endpointLabelOffsetEnabled: next.endpointLabelOffsetEnabled
+    endpointLabelOffsetEnabled: next.endpointLabelOffsetEnabled,
   };
 }
 
@@ -575,7 +575,7 @@ function applyLinkChanges(data: LinkEditorData, deps: LinkPersistDeps): void {
       source: saveData.source,
       target: saveData.target,
       sourceEndpoint: saveData.sourceEndpoint ?? data.sourceEndpoint,
-      targetEndpoint: saveData.targetEndpoint ?? data.targetEndpoint
+      targetEndpoint: saveData.targetEndpoint ?? data.targetEndpoint,
     });
   }
 }
@@ -727,7 +727,7 @@ const LINK_BASED_NETWORK_TYPES = new Set([
   "macvlan",
   "vxlan",
   "vxlan-stitch",
-  "dummy"
+  "dummy",
 ]);
 
 /** Bridge types that are stored as YAML nodes */
@@ -753,7 +753,7 @@ function applyVxlanFields(extraData: Record<string, unknown>, data: NetworkEdito
     extRemote: data.vxlanRemote ?? undefined,
     extVni: toOptionalNumber(data.vxlanVni),
     extDstPort: toOptionalNumber(data.vxlanDstPort),
-    extSrcPort: toOptionalNumber(data.vxlanSrcPort)
+    extSrcPort: toOptionalNumber(data.vxlanSrcPort),
   });
 }
 
@@ -763,7 +763,7 @@ function applyHostInterfaceFields(
 ): void {
   if (!HOST_INTERFACE_TYPES.has(data.networkType)) return;
   extraData.extHostInterface = data.interfaceName || undefined;
-  extraData.extMode = data.networkType === "macvlan" ? data.macvlanMode ?? undefined : undefined;
+  extraData.extMode = data.networkType === "macvlan" ? (data.macvlanMode ?? undefined) : undefined;
 }
 
 function applyCommonNetworkFields(
@@ -774,7 +774,7 @@ function applyCommonNetworkFields(
     extMtu: toOptionalNumber(data.mtu),
     extMac: data.mac ?? undefined,
     extVars: data.vars && Object.keys(data.vars).length > 0 ? data.vars : undefined,
-    extLabels: data.labels && Object.keys(data.labels).length > 0 ? data.labels : undefined
+    extLabels: data.labels && Object.keys(data.labels).length > 0 ? data.labels : undefined,
   });
 }
 
@@ -882,8 +882,8 @@ export function useNetworkEditorHandlers(
             originalSource: edge.source,
             originalTarget: edge.target,
             originalSourceEndpoint: sourceEndpoint,
-            originalTargetEndpoint: targetEndpoint
-          }
+            originalTargetEndpoint: targetEndpoint,
+          },
         };
       });
 
@@ -893,8 +893,8 @@ export function useNetworkEditorHandlers(
         ...linkCommands,
         {
           command: "setAnnotations" as const,
-          payload: { networkNodeAnnotations }
-        }
+          payload: { networkNodeAnnotations },
+        },
       ];
 
       if (commands.length > 0) {
@@ -916,8 +916,8 @@ export function useNetworkEditorHandlers(
       name: newNodeId,
       extraData: {
         kind: data.networkType,
-        label: trimmedLabel.length > 0 ? trimmedLabel : null
-      }
+        label: trimmedLabel.length > 0 ? trimmedLabel : null,
+      },
     };
     void executeTopologyCommand({ command: "editNode", payload: saveData });
   }, []);
@@ -973,7 +973,7 @@ export function useNetworkEditorHandlers(
       const aliasCommands = [
         ...linkCommands,
         { command: "deleteNode" as const, payload: { id: aliasId } },
-        { command: "setAnnotations" as const, payload: { nodeAnnotations: updatedAnnotations } }
+        { command: "setAnnotations" as const, payload: { nodeAnnotations: updatedAnnotations } },
       ];
 
       await executeTopologyCommand(
@@ -1039,7 +1039,7 @@ export function useNetworkEditorHandlers(
       applyGraphUpdates,
       persistLinkBasedNetwork,
       persistBridgeNetwork,
-      persistBridgeAlias
+      persistBridgeAlias,
     ]
   );
 
@@ -1100,7 +1100,7 @@ export function useNodeCreationHandlers(
       createNodeAtPosition,
       onLockedAction,
       onNewCustomNode,
-      rfInstance
+      rfInstance,
     ]
   );
 

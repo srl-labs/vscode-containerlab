@@ -21,7 +21,7 @@ import {
   Speed as SpeedIcon,
   Star as StarIcon,
   StarOutline as StarOutlineIcon,
-  TextFields as TextFieldsIcon
+  TextFields as TextFieldsIcon,
 } from "@mui/icons-material";
 import {
   Box,
@@ -32,13 +32,17 @@ import {
   InputAdornment,
   TextField,
   Tooltip,
-  Typography
+  Typography,
 } from "@mui/material";
 
 import type { CustomNodeTemplate } from "../../../../shared/types/editors";
 import { ROLE_SVG_MAP, DEFAULT_ICON_COLOR } from "../../../../shared/types/graph";
 import { generateEncodedSVG, type NodeType } from "../../../icons/SvgGenerator";
-import { useCustomIcons, useCustomNodes, useTopoViewerStore } from "../../../stores/topoViewerStore";
+import {
+  useCustomIcons,
+  useCustomNodes,
+  useTopoViewerStore,
+} from "../../../stores/topoViewerStore";
 import { buildCustomIconMap } from "../../../utils/iconUtils";
 import type { TabDefinition } from "../../ui/editor";
 import { TabNavigation } from "../../ui/editor/TabNavigation";
@@ -78,7 +82,7 @@ const NETWORK_TYPE_DEFINITIONS: readonly NetworkTypeDefinition[] = [
   { type: "vxlan-stitch", label: "VXLAN Stitch", icon: <CableIcon fontSize="small" /> },
   { type: "dummy", label: "Dummy", icon: <PowerIcon fontSize="small" /> },
   { type: "bridge", label: "Bridge", icon: <AccountTreeIcon fontSize="small" /> },
-  { type: "ovs-bridge", label: "OVS Bridge", icon: <HubIcon fontSize="small" /> }
+  { type: "ovs-bridge", label: "OVS Bridge", icon: <HubIcon fontSize="small" /> },
 ];
 
 const VALID_NODE_TYPES: Record<NodeType, true> = {
@@ -95,7 +99,7 @@ const VALID_NODE_TYPES: Record<NodeType, true> = {
   ue: true,
   cloud: true,
   client: true,
-  bridge: true
+  bridge: true,
 };
 
 function isNodeType(value: string): value is NodeType {
@@ -110,7 +114,10 @@ function getRoleSvgType(role: string): NodeType {
   return "pe";
 }
 
-function getTemplateIconUrl(template: CustomNodeTemplate, customIconMap: Map<string, string>): string {
+function getTemplateIconUrl(
+  template: CustomNodeTemplate,
+  customIconMap: Map<string, string>
+): string {
   const role = template.icon ?? "pe";
   const customDataUri = customIconMap.get(role);
   if (customDataUri !== undefined && customDataUri.length > 0) {
@@ -172,7 +179,7 @@ const PaletteDraggableCard: React.FC<{
         alignItems: "center",
         gap: 1,
         "&:hover": { bgcolor: ACTION_HOVER_BG },
-        "&:active": { cursor: "grabbing" }
+        "&:active": { cursor: "grabbing" },
       }}
     >
       {children}
@@ -182,11 +189,13 @@ const PaletteDraggableCard: React.FC<{
 
 const SectionHeader: React.FC<{ title: string; action?: React.ReactNode }> = ({
   title,
-  action
+  action,
 }) => (
   <>
     <Divider />
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}>
+    <Box
+      sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}
+    >
       <Typography variant="subtitle2">{title}</Typography>
       {action}
     </Box>
@@ -214,7 +223,7 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
   isDefault,
   onEdit,
   onDelete,
-  onSetDefault
+  onSetDefault,
 }) => {
   const isDefaultNode = isDefault === true;
   const onDragStart = useCallback(
@@ -223,7 +232,7 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
         REACTFLOW_NODE_MIME_TYPE,
         JSON.stringify({
           type: "node",
-          templateName: template.name
+          templateName: template.name,
         })
       );
       event.dataTransfer.effectAllowed = "move";
@@ -312,7 +321,7 @@ const PaletteSimpleDraggable: React.FC<PaletteSimpleDraggableProps> = ({
   dragPayload,
   icon,
   label,
-  subtitle
+  subtitle,
 }) => {
   const onDragStart = useCallback(
     (event: React.DragEvent) => {
@@ -350,7 +359,12 @@ const DraggableNetwork: React.FC<{ network: NetworkTypeDefinition }> = ({ networ
   />
 );
 
-const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({ label, kind, icon, payload }) => (
+const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({
+  label,
+  kind,
+  icon,
+  payload,
+}) => (
   <PaletteSimpleDraggable
     dragPayload={{ type: "annotation", ...payload }}
     icon={icon}
@@ -365,7 +379,7 @@ export const PALETTE_TABS: TabDefinition[] = [
   { id: "nodes", label: "Nodes" },
   { id: "annotations", label: "Annotations" },
   { id: "yaml", label: "YAML" },
-  { id: "json", label: "JSON" }
+  { id: "json", label: "JSON" },
 ];
 
 /* eslint-disable complexity */
@@ -383,7 +397,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   onEditTabLeave,
   infoTabContent,
   showInfoTab = false,
-  infoTabTitle
+  infoTabTitle,
 }) => {
   const customNodes = useCustomNodes();
   const customIcons = useCustomIcons();
@@ -477,16 +491,14 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   const filteredNodes = useMemo(() => {
     if (!filter) return customNodes;
     const search = filter.toLowerCase();
-    return customNodes.filter(
-      (node) => {
-        const nodeIcon = typeof node.icon === "string" ? node.icon : undefined;
-        return (
-          node.name.toLowerCase().includes(search) ||
-          node.kind.toLowerCase().includes(search) ||
-          (nodeIcon !== undefined && nodeIcon.toLowerCase().includes(search))
-        );
-      }
-    );
+    return customNodes.filter((node) => {
+      const nodeIcon = typeof node.icon === "string" ? node.icon : undefined;
+      return (
+        node.name.toLowerCase().includes(search) ||
+        node.kind.toLowerCase().includes(search) ||
+        (nodeIcon !== undefined && nodeIcon.toLowerCase().includes(search))
+      );
+    });
   }, [customNodes, filter]);
   const customIconMap = useMemo(() => buildCustomIconMap(customIcons), [customIcons]);
 
@@ -525,7 +537,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
     try {
       await executeTopologyCommand({
         command: "setAnnotationsContent",
-        payload: { content: annotationsDraft }
+        payload: { content: annotationsDraft },
       });
       setAnnotationsDirty(false);
       setAnnotationsError(null);
@@ -543,7 +555,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
           justifyContent: "space-between",
           px: 2,
           height: 40,
-          flexShrink: 0
+          flexShrink: 0,
         }}
       >
         <Typography
@@ -598,7 +610,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
           {activeTab === "nodes" && (
             <Box
               sx={{
-                ...(isLocked || isViewMode ? { pointerEvents: "none", opacity: 0.6 } : undefined)
+                ...(isLocked || isViewMode ? { pointerEvents: "none", opacity: 0.6 } : undefined),
               }}
             >
               <Box sx={{ p: 2 }}>
@@ -621,8 +633,8 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
                             <ClearIcon fontSize="small" />
                           </IconButton>
                         </InputAdornment>
-                      ) : undefined
-                    }
+                      ) : undefined,
+                    },
                   }}
                 />
               </Box>
@@ -631,7 +643,13 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
                 title="Node Templates"
                 action={
                   !filter ? (
-                    <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddNewNode} sx={{ py: 0 }}>
+                    <Button
+                      variant="text"
+                      size="small"
+                      startIcon={<AddIcon />}
+                      onClick={handleAddNewNode}
+                      sx={{ py: 0 }}
+                    >
                       Add
                     </Button>
                   ) : undefined

@@ -74,7 +74,7 @@ const SINGLE_ENDPOINT_TYPES = new Set([
   "macvlan",
   "vxlan",
   "vxlan-stitch",
-  "dummy"
+  "dummy",
 ]);
 
 function hasText(value: string | undefined): value is string {
@@ -111,7 +111,7 @@ const SPECIAL_NODE_PREFIXES = [
   "macvlan:",
   "vxlan:",
   "vxlan-stitch:",
-  "dummy"
+  "dummy",
 ];
 
 /**
@@ -208,7 +208,7 @@ function extractVxlanProperties(nodeId: string): {
     remote: remoteCandidate && looksLikeIpAddress(remoteCandidate) ? remoteCandidate : undefined,
     vni: parts[1] || undefined,
     dstPort: parts[2] || undefined,
-    srcPort: parts[3] || undefined
+    srcPort: parts[3] || undefined,
   };
 }
 
@@ -255,7 +255,7 @@ function applyVxlanProperties(
 ): void {
   const parsed = extractVxlanProperties(specialNodeId);
 
-  const remote = (extra?.extRemote ?? parsed.remote) ?? VXLAN_DEFAULTS.remote;
+  const remote = extra?.extRemote ?? parsed.remote ?? VXLAN_DEFAULTS.remote;
   const vni = toNumber(extra?.extVni ?? parsed.vni, VXLAN_DEFAULTS.vni);
   const dstPort = toNumber(extra?.extDstPort ?? parsed.dstPort, VXLAN_DEFAULTS.dstPort);
 
@@ -347,7 +347,7 @@ function createExtendedLink(doc: YAML.Document, linkData: LinkSaveData): YAML.YA
   const extra = linkData.extraData ?? {};
   const inferredType = inferSpecialLinkType(linkData);
   const rawType = typeof extra.extType === "string" ? extra.extType.trim() : "";
-  const linkType = rawType && rawType !== "veth" ? rawType : inferredType ?? "veth";
+  const linkType = rawType && rawType !== "veth" ? rawType : (inferredType ?? "veth");
 
   linkMap.set("type", doc.createNode(linkType));
 
@@ -384,7 +384,7 @@ function hasExtendedProperties(linkData: LinkSaveData): boolean {
     "extRemote",
     "extVni",
     "extDstPort",
-    "extSrcPort"
+    "extSrcPort",
   ];
 
   if (extendedKeys.some((k) => extra[k] !== undefined && extra[k] !== "")) return true;
@@ -480,8 +480,8 @@ function extractEndpointString(ep: unknown): string | null {
     return String(ep.value);
   }
   if (YAML.isMap(ep)) {
-    const node = (ep).get("node");
-    const iface = (ep).get("interface");
+    const node = ep.get("node");
+    const iface = ep.get("interface");
     if (iface === undefined || iface === null || iface === "") return String(node);
     return `${node}:${String(iface)}`;
   }

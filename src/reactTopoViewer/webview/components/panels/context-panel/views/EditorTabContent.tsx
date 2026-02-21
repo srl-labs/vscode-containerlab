@@ -17,7 +17,7 @@ const {
   LinkImpairmentView,
   NetworkEditorView,
   NodeEditorView,
-  TrafficRateEditorView
+  TrafficRateEditorView,
 } = editorViews;
 
 export interface EditorTabContentProps extends ContextPanelEditorState {
@@ -52,7 +52,7 @@ export const EditorTabContent: React.FC<EditorTabContentProps> = ({
   editingGroup,
   groupHandlers,
   onFooterRef,
-  onBannerRef
+  onBannerRef,
 }) => {
   const panelView = useContextPanelContent();
   const isLocked = useIsLocked();

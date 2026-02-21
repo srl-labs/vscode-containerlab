@@ -10,7 +10,7 @@ import {
   MenuItem,
   Toolbar,
   Tooltip,
-  Typography
+  Typography,
 } from "@mui/material";
 import {
   AccountTree as AccountTreeIcon,
@@ -35,7 +35,7 @@ import {
   Undo as UndoIcon,
   ViewColumn as ViewColumnIcon,
   Visibility as VisibilityIcon,
-  VisibilityOff as VisibilityOffIcon
+  VisibilityOff as VisibilityOffIcon,
 } from "@mui/icons-material";
 
 import type { LinkLabelMode } from "../../stores/topoViewerStore";
@@ -44,7 +44,7 @@ import {
   useIsProcessing,
   useLabName,
   useMode,
-  useTopoViewerActions
+  useTopoViewerActions,
 } from "../../stores/topoViewerStore";
 import { useDeploymentCommands } from "../../hooks/ui";
 import type { LayoutOption } from "../../hooks/ui";
@@ -63,7 +63,7 @@ function getToolbarAnchorPosition(
   const buttonRect = button.getBoundingClientRect();
   return {
     top: appBarRect.bottom,
-    left: buttonRect.left + buttonRect.width / 2
+    left: buttonRect.left + buttonRect.width / 2,
   };
 }
 
@@ -121,7 +121,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isPartyMode = false,
   onShowGridSettings,
   linkLabelMode,
-  onLinkLabelModeChange
+  onLinkLabelModeChange,
 }) => {
   const mode = useMode();
   const labName = useLabName();
@@ -365,7 +365,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
                   </ListItemIcon>
                   <ListItemText>Redeploy (cleanup)</ListItemText>
-                </MenuItem>
+                </MenuItem>,
               ]
             : [
                 <MenuItem
@@ -390,7 +390,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
                   </ListItemIcon>
                   <ListItemText>Deploy (cleanup)</ListItemText>
-                </MenuItem>
+                </MenuItem>,
               ]}
         </Menu>
 

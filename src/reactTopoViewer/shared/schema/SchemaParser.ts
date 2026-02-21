@@ -39,7 +39,9 @@ function toString(value: unknown): string | undefined {
 }
 
 function toStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
 }
 
 /**
@@ -75,9 +77,7 @@ function getTypeEnumValues(typeProp: Record<string, unknown>): string[] {
   const enumValues = toStringArray(typeProp.enum);
   if (enumValues.length > 0) return enumValues;
   if (!Array.isArray(typeProp.anyOf)) return [];
-  return typeProp.anyOf
-    .filter(isRecord)
-    .flatMap((opt) => toStringArray(opt.enum));
+  return typeProp.anyOf.filter(isRecord).flatMap((opt) => toStringArray(opt.enum));
 }
 
 /**
@@ -111,9 +111,7 @@ export function extractTypesByKindFromSchema(
   const typesByKind: Record<string, string[]> = {};
   const definitions = toRecord(schema.definitions);
   const nodeConfig = definitions ? toRecord(definitions["node-config"]) : undefined;
-  const allOf = Array.isArray(nodeConfig?.allOf)
-    ? nodeConfig.allOf.filter(isRecord)
-    : [];
+  const allOf = Array.isArray(nodeConfig?.allOf) ? nodeConfig.allOf.filter(isRecord) : [];
 
   for (const item of allOf) {
     const result = extractTypesFromCondition(item);
@@ -141,7 +139,7 @@ export function extractSrosComponentTypes(schema: Record<string, unknown>): Sros
     card: getEnumFromDef("sros-card-types"),
     mda: getEnumFromDef("sros-mda-types"),
     xiom: getEnumFromDef("sros-xiom-types"),
-    xiomMda: getEnumFromDef("sros-xiom-mda-types")
+    xiomMda: getEnumFromDef("sros-xiom-mda-types"),
   };
 }
 
@@ -152,6 +150,6 @@ export function parseSchemaData(schema: Record<string, unknown>): SchemaData {
   return {
     kinds: extractKindsFromSchema(schema),
     typesByKind: extractTypesByKindFromSchema(schema),
-    srosComponentTypes: extractSrosComponentTypes(schema)
+    srosComponentTypes: extractSrosComponentTypes(schema),
   };
 }

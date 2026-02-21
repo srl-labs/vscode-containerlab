@@ -45,7 +45,7 @@ export function useDropdown(): UseDropdownReturn {
     isOpen,
     toggle: () => setIsOpen((prev) => !prev),
     close: () => setIsOpen(false),
-    ref
+    ref,
   };
 }
 
@@ -96,7 +96,7 @@ export function useDropdownState(disabled: boolean) {
     setFocusedIndex,
     resetState,
     handleMouseEnter,
-    handleMouseLeave
+    handleMouseLeave,
   };
 }
 
@@ -217,7 +217,7 @@ export function useDropdownKeyboard(
       setIsOpen,
       setHighlightedIndex,
       onSelect,
-      onCommit
+      onCommit,
     ]
   );
 }

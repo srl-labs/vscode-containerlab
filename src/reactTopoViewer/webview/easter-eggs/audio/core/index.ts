@@ -9,7 +9,7 @@ export type {
   AudioEngineReturn,
   BufferCache,
   MelodyNote,
-  ScaleDefinition
+  ScaleDefinition,
 } from "./types";
 export {
   A_MINOR_SCALE,
@@ -18,5 +18,5 @@ export {
   getAMinorFrequency,
   getBMinorFrequency,
   getCMinorFrequency,
-  getScaleFrequency
+  getScaleFrequency,
 } from "./frequencyUtils";

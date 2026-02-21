@@ -31,10 +31,12 @@ export const FreeShapeEditorView: React.FC<FreeShapeEditorViewProps> = ({
   onClose,
   onDelete,
   readOnly = false,
-  onFooterRef
+  onFooterRef,
 }) => {
   const { formData, updateField, hasChanges, resetInitialData, discardChanges } =
-    useGenericFormState(annotation, { transformData: normalizeShapeAnnotationColors });
+    useGenericFormState(annotation, {
+      transformData: normalizeShapeAnnotationColors,
+    });
 
   useEditorHandlersWithFooterRef({
     formData,
@@ -44,7 +46,7 @@ export const FreeShapeEditorView: React.FC<FreeShapeEditorViewProps> = ({
     resetInitialData,
     discardChanges,
     onFooterRef,
-    hasChangesForFooter: hasChanges
+    hasChangesForFooter: hasChanges,
   });
 
   if (!formData) return null;

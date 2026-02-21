@@ -16,6 +16,6 @@ export async function openFolderInNewWindow(node: ClabLabTreeNode) {
 
   // Force opening that folder in a brand-new window
   await vscode.commands.executeCommand("vscode.openFolder", uri, {
-    forceNewWindow: true
+    forceNewWindow: true,
   });
 }

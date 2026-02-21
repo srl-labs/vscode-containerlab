@@ -16,7 +16,7 @@ import type {
   DummyContext,
   InterfacePatternMigration,
   GraphLabelMigration,
-  ParserLogger
+  ParserLogger,
 } from "./types";
 import { nullLogger } from "./types";
 import { computeFullPrefix, getLabName, getTopologyNodeIds, isPresetLayout } from "./utils";
@@ -26,7 +26,7 @@ import { collectSpecialNodes, addNetworkNodes } from "./SpecialNodeHandler";
 import {
   addAliasNodesFromAnnotations,
   applyAliasMappingsToEdges,
-  hideBaseBridgeNodesWithAliases
+  hideBaseBridgeNodesWithAliases,
 } from "./AliasNodeHandler";
 import { createDummyContext } from "./LinkNormalizer";
 import { detectGraphLabelMigrations, applyGraphLabelMigrations } from "./GraphLabelMigrator";
@@ -103,7 +103,7 @@ export class TopologyParser {
       containerDataProvider: options.containerDataProvider,
       logger: log,
       labName,
-      prefix
+      prefix,
     });
 
     return {
@@ -112,7 +112,7 @@ export class TopologyParser {
       prefix,
       isPresetLayout: result.isPresetLayout,
       pendingMigrations: result.interfacePatternMigrations,
-      graphLabelMigrations
+      graphLabelMigrations,
     };
   }
 
@@ -149,7 +149,7 @@ export class TopologyParser {
       prefix: result.prefix,
       isPresetLayout: result.isPresetLayout,
       pendingMigrations: result.pendingMigrations,
-      graphLabelMigrations: result.graphLabelMigrations
+      graphLabelMigrations: result.graphLabelMigrations,
     };
   }
 
@@ -208,7 +208,7 @@ export class TopologyParser {
       includeContainerData: Boolean(options.containerDataProvider),
       containerDataProvider: options.containerDataProvider,
       annotations: options.annotations,
-      logger: options.logger
+      logger: options.logger,
     };
 
     // Add node elements
@@ -254,7 +254,7 @@ export class TopologyParser {
     return {
       elements,
       isPresetLayout: preset,
-      interfacePatternMigrations: migrations
+      interfacePatternMigrations: migrations,
     };
   }
 }

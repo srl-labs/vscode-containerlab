@@ -34,9 +34,7 @@ function resolveKindName(
 /**
  * Merges node labels from multiple sources.
  */
-function mergeNodeLabels(
-  ...labels: unknown[]
-): Record<string, unknown> {
+function mergeNodeLabels(...labels: unknown[]): Record<string, unknown> {
   const merged: Record<string, unknown> = {};
   for (const label of labels) {
     if (!isRecord(label)) continue;
@@ -63,11 +61,6 @@ export function resolveNodeConfig(parsed: ClabTopology, node: ClabNode): ClabNod
     ...groupCfg,
     ...node,
     kind: kindName,
-    labels: mergeNodeLabels(
-      defaults.labels,
-      kindCfg.labels,
-      groupCfg.labels,
-      node.labels
-    )
+    labels: mergeNodeLabels(defaults.labels, kindCfg.labels, groupCfg.labels, node.labels),
   };
 }

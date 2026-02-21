@@ -102,7 +102,7 @@ export function findParentGroupForBounds(
     level: "1",
     position: { x: bounds.x, y: bounds.y },
     width: bounds.width,
-    height: bounds.height
+    height: bounds.height,
   };
 
   for (const group of groups) {

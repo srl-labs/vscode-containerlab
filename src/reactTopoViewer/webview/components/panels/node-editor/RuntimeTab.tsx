@@ -8,7 +8,7 @@ import {
   CheckboxField,
   DynamicList,
   PanelAddSection,
-  PanelSection
+  PanelSection,
 } from "../../ui/form";
 
 import type { TabProps } from "./types";
@@ -18,7 +18,7 @@ const RESTART_POLICY_OPTIONS = [
   { value: "no", label: "No" },
   { value: "always", label: "Always" },
   { value: "on-failure", label: "On Failure" },
-  { value: "unless-stopped", label: "Unless Stopped" }
+  { value: "unless-stopped", label: "Unless Stopped" },
 ];
 
 export const RuntimeTab: React.FC<TabProps> = ({ data, onChange }) => {

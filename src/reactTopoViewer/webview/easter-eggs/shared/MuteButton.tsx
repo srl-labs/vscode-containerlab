@@ -70,7 +70,7 @@ export const MuteButton: React.FC<MuteButtonProps> = ({
   visible,
   unmutedBackground,
   unmutedShadow,
-  borderColor = "rgba(255, 255, 255, 0.5)"
+  borderColor = "rgba(255, 255, 255, 0.5)",
 }) => {
   return (
     <Box
@@ -86,7 +86,7 @@ export const MuteButton: React.FC<MuteButtonProps> = ({
         border: `2px solid ${borderColor}`,
         cursor: "pointer",
         backdropFilter: BTN_BLUR,
-        boxShadow: isMuted ? MUTED_SHADOW : unmutedShadow
+        boxShadow: isMuted ? MUTED_SHADOW : unmutedShadow,
       }}
       title={isMuted ? "Unmute" : "Mute"}
     >

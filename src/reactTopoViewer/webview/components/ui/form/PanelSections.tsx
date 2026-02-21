@@ -12,7 +12,7 @@ const HEADER_WITH_ACTION_SX = {
   alignItems: "center",
   justifyContent: "space-between",
   px: 2,
-  py: 1
+  py: 1,
 } as const;
 const DEFAULT_FORM_BODY_SX = { display: "flex", flexDirection: "column", gap: 1.5, p: 2 } as const;
 const DEFAULT_LIST_BODY_SX = { p: 2 } as const;
@@ -24,7 +24,7 @@ interface PanelSectionHeaderProps {
 
 export const PanelSectionHeader: React.FC<PanelSectionHeaderProps> = ({
   title,
-  withTopDivider = true
+  withTopDivider = true,
 }) => (
   <>
     {withTopDivider && <Divider />}
@@ -46,7 +46,7 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   title,
   children,
   withTopDivider = true,
-  bodySx = DEFAULT_FORM_BODY_SX
+  bodySx = DEFAULT_FORM_BODY_SX,
 }) => (
   <>
     <PanelSectionHeader title={title} withTopDivider={withTopDivider} />
@@ -73,7 +73,7 @@ export const PanelAddSection: React.FC<PanelAddSectionProps> = ({
   withTopDivider = true,
   bodySx = DEFAULT_LIST_BODY_SX,
   addDisabled = false,
-  addTitle
+  addTitle,
 }) => (
   <>
     {withTopDivider && <Divider />}

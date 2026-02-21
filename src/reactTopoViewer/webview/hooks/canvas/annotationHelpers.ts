@@ -26,7 +26,7 @@ export function calculateGroupBoundsFromNodes(
     position: { x: minX - padding, y: minY - padding },
     width: maxX - minX + padding * 2,
     height: maxY - minY + padding * 2,
-    members
+    members,
   };
 }
 
@@ -40,7 +40,7 @@ export function calculateDefaultGroupPosition(viewport: { x: number; y: number; 
     position: { x: -viewport.x / viewport.zoom + 200, y: -viewport.y / viewport.zoom + 200 },
     width: 300,
     height: 200,
-    members: []
+    members: [],
   };
 }
 

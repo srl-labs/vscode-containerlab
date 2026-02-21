@@ -12,7 +12,7 @@ export async function deployPopularLab() {
   }
   const node = new ClabLabTreeNode("", vscode.TreeItemCollapsibleState.None, {
     absolute: pick.repo,
-    relative: ""
+    relative: "",
   });
   // Call runClabAction directly to avoid circular dependency with deploy.ts
   await runClabAction("deploy", node);

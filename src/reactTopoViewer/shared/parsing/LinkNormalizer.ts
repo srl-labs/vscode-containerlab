@@ -12,7 +12,7 @@ import {
   SINGLE_ENDPOINT_TYPES,
   HOSTY_TYPES,
   splitEndpointLike,
-  isSpecialEndpointId
+  isSpecialEndpointId,
 } from "../utilities/LinkTypes";
 
 // Re-export for convenience
@@ -23,7 +23,7 @@ export {
   PREFIX_VXLAN,
   PREFIX_VXLAN_STITCH,
   splitEndpointLike,
-  isSpecialEndpointId
+  isSpecialEndpointId,
 };
 
 import type { DummyContext } from "./types";
@@ -40,7 +40,7 @@ export const TYPES = {
   VXLAN_STITCH: "vxlan-stitch",
   BRIDGE: "bridge",
   OVS_BRIDGE: "ovs-bridge",
-  DUMMY: "dummy"
+  DUMMY: "dummy",
 } as const;
 
 export type SpecialNodeType = (typeof TYPES)[keyof typeof TYPES];
@@ -54,7 +54,7 @@ export const SINGLE_ENDPOINT_TYPE_LIST: string[] = [
   TYPES.MACVLAN,
   TYPES.DUMMY,
   TYPES.VXLAN,
-  TYPES.VXLAN_STITCH
+  TYPES.VXLAN_STITCH,
 ];
 
 // ============================================================================
@@ -258,6 +258,6 @@ export function createDummyContext(): DummyContext {
     vxlanCounter: 0,
     vxlanLinkMap: new Map(),
     vxlanStitchCounter: 0,
-    vxlanStitchLinkMap: new Map()
+    vxlanStitchLinkMap: new Map(),
   };
 }

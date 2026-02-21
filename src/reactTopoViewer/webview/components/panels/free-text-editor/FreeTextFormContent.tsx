@@ -6,7 +6,7 @@ import {
   FormatAlignRight as FormatAlignRightIcon,
   FormatBold as FormatBoldIcon,
   FormatItalic as FormatItalicIcon,
-  FormatUnderlined as FormatUnderlinedIcon
+  FormatUnderlined as FormatUnderlinedIcon,
 } from "@mui/icons-material";
 import {
   Box,
@@ -17,7 +17,7 @@ import {
   InputAdornment,
   MenuItem,
   TextField,
-  Typography
+  Typography,
 } from "@mui/material";
 
 import type { FreeTextAnnotation } from "../../../../shared/types/topology";
@@ -35,7 +35,7 @@ const FONTS = [
   "Georgia",
   "Helvetica",
   "Times New Roman",
-  "Verdana"
+  "Verdana",
 ];
 
 interface Props {
@@ -58,7 +58,7 @@ const IconBtn: React.FC<{
       borderRadius: 0.5,
       color: active ? "primary.contrastText" : "text.primary",
       bgcolor: active ? "primary.main" : "transparent",
-      "&:hover": { bgcolor: active ? "primary.dark" : "action.hover" }
+      "&:hover": { bgcolor: active ? "primary.dark" : "action.hover" },
     }}
   >
     {children}
@@ -68,7 +68,7 @@ const IconBtn: React.FC<{
 // Formatting toolbar
 const Toolbar: React.FC<{ formData: FreeTextAnnotation; updateField: Props["updateField"] }> = ({
   formData,
-  updateField
+  updateField,
 }) => {
   const isBold = formData.fontWeight === "bold";
   const isItalic = formData.fontStyle === "italic";
@@ -82,7 +82,7 @@ const Toolbar: React.FC<{ formData: FreeTextAnnotation; updateField: Props["upda
         alignItems: "center",
         gap: 0.25,
         pb: 0.75,
-        borderRadius: 0.5
+        borderRadius: 0.5,
       }}
     >
       <IconBtn
@@ -167,8 +167,8 @@ const FontControls: React.FC<{
                 px
               </Typography>
             </InputAdornment>
-          )
-        }
+          ),
+        },
       }}
       sx={{ flex: 3 }}
     />
@@ -194,7 +194,7 @@ const StyleOptions: React.FC<{
         <Box sx={{ flex: 1 }}>
           <ColorField
             label="Fill"
-            value={isTransparent ? "#000000" : formData.backgroundColor ?? "#000000"}
+            value={isTransparent ? "#000000" : (formData.backgroundColor ?? "#000000")}
             onChange={(v) => updateField("backgroundColor", v)}
             disabled={isTransparent}
           />
@@ -203,7 +203,9 @@ const StyleOptions: React.FC<{
               <Checkbox
                 size="small"
                 checked={isTransparent}
-                onChange={() => updateField("backgroundColor", isTransparent ? "#000000" : "transparent")}
+                onChange={() =>
+                  updateField("backgroundColor", isTransparent ? "#000000" : "transparent")
+                }
               />
             }
             label="No fill"
@@ -226,8 +228,8 @@ const StyleOptions: React.FC<{
                   deg
                 </Typography>
               </InputAdornment>
-            )
-          }
+            ),
+          },
         }}
       />
     </Box>
@@ -235,10 +237,7 @@ const StyleOptions: React.FC<{
 };
 
 // Main component
-export const FreeTextFormContent: React.FC<Props> = ({
-  formData,
-  updateField
-}) => (
+export const FreeTextFormContent: React.FC<Props> = ({ formData, updateField }) => (
   <Box sx={{ display: "flex", flexDirection: "column" }}>
     <PanelSection title="Text" withTopDivider={false} bodySx={{ p: 2 }}>
       <Toolbar formData={formData} updateField={updateField} />

@@ -66,15 +66,15 @@ function fromWindow(): VsCodeApiLike | undefined {
       if (typeof setter === "function") {
         setter(state);
       }
-    }
+    },
   };
 }
 
 export function getVSCodeApi(): VsCodeApiLike {
   // Prefer an already-acquired API instance if present.
-    // Some webviews bootstrap window.vscode up-front, and a second
-    // acquireVsCodeApi() call can throw.
-    vscodeApi ??= fromWindow() ?? fromAcquire();
+  // Some webviews bootstrap window.vscode up-front, and a second
+  // acquireVsCodeApi() call can throw.
+  vscodeApi ??= fromWindow() ?? fromAcquire();
 
   if (!vscodeApi) {
     throw new Error("VS Code API is unavailable in this webview context.");

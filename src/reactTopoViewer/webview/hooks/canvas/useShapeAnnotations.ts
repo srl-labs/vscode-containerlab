@@ -81,7 +81,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
         borderWidth: lastShapeStyleRef.current.borderWidth ?? 1,
         borderStyle: lastShapeStyleRef.current.borderStyle ?? "solid",
         borderRadius: lastShapeStyleRef.current.borderRadius ?? 4,
-        groupId: parentGroup?.id
+        groupId: parentGroup?.id,
       };
     },
     [derived.groups]
@@ -128,7 +128,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
         borderWidth: annotation.borderWidth,
         borderStyle: annotation.borderStyle,
         borderRadius: annotation.borderRadius,
-        rotation: annotation.rotation
+        rotation: annotation.rotation,
       };
 
       persist();
@@ -190,7 +190,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
       deleteSelectedShapeAnnotations,
       onShapeRotationStart,
       onShapeRotationEnd,
-      handleShapeCanvasClick
+      handleShapeCanvasClick,
     }),
     [
       handleAddShapes,
@@ -201,7 +201,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
       deleteSelectedShapeAnnotations,
       onShapeRotationStart,
       onShapeRotationEnd,
-      handleShapeCanvasClick
+      handleShapeCanvasClick,
     ]
   );
 }

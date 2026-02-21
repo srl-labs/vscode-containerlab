@@ -34,7 +34,7 @@ import {
   Tune as TuneIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
-  type SvgIconComponent
+  type SvgIconComponent,
 } from "@mui/icons-material";
 import {
   Alert,
@@ -45,7 +45,7 @@ import {
   Stack,
   TextField,
   Tooltip,
-  Typography
+  Typography,
 } from "@mui/material";
 import type { Theme } from "@mui/material/styles";
 import { createRoot } from "react-dom/client";
@@ -59,13 +59,13 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState
+  useState,
 } from "react";
 
 import { MuiThemeProvider } from "../../reactTopoViewer/webview/theme";
 import {
   ContextMenu,
-  type ContextMenuItem
+  type ContextMenuItem,
 } from "../../reactTopoViewer/webview/components/context-menu/ContextMenu";
 import { useMessageListener, usePostMessage, useReadySignal } from "../shared/hooks";
 import {
@@ -75,7 +75,7 @@ import {
   type ExplorerNode,
   type ExplorerSectionId,
   type ExplorerSectionSnapshot,
-  type ExplorerUiState
+  type ExplorerUiState,
 } from "../shared/explorer/types";
 
 const COLOR_ERROR_MAIN = "error.main";
@@ -87,7 +87,7 @@ const UI_STATE_UPDATE_DEBOUNCE_MS = 160;
 const DEFAULT_EXPANDED_SECTIONS = new Set<ExplorerSectionId>([
   "runningLabs",
   "localLabs",
-  "helpFeedback"
+  "helpFeedback",
 ]);
 const TREE_DEPTH_INDENT = 1.6;
 const TREE_DISCLOSURE_SLOT_PX = 14;
@@ -102,7 +102,7 @@ const STATUS_COLOR_MAP: Record<string, string> = {
   red: COLOR_ERROR_MAIN,
   yellow: "warning.main",
   blue: "info.main",
-  gray: COLOR_TEXT_DISABLED
+  gray: COLOR_TEXT_DISABLED,
 };
 
 const TOOLBAR_ICON_BUTTON_SX = {
@@ -111,8 +111,8 @@ const TOOLBAR_ICON_BUTTON_SX = {
   borderRadius: 1,
   color: COLOR_TEXT_PRIMARY,
   "&:hover": {
-    bgcolor: (theme: Theme) => theme.alpha(theme.palette.primary.main, 0.14)
-  }
+    bgcolor: (theme: Theme) => theme.alpha(theme.palette.primary.main, 0.14),
+  },
 } as const;
 
 interface ExplorerNodeLabelProps {
@@ -171,7 +171,7 @@ const ACTION_GROUP_ORDER_DEFAULT: ActionGroupId[] = [
   "tools",
   "view",
   "other",
-  "danger"
+  "danger",
 ];
 
 const ACTION_GROUP_ORDER_BY_NODE_KIND: Record<ExplorerNodeKind, ActionGroupId[]> = {
@@ -188,7 +188,7 @@ const ACTION_GROUP_ORDER_BY_NODE_KIND: Record<ExplorerNodeKind, ActionGroupId[]>
     "view",
     "network",
     "other",
-    "danger"
+    "danger",
   ],
   container: [
     "lifecycle",
@@ -202,11 +202,24 @@ const ACTION_GROUP_ORDER_BY_NODE_KIND: Record<ExplorerNodeKind, ActionGroupId[]>
     "view",
     "topology",
     "graph",
-    "other"
+    "other",
   ],
   interface: ACTION_GROUP_ORDER_DEFAULT,
-  link: ["sharing", "copy", "view", "topology", "graph", "lifecycle", "save", "network", "inspect", "tools", "other", "access"],
-  other: ACTION_GROUP_ORDER_DEFAULT
+  link: [
+    "sharing",
+    "copy",
+    "view",
+    "topology",
+    "graph",
+    "lifecycle",
+    "save",
+    "network",
+    "inspect",
+    "tools",
+    "other",
+    "access",
+  ],
+  other: ACTION_GROUP_ORDER_DEFAULT,
 };
 
 const ACTION_ICON_BY_COMMAND: Partial<Record<string, SvgIconComponent>> = {
@@ -235,7 +248,7 @@ const ACTION_ICON_BY_COMMAND: Partial<Record<string, SvgIconComponent>> = {
   "containerlab.lab.gotty.attach": OpenInBrowserIcon,
   "containerlab.lab.gotty.detach": OpenInBrowserIcon,
   "containerlab.lab.gotty.reattach": OpenInBrowserIcon,
-  "containerlab.lab.gotty.copylink": OpenInBrowserIcon
+  "containerlab.lab.gotty.copylink": OpenInBrowserIcon,
 };
 
 const ACTION_ICON_RULES: ReadonlyArray<CommandIconRule> = [
@@ -243,11 +256,11 @@ const ACTION_ICON_RULES: ReadonlyArray<CommandIconRule> = [
   {
     match: (command) =>
       command.includes("destroy") || command.includes("delete") || command.includes("detach"),
-    icon: DeleteOutlineIcon
+    icon: DeleteOutlineIcon,
   },
   {
     match: (command) => command.includes("redeploy"),
-    icon: RefreshIcon
+    icon: RefreshIcon,
   },
   { match: (command) => command.includes("stop"), icon: StopIcon },
   { match: (command) => command.includes("unpause"), icon: PlayCircleOutlineIcon },
@@ -255,13 +268,13 @@ const ACTION_ICON_RULES: ReadonlyArray<CommandIconRule> = [
   {
     match: (command) =>
       command.includes("ssh") || command.includes("shell") || command.includes("telnet"),
-    icon: TerminalIcon
+    icon: TerminalIcon,
   },
   { match: (command) => command.includes("filter"), icon: FilterAltIcon },
   { match: (command) => command.includes(".save"), icon: SaveOutlinedIcon },
   {
     match: (command) => command.includes("showlogs") || command.includes("logs"),
-    icon: ArticleOutlinedIcon
+    icon: ArticleOutlinedIcon,
   },
   { match: (command) => command.startsWith("containerlab.lab.fcli."), icon: BuildIcon },
   { match: (command) => command.includes(".gotty."), icon: OpenInBrowserIcon },
@@ -269,12 +282,12 @@ const ACTION_ICON_RULES: ReadonlyArray<CommandIconRule> = [
   {
     match: (command) =>
       command.includes("open") || command.includes("graph") || command.includes("inspect"),
-    icon: OpenInNewIcon
+    icon: OpenInNewIcon,
   },
   { match: (command) => command.includes("folder"), icon: FolderOpenIcon },
   {
     match: (command) => command.includes("capture") || command.includes("impairment"),
-    icon: SettingsEthernetIcon
+    icon: SettingsEthernetIcon,
   },
   {
     match: (command) =>
@@ -283,14 +296,14 @@ const ACTION_ICON_RULES: ReadonlyArray<CommandIconRule> = [
       command.includes("loss") ||
       command.includes("rate") ||
       command.includes("corruption"),
-    icon: TuneIcon
+    icon: TuneIcon,
   },
   {
     match: (command) =>
       command.includes("deploy") || command.includes("start") || command.includes("run"),
-    icon: PlayArrowIcon
+    icon: PlayArrowIcon,
   },
-  { match: (command) => command.includes("link"), icon: LinkIcon }
+  { match: (command) => command.includes("link"), icon: LinkIcon },
 ];
 
 const ACTION_GROUP_RULES: ReadonlyArray<CommandActionGroupRule> = [
@@ -298,19 +311,26 @@ const ACTION_GROUP_RULES: ReadonlyArray<CommandActionGroupRule> = [
   { match: (command) => command.includes(".save"), group: "save" },
   { match: (command) => command.startsWith("containerlab.lab.fcli."), group: "tools" },
   {
-    match: (command) => command.startsWith("containerlab.interface.") || command.includes("impairment"),
-    group: "network"
+    match: (command) =>
+      command.startsWith("containerlab.interface.") || command.includes("impairment"),
+    group: "network",
   },
-  { match: (command) => command.includes(".sshx.") || command.includes(".gotty."), group: "sharing" },
+  {
+    match: (command) => command.includes(".sshx.") || command.includes(".gotty."),
+    group: "sharing",
+  },
   { match: (command) => command.includes("copy"), group: "copy" },
-  { match: (command) => command.includes("inspect") || command.includes("showlogs"), group: "inspect" },
+  {
+    match: (command) => command.includes("inspect") || command.includes("showlogs"),
+    group: "inspect",
+  },
   {
     match: (command) =>
       command.includes("ssh") ||
       command.includes("shell") ||
       command.includes("telnet") ||
       command.includes("openbrowser"),
-    group: "access"
+    group: "access",
   },
   {
     match: (command) =>
@@ -321,7 +341,7 @@ const ACTION_GROUP_RULES: ReadonlyArray<CommandActionGroupRule> = [
       command.includes("stop") ||
       command.includes("pause") ||
       command.includes("unpause"),
-    group: "lifecycle"
+    group: "lifecycle",
   },
   {
     match: (command) =>
@@ -331,19 +351,17 @@ const ACTION_GROUP_RULES: ReadonlyArray<CommandActionGroupRule> = [
       command.includes("addtoworkspace") ||
       command.includes("togglefavorite") ||
       command.includes("clonerepo"),
-    group: "topology"
+    group: "topology",
   },
   {
     match: (command) => command.includes("delete"),
-    group: "danger"
+    group: "danger",
   },
   {
     match: (command) =>
-      command.includes("filter") ||
-      command.includes("hide") ||
-      command.includes("show"),
-    group: "view"
-  }
+      command.includes("filter") || command.includes("hide") || command.includes("show"),
+    group: "view",
+  },
 ];
 
 const ACTION_GROUP_SECTION_DEFAULT_BY_NODE_KIND: Record<ExplorerNodeKind, number> = {
@@ -351,7 +369,7 @@ const ACTION_GROUP_SECTION_DEFAULT_BY_NODE_KIND: Record<ExplorerNodeKind, number
   container: 3,
   interface: 1,
   link: 2,
-  other: 1
+  other: 1,
 };
 
 const ACTION_GROUP_SECTION_BY_NODE_KIND: Partial<
@@ -366,19 +384,19 @@ const ACTION_GROUP_SECTION_BY_NODE_KIND: Partial<
     sharing: 3,
     inspect: 3,
     tools: 3,
-    danger: 5
+    danger: 5,
   },
   container: {
     lifecycle: 1,
     save: 1,
     access: 2,
     inspect: 2,
-    network: 2
+    network: 2,
   },
   link: {
     sharing: 1,
-    copy: 1
-  }
+    copy: 1,
+  },
 };
 
 interface SectionTreeProps {
@@ -564,7 +582,7 @@ function actionGroupLabel(groupId: ActionGroupId): string {
     tools: "Tools",
     view: "View",
     danger: "Danger",
-    other: "Other"
+    other: "Other",
   };
   return labels[groupId];
 }
@@ -583,7 +601,7 @@ function actionGroupIcon(groupId: ActionGroupId): SvgIconComponent {
     tools: BuildIcon,
     view: FilterAltIcon,
     danger: DeleteOutlineIcon,
-    other: BuildIcon
+    other: BuildIcon,
   };
   return icons[groupId];
 }
@@ -597,7 +615,7 @@ function sortGroupActions(groupId: ActionGroupId, actions: ExplorerAction[]): Ex
     ["containerlab.lab.graph.topoviewer", 1],
     ["containerlab.lab.graph.drawio.interactive", 2],
     ["containerlab.lab.graph.drawio.horizontal", 3],
-    ["containerlab.lab.graph.drawio.vertical", 4]
+    ["containerlab.lab.graph.drawio.vertical", 4],
   ]);
 
   return [...actions].sort((a, b) => {
@@ -610,7 +628,10 @@ function sortGroupActions(groupId: ActionGroupId, actions: ExplorerAction[]): Ex
   });
 }
 
-function groupActions(actions: ExplorerAction[], nodeKind: ExplorerNodeKind): ExplorerActionGroup[] {
+function groupActions(
+  actions: ExplorerAction[],
+  nodeKind: ExplorerNodeKind
+): ExplorerActionGroup[] {
   const grouped = new Map<ActionGroupId, ExplorerAction[]>();
   const order = ACTION_GROUP_ORDER_BY_NODE_KIND[nodeKind] ?? ACTION_GROUP_ORDER_DEFAULT;
 
@@ -625,7 +646,7 @@ function groupActions(actions: ExplorerAction[], nodeKind: ExplorerNodeKind): Ex
     .map((groupId) => ({
       id: groupId,
       label: actionGroupLabel(groupId),
-      actions: sortGroupActions(groupId, grouped.get(groupId) ?? [])
+      actions: sortGroupActions(groupId, grouped.get(groupId) ?? []),
     }))
     .filter((group) => group.actions.length > 0);
 }
@@ -667,7 +688,11 @@ function withSectionDividers(
       continue;
     }
     if (items.length > 0 && previousSection !== null && section !== previousSection) {
-      items.push({ id: `divider:${nodeKind}:${group.id}:${items.length}`, label: "", divider: true });
+      items.push({
+        id: `divider:${nodeKind}:${group.id}:${items.length}`,
+        label: "",
+        divider: true,
+      });
     }
     items.push(...rendered);
     previousSection = section;
@@ -736,7 +761,7 @@ function toContextMenuItem(
     label: action.label,
     icon: <ActionIcon fontSize="small" />,
     danger: Boolean(action.destructive),
-    onClick: () => onInvokeAction(action)
+    onClick: () => onInvokeAction(action),
   };
 }
 
@@ -765,7 +790,7 @@ function buildSharingGroupChildren(
       sharingChildren.push({
         id: `group:${groupId}:divider:${action.id}`,
         label: "",
-        divider: true
+        divider: true,
       });
     }
     sharingChildren.push(toContextMenuItem(action, onInvokeAction));
@@ -793,7 +818,7 @@ function toGroupMenuItem(
     id: `group:${group.id}`,
     label: group.label,
     icon: <GroupIcon fontSize="small" />,
-    children
+    children,
   };
 }
 
@@ -821,14 +846,14 @@ function buildInterfaceMenuItems(
       interfaceItems.push({
         id: `group:interface:timing-start:${action.id}`,
         label: "",
-        divider: true
+        divider: true,
       });
     }
     if (!isTimingAction && inTimingGroup) {
       interfaceItems.push({
         id: `group:interface:timing-end:${action.id}`,
         label: "",
-        divider: true
+        divider: true,
       });
     }
 
@@ -854,7 +879,10 @@ function buildNodeContextMenuItems(
   );
 }
 
-function filterNodeMenuActions(nodeActions: ExplorerAction[], nodeKind: ExplorerNodeKind): ExplorerAction[] {
+function filterNodeMenuActions(
+  nodeActions: ExplorerAction[],
+  nodeKind: ExplorerNodeKind
+): ExplorerAction[] {
   if (nodeKind !== "lab") {
     return nodeActions;
   }
@@ -863,10 +891,7 @@ function filterNodeMenuActions(nodeActions: ExplorerAction[], nodeKind: Explorer
   );
 }
 
-function useExplorerNodeMenu(params: {
-  hasActions: boolean;
-  hasContextMenuItems: boolean;
-}) {
+function useExplorerNodeMenu(params: { hasActions: boolean; hasContextMenuItems: boolean }) {
   const { hasActions, hasContextMenuItems } = params;
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const [menuOpenToLeft, setMenuOpenToLeft] = useState(false);
@@ -896,7 +921,9 @@ function useExplorerNodeMenu(params: {
       }
       event.preventDefault();
       event.stopPropagation();
-      const trigger = event.currentTarget.querySelector<HTMLElement>('[data-node-actions-trigger="true"]');
+      const trigger = event.currentTarget.querySelector<HTMLElement>(
+        '[data-node-actions-trigger="true"]'
+      );
       openMenuFromElement(trigger ?? event.currentTarget, true);
     },
     [hasActions, openMenuFromElement]
@@ -907,30 +934,33 @@ function useExplorerNodeMenu(params: {
     setMenuPosition(null);
   }, []);
 
-  const handleBackdropContextMenu = useCallback((event: MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const handleBackdropContextMenu = useCallback(
+    (event: MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
 
-    const relayTarget = document
-      .elementsFromPoint(event.clientX, event.clientY)
-      .map((element) => element.closest<HTMLElement>('[data-explorer-node-row="true"]'))
-      .find((element): element is HTMLElement => Boolean(element));
-    if (!relayTarget) {
-      return;
-    }
+      const relayTarget = document
+        .elementsFromPoint(event.clientX, event.clientY)
+        .map((element) => element.closest<HTMLElement>('[data-explorer-node-row="true"]'))
+        .find((element): element is HTMLElement => Boolean(element));
+      if (!relayTarget) {
+        return;
+      }
 
-    handleMenuClose();
-    relayTarget.dispatchEvent(
-      new window.MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        clientX: event.clientX,
-        clientY: event.clientY,
-        button: 2,
-        buttons: 2
-      })
-    );
-  }, [handleMenuClose]);
+      handleMenuClose();
+      relayTarget.dispatchEvent(
+        new window.MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          button: 2,
+          buttons: 2,
+        })
+      );
+    },
+    [handleMenuClose]
+  );
 
   const menuOpen = Boolean(menuPosition) && hasContextMenuItems;
 
@@ -941,7 +971,7 @@ function useExplorerNodeMenu(params: {
     handleMenuOpen,
     handleRowContextMenu,
     handleMenuClose,
-    handleBackdropContextMenu
+    handleBackdropContextMenu,
   };
 }
 
@@ -1004,7 +1034,7 @@ function ExplorerNodeTextBlock({
   showSecondaryLine,
   secondaryText,
   handlePrimaryAction,
-  handleShareAction
+  handleShareAction,
 }: Readonly<ExplorerNodeTextBlockProps>) {
   return (
     <Box
@@ -1024,9 +1054,9 @@ function ExplorerNodeTextBlock({
             sx: {
               maxWidth: "min(360px, calc(100vw - 24px))",
               whiteSpace: "pre-wrap",
-              wordBreak: "break-word"
-            }
-          }
+              wordBreak: "break-word",
+            },
+          },
         }}
       >
         <Stack direction="row" spacing={TREE_ROW_GAP} alignItems="center" sx={{ minWidth: 0 }}>
@@ -1036,7 +1066,7 @@ function ExplorerNodeTextBlock({
               flex: `0 0 ${NODE_MARKER_SLOT_PX}px`,
               display: "flex",
               alignItems: "center",
-              justifyContent: "center"
+              justifyContent: "center",
             }}
           >
             {leadingIcon && (
@@ -1052,7 +1082,7 @@ function ExplorerNodeTextBlock({
                   height: 8,
                   borderRadius: "50%",
                   flex: "0 0 auto",
-                  bgcolor: statusColor(node.statusIndicator)
+                  bgcolor: statusColor(node.statusIndicator),
                 }}
               />
             )}
@@ -1118,7 +1148,7 @@ function ExplorerNodeActions({
   menuOpenToLeft,
   handleMenuOpen,
   handleMenuClose,
-  handleBackdropContextMenu
+  handleBackdropContextMenu,
 }: Readonly<ExplorerNodeActionsProps>) {
   if (!hasActions) {
     return null;
@@ -1152,16 +1182,22 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
   const hasEntryTooltip = Boolean(node.tooltip);
   const leadingIcon = nodeLeadingIcon(node, sectionId);
   const nodeKind = nodeKindFromContext(node.contextValue);
-  const menuActions = useMemo(() => filterNodeMenuActions(node.actions, nodeKind), [node.actions, nodeKind]);
+  const menuActions = useMemo(
+    () => filterNodeMenuActions(node.actions, nodeKind),
+    [node.actions, nodeKind]
+  );
   const hasActions = menuActions.length > 0;
   const contextMenuItems = useMemo<ContextMenuItem[]>(
     () => buildNodeContextMenuItems(menuActions, nodeKind, onInvokeAction),
     [menuActions, nodeKind, onInvokeAction]
   );
   const secondaryText = node.description ?? node.statusDescription;
-  const isContainer = node.contextValue === "containerlabContainer" || node.contextValue === "containerlabContainerGroup";
+  const isContainer =
+    node.contextValue === "containerlabContainer" ||
+    node.contextValue === "containerlabContainerGroup";
   const isInterface =
-    node.contextValue === "containerlabInterfaceUp" || node.contextValue === "containerlabInterfaceDown";
+    node.contextValue === "containerlabInterfaceUp" ||
+    node.contextValue === "containerlabInterfaceDown";
   const inlineContainerStatus = isContainer ? secondaryText?.trim() : undefined;
   const showSecondaryLine = Boolean(secondaryText) && !isContainer && !isInterface;
   const showStatusDot = Boolean(node.statusIndicator) && !isInterface;
@@ -1174,10 +1210,10 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
     handleMenuOpen,
     handleRowContextMenu,
     handleMenuClose,
-    handleBackdropContextMenu
+    handleBackdropContextMenu,
   } = useExplorerNodeMenu({
     hasActions,
-    hasContextMenuItems: contextMenuItems.length > 0
+    hasContextMenuItems: contextMenuItems.length > 0,
   });
   const handlePrimaryAction = usePrimaryActionHandler(node.primaryAction, onInvokeAction);
   const handleShareAction = useShareActionHandler(node.shareAction, onInvokeAction);
@@ -1193,8 +1229,8 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
         width: "100%",
         borderRadius: 0.5,
         ...(menuOpen && {
-          bgcolor: (theme: Theme) => theme.alpha(theme.palette.primary.main, 0.12)
-        })
+          bgcolor: (theme: Theme) => theme.alpha(theme.palette.primary.main, 0.12),
+        }),
       }}
     >
       <ExplorerNodeTextBlock
@@ -1240,7 +1276,7 @@ function SectionTreeNode({
   depth,
   expandedItems,
   onToggleExpanded,
-  onInvokeAction
+  onInvokeAction,
 }: Readonly<SectionTreeNodeProps>) {
   const hasChildren = node.children.length > 0;
   const isExpanded = expandedItems.includes(node.id);
@@ -1259,7 +1295,7 @@ function SectionTreeNode({
             flex: `0 0 ${TREE_DISCLOSURE_SLOT_PX}px`,
             display: "flex",
             justifyContent: "center",
-            alignItems: "center"
+            alignItems: "center",
           }}
         >
           {hasChildren && (
@@ -1269,7 +1305,7 @@ function SectionTreeNode({
                 width: TREE_DISCLOSURE_SLOT_PX,
                 height: TREE_DISCLOSURE_SLOT_PX,
                 p: 0,
-                color: COLOR_TEXT_PRIMARY
+                color: COLOR_TEXT_PRIMARY,
               }}
               onClick={(event) => {
                 event.preventDefault();
@@ -1278,7 +1314,11 @@ function SectionTreeNode({
               }}
               aria-label={isExpanded ? `Collapse ${node.label}` : `Expand ${node.label}`}
             >
-              {isExpanded ? <ExpandMoreIcon fontSize="inherit" /> : <ChevronRightIcon fontSize="inherit" />}
+              {isExpanded ? (
+                <ExpandMoreIcon fontSize="inherit" />
+              ) : (
+                <ChevronRightIcon fontSize="inherit" />
+              )}
             </IconButton>
           )}
         </Box>
@@ -1311,7 +1351,7 @@ function SectionTree({
   section,
   expandedItems,
   onExpandedItemsChange,
-  onInvokeAction
+  onInvokeAction,
 }: Readonly<SectionTreeProps>) {
   const toggleExpanded = useCallback(
     (nodeId: string) => {
@@ -1396,8 +1436,8 @@ function ResizeDivider({ aboveId, belowId, onResizeStart }: Readonly<ResizeDivid
         alignItems: "center",
         justifyContent: "center",
         "&:hover": {
-          bgcolor: (theme: Theme) => theme.alpha(theme.palette.primary.main, 0.18)
-        }
+          bgcolor: (theme: Theme) => theme.alpha(theme.palette.primary.main, 0.18),
+        },
       }}
     />
   );
@@ -1427,10 +1467,13 @@ function usePaneResize(
       const headerHeight = 28;
       const dividerCount = Math.max(0, expandedIds.length - 1);
       const containerHeight = container.clientHeight;
-      const availableBody = containerHeight - expandedIds.length * headerHeight - dividerCount * RESIZE_DIVIDER_HEIGHT_PX;
+      const availableBody =
+        containerHeight -
+        expandedIds.length * headerHeight -
+        dividerCount * RESIZE_DIVIDER_HEIGHT_PX;
 
-      const initialAboveRatio = heightRatioBySection[aboveId] ?? (1 / expandedIds.length);
-      const initialBelowRatio = heightRatioBySection[belowId] ?? (1 / expandedIds.length);
+      const initialAboveRatio = heightRatioBySection[aboveId] ?? 1 / expandedIds.length;
+      const initialBelowRatio = heightRatioBySection[belowId] ?? 1 / expandedIds.length;
       const combinedRatio = initialAboveRatio + initialBelowRatio;
 
       const onMouseMove = (ev: globalThis.MouseEvent) => {
@@ -1455,7 +1498,7 @@ function usePaneResize(
         setHeightRatioBySection((current) => ({
           ...current,
           [aboveId]: newAboveRatio,
-          [belowId]: newBelowRatio
+          [belowId]: newBelowRatio,
         }));
       };
 
@@ -1469,7 +1512,13 @@ function usePaneResize(
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
     },
-    [containerRef, heightRatioBySection, setHeightRatioBySection, collapsedBySection, orderedSectionIds]
+    [
+      containerRef,
+      heightRatioBySection,
+      setHeightRatioBySection,
+      collapsedBySection,
+      orderedSectionIds,
+    ]
   );
 
   return { isResizing, handleResizeStart };
@@ -1508,7 +1557,7 @@ function getSectionPaperSx(isDropTarget: boolean, flexStyle: string) {
     border: "none",
     boxShadow: isDropTarget
       ? (theme: Theme) => `inset 0 0 0 1px ${theme.alpha(theme.palette.primary.main, 0.35)}`
-      : "none"
+      : "none",
   };
 }
 
@@ -1527,7 +1576,7 @@ function getSectionHeaderSx(_isCollapsed: boolean, isBeingDragged: boolean) {
     bgcolor: (theme: Theme) =>
       isBeingDragged
         ? theme.alpha(theme.palette.primary.main, 0.1)
-        : theme.alpha(theme.palette.background.default, 0.55)
+        : theme.alpha(theme.palette.background.default, 0.55),
   };
 }
 
@@ -1547,7 +1596,7 @@ function ExplorerSectionCard({
   onInvokeAction,
   onExpandedItemsChange,
   onExpandAllInSection,
-  onCollapseAllInSection
+  onCollapseAllInSection,
 }: Readonly<ExplorerSectionCardProps>) {
   const expandableIds = useMemo(() => flattenExpandableNodeIds(section.nodes), [section.nodes]);
 
@@ -1583,7 +1632,11 @@ function ExplorerSectionCard({
           aria-label={isCollapsed ? `Expand ${section.label}` : `Collapse ${section.label}`}
           sx={{ color: COLOR_TEXT_PRIMARY, p: 0.25 }}
         >
-          {isCollapsed ? <ChevronRightIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+          {isCollapsed ? (
+            <ChevronRightIcon fontSize="small" />
+          ) : (
+            <ExpandMoreIcon fontSize="small" />
+          )}
         </IconButton>
 
         <Box
@@ -1613,7 +1666,11 @@ function ExplorerSectionCard({
                 }
               }}
             >
-              {allExpanded ? <ChevronRightIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+              {allExpanded ? (
+                <ChevronRightIcon fontSize="small" />
+              ) : (
+                <ExpandMoreIcon fontSize="small" />
+              )}
             </IconButton>
           </Tooltip>
         )}
@@ -1646,7 +1703,7 @@ export function ContainerlabExplorerView() {
     Partial<Record<ExplorerSectionId, string[]>>
   >({
     runningLabs: [],
-    localLabs: []
+    localLabs: [],
   });
   const [filterText, setFilterText] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -1746,31 +1803,34 @@ export function ContainerlabExplorerView() {
   }, []);
 
   useMessageListener<ExplorerIncomingMessage>(
-    useCallback((message) => {
-      switch (message.command) {
-        case "snapshot":
-          handleSnapshotMessage(message);
-          return;
-        case "filterState":
-          handleFilterStateMessage(message);
-          return;
-        case "uiState":
-          handleUiStateMessage(message);
-          return;
-        case "error":
-          handleErrorMessage(message);
-          return;
-        default:
-          break;
-      }
-    }, [handleErrorMessage, handleFilterStateMessage, handleSnapshotMessage, handleUiStateMessage])
+    useCallback(
+      (message) => {
+        switch (message.command) {
+          case "snapshot":
+            handleSnapshotMessage(message);
+            return;
+          case "filterState":
+            handleFilterStateMessage(message);
+            return;
+          case "uiState":
+            handleUiStateMessage(message);
+            return;
+          case "error":
+            handleErrorMessage(message);
+            return;
+          default:
+            break;
+        }
+      },
+      [handleErrorMessage, handleFilterStateMessage, handleSnapshotMessage, handleUiStateMessage]
+    )
   );
 
   const invokeAction = useCallback(
     (action: ExplorerAction) => {
       postMessage({
         command: "invokeAction",
-        actionRef: action.actionRef
+        actionRef: action.actionRef,
       });
     },
     [postMessage]
@@ -1799,9 +1859,12 @@ export function ContainerlabExplorerView() {
     [postMessage]
   );
 
-  const handleExpandedItemsChange = useCallback((sectionId: ExplorerSectionId, itemIds: string[]) => {
-    setExpandedBySection((current) => ({ ...current, [sectionId]: itemIds }));
-  }, []);
+  const handleExpandedItemsChange = useCallback(
+    (sectionId: ExplorerSectionId, itemIds: string[]) => {
+      setExpandedBySection((current) => ({ ...current, [sectionId]: itemIds }));
+    },
+    []
+  );
 
   const expandAllInSection = useCallback((sectionId: ExplorerSectionId, nodes: ExplorerNode[]) => {
     setExpandedBySection((current) => ({ ...current, [sectionId]: flattenNodeIds(nodes) }));
@@ -1832,23 +1895,31 @@ export function ContainerlabExplorerView() {
 
   const orderedSectionIds = useMemo(() => orderedSections.map((s) => s.id), [orderedSections]);
 
-  const toggleSectionCollapsed = useCallback((sectionId: ExplorerSectionId) => {
-    setCollapsedBySection((current) => {
-      const wasCollapsed = current[sectionId] ?? false;
-      const next = { ...current, [sectionId]: !wasCollapsed };
+  const toggleSectionCollapsed = useCallback(
+    (sectionId: ExplorerSectionId) => {
+      setCollapsedBySection((current) => {
+        const wasCollapsed = current[sectionId] ?? false;
+        const next = { ...current, [sectionId]: !wasCollapsed };
 
-      const expandedAfter = orderedSectionIds.filter(
-        (id) => next[id] !== true && !FIXED_HEIGHT_SECTIONS.has(id)
-      );
-      setHeightRatioBySection((currentRatios) => normalizeHeightRatios(currentRatios, expandedAfter));
+        const expandedAfter = orderedSectionIds.filter(
+          (id) => next[id] !== true && !FIXED_HEIGHT_SECTIONS.has(id)
+        );
+        setHeightRatioBySection((currentRatios) =>
+          normalizeHeightRatios(currentRatios, expandedAfter)
+        );
 
-      return next;
-    });
-  }, [orderedSectionIds]);
+        return next;
+      });
+    },
+    [orderedSectionIds]
+  );
 
-  const setSectionRef = useCallback((sectionId: ExplorerSectionId, element: HTMLDivElement | null) => {
-    sectionRefs.current[sectionId] = element;
-  }, []);
+  const setSectionRef = useCallback(
+    (sectionId: ExplorerSectionId, element: HTMLDivElement | null) => {
+      sectionRefs.current[sectionId] = element;
+    },
+    []
+  );
 
   const handleSectionDragStart = useCallback(
     (sectionId: ExplorerSectionId) => (event: DragEvent<HTMLDivElement>) => {
@@ -1940,7 +2011,7 @@ export function ContainerlabExplorerView() {
       sectionOrder,
       collapsedBySection,
       expandedBySection,
-      heightRatioBySection
+      heightRatioBySection,
     };
 
     if (uiStateTimeoutRef.current !== null) {
@@ -1950,10 +2021,17 @@ export function ContainerlabExplorerView() {
       uiStateTimeoutRef.current = null;
       postMessage({
         command: "persistUiState",
-        state: uiState
+        state: uiState,
       });
     }, UI_STATE_UPDATE_DEBOUNCE_MS);
-  }, [sectionOrder, collapsedBySection, expandedBySection, heightRatioBySection, uiStateHydrated, postMessage]);
+  }, [
+    sectionOrder,
+    collapsedBySection,
+    expandedBySection,
+    heightRatioBySection,
+    uiStateHydrated,
+    postMessage,
+  ]);
 
   return (
     <Box
@@ -1971,7 +2049,7 @@ export function ContainerlabExplorerView() {
         pt: 1.5,
         px: 0,
         pb: 0,
-        gap: 1.5
+        gap: 1.5,
       }}
     >
       {errorMessage !== null && errorMessage.length > 0 && (
@@ -1987,7 +2065,7 @@ export function ContainerlabExplorerView() {
         sx={{
           px: 1.5,
           py: 0.5,
-          bgcolor: "background.paper"
+          bgcolor: "background.paper",
         }}
       >
         <TextField
@@ -2003,8 +2081,8 @@ export function ContainerlabExplorerView() {
                   <FilterAltIcon fontSize="small" />
                 </InputAdornment>
               ),
-              endAdornment: undefined
-            }
+              endAdornment: undefined,
+            },
           }}
         />
       </Stack>
@@ -2017,7 +2095,7 @@ export function ContainerlabExplorerView() {
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
-          ...(isResizing && { cursor: "row-resize", userSelect: "none" })
+          ...(isResizing && { cursor: "row-resize", userSelect: "none" }),
         }}
       >
         {orderedSections.map((section, index) => {
@@ -2033,13 +2111,16 @@ export function ContainerlabExplorerView() {
 
           return (
             <Box key={section.id} sx={{ display: "contents" }}>
-              {isExpanded && prevExpandedId && !FIXED_HEIGHT_SECTIONS.has(section.id) && !FIXED_HEIGHT_SECTIONS.has(prevExpandedId) && (
-                <ResizeDivider
-                  aboveId={prevExpandedId}
-                  belowId={section.id}
-                  onResizeStart={handleResizeStart}
-                />
-              )}
+              {isExpanded &&
+                prevExpandedId &&
+                !FIXED_HEIGHT_SECTIONS.has(section.id) &&
+                !FIXED_HEIGHT_SECTIONS.has(prevExpandedId) && (
+                  <ResizeDivider
+                    aboveId={prevExpandedId}
+                    belowId={section.id}
+                    onResizeStart={handleResizeStart}
+                  />
+                )}
               <ExplorerSectionCard
                 section={section}
                 expandedItems={expandedBySection[section.id] ?? []}

@@ -19,7 +19,7 @@ export const Section: React.FC<SectionProps> = ({
   title,
   children,
   hasBorder = true,
-  inherited
+  inherited,
 }) => (
   <>
     <Box>

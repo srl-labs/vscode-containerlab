@@ -22,7 +22,7 @@ export const CtrStateIcons = {
   RUNNING: "icons/running.svg",
   STOPPED: "icons/stopped.svg",
   PARTIAL: "icons/partial.svg",
-  UNDEPLOYED: "icons/undeployed.svg"
+  UNDEPLOYED: "icons/undeployed.svg",
 } as const;
 
 // Enum to store interface state icons.
@@ -30,7 +30,7 @@ export const IntfStateIcons = {
   UP: "icons/ethernet-port-green.svg",
   DOWN: "icons/ethernet-port-red.svg",
   LIGHT: "icons/ethernet-port-light.svg",
-  DARK: "icons/ethernet-port-dark.svg"
+  DARK: "icons/ethernet-port-dark.svg",
 } as const;
 
 /**

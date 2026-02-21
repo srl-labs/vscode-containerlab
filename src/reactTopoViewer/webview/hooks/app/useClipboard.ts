@@ -15,13 +15,13 @@ import type {
   TopoNode,
   TopoEdge,
   TopologyNodeData,
-  TopologyEdgeData
+  TopologyEdgeData,
 } from "../../../shared/types/graph";
 import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   TRAFFIC_RATE_NODE_TYPE,
-  GROUP_NODE_TYPE
+  GROUP_NODE_TYPE,
 } from "../../annotations/annotationNodeConverters";
 
 /** Version string for clipboard format compatibility */
@@ -112,11 +112,11 @@ function calculateCenter(positions: Array<{ x: number; y: number }>): { x: numbe
   if (positions.length === 0) return { x: 0, y: 0 };
   const sum = positions.reduce((acc, pos) => ({ x: acc.x + pos.x, y: acc.y + pos.y }), {
     x: 0,
-    y: 0
+    y: 0,
   });
   return {
     x: sum.x / positions.length,
-    y: sum.y / positions.length
+    y: sum.y / positions.length,
   };
 }
 
@@ -128,7 +128,7 @@ const ANNOTATION_TYPES = new Set<string>([
   GROUP_NODE_TYPE,
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
-  TRAFFIC_RATE_NODE_TYPE
+  TRAFFIC_RATE_NODE_TYPE,
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -228,7 +228,7 @@ function calculatePastePosition(
   const rect = container.getBoundingClientRect();
   return {
     x: (rect.width / 2 - viewport.x) / viewport.zoom,
-    y: (rect.height / 2 - viewport.y) / viewport.zoom
+    y: (rect.height / 2 - viewport.y) / viewport.zoom,
   };
 }
 
@@ -325,8 +325,8 @@ function createPastedNode(
       name: newId,
       label: newId,
       role,
-      groupId: newGroupId
-    } as TopologyNodeData
+      groupId: newGroupId,
+    } as TopologyNodeData,
   };
   Reflect.set(pastedNode, "type", resolveNodeType(node.type));
   return pastedNode;
@@ -390,8 +390,8 @@ function createPastedEdge(
     data: {
       ...data,
       sourceEndpoint,
-      targetEndpoint
-    } as TopologyEdgeData
+      targetEndpoint,
+    } as TopologyEdgeData,
   };
 }
 
@@ -407,14 +407,14 @@ function selectPastedElements(
   rfInstance.setNodes((nodes) =>
     nodes.map((n) => ({
       ...n,
-      selected: pastedNodeSet.has(n.id)
+      selected: pastedNodeSet.has(n.id),
     }))
   );
 
   rfInstance.setEdges((edges) =>
     edges.map((e) => ({
       ...e,
-      selected: pastedEdgeSet.has(e.id)
+      selected: pastedEdgeSet.has(e.id),
     }))
   );
 
@@ -443,7 +443,7 @@ function pasteNodes(clipboardNodes: SerializedNode[], ctx: PasteContext): void {
     ctx.pastedNodeIds.push(newId);
     const newPosition = {
       x: ctx.pastePosition.x + node.relativePosition.x + ctx.offset,
-      y: ctx.pastePosition.y + node.relativePosition.y + ctx.offset
+      y: ctx.pastePosition.y + node.relativePosition.y + ctx.offset,
     };
 
     const originalGroupId = readNonEmptyString(node.data.groupId);
@@ -474,7 +474,12 @@ function pasteEdges(clipboardEdges: SerializedEdge[], ctx: PasteContext): number
   for (const edge of clipboardEdges) {
     const newSource = ctx.idMapping.get(edge.source);
     const newTarget = ctx.idMapping.get(edge.target);
-    if (newSource == null || newSource.length === 0 || newTarget == null || newTarget.length === 0) {
+    if (
+      newSource == null ||
+      newSource.length === 0 ||
+      newTarget == null ||
+      newTarget.length === 0
+    ) {
       continue;
     }
 
@@ -490,7 +495,7 @@ function pasteEdges(clipboardEdges: SerializedEdge[], ctx: PasteContext): number
         source: newSource,
         target: newTarget,
         sourceEndpoint,
-        targetEndpoint
+        targetEndpoint,
       });
     } else {
       ctx.addEdge(newEdge);
@@ -530,7 +535,7 @@ function createPasteContext(
     addEdge: params.addEdge,
     onNodeCreated: params.onNodeCreated,
     onEdgeCreated: params.onEdgeCreated,
-    addNodeToGroup: params.addNodeToGroup
+    addNodeToGroup: params.addNodeToGroup,
   };
 }
 
@@ -582,7 +587,7 @@ async function performPaste(params: PerformPasteParams): Promise<boolean> {
     onNodeCreated: params.onPasteComplete ? undefined : params.onNodeCreated,
     onEdgeCreated: params.onPasteComplete ? undefined : params.onEdgeCreated,
     addNodeToGroup: params.addNodeToGroup,
-    existingNodeIds
+    existingNodeIds,
   });
 
   pasteNodes(clipboardData.nodes, ctx);
@@ -611,7 +616,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
     getNodeMembership,
     addNodeToGroup,
     rfInstance,
-    onPasteComplete
+    onPasteComplete,
   } = options;
   const { addNode, addEdge } = useGraphActions();
   const lastPasteTimeRef = useRef(0);
@@ -676,13 +681,13 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
           position: { ...node.position },
           relativePosition: {
             x: node.position.x - origin.x,
-            y: node.position.y - origin.y
+            y: node.position.y - origin.y,
           },
           type: node.type,
           // Preserve top-level dimensions for annotation nodes (groups, shapes, text)
           width: node.width,
           height: node.height,
-          zIndex: node.zIndex
+          zIndex: node.zIndex,
         };
       }
     );
@@ -692,7 +697,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        data: { ...(isRecord(edge.data) ? edge.data : {}) }
+        data: { ...(isRecord(edge.data) ? edge.data : {}) },
       })
     );
 
@@ -701,7 +706,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
       origin,
       nodes: serializedNodes,
       edges: serializedEdges,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     try {
@@ -731,7 +736,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
         onNodeCreated,
         onEdgeCreated,
         addNodeToGroup,
-        onPasteComplete
+        onPasteComplete,
       });
     },
     [
@@ -742,7 +747,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
       onNodeCreated,
       onEdgeCreated,
       addNodeToGroup,
-      onPasteComplete
+      onPasteComplete,
     ]
   );
 

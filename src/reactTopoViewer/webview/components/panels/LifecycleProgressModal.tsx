@@ -13,7 +13,11 @@ import DialogTitle from "@mui/material/DialogTitle";
 import LinearProgress from "@mui/material/LinearProgress";
 import Typography from "@mui/material/Typography";
 
-import type { LifecycleLogEntry, LifecycleStatus, ProcessingMode } from "../../stores/topoViewerStore";
+import type {
+  LifecycleLogEntry,
+  LifecycleStatus,
+  ProcessingMode,
+} from "../../stores/topoViewerStore";
 
 interface LifecycleProgressModalProps {
   isOpen: boolean;
@@ -54,10 +58,7 @@ function getStatusColor(status: LifecycleStatus): "primary" | "success" | "error
   return "primary";
 }
 
-function renderStatusIcon(
-  status: LifecycleStatus,
-  isProcessing: boolean
-): React.ReactElement {
+function renderStatusIcon(status: LifecycleStatus, isProcessing: boolean): React.ReactElement {
   if (isProcessing) {
     return <CircularProgress size={20} thickness={5} />;
   }
@@ -70,10 +71,7 @@ function renderStatusIcon(
   return <AutorenewIcon color="primary" sx={{ fontSize: 20 }} />;
 }
 
-function renderStatusChipIcon(
-  status: LifecycleStatus,
-  isProcessing: boolean
-): React.ReactElement {
+function renderStatusChipIcon(status: LifecycleStatus, isProcessing: boolean): React.ReactElement {
   if (isProcessing) {
     return <AutorenewIcon fontSize="small" />;
   }
@@ -95,7 +93,7 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
   labName,
   logs,
   onClose,
-  onCancel
+  onCancel,
 }) => {
   const logContainerRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -126,14 +124,14 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
         backdrop: {
           sx: {
             backdropFilter: "blur(2px)",
-            backgroundColor: "rgba(0, 0, 0, 0.35)"
-          }
+            backgroundColor: "rgba(0, 0, 0, 0.35)",
+          },
         },
         paper: {
           sx: {
-            overflow: "hidden"
-          }
-        }
+            overflow: "hidden",
+          },
+        },
       }}
     >
       <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1.25, py: 1.5 }}>
@@ -176,7 +174,7 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
             minHeight: 220,
             maxHeight: 320,
             overflowY: "auto",
-            p: 1.25
+            p: 1.25,
           }}
         >
           {logs.length === 0 && (
@@ -194,7 +192,7 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
                   "SFMono-Regular, Consolas, 'Liberation Mono', Menlo, Courier, monospace",
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
-                lineHeight: 1.4
+                lineHeight: 1.4,
               }}
             >
               {entry.line}

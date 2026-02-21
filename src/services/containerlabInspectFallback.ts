@@ -69,7 +69,9 @@ function parseInspectDataJson(stdout: string): Record<string, ClabDetailedJSON[]
   return result;
 }
 
-function isClabInspectInterfaceEntry(value: unknown): value is ClabInspectInterfaceJSON["interfaces"][number] {
+function isClabInspectInterfaceEntry(
+  value: unknown
+): value is ClabInspectInterfaceJSON["interfaces"][number] {
   if (!isRecord(value)) return false;
   return (
     typeof value.name === "string" &&
@@ -333,7 +335,9 @@ function findLabPathForContainer(containerName: string): string | undefined {
     const container = labContainers.find((c) => c.Names[0] === containerName);
     if (container) {
       // The topo-file is stored as a property on the array
-      return getArrayMetadataString(labContainers, "topo-file") ?? container.Labels["clab-topo-file"];
+      return (
+        getArrayMetadataString(labContainers, "topo-file") ?? container.Labels["clab-topo-file"]
+      );
     }
   }
   return undefined;
@@ -379,9 +383,9 @@ function toInterfaceSnapshot(raw: ClabInspectInterfaceJSON[]): ClabInterfaceSnap
           alias: iface.alias || "",
           mac: iface.mac || "",
           mtu: iface.mtu || 0,
-          ifindex: iface.ifindex || 0
+          ifindex: iface.ifindex || 0,
         }) as ClabInterfaceSnapshotEntry
-    )
+    ),
   }));
 }
 
@@ -416,7 +420,7 @@ export function getInterfaceSnapshot(
   // Update cache
   interfaceCache.set(cacheKey, {
     timestamp: Date.now(),
-    interfaces
+    interfaces,
   });
 
   return interfaces;

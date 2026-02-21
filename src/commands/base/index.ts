@@ -2,12 +2,17 @@
  * Base command classes and utilities
  */
 
-export { Command, execCommandInTerminal, execCommandInOutput, cancelActiveCommand } from "../command";
+export {
+  Command,
+  execCommandInTerminal,
+  execCommandInOutput,
+  cancelActiveCommand,
+} from "../command";
 export type {
   SpinnerOptions,
   TerminalOptions,
   CmdOptions,
   SpinnerMsg,
-  CommandFailureHandler
+  CommandFailureHandler,
 } from "../command";
 export { ClabCommand } from "../clabCommand";

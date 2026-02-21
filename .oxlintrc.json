@@ -149,7 +149,19 @@
               "error"
             ]
           }
-        ]
+        ],
+        "promise/no-multiple-resolved": "error",
+        "promise/no-new-statics": "error",
+        "promise/valid-params": "error",
+        "unicorn/no-useless-spread": "error",
+        "unicorn/no-useless-length-check": "error",
+        "unicorn/no-unnecessary-await": "error",
+        "unicorn/no-await-in-promise-methods": "error",
+        "unicorn/no-single-promise-in-promise-methods": "error",
+        "unicorn/no-invalid-remove-event-listener": "error",
+        "oxc/only-used-in-recursion": "error",
+        "oxc/uninvoked-array-callback": "error",
+        "oxc/missing-throw": "error"
       },
       "globals": {
         "console": "readonly",
@@ -168,7 +180,10 @@
       },
       "plugins": [
         "typescript",
-        "import"
+        "import",
+        "promise",
+        "unicorn",
+        "oxc"
       ]
     },
     {
@@ -219,11 +234,20 @@
         "react/no-unsafe": "off",
         "react/react-in-jsx-scope": "off",
         "react-hooks/rules-of-hooks": "error",
-        "react-hooks/exhaustive-deps": "warn"
+        "react-hooks/exhaustive-deps": "warn",
+        "react-perf/jsx-no-jsx-as-prop": "warn",
+        "react-perf/jsx-no-new-array-as-prop": "warn",
+        "react-perf/jsx-no-new-function-as-prop": "warn",
+        "react-perf/jsx-no-new-object-as-prop": "warn",
+        "react/jsx-no-constructed-context-values": "error",
+        "react/forward-ref-uses-ref": "error",
+        "react/checked-requires-onchange-or-readonly": "error",
+        "react/jsx-no-useless-fragment": "warn"
       },
       "plugins": [
         "react",
-        "jsx-a11y"
+        "jsx-a11y",
+        "react-perf"
       ]
     },
     {

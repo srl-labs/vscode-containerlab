@@ -9,7 +9,7 @@ export {
   getNumber,
   getBoolean,
   getStringArray,
-  getRecord
+  getRecord,
 } from "../typeHelpers";
 
 // Annotation migrations

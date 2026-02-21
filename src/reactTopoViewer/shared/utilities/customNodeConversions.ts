@@ -5,7 +5,7 @@
 import type {
   NodeEditorData,
   CustomTemplateEditorData,
-  CustomNodeTemplate
+  CustomNodeTemplate,
 } from "../types/editors";
 
 /**
@@ -75,7 +75,7 @@ function buildCommonTemplateFields(data: NodeEditorData) {
 
     // Components tab fields (SROS)
     isDistributed: data.isDistributed,
-    components: data.components
+    components: data.components,
   };
 }
 
@@ -150,7 +150,7 @@ export function convertCustomTemplateToEditorData(
 
     // Components tab fields (SROS)
     isDistributed: template.isDistributed,
-    components: template.components
+    components: template.components,
   };
 }
 
@@ -170,7 +170,7 @@ export function convertEditorDataToSaveData(
     kind: data.kind ?? "",
 
     setDefault: data.isDefaultCustomNode,
-    ...buildCommonTemplateFields(data)
+    ...buildCommonTemplateFields(data),
   };
 }
 
@@ -189,7 +189,7 @@ export function convertEditorDataToTemplateData(
     kind: data.kind ?? "",
     originalName: originalTemplate?.originalName,
     isDefaultCustomNode: data.isDefaultCustomNode,
-    ...buildCommonTemplateFields(data)
+    ...buildCommonTemplateFields(data),
   };
 }
 
@@ -264,7 +264,7 @@ export function convertTemplateToEditorData(
 
     // Components tab fields (SROS)
     isDistributed: template.isDistributed,
-    components: template.components
+    components: template.components,
   };
 }
 
@@ -284,6 +284,6 @@ export function createNewTemplateEditorData(
     icon: "pe",
     baseName: "",
     interfacePattern: "",
-    isDefaultCustomNode: false
+    isDefaultCustomNode: false,
   };
 }

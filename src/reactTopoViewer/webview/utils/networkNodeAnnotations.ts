@@ -65,7 +65,7 @@ export function buildNetworkNodeAnnotations(nodes: Node[]): NetworkNodeAnnotatio
       position: node.position,
       ...(geoCoordinates !== undefined ? { geoCoordinates } : {}),
       ...(typeof data.group === "string" ? { group: data.group } : {}),
-      ...(typeof data.level === "string" ? { level: data.level } : {})
+      ...(typeof data.level === "string" ? { level: data.level } : {}),
     });
   }
 

@@ -9,7 +9,7 @@ import {
   type LogLevel,
   formatMessage,
   getCallerFileLine,
-  createLogger
+  createLogger,
 } from "../../shared/utilities/loggerUtils";
 
 let outputChannel: vscode.LogOutputChannel | undefined;
@@ -74,6 +74,7 @@ export const log = createLogger(logMessage);
  * Used by MessageRouter to handle log messages from the webview.
  */
 export function logWithLocation(level: string, message: string, fileLine?: string): void {
-  const text = fileLine === undefined || fileLine.length === 0 ? message : `${fileLine} - ${message}`;
+  const text =
+    fileLine === undefined || fileLine.length === 0 ? message : `${fileLine} - ${message}`;
   writeToChannel(toLogLevel(level), text);
 }

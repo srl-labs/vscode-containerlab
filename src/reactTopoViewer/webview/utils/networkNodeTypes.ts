@@ -7,7 +7,7 @@ export const SPECIAL_NETWORK_TYPES = new Set([
   "macvlan",
   "vxlan",
   "vxlan-stitch",
-  "dummy"
+  "dummy",
 ]);
 
 export const BRIDGE_NETWORK_TYPES = new Set(["bridge", "ovs-bridge"]);

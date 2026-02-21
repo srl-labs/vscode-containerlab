@@ -16,7 +16,7 @@ import {
   Paper,
   Stack,
   Typography,
-  Checkbox
+  Checkbox,
 } from "@mui/material";
 import React from "react";
 import { createRoot } from "react-dom/client";
@@ -53,34 +53,34 @@ const RESOURCE_LINKS: ReadonlyArray<{ label: string; href: string }> = [
   { label: "Containerlab Documentation", href: "https://containerlab.dev/" },
   {
     label: "VS Code Extension Documentation",
-    href: "https://containerlab.dev/manual/vsc-extension/"
+    href: "https://containerlab.dev/manual/vsc-extension/",
   },
   { label: "Browse Labs on GitHub (srl-labs)", href: "https://github.com/srl-labs/" },
   {
     label: 'Find more labs tagged with "clab-topo"',
-    href: "https://github.com/search?q=topic%3Aclab-topo++fork%3Atrue&type=repositories"
+    href: "https://github.com/search?q=topic%3Aclab-topo++fork%3Atrue&type=repositories",
   },
   { label: "Join our Discord server", href: "https://discord.gg/vAyddtaEV9" },
   {
     label: "Download cshargextcap Wireshark plugin",
-    href: "https://github.com/siemens/cshargextcap/releases/latest"
-  }
+    href: "https://github.com/siemens/cshargextcap/releases/latest",
+  },
 ];
 
 const COMMUNITY_LINKS: ReadonlyArray<{ label: string; href: string }> = [
   {
     label: "Extension Releases",
-    href: "https://github.com/srl-labs/vscode-containerlab/releases/"
+    href: "https://github.com/srl-labs/vscode-containerlab/releases/",
   },
   {
     label: "Containerlab Latest Release",
-    href: "https://github.com/srl-labs/containerlab/releases/latest"
+    href: "https://github.com/srl-labs/containerlab/releases/latest",
   },
   {
     label: "Containerlab Release History",
-    href: "https://github.com/srl-labs/containerlab/releases/"
+    href: "https://github.com/srl-labs/containerlab/releases/",
   },
-  { label: "Discord", href: "https://discord.gg/vAyddtaEV9" }
+  { label: "Discord", href: "https://discord.gg/vAyddtaEV9" },
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -92,7 +92,8 @@ function toWelcomeInitialData(value: unknown): WelcomeInitialData {
     return {};
   }
   return {
-    extensionVersion: typeof value.extensionVersion === "string" ? value.extensionVersion : undefined
+    extensionVersion:
+      typeof value.extensionVersion === "string" ? value.extensionVersion : undefined,
   };
 }
 
@@ -125,7 +126,7 @@ function WelcomePageApp(): React.JSX.Element {
           height: "100%",
           overflowY: "auto",
           backgroundColor: "background.default",
-          color: "text.primary"
+          color: "text.primary",
         }}
       >
         <Container maxWidth="xl" sx={{ py: 3 }}>
@@ -134,7 +135,7 @@ function WelcomePageApp(): React.JSX.Element {
             sx={{
               p: { xs: 2, md: 3 },
               borderColor: "divider",
-              backgroundColor: (theme) => theme.alpha(theme.palette.background.paper, 0.92)
+              backgroundColor: (theme) => theme.alpha(theme.palette.background.paper, 0.92),
             }}
           >
             <Stack spacing={3}>
@@ -147,7 +148,7 @@ function WelcomePageApp(): React.JSX.Element {
                     width: { xs: 56, md: 64 },
                     height: { xs: 56, md: 64 },
                     objectFit: "contain",
-                    flexShrink: 0
+                    flexShrink: 0,
                   }}
                 />
                 <Stack spacing={1} sx={{ minWidth: 0 }}>
@@ -155,7 +156,11 @@ function WelcomePageApp(): React.JSX.Element {
                     Welcome to Containerlab
                   </Typography>
                   <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                    <Chip size="small" variant="outlined" label={`Extension v${extensionVersion}`} />
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={`Extension v${extensionVersion}`}
+                    />
                     {COMMUNITY_LINKS.map((link) => (
                       <Chip
                         key={link.label}
@@ -266,7 +271,7 @@ function WelcomePageApp(): React.JSX.Element {
                         overflowY: "auto",
                         border: "1px solid",
                         borderColor: "divider",
-                        borderRadius: 1
+                        borderRadius: 1,
                       }}
                     >
                       {repos.map((repo) => (
@@ -279,11 +284,20 @@ function WelcomePageApp(): React.JSX.Element {
                             sx={{ alignItems: "flex-start" }}
                           >
                             <Stack spacing={0.5} sx={{ width: "100%", minWidth: 0 }}>
-                              <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                alignItems="center"
+                                sx={{ minWidth: 0 }}
+                              >
                                 <Typography
                                   component="span"
                                   variant="body2"
-                                  sx={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}
+                                  sx={{
+                                    fontWeight: 600,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  }}
                                 >
                                   {repo.name}
                                 </Typography>
@@ -294,8 +308,8 @@ function WelcomePageApp(): React.JSX.Element {
                                   label={repo.stargazers_count}
                                   sx={{
                                     "& .MuiChip-icon": {
-                                      color: "warning.main"
-                                    }
+                                      color: "warning.main",
+                                    },
                                   }}
                                 />
                               </Stack>

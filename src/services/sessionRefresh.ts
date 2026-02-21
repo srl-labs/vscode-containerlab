@@ -8,7 +8,7 @@ import {
   outputChannel,
   sshxSessions,
   gottySessions,
-  runningLabsProvider
+  runningLabsProvider,
 } from "../globals";
 
 /**
@@ -49,7 +49,7 @@ function toSshxSession(sessionData: unknown): SshxSession | undefined {
   return {
     name: typeof record.name === "string" ? record.name : undefined,
     network: typeof record.network === "string" ? record.network : undefined,
-    link: typeof record.link === "string" ? record.link : undefined
+    link: typeof record.link === "string" ? record.link : undefined,
   };
 }
 
@@ -60,7 +60,7 @@ function toGottySession(sessionData: unknown): GottySession | undefined {
     name: typeof record.name === "string" ? record.name : undefined,
     network: typeof record.network === "string" ? record.network : undefined,
     port:
-      typeof record.port === "number" || typeof record.port === "string" ? record.port : undefined
+      typeof record.port === "number" || typeof record.port === "string" ? record.port : undefined,
   };
 }
 
@@ -140,10 +140,7 @@ export async function refreshGottySessions() {
         if (session === undefined) {
           return;
         }
-        if (
-          session.port === undefined ||
-          hostname.length === 0
-        ) {
+        if (session.port === undefined || hostname.length === 0) {
           return;
         }
         const lab = extractLabName(session, "gotty");

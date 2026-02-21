@@ -20,7 +20,7 @@ import {
   addNodeToDoc,
   editNodeInDoc,
   deleteNodeFromDoc,
-  applyAnnotationData
+  applyAnnotationData,
 } from "./NodePersistenceIO";
 import type { LinkSaveData } from "./LinkPersistenceIO";
 import { addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from "./LinkPersistenceIO";
@@ -278,7 +278,7 @@ export class TopologyIO {
       direction: toOptionalNullableString(extraData.direction),
       labelBackgroundColor: toOptionalNullableString(extraData.labelBackgroundColor),
       interfacePattern: toOptionalString(extraData.interfacePattern),
-      groupId: includeGroupId ? toOptionalString(extraData.groupId) : undefined
+      groupId: includeGroupId ? toOptionalString(extraData.groupId) : undefined,
     };
   }
 
@@ -455,7 +455,7 @@ export class TopologyIO {
       macvlan: "macvlan:",
       vxlan: "vxlan:",
       "vxlan-stitch": "vxlan-stitch:",
-      dummy: "dummy"
+      dummy: "dummy",
     };
 
     const prefix = prefixMatches[typeStr];
@@ -553,7 +553,7 @@ export class TopologyIO {
         return writeYamlFile(this.doc, this.yamlFilePath, {
           fs: this.fs,
           setInternalUpdate: this.setInternalUpdate,
-          logger: this.logger
+          logger: this.logger,
         });
       })
       .catch(() => ({ success: false, error: "Save queue error" }));

@@ -8,7 +8,10 @@ import { useAnnotationHandlers } from "../../../stores/canvasStore";
 import { useGraphStore } from "../../../stores/graphStore";
 import { useIsLocked } from "../../../stores/topoViewerStore";
 import { resolveComputedColor } from "../../../utils/color";
-import { formatMegabitsPerSecond, resolveTrafficRateStats } from "../../../utils/trafficRateAnnotation";
+import {
+  formatMegabitsPerSecond,
+  resolveTrafficRateStats,
+} from "../../../utils/trafficRateAnnotation";
 
 const CHART_MIN_WIDTH = 180;
 const CHART_MIN_HEIGHT = 120;
@@ -54,7 +57,12 @@ function computeTextScale(width: number, height: number): number {
   return Math.max(0.01, Math.min(2.0, rawScale));
 }
 
-function computeFittedTextFontSize(text: string, width: number, height: number, baseSize: number): number {
+function computeFittedTextFontSize(
+  text: string,
+  width: number,
+  height: number,
+  baseSize: number
+): number {
   // Keep text fully visible by constraining font size to both width and height.
   const safeText = text.length > 0 ? text : " ";
   const horizontalPadding = 6; // left+right padding for text mode container
@@ -101,8 +109,10 @@ function resolveLayout(nodeData: TrafficRateNodeData, mode: TrafficRateMode): Tr
   const defaultHeight = mode === "text" ? TEXT_REF_HEIGHT : REF_HEIGHT;
   const nodeWidth = typeof nodeData.width === "number" ? nodeData.width : defaultWidth;
   const nodeHeight = typeof nodeData.height === "number" ? nodeData.height : defaultHeight;
-  const scale = mode === "text" ? computeTextScale(nodeWidth, nodeHeight) : computeScale(nodeWidth, nodeHeight);
-  const borderRadius = nodeData.borderRadius ?? (mode === "text" ? TEXT_BORDER_RADIUS : DEFAULT_BORDER_RADIUS);
+  const scale =
+    mode === "text" ? computeTextScale(nodeWidth, nodeHeight) : computeScale(nodeWidth, nodeHeight);
+  const borderRadius =
+    nodeData.borderRadius ?? (mode === "text" ? TEXT_BORDER_RADIUS : DEFAULT_BORDER_RADIUS);
   const padding = mode === "text" ? "1px 3px" : "6px 8px";
   return { minWidth, minHeight, nodeWidth, nodeHeight, scale, borderRadius, padding };
 }
@@ -136,7 +146,9 @@ function renderTrafficRateBody(params: {
 }): React.JSX.Element {
   if (!params.isConfigured) {
     return (
-      <div style={{ fontSize: Math.round(12 * params.scale), color: params.hintColor, marginTop: 4 }}>
+      <div
+        style={{ fontSize: Math.round(12 * params.scale), color: params.hintColor, marginTop: 4 }}
+      >
         Select node and interface in the editor.
       </div>
     );
@@ -157,7 +169,7 @@ function renderTrafficRateBody(params: {
           color: params.textColor,
           width: "100%",
           whiteSpace: "nowrap",
-          overflow: "hidden"
+          overflow: "hidden",
         }}
       >
         {params.textModeRate}
@@ -225,9 +237,15 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
   const isConfigured = nodeId.length > 0 && interfaceName.length > 0;
   const subtitle = isConfigured ? `${nodeId}:${interfaceName}` : "Double-click to configure";
   const showSubtitle = !isConfigured || mode === "chart";
-  const defaultBackgroundColor = resolveComputedColor("--vscode-editor-background", FALLBACK_BACKGROUND);
+  const defaultBackgroundColor = resolveComputedColor(
+    "--vscode-editor-background",
+    FALLBACK_BACKGROUND
+  );
   const defaultBorderColor = resolveComputedColor("--vscode-panel-border", FALLBACK_BORDER_COLOR);
-  const defaultTextColor = resolveComputedColor("--vscode-descriptionForeground", FALLBACK_TEXT_COLOR);
+  const defaultTextColor = resolveComputedColor(
+    "--vscode-descriptionForeground",
+    FALLBACK_TEXT_COLOR
+  );
   const background = getBackgroundWithOpacity(
     nodeData.backgroundColor ?? defaultBackgroundColor,
     nodeData.backgroundOpacity ?? DEFAULT_BACKGROUND_OPACITY
@@ -257,7 +275,7 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
     textColor,
     hintColor,
     textModeRate,
-    textModeFontSize
+    textModeFontSize,
   });
 
   return (
@@ -278,7 +296,7 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
         display: "flex",
         flexDirection: "column",
         cursor: "move",
-        overflow: "hidden"
+        overflow: "hidden",
       }}
     >
       <NodeResizer
@@ -300,7 +318,7 @@ const TrafficRateNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) =
             overflow: "hidden",
             textOverflow: "ellipsis",
             flexShrink: 0,
-            marginBottom: 4
+            marginBottom: 4,
           }}
         >
           {subtitle}

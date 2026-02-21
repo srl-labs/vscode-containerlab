@@ -34,7 +34,7 @@ export const BUILTIN_ICON_NAMES = new Set([
   "rgw",
   "ue",
   "cloud",
-  "client"
+  "client",
 ]);
 
 /**

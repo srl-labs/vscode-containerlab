@@ -64,7 +64,7 @@ export function useLinkEditorForm(
         originalSource: formData.source,
         originalTarget: formData.target,
         originalSourceEndpoint: formData.sourceEndpoint,
-        originalTargetEndpoint: formData.targetEndpoint
+        originalTargetEndpoint: formData.targetEndpoint,
       };
       setFormData(updatedFormData);
       setInitialData(updatedFormData);
@@ -87,6 +87,6 @@ export function useLinkEditorForm(
     handleChange,
     hasChanges,
     resetAfterApply,
-    discardChanges
+    discardChanges,
   };
 }

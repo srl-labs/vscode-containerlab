@@ -2,7 +2,7 @@ import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
   TrafficRateAnnotation,
-  GroupStyleAnnotation
+  GroupStyleAnnotation,
 } from "../../../shared/types/topology";
 
 import type { GroupEditorData } from "./groupTypes";

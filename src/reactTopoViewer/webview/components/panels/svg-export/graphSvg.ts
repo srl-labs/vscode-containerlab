@@ -64,7 +64,7 @@ export function buildGraphSvg(
     renderOptions
   );
   const nodesSvg = renderNodesToSvg(nodes, customIcons, annotationNodeTypes, {
-    nodeIconSize: renderOptions?.nodeIconSize
+    nodeIconSize: renderOptions?.nodeIconSize,
   });
 
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;

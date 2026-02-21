@@ -61,13 +61,13 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
   // Core setters
   setNodes: (nodesOrUpdater) => {
     set((state) => ({
-      nodes: typeof nodesOrUpdater === "function" ? nodesOrUpdater(state.nodes) : nodesOrUpdater
+      nodes: typeof nodesOrUpdater === "function" ? nodesOrUpdater(state.nodes) : nodesOrUpdater,
     }));
   },
 
   setEdges: (edgesOrUpdater) => {
     set((state) => ({
-      edges: typeof edgesOrUpdater === "function" ? edgesOrUpdater(state.edges) : edgesOrUpdater
+      edges: typeof edgesOrUpdater === "function" ? edgesOrUpdater(state.edges) : edgesOrUpdater,
     }));
   },
 
@@ -78,13 +78,13 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
   // React Flow change handlers
   onNodesChange: (changes) => {
     set((state) => ({
-      nodes: applyNodeChanges(changes, state.nodes)
+      nodes: applyNodeChanges(changes, state.nodes),
     }));
   },
 
   onEdgesChange: (changes) => {
     set((state) => ({
-      edges: applyEdgeChanges(changes, state.edges)
+      edges: applyEdgeChanges(changes, state.edges),
     }));
   },
 
@@ -98,14 +98,14 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
 
   removeNode: (nodeId) => {
     set((state) => ({
-      nodes: state.nodes.filter((n) => n.id !== nodeId)
+      nodes: state.nodes.filter((n) => n.id !== nodeId),
     }));
   },
 
   removeNodeAndEdges: (nodeId) => {
     set((state) => ({
       nodes: state.nodes.filter((n) => n.id !== nodeId),
-      edges: state.edges.filter((e) => e.source !== nodeId && e.target !== nodeId)
+      edges: state.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
     }));
   },
 
@@ -115,13 +115,13 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
         if (node.id !== nodeId) return node;
         const mergedData = updates.data ? { ...node.data, ...updates.data } : node.data;
         return { ...node, ...updates, data: mergedData };
-      })
+      }),
     }));
   },
 
   replaceNode: (nodeId, newNode) => {
     set((state) => ({
-      nodes: state.nodes.map((node) => (node.id === nodeId ? newNode : node))
+      nodes: state.nodes.map((node) => (node.id === nodeId ? newNode : node)),
     }));
   },
 
@@ -133,7 +133,7 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
         return {
           ...node,
           id: newId,
-          data: { ...node.data, label: nextName }
+          data: { ...node.data, label: nextName },
         };
       }),
       edges: state.edges.map((edge) => {
@@ -141,9 +141,9 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
         return {
           ...edge,
           source: edge.source === oldId ? newId : edge.source,
-          target: edge.target === oldId ? newId : edge.target
+          target: edge.target === oldId ? newId : edge.target,
         };
-      })
+      }),
     }));
   },
 
@@ -155,7 +155,7 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
         const pos = updates.get(node.id);
         if (!pos) return node;
         return { ...node, position: pos };
-      })
+      }),
     }));
   },
 
@@ -166,7 +166,7 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
         const currentData = node.data;
         const updatedData: Record<string, unknown> = {
           ...currentData,
-          extraData
+          extraData,
         };
         // Also update top-level visual properties
         if (extraData.topoViewerRole !== undefined) {
@@ -193,7 +193,7 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
               : undefined;
         }
         return { ...node, data: updatedData };
-      })
+      }),
     }));
   },
 
@@ -207,7 +207,7 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
 
   removeEdge: (edgeId) => {
     set((state) => ({
-      edges: state.edges.filter((e) => e.id !== edgeId)
+      edges: state.edges.filter((e) => e.id !== edgeId),
     }));
   },
 
@@ -215,17 +215,15 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
     set((state) => ({
       edges: state.edges.map((edge) => {
         if (edge.id !== edgeId) return edge;
-        const mergedData = updates.data
-          ? { ...edge.data, ...(updates.data) }
-          : edge.data;
+        const mergedData = updates.data ? { ...edge.data, ...updates.data } : edge.data;
         return { ...edge, ...updates, data: mergedData };
-      })
+      }),
     }));
   },
 
   updateEdgeData: (edgeId, data) => {
     get().updateEdge(edgeId, { data });
-  }
+  },
 }));
 
 // ============================================================================
@@ -262,7 +260,7 @@ export const useGraphActions = () =>
       addEdge: state.addEdge,
       removeEdge: state.removeEdge,
       updateEdge: state.updateEdge,
-      updateEdgeData: state.updateEdgeData
+      updateEdgeData: state.updateEdgeData,
     }),
     shallow
   );

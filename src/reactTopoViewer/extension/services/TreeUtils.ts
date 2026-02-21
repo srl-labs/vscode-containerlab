@@ -6,7 +6,7 @@ import {
   type ClabLabTreeNode,
   type ClabContainerTreeNode,
   type ClabInterfaceTreeNode,
-  flattenContainers
+  flattenContainers,
 } from "../../../treeView/common";
 
 function labValuesFor(
@@ -69,7 +69,7 @@ function containerMatchesNodeIdentifier(
     normalizeName(container.name),
     normalizeName(container.name_short),
     normalizeName(labelText(container.label)),
-    normalizeName(container.rootNodeName)
+    normalizeName(container.rootNodeName),
   ];
   if (candidates.some((candidate) => candidate === normalizedNode)) {
     return true;
@@ -84,10 +84,7 @@ function containerMatchesNodeIdentifier(
   const shortName = normalizeName(container.name_short);
   const label = normalizeName(labelText(container.label));
 
-  return (
-    shortName.startsWith(`${normalizedNode}-`) ||
-    label.startsWith(`${normalizedNode}-`)
-  );
+  return shortName.startsWith(`${normalizedNode}-`) || label.startsWith(`${normalizedNode}-`);
 }
 
 function sortedMatchingContainers(

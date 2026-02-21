@@ -24,7 +24,7 @@ export const KeyValueList: React.FC<KeyValueListProps> = ({
   valuePlaceholder = "Value",
   addLabel = "Add",
   disabled,
-  hideAddButton
+  hideAddButton,
 }) => {
   const entries = Object.entries(items);
 
@@ -66,7 +66,9 @@ export const KeyValueList: React.FC<KeyValueListProps> = ({
           disabled={disabled}
         />
       ))}
-      {hideAddButton !== true && <AddItemButton onAdd={handleAdd} label={addLabel} disabled={disabled} />}
+      {hideAddButton !== true && (
+        <AddItemButton onAdd={handleAdd} label={addLabel} disabled={disabled} />
+      )}
     </Box>
   );
 };
@@ -93,7 +95,7 @@ const KeyValueItem: React.FC<KeyValueItemProps> = ({
   onRemove,
   keyPlaceholder,
   valuePlaceholder,
-  disabled
+  disabled,
 }) => (
   <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
     <TextField

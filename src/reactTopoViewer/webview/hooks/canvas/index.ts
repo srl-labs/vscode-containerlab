@@ -6,7 +6,7 @@ export {
   useLinkCreation,
   useSourceNodePosition,
   useKeyboardDeleteHandlers,
-  useCanvasRefMethods
+  useCanvasRefMethods,
 } from "./useReactFlowCanvasHooks";
 
 // Canvas event handlers (React Flow integration)
@@ -36,5 +36,5 @@ export {
   generateGroupId,
   handleNodeMembershipChange,
   isGroupInsideGroup,
-  isPositionInsideGroup
+  isPositionInsideGroup,
 } from "./groupUtils";

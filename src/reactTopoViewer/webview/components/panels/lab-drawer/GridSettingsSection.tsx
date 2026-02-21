@@ -20,7 +20,7 @@ export const GridSettingsSection: React.FC<GridSettingsSectionProps> = ({
   gridLineWidth,
   onGridLineWidthChange,
   gridStyle,
-  onGridStyleChange
+  onGridStyleChange,
 }) => {
   const handleSliderChange = (_event: Event, value: number | number[]) => {
     const width = Array.isArray(value) ? value[0] : value;

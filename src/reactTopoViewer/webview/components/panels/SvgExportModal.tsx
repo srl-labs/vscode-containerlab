@@ -148,9 +148,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function createRequestId(): string {
   const bytes = new Uint8Array(8);
   globalThis.crypto.getRandomValues(bytes);
-  const random = Array.from(bytes, (byte) =>
-    byte.toString(16).padStart(2, "0"),
-  ).join("");
+  const random = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
   return `svg-export-${Date.now()}-${random}`;
 }
 
@@ -165,20 +163,14 @@ function getThresholdUnitMultiplier(unit: TrafficThresholdUnit): number {
   }
 }
 
-function formatThresholdForUnit(
-  valueBps: number,
-  unit: TrafficThresholdUnit,
-): string {
+function formatThresholdForUnit(valueBps: number, unit: TrafficThresholdUnit): string {
   const multiplier = getThresholdUnitMultiplier(unit);
   if (!Number.isFinite(valueBps) || multiplier <= 0) return "0";
   const scaled = valueBps / multiplier;
   return Number(scaled.toFixed(4)).toString();
 }
 
-function parseThreshold(
-  value: string,
-  unit: TrafficThresholdUnit,
-): number {
+function parseThreshold(value: string, unit: TrafficThresholdUnit): number {
   const parsed = Number.parseFloat(value);
   if (!Number.isFinite(parsed)) return 0;
   const multiplier = getThresholdUnitMultiplier(unit);
@@ -196,12 +188,7 @@ function getThresholdUnitStep(unit: TrafficThresholdUnit): number {
   }
 }
 
-function parseBoundedNumber(
-  value: string,
-  min: number,
-  max: number,
-  fallback: number,
-): number {
+function parseBoundedNumber(value: string, min: number, max: number, fallback: number): number {
   const parsed = Number.parseFloat(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(min, Math.min(max, parsed));
@@ -218,9 +205,7 @@ function resolveDefaultExportBaseName(labName?: string): string {
   return trimmed !== undefined && trimmed.length > 0 ? trimmed : "topology";
 }
 
-function extractEdgeInterfaceRows(
-  rfInstance: ReactFlowInstance | null,
-): EdgeInterfaceRow[] {
+function extractEdgeInterfaceRows(rfInstance: ReactFlowInstance | null): EdgeInterfaceRow[] {
   if (!rfInstance) return [];
 
   const edges = rfInstance.getEdges();
@@ -273,7 +258,7 @@ function splitInterfaceParts(endpoint: string): string[] {
 
 function getInterfaceSelectionValue(
   endpoint: string,
-  interfaceLabelOverrides: Record<string, string>,
+  interfaceLabelOverrides: Record<string, string>
 ): string {
   const override = interfaceLabelOverrides[endpoint];
   if (override.length === 0) return INTERFACE_SELECT_AUTO;
@@ -304,10 +289,7 @@ function isSvgExportResultMessage(value: unknown): value is SvgExportResultMessa
   return true;
 }
 
-function resolveInterfaceOverrideValue(
-  endpoint: string,
-  selectedValue: string,
-): string | null {
+function resolveInterfaceOverrideValue(endpoint: string, selectedValue: string): string | null {
   if (selectedValue === INTERFACE_SELECT_AUTO) return null;
   if (selectedValue === INTERFACE_SELECT_FULL) return endpoint;
   if (selectedValue.startsWith(INTERFACE_SELECT_TOKEN_PREFIX)) {
@@ -317,9 +299,7 @@ function resolveInterfaceOverrideValue(
   return null;
 }
 
-function parseGlobalInterfacePartIndex(
-  selectedValue: string,
-): number | null {
+function parseGlobalInterfacePartIndex(selectedValue: string): number | null {
   if (!selectedValue.startsWith(GLOBAL_INTERFACE_PART_INDEX_PREFIX)) return null;
   const raw = selectedValue.slice(GLOBAL_INTERFACE_PART_INDEX_PREFIX.length);
   const parsed = Number.parseInt(raw, 10);
@@ -329,7 +309,7 @@ function parseGlobalInterfacePartIndex(
 
 function resolveGlobalInterfaceOverrideValue(
   endpoint: string,
-  selectedValue: string,
+  selectedValue: string
 ): string | null {
   if (selectedValue === INTERFACE_SELECT_AUTO) return null;
   if (selectedValue === INTERFACE_SELECT_FULL) return endpoint;
@@ -341,9 +321,7 @@ function resolveGlobalInterfaceOverrideValue(
   return parts[partIndex - 1] ?? null;
 }
 
-function hasStrictlyAscendingThresholds(
-  thresholds: GrafanaTrafficThresholds,
-): boolean {
+function hasStrictlyAscendingThresholds(thresholds: GrafanaTrafficThresholds): boolean {
   return (
     thresholds.green < thresholds.yellow &&
     thresholds.yellow < thresholds.orange &&
@@ -351,9 +329,7 @@ function hasStrictlyAscendingThresholds(
   );
 }
 
-function requestGrafanaBundleExport(
-  payload: GrafanaBundlePayload,
-): Promise<string[]> {
+function requestGrafanaBundleExport(payload: GrafanaBundlePayload): Promise<string[]> {
   return new Promise((resolve, reject) => {
     let unsubscribe = () => {
       /* no-op until subscription is active */
@@ -378,23 +354,18 @@ function requestGrafanaBundleExport(
       }
 
       const files = Array.isArray(message.files)
-        ? message.files.filter(
-            (file): file is string => typeof file === "string",
-          )
+        ? message.files.filter((file): file is string => typeof file === "string")
         : [];
       resolve(files);
     });
 
-    sendCommandToExtension(
-      EXPORT_COMMANDS.EXPORT_SVG_GRAFANA_BUNDLE,
-      {
-        requestId: payload.requestId,
-        baseName: payload.baseName,
-        svgContent: payload.svgContent,
-        dashboardJson: payload.dashboardJson,
-        panelYaml: payload.panelYaml,
-      },
-    );
+    sendCommandToExtension(EXPORT_COMMANDS.EXPORT_SVG_GRAFANA_BUNDLE, {
+      requestId: payload.requestId,
+      baseName: payload.baseName,
+      svgContent: payload.svgContent,
+      dashboardJson: payload.dashboardJson,
+      panelYaml: payload.panelYaml,
+    });
   });
 }
 
@@ -415,58 +386,46 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     type: "success" | "error";
     message: string;
   } | null>(null);
-  const [grafanaSettingsTab, setGrafanaSettingsTab] =
-    useState<GrafanaSettingsTab>("general");
+  const [grafanaSettingsTab, setGrafanaSettingsTab] = useState<GrafanaSettingsTab>("general");
   const [includeAnnotations, setIncludeAnnotations] = useState(true);
   const [includeEdgeLabels, setIncludeEdgeLabels] = useState(true);
   const [exportGrafanaBundle, setExportGrafanaBundle] = useState(false);
   const [isGrafanaSettingsOpen, setIsGrafanaSettingsOpen] = useState(false);
-  const [excludeNodesWithoutLinks, setExcludeNodesWithoutLinks] =
-    useState(true);
+  const [excludeNodesWithoutLinks, setExcludeNodesWithoutLinks] = useState(true);
   const [includeGrafanaLegend, setIncludeGrafanaLegend] = useState(false);
-  const [trafficThresholds, setTrafficThresholds] =
-    useState<GrafanaTrafficThresholds>({
-      ...DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS,
-    });
-  const [trafficThresholdUnit, setTrafficThresholdUnit] =
-    useState<TrafficThresholdUnit>(DEFAULT_TRAFFIC_THRESHOLD_UNIT);
-  const [grafanaNodeSizePx, setGrafanaNodeSizePx] = useState(
-    DEFAULT_GRAFANA_NODE_SIZE_PX,
+  const [trafficThresholds, setTrafficThresholds] = useState<GrafanaTrafficThresholds>({
+    ...DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS,
+  });
+  const [trafficThresholdUnit, setTrafficThresholdUnit] = useState<TrafficThresholdUnit>(
+    DEFAULT_TRAFFIC_THRESHOLD_UNIT
   );
+  const [grafanaNodeSizePx, setGrafanaNodeSizePx] = useState(DEFAULT_GRAFANA_NODE_SIZE_PX);
   const [grafanaInterfaceSizePercent, setGrafanaInterfaceSizePercent] = useState(
-    DEFAULT_GRAFANA_INTERFACE_SIZE_PERCENT,
+    DEFAULT_GRAFANA_INTERFACE_SIZE_PERCENT
   );
   const [globalInterfaceOverrideSelection, setGlobalInterfaceOverrideSelection] =
     useState(INTERFACE_SELECT_AUTO);
   const [interfaceLinkFilter, setInterfaceLinkFilter] = useState("");
-  const [interfaceLabelOverrides, setInterfaceLabelOverrides] = useState<
-    Record<string, string>
-  >({});
-  const [backgroundOption, setBackgroundOption] =
-    useState<BackgroundOption>("transparent");
+  const [interfaceLabelOverrides, setInterfaceLabelOverrides] = useState<Record<string, string>>(
+    {}
+  );
+  const [backgroundOption, setBackgroundOption] = useState<BackgroundOption>("transparent");
   const [customBackgroundColor, setCustomBackgroundColor] = useState("#1e1e1e");
   const defaultBaseName = useMemo(() => resolveDefaultExportBaseName(labName), [labName]);
   const [filename, setFilename] = useState(defaultBaseName);
 
   const isExportAvailable = rfInstance ? Boolean(getViewportSize()) : false;
-  const totalAnnotations =
-    groups.length + textAnnotations.length + shapeAnnotations.length;
+  const totalAnnotations = groups.length + textAnnotations.length + shapeAnnotations.length;
   const interfaceRows = extractEdgeInterfaceRows(rfInstance);
   const filteredInterfaceRows = useMemo(() => {
     const filterValue = interfaceLinkFilter.trim().toLowerCase();
     if (!filterValue) return interfaceRows;
 
     return interfaceRows.filter((row) =>
-      [
-        row.edgeId,
-        row.source,
-        row.target,
-        row.sourceEndpoint,
-        row.targetEndpoint,
-      ]
+      [row.edgeId, row.source, row.target, row.sourceEndpoint, row.targetEndpoint]
         .join(" ")
         .toLowerCase()
-        .includes(filterValue),
+        .includes(filterValue)
     );
   }, [interfaceRows, interfaceLinkFilter]);
   const interfaceEndpoints = useMemo(() => {
@@ -490,7 +449,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     for (const endpoint of interfaceEndpoints) {
       const globalOverride = resolveGlobalInterfaceOverrideValue(
         endpoint,
-        globalInterfaceOverrideSelection,
+        globalInterfaceOverrideSelection
       );
       if (globalOverride !== null) {
         merged[endpoint] = globalOverride;
@@ -506,11 +465,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     }
 
     return merged;
-  }, [
-    interfaceEndpoints,
-    globalInterfaceOverrideSelection,
-    interfaceLabelOverrides,
-  ]);
+  }, [interfaceEndpoints, globalInterfaceOverrideSelection, interfaceLabelOverrides]);
 
   const updateTrafficThreshold = useCallback(
     (threshold: keyof GrafanaTrafficThresholds, rawValue: string) => {
@@ -520,39 +475,35 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         [threshold]: nextValue,
       }));
     },
-    [trafficThresholdUnit],
+    [trafficThresholdUnit]
   );
 
-  const updateInterfaceOverride = useCallback(
-    (endpoint: string, selectedValue: string) => {
-      const override = resolveInterfaceOverrideValue(endpoint, selectedValue);
-      setInterfaceLabelOverrides((prev) => {
-        if (override === null) {
-          if (!(endpoint in prev)) return prev;
-          const next = { ...prev };
-          delete next[endpoint];
-          return next;
-        }
-        if (prev[endpoint] === override) return prev;
-        return { ...prev, [endpoint]: override };
-      });
-    },
-    [],
-  );
+  const updateInterfaceOverride = useCallback((endpoint: string, selectedValue: string) => {
+    const override = resolveInterfaceOverrideValue(endpoint, selectedValue);
+    setInterfaceLabelOverrides((prev) => {
+      if (override === null) {
+        if (!(endpoint in prev)) return prev;
+        const next = { ...prev };
+        delete next[endpoint];
+        return next;
+      }
+      if (prev[endpoint] === override) return prev;
+      return { ...prev, [endpoint]: override };
+    });
+  }, []);
 
   const prepareSvgExport = useCallback((): PreparedSvgExport => {
     if (!rfInstance) {
       throw new Error("SVG export is not yet available");
     }
 
-    const grafanaRenderOptions: GraphSvgRenderOptions | undefined =
-      exportGrafanaBundle
-        ? {
-            nodeIconSize: grafanaNodeSizePx,
-            interfaceScale: grafanaInterfaceSizePercent / 100,
-            interfaceLabelOverrides: effectiveInterfaceLabelOverrides,
-          }
-        : undefined;
+    const grafanaRenderOptions: GraphSvgRenderOptions | undefined = exportGrafanaBundle
+      ? {
+          nodeIconSize: grafanaNodeSizePx,
+          interfaceScale: grafanaInterfaceSizePercent / 100,
+          interfaceLabelOverrides: effectiveInterfaceLabelOverrides,
+        }
+      : undefined;
     const graphSvg = buildGraphSvg(
       rfInstance,
       borderZoom,
@@ -560,7 +511,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       includeEdgeLabels,
       ANNOTATION_NODE_TYPES,
       exportGrafanaBundle,
-      grafanaRenderOptions,
+      grafanaRenderOptions
     );
     if (!graphSvg) {
       throw new Error("Unable to capture viewport for SVG export");
@@ -572,7 +523,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       finalSvg = compositeAnnotationsIntoSvg(
         finalSvg,
         { groups, textAnnotations, shapeAnnotations },
-        borderZoom / 100,
+        borderZoom / 100
       );
     }
     if (backgroundOption === "custom") {
@@ -614,26 +565,26 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     async (prepared: PreparedSvgExport): Promise<void> => {
       if (!hasStrictlyAscendingThresholds(trafficThresholds)) {
         throw new Error(
-          "Traffic thresholds must be strictly ascending (green < yellow < orange < red)",
+          "Traffic thresholds must be strictly ascending (green < yellow < orange < red)"
         );
       }
 
       const mappings = collectGrafanaEdgeCellMappings(
         prepared.graphSvg.edges,
         prepared.graphSvg.nodes,
-        ANNOTATION_NODE_TYPES,
+        ANNOTATION_NODE_TYPES
       );
       let grafanaBaseSvg = sanitizeSvgForGrafana(prepared.finalSvg);
       if (excludeNodesWithoutLinks) {
         const linkedNodeIds = collectLinkedNodeIds(
           prepared.graphSvg.edges,
           prepared.graphSvg.nodes,
-          ANNOTATION_NODE_TYPES,
+          ANNOTATION_NODE_TYPES
         );
         grafanaBaseSvg = removeUnlinkedNodesFromSvg(grafanaBaseSvg, linkedNodeIds);
         grafanaBaseSvg = trimGrafanaSvgToTopologyContent(
           grafanaBaseSvg,
-          Math.max(6, borderPadding),
+          Math.max(6, borderPadding)
         );
       }
 
@@ -643,11 +594,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       }
       grafanaSvg = makeGrafanaSvgResponsive(grafanaSvg);
       const panelYaml = buildGrafanaPanelYaml(mappings, { trafficThresholds });
-      const dashboardJson = buildGrafanaDashboardJson(
-        panelYaml,
-        grafanaSvg,
-        prepared.baseName,
-      );
+      const dashboardJson = buildGrafanaDashboardJson(panelYaml, grafanaSvg, prepared.baseName);
 
       const requestId = createRequestId();
       const files = await requestGrafanaBundleExport({
@@ -658,20 +605,13 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         panelYaml,
       });
       const suffix =
-        files.length > 0
-          ? ` (${files.map((file) => file.split("/").pop()).join(", ")})`
-          : "";
+        files.length > 0 ? ` (${files.map((file) => file.split("/").pop()).join(", ")})` : "";
       setExportStatus({
         type: "success",
         message: `Grafana bundle exported successfully${suffix}`,
       });
     },
-    [
-      trafficThresholds,
-      excludeNodesWithoutLinks,
-      borderPadding,
-      includeGrafanaLegend,
-    ],
+    [trafficThresholds, excludeNodesWithoutLinks, borderPadding, includeGrafanaLegend]
   );
 
   const handleExport = useCallback(async () => {
@@ -685,9 +625,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     setIsExporting(true);
     setExportStatus(null);
     try {
-      log.info(
-        `[SvgExport] Export requested: zoom=${borderZoom}%, padding=${borderPadding}px`,
-      );
+      log.info(`[SvgExport] Export requested: zoom=${borderZoom}%, padding=${borderPadding}px`);
       const prepared = prepareSvgExport();
       if (!exportGrafanaBundle) {
         exportPlainSvg(prepared);
@@ -771,28 +709,19 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
           </Box>
           <Divider />
           <Box sx={{ p: 2 }}>
-            <Box
-              sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}
-            >
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
               <TextField
                 label="Zoom"
                 type="number"
                 size="small"
                 value={borderZoom}
                 onChange={(e) =>
-                  setBorderZoom(
-                    Math.max(
-                      10,
-                      Math.min(300, parseFloat(e.target.value) || 0),
-                    ),
-                  )
+                  setBorderZoom(Math.max(10, Math.min(300, parseFloat(e.target.value) || 0)))
                 }
                 slotProps={{
                   htmlInput: { min: 10, max: 300, step: 1 },
                   input: {
-                    endAdornment: (
-                      <InputAdornment position="end">%</InputAdornment>
-                    ),
+                    endAdornment: <InputAdornment position="end">%</InputAdornment>,
                   },
                 }}
               />
@@ -801,15 +730,11 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                 type="number"
                 size="small"
                 value={borderPadding}
-                onChange={(e) =>
-                  setBorderPadding(Math.max(0, parseFloat(e.target.value) || 0))
-                }
+                onChange={(e) => setBorderPadding(Math.max(0, parseFloat(e.target.value) || 0))}
                 slotProps={{
                   htmlInput: { min: 0, max: 500, step: 1 },
                   input: {
-                    endAdornment: (
-                      <InputAdornment position="end">px</InputAdornment>
-                    ),
+                    endAdornment: <InputAdornment position="end">px</InputAdornment>,
                   },
                 }}
               />
@@ -824,20 +749,14 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
           <Box sx={{ display: "flex", flexDirection: "column", px: 2, py: 1 }}>
             <RadioGroup
               value={backgroundOption}
-              onChange={(e) =>
-                setBackgroundOption(parseBackgroundOption(e.target.value))
-              }
+              onChange={(e) => setBackgroundOption(parseBackgroundOption(e.target.value))}
             >
               <FormControlLabel
                 value="transparent"
                 control={<Radio size="small" />}
                 label="Transparent"
               />
-              <FormControlLabel
-                value="custom"
-                control={<Radio size="small" />}
-                label="Custom"
-              />
+              <FormControlLabel value="custom" control={<Radio size="small" />} label="Custom" />
             </RadioGroup>
             {backgroundOption === "custom" && (
               <Box sx={{ pl: 4, pt: 1 }}>
@@ -958,9 +877,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                     transform: `scale(${0.8 + borderZoom / 500})`,
                   }}
                 >
-                  <AccountTreeIcon
-                    sx={{ fontSize: 24, color: "primary.main", opacity: 0.8 }}
-                  />
+                  <AccountTreeIcon sx={{ fontSize: 24, color: "primary.main", opacity: 0.8 }} />
                 </Box>
               </Box>
             </Box>
@@ -969,9 +886,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
           <Divider />
           <Box sx={{ p: 2 }}>
             <Paper variant="outlined" sx={{ p: 1.5 }}>
-              <Box
-                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}
-              >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
                 <LightbulbIcon sx={{ fontSize: 14, color: "warning.main" }} />
                 <Typography variant="caption" color="text.secondary">
                   Tips
@@ -1013,11 +928,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
             onClick={() => void handleExport()}
             disabled={isExporting || !isExportAvailable}
             startIcon={
-              isExporting ? (
-                <CircularProgress size={16} color="inherit" />
-              ) : (
-                <DownloadIcon />
-              )
+              isExporting ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />
             }
             data-testid="svg-export-btn"
           >
@@ -1037,15 +948,10 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
           title="Advanced Grafana Settings"
           onClose={() => setIsGrafanaSettingsOpen(false)}
         />
-        <DialogContent
-          dividers
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-        >
+        <DialogContent dividers sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <Tabs
             value={grafanaSettingsTab}
-            onChange={(_event, value) =>
-              setGrafanaSettingsTab(parseGrafanaSettingsTab(value))
-            }
+            onChange={(_event, value) => setGrafanaSettingsTab(parseGrafanaSettingsTab(value))}
             variant="fullWidth"
           >
             <Tab label="General" value="general" />
@@ -1055,12 +961,9 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
           {grafanaSettingsTab === "general" && (
             <>
               <Typography variant="body2" color="text.secondary">
-                Configure thresholds and topology sizing used in the exported
-                Grafana panel.
+                Configure thresholds and topology sizing used in the exported Grafana panel.
               </Typography>
-              <Box
-                sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}
-              >
+              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
                 <TextField
                   label="Node size"
                   type="number"
@@ -1068,20 +971,13 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   value={grafanaNodeSizePx}
                   onChange={(e) =>
                     setGrafanaNodeSizePx(
-                      parseBoundedNumber(
-                        e.target.value,
-                        12,
-                        240,
-                        DEFAULT_GRAFANA_NODE_SIZE_PX,
-                      ),
+                      parseBoundedNumber(e.target.value, 12, 240, DEFAULT_GRAFANA_NODE_SIZE_PX)
                     )
                   }
                   slotProps={{
                     htmlInput: { min: 12, max: 240, step: 1 },
                     input: {
-                      endAdornment: (
-                        <InputAdornment position="end">px</InputAdornment>
-                      ),
+                      endAdornment: <InputAdornment position="end">px</InputAdornment>,
                     },
                   }}
                 />
@@ -1096,16 +992,14 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                         e.target.value,
                         40,
                         400,
-                        DEFAULT_GRAFANA_INTERFACE_SIZE_PERCENT,
-                      ),
+                        DEFAULT_GRAFANA_INTERFACE_SIZE_PERCENT
+                      )
                     )
                   }
                   slotProps={{
                     htmlInput: { min: 40, max: 400, step: 5 },
                     input: {
-                      endAdornment: (
-                        <InputAdornment position="end">%</InputAdornment>
-                      ),
+                      endAdornment: <InputAdornment position="end">%</InputAdornment>,
                     },
                   }}
                 />
@@ -1119,28 +1013,19 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                 label="Traffic threshold unit"
                 size="small"
                 value={trafficThresholdUnit}
-                onChange={(e) =>
-                  setTrafficThresholdUnit(parseTrafficThresholdUnit(e.target.value))
-                }
+                onChange={(e) => setTrafficThresholdUnit(parseTrafficThresholdUnit(e.target.value))}
               >
                 <MenuItem value="kbit">kbit/s</MenuItem>
                 <MenuItem value="mbit">Mbit/s</MenuItem>
                 <MenuItem value="gbit">Gbit/s</MenuItem>
               </TextField>
-              <Box
-                sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}
-              >
+              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
                 <TextField
                   label="Green threshold"
                   type="number"
                   size="small"
-                  value={formatThresholdForUnit(
-                    trafficThresholds.green,
-                    trafficThresholdUnit,
-                  )}
-                  onChange={(e) =>
-                    updateTrafficThreshold("green", e.target.value)
-                  }
+                  value={formatThresholdForUnit(trafficThresholds.green, trafficThresholdUnit)}
+                  onChange={(e) => updateTrafficThreshold("green", e.target.value)}
                   slotProps={{
                     htmlInput: {
                       min: 0,
@@ -1152,13 +1037,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   label="Yellow threshold"
                   type="number"
                   size="small"
-                  value={formatThresholdForUnit(
-                    trafficThresholds.yellow,
-                    trafficThresholdUnit,
-                  )}
-                  onChange={(e) =>
-                    updateTrafficThreshold("yellow", e.target.value)
-                  }
+                  value={formatThresholdForUnit(trafficThresholds.yellow, trafficThresholdUnit)}
+                  onChange={(e) => updateTrafficThreshold("yellow", e.target.value)}
                   slotProps={{
                     htmlInput: {
                       min: 0,
@@ -1170,13 +1050,8 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   label="Orange threshold"
                   type="number"
                   size="small"
-                  value={formatThresholdForUnit(
-                    trafficThresholds.orange,
-                    trafficThresholdUnit,
-                  )}
-                  onChange={(e) =>
-                    updateTrafficThreshold("orange", e.target.value)
-                  }
+                  value={formatThresholdForUnit(trafficThresholds.orange, trafficThresholdUnit)}
+                  onChange={(e) => updateTrafficThreshold("orange", e.target.value)}
                   slotProps={{
                     htmlInput: {
                       min: 0,
@@ -1188,10 +1063,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   label="Red threshold"
                   type="number"
                   size="small"
-                  value={formatThresholdForUnit(
-                    trafficThresholds.red,
-                    trafficThresholdUnit,
-                  )}
+                  value={formatThresholdForUnit(trafficThresholds.red, trafficThresholdUnit)}
                   onChange={(e) => updateTrafficThreshold("red", e.target.value)}
                   slotProps={{
                     htmlInput: {
@@ -1202,17 +1074,15 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                 />
               </Box>
               <Typography variant="caption" color="text.secondary">
-                Values must be strictly ascending: green &lt; yellow &lt; orange
-                &lt; red (within selected unit).
+                Values must be strictly ascending: green &lt; yellow &lt; orange &lt; red (within
+                selected unit).
               </Typography>
               <FormControlLabel
                 control={
                   <Checkbox
                     size="small"
                     checked={excludeNodesWithoutLinks}
-                    onChange={(e) =>
-                      setExcludeNodesWithoutLinks(e.target.checked)
-                    }
+                    onChange={(e) => setExcludeNodesWithoutLinks(e.target.checked)}
                   />
                 }
                 label="Exclude nodes without any links"
@@ -1233,37 +1103,30 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
           {grafanaSettingsTab === "interface-names" && (
             <>
               <Typography variant="body2" color="text.secondary">
-                Filter links and choose which interface segment should be shown
-                in endpoint bubbles.
+                Filter links and choose which interface segment should be shown in endpoint bubbles.
               </Typography>
               <TextField
                 select
                 size="small"
                 label="Global override (all interfaces)"
                 value={globalInterfaceOverrideSelection}
-                onChange={(e) =>
-                  setGlobalInterfaceOverrideSelection(e.target.value)
-                }
+                onChange={(e) => setGlobalInterfaceOverrideSelection(e.target.value)}
               >
                 <MenuItem value={INTERFACE_SELECT_AUTO}>Auto</MenuItem>
-                <MenuItem value={INTERFACE_SELECT_FULL}>
-                  Full interface name
-                </MenuItem>
-                {Array.from(
-                  { length: maxInterfacePartCount },
-                  (_, index) => index + 1,
-                ).map((partIndex) => (
-                  <MenuItem
-                    key={`global-interface-part-${partIndex}`}
-                    value={`${GLOBAL_INTERFACE_PART_INDEX_PREFIX}${partIndex}`}
-                  >
-                    Part {partIndex}
-                  </MenuItem>
-                ))}
+                <MenuItem value={INTERFACE_SELECT_FULL}>Full interface name</MenuItem>
+                {Array.from({ length: maxInterfacePartCount }, (_, index) => index + 1).map(
+                  (partIndex) => (
+                    <MenuItem
+                      key={`global-interface-part-${partIndex}`}
+                      value={`${GLOBAL_INTERFACE_PART_INDEX_PREFIX}${partIndex}`}
+                    >
+                      Part {partIndex}
+                    </MenuItem>
+                  )
+                )}
               </TextField>
               <Typography variant="caption" color="text.secondary">
-                Default for every interface; per-link overrides below take
-                precedence.
+                Default for every interface; per-link overrides below take precedence.
               </Typography>
               <TextField
                 size="small"
@@ -1273,8 +1136,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                 onChange={(e) => setInterfaceLinkFilter(e.target.value)}
               />
               <Typography variant="caption" color="text.secondary">
-                {filteredInterfaceRows.length} of {interfaceRows.length} links
-                shown
+                {filteredInterfaceRows.length} of {interfaceRows.length} links shown
               </Typography>
               <Box
                 sx={{
@@ -1315,18 +1177,13 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                             label={row.sourceEndpoint}
                             value={getInterfaceSelectionValue(
                               row.sourceEndpoint,
-                              interfaceLabelOverrides,
+                              interfaceLabelOverrides
                             )}
                             onChange={(e) =>
-                              updateInterfaceOverride(
-                                row.sourceEndpoint,
-                                e.target.value,
-                              )
+                              updateInterfaceOverride(row.sourceEndpoint, e.target.value)
                             }
                           >
-                            <MenuItem value={INTERFACE_SELECT_AUTO}>
-                              Auto (use global)
-                            </MenuItem>
+                            <MenuItem value={INTERFACE_SELECT_AUTO}>Auto (use global)</MenuItem>
                             <MenuItem value={INTERFACE_SELECT_FULL}>
                               Full: {row.sourceEndpoint}
                             </MenuItem>
@@ -1345,18 +1202,13 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                             label={row.targetEndpoint}
                             value={getInterfaceSelectionValue(
                               row.targetEndpoint,
-                              interfaceLabelOverrides,
+                              interfaceLabelOverrides
                             )}
                             onChange={(e) =>
-                              updateInterfaceOverride(
-                                row.targetEndpoint,
-                                e.target.value,
-                              )
+                              updateInterfaceOverride(row.targetEndpoint, e.target.value)
                             }
                           >
-                            <MenuItem value={INTERFACE_SELECT_AUTO}>
-                              Auto (use global)
-                            </MenuItem>
+                            <MenuItem value={INTERFACE_SELECT_AUTO}>Auto (use global)</MenuItem>
                             <MenuItem value={INTERFACE_SELECT_FULL}>
                               Full: {row.targetEndpoint}
                             </MenuItem>

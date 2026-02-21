@@ -17,7 +17,7 @@ import {
   getIconFormat,
   getIconMimeType,
   isBuiltInIcon,
-  isSupportedIconExtension
+  isSupportedIconExtension,
 } from "../../shared/types/icons";
 
 import { log } from "./logger";
@@ -131,7 +131,7 @@ export class IconService {
             name,
             source,
             dataUri,
-            format: getIconFormat(ext)
+            format: getIconFormat(ext),
           });
         }
       }
@@ -183,9 +183,9 @@ export class IconService {
         canSelectFolders: false,
         canSelectMany: false,
         filters: {
-          "Icon files": ["svg", "png"]
+          "Icon files": ["svg", "png"],
         },
-        title: "Select Custom Icon"
+        title: "Select Custom Icon",
       });
 
       if (!selection || selection.length === 0) {

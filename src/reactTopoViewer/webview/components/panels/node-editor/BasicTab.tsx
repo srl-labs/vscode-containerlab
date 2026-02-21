@@ -5,7 +5,7 @@ import {
   RotateLeft as RotateLeftIcon,
   RotateRight as RotateRightIcon,
   SwapHoriz as SwapHorizIcon,
-  SyncAlt as SyncAltIcon
+  SyncAlt as SyncAltIcon,
 } from "@mui/icons-material";
 
 import {
@@ -15,7 +15,7 @@ import {
   PanelSection,
   SelectField,
   ColorField,
-  CheckboxField
+  CheckboxField,
 } from "../../ui/form";
 import { IconSelectorModal } from "../../ui/IconSelectorModal";
 import type { NodeType } from "../../../icons/SvgGenerator";
@@ -43,21 +43,21 @@ const ICON_OPTIONS = [
   { value: "rgw", label: "RGW" },
   { value: "ue", label: "User Equipment" },
   { value: "cloud", label: "Cloud" },
-  { value: "client", label: "Client" }
+  { value: "client", label: "Client" },
 ];
 
 const NODE_LABEL_POSITION_OPTIONS = [
   { value: "bottom", label: "Bottom" },
   { value: "top", label: "Top" },
   { value: "left", label: "Left" },
-  { value: "right", label: "Right" }
+  { value: "right", label: "Right" },
 ];
 
 const NODE_DIRECTION_OPTIONS = [
   { value: "right", label: "Horizontal", icon: <SwapHorizIcon fontSize="small" /> },
   { value: "down", label: "Rotate text 90deg", icon: <RotateRightIcon fontSize="small" /> },
   { value: "left", label: "Rotate text 180deg", icon: <SyncAltIcon fontSize="small" /> },
-  { value: "up", label: "Rotate text 270deg", icon: <RotateLeftIcon fontSize="small" /> }
+  { value: "up", label: "Rotate text 270deg", icon: <RotateLeftIcon fontSize="small" /> },
 ];
 
 const BUILTIN_NODE_TYPES: readonly NodeType[] = [
@@ -74,7 +74,7 @@ const BUILTIN_NODE_TYPES: readonly NodeType[] = [
   "ue",
   "cloud",
   "client",
-  "bridge"
+  "bridge",
 ];
 
 function isNodeType(icon: string): icon is NodeType {
@@ -185,7 +185,7 @@ const ImageVersionFields: React.FC<ImageVersionFieldsProps> = ({
   hasImages,
   getVersionsForImage,
   parseImageString,
-  combineImageVersion
+  combineImageVersion,
 }) => {
   // Parse the current image into base and version
   const { base: currentBase, version: currentVersion } = useMemo(() => {
@@ -306,7 +306,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   const allIconOptions = useMemo(() => {
     const customOptions = customIcons.map((ci) => ({
       value: ci.name,
-      label: ci.name + " (custom)"
+      label: ci.name + " (custom)",
     }));
     return [...ICON_OPTIONS, ...customOptions];
   }, [customIcons]);
@@ -328,7 +328,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
       onChange({
         icon: newIcon,
         iconColor: newColor ?? undefined,
-        iconCornerRadius: cornerRadius
+        iconCornerRadius: cornerRadius,
       });
     },
     [onChange]
@@ -398,9 +398,7 @@ const LabelAndDirectionFields: React.FC<TabProps> = ({ data, onChange }) => {
   const isTransparent = data.labelBackgroundColor?.trim().toLowerCase() === "transparent";
   const labelBackgroundColor = data.labelBackgroundColor;
   const pickerColor =
-    !isTransparent &&
-    labelBackgroundColor !== undefined &&
-    labelBackgroundColor.length > 0
+    !isTransparent && labelBackgroundColor !== undefined && labelBackgroundColor.length > 0
       ? labelBackgroundColor
       : "#000000";
 

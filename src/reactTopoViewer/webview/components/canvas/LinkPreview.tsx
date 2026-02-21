@@ -17,12 +17,12 @@ function rafThrottle<Args extends unknown[]>(func: (...args: Args) => void): Raf
   const throttled = (...args: Args) => {
     lastArgs = args;
     rafId ??= window.requestAnimationFrame(() => {
-        if (lastArgs) {
-          func(...lastArgs);
-          lastArgs = null;
-        }
-        rafId = null;
-      });
+      if (lastArgs) {
+        func(...lastArgs);
+        lastArgs = null;
+      }
+      rafId = null;
+    });
   };
 
   throttled.cancel = () => {
@@ -76,7 +76,7 @@ function buildLinkLabelStyle(zoom: number): React.CSSProperties {
     whiteSpace: "nowrap",
     textShadow: `0 0 ${shadowSmall}px ${LINK_LABEL_OUTLINE_COLOR}, 0 0 ${shadowSmall}px ${LINK_LABEL_OUTLINE_COLOR}, 0 0 ${shadowLarge}px ${LINK_LABEL_OUTLINE_COLOR}`,
     lineHeight: 1.2,
-    zIndex: 1
+    zIndex: 1,
   };
 }
 
@@ -122,14 +122,14 @@ function getPreviewParallelInfo(
     return {
       index,
       total: ids.length,
-      isCanonicalDirection: sourceId.localeCompare(targetId) <= 0
+      isCanonicalDirection: sourceId.localeCompare(targetId) <= 0,
     };
   }
 
   return {
     index: existingIds.length,
     total: existingIds.length + 1,
-    isCanonicalDirection: sourceId.localeCompare(targetId) <= 0
+    isCanonicalDirection: sourceId.localeCompare(targetId) <= 0,
   };
 }
 
@@ -168,7 +168,7 @@ function calculateLoopEdgeGeometry(
   return {
     path,
     sourceLabelPos: { x: labelX, y: labelY - labelOffset },
-    targetLabelPos: { x: labelX, y: labelY + labelOffset }
+    targetLabelPos: { x: labelX, y: labelY + labelOffset },
   };
 }
 
@@ -181,7 +181,7 @@ export const CustomConnectionLine: React.FC<ConnectionLineComponentProps> = ({
   toX,
   toY,
   fromNode,
-  toNode
+  toNode,
 }) => {
   const edges = useEdges();
 
@@ -212,13 +212,13 @@ export const CustomConnectionLine: React.FC<ConnectionLineComponentProps> = ({
           x: sourcePos.x + (sourceWidth - iconSize) / 2,
           y: sourcePos.y,
           width: iconSize,
-          height: iconSize
+          height: iconSize,
         },
         {
           x: targetPos.x + (targetWidth - iconSize) / 2,
           y: targetPos.y,
           width: iconSize,
-          height: iconSize
+          height: iconSize,
         }
       );
 
@@ -245,7 +245,7 @@ export const CustomConnectionLine: React.FC<ConnectionLineComponentProps> = ({
       style={{
         stroke: LINK_PREVIEW_COLOR,
         strokeWidth: LINK_PREVIEW_WIDTH,
-        opacity: LINK_PREVIEW_OPACITY
+        opacity: LINK_PREVIEW_OPACITY,
       }}
     />
   );
@@ -274,9 +274,16 @@ function buildPreviewLinkInfo(
     linkSourceNodeId,
     targetNode.id
   );
-  const previewId = linkCreationSeed !== null && linkCreationSeed !== undefined
-    ? buildEdgeId(linkSourceNodeId, targetNode.id, sourceEndpoint, targetEndpoint, linkCreationSeed)
-    : null;
+  const previewId =
+    linkCreationSeed !== null && linkCreationSeed !== undefined
+      ? buildEdgeId(
+          linkSourceNodeId,
+          targetNode.id,
+          sourceEndpoint,
+          targetEndpoint,
+          linkCreationSeed
+        )
+      : null;
 
   const parallelInfo = getPreviewParallelInfo(edges, linkSourceNodeId, targetNode.id, previewId);
   const loopIndex = edges.filter(
@@ -315,7 +322,7 @@ function buildLoopPreviewGeometry(params: {
     sourceLabelPos: sourceLabel ? loopGeometry.sourceLabelPos : null,
     targetLabelPos: targetLabel ? loopGeometry.targetLabelPos : null,
     sourceLabel,
-    targetLabel
+    targetLabel,
   };
 }
 
@@ -343,7 +350,7 @@ function buildEdgePreviewGeometry(params: {
     linkSourceNodeId,
     previewLinkInfo,
     sourceLabel,
-    targetLabel
+    targetLabel,
   } = params;
 
   const zoom = viewport.zoom;
@@ -355,13 +362,13 @@ function buildEdgePreviewGeometry(params: {
     x: sourcePos.x * zoom + viewport.x + (sourceWidth - iconSize) / 2,
     y: sourcePos.y * zoom + viewport.y,
     width: iconSize,
-    height: iconSize
+    height: iconSize,
   };
   const targetRect = {
     x: targetPos.x * zoom + viewport.x + (targetWidth - iconSize) / 2,
     y: targetPos.y * zoom + viewport.y,
     width: iconSize,
-    height: iconSize
+    height: iconSize,
   };
 
   const points = getEdgePoints(sourceRect, targetRect);
@@ -401,7 +408,7 @@ function buildEdgePreviewGeometry(params: {
         )
       : null,
     sourceLabel,
-    targetLabel
+    targetLabel,
   };
 }
 
@@ -419,7 +426,7 @@ function buildFreePreviewGeometry(params: {
     sourceLabelPos: null,
     targetLabelPos: null,
     sourceLabel: "",
-    targetLabel: ""
+    targetLabel: "",
   };
 }
 
@@ -443,7 +450,7 @@ function computePreviewGeometry(params: {
     edges,
     linkSourceNodeId,
     sourcePosition,
-    viewport
+    viewport,
   } = params;
   if (!sourceNode || !mousePosition || !bounds) return null;
 
@@ -464,7 +471,7 @@ function computePreviewGeometry(params: {
         iconSize,
         loopIndex,
         sourceLabel,
-        targetLabel
+        targetLabel,
       });
     }
 
@@ -479,7 +486,7 @@ function computePreviewGeometry(params: {
       linkSourceNodeId,
       previewLinkInfo,
       sourceLabel,
-      targetLabel
+      targetLabel,
     });
   }
 
@@ -505,7 +512,7 @@ const LINK_LINE_SVG_STYLE: React.CSSProperties = {
   width: "100%",
   height: "100%",
   pointerEvents: "none",
-  zIndex: 999
+  zIndex: 999,
 };
 
 let cachedContainerBounds: DOMRect | null = null;
@@ -580,7 +587,7 @@ export const LinkCreationLine = React.memo<LinkCreationLineProps>(
           edges,
           linkSourceNodeId,
           sourcePosition,
-          viewport
+          viewport,
         }),
       [
         sourceNode,
@@ -591,7 +598,7 @@ export const LinkCreationLine = React.memo<LinkCreationLineProps>(
         edges,
         linkSourceNodeId,
         sourcePosition,
-        viewport
+        viewport,
       ]
     );
 
@@ -608,7 +615,7 @@ export const LinkCreationLine = React.memo<LinkCreationLineProps>(
             style={{
               stroke: LINK_PREVIEW_COLOR,
               strokeWidth,
-              opacity: LINK_PREVIEW_OPACITY
+              opacity: LINK_PREVIEW_OPACITY,
             }}
           />
         </svg>
@@ -616,7 +623,7 @@ export const LinkCreationLine = React.memo<LinkCreationLineProps>(
           <div
             style={{
               ...labelStyle,
-              transform: `translate(-50%, -50%) translate(${previewGeometry.sourceLabelPos.x}px, ${previewGeometry.sourceLabelPos.y}px)`
+              transform: `translate(-50%, -50%) translate(${previewGeometry.sourceLabelPos.x}px, ${previewGeometry.sourceLabelPos.y}px)`,
             }}
           >
             {previewGeometry.sourceLabel}
@@ -626,7 +633,7 @@ export const LinkCreationLine = React.memo<LinkCreationLineProps>(
           <div
             style={{
               ...labelStyle,
-              transform: `translate(-50%, -50%) translate(${previewGeometry.targetLabelPos.x}px, ${previewGeometry.targetLabelPos.y}px)`
+              transform: `translate(-50%, -50%) translate(${previewGeometry.targetLabelPos.x}px, ${previewGeometry.targetLabelPos.y}px)`,
             }}
           >
             {previewGeometry.targetLabel}

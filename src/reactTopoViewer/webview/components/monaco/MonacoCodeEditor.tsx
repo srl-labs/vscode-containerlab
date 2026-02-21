@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useCallback } from "react";
 import * as monaco from "monaco-editor";
 import {
   conf as yamlConf,
-  language as yamlLanguage
+  language as yamlLanguage,
 } from "monaco-editor/esm/vs/basic-languages/yaml/yaml.js";
 import * as YAML from "yaml";
 import Ajv from "ajv";
@@ -48,17 +48,12 @@ function ensureMonacoConfiguredOnce(): void {
   if (!hasWorker) {
     const editorUrl = window.monacoEditorWorkerUrl;
     const jsonUrl = window.monacoJsonWorkerUrl;
-    if (
-      editorUrl !== undefined &&
-      editorUrl !== "" &&
-      jsonUrl !== undefined &&
-      jsonUrl !== ""
-    ) {
+    if (editorUrl !== undefined && editorUrl !== "" && jsonUrl !== undefined && jsonUrl !== "") {
       Reflect.set(globalThis, "MonacoEnvironment", {
         getWorker: (_workerId: string, label: string) => {
           const url = label === "json" ? jsonUrl : editorUrl;
           return new Worker(url);
-        }
+        },
       });
     }
   }
@@ -82,7 +77,7 @@ function ensureMonacoConfiguredOnce(): void {
 /** Hardcoded Monaco colours per mode – used in dev where CSS vars lag behind the class toggle. */
 const DEV_MONACO_COLORS = {
   light: { bg: "#ffffff", fg: "#333333", sel: "#add6ff", inactiveSel: "#e5ebf1" },
-  dark: { bg: "#1e1e1e", fg: "#cccccc", sel: "#264f78", inactiveSel: "#3a3d41" }
+  dark: { bg: "#1e1e1e", fg: "#cccccc", sel: "#264f78", inactiveSel: "#3a3d41" },
 } as const;
 
 function isDevMock(): boolean {
@@ -114,8 +109,8 @@ function applyVscodeThemeToMonaco(): void {
       "editor.background": background,
       "editor.foreground": foreground,
       "editor.selectionBackground": selection,
-      "editor.inactiveSelectionBackground": inactiveSelection
-    }
+      "editor.inactiveSelectionBackground": inactiveSelection,
+    },
   });
   monaco.editor.setTheme(themeName);
 }
@@ -219,8 +214,8 @@ function validateYaml(text: string, schema: object): monaco.editor.IMarkerData[]
         endLineNumber: 1,
         endColumn: 1,
         message: "Invalid YAML syntax",
-        severity: monaco.MarkerSeverity.Error
-      }
+        severity: monaco.MarkerSeverity.Error,
+      },
     ];
   }
 
@@ -235,7 +230,7 @@ function validateYaml(text: string, schema: object): monaco.editor.IMarkerData[]
       endLineNumber: end.line,
       endColumn: end.col,
       message: err.message,
-      severity: monaco.MarkerSeverity.Error
+      severity: monaco.MarkerSeverity.Error,
     });
   }
 
@@ -269,7 +264,7 @@ function validateYaml(text: string, schema: object): monaco.editor.IMarkerData[]
       endLineNumber: pos.endLine,
       endColumn: pos.endCol,
       message: msg,
-      severity: monaco.MarkerSeverity.Warning
+      severity: monaco.MarkerSeverity.Warning,
     });
   }
   return markers;
@@ -524,13 +519,16 @@ function getSchemaHoverInfo(
     currentData = isObj(currentData) ? currentData[segment] : undefined;
   }
 
-  const desc = typeof currentSchema["description"] === "string" ? currentSchema["description"] : undefined;
+  const desc =
+    typeof currentSchema["description"] === "string" ? currentSchema["description"] : undefined;
   const mdDesc =
     typeof currentSchema["markdownDescription"] === "string"
       ? currentSchema["markdownDescription"]
       : undefined;
   const enumValuesRaw = currentSchema["enum"];
-  const enumVals = Array.isArray(enumValuesRaw) ? enumValuesRaw.map((value) => String(value)) : undefined;
+  const enumVals = Array.isArray(enumValuesRaw)
+    ? enumValuesRaw.map((value) => String(value))
+    : undefined;
   if (desc === undefined && mdDesc === undefined) return null;
   return { description: desc, markdownDescription: mdDesc, enumValues: enumVals };
 }
@@ -577,54 +575,58 @@ function ensureHoverProvider(): void {
   const existing: unknown = Reflect.get(window, HOVER_DISPOSABLE_KEY);
   if (isDisposable(existing)) existing.dispose();
 
-  Reflect.set(window, HOVER_DISPOSABLE_KEY, monaco.languages.registerHoverProvider("yaml", {
-    provideHover(model, position) {
-      if (!activeSchema) return null;
-      const text = model.getValue();
-      const path = getYamlPathAtLine(text, position.lineNumber);
-      if (!path || path.length === 0) return null;
+  Reflect.set(
+    window,
+    HOVER_DISPOSABLE_KEY,
+    monaco.languages.registerHoverProvider("yaml", {
+      provideHover(model, position) {
+        if (!activeSchema) return null;
+        const text = model.getValue();
+        const path = getYamlPathAtLine(text, position.lineNumber);
+        if (!path || path.length === 0) return null;
 
-      // Parse YAML for context-aware schema resolution (e.g. kind → type enum)
-      let yamlData: unknown;
-      try {
-        yamlData = YAML.parse(text);
-      } catch {
-        yamlData = undefined;
-      }
+        // Parse YAML for context-aware schema resolution (e.g. kind → type enum)
+        let yamlData: unknown;
+        try {
+          yamlData = YAML.parse(text);
+        } catch {
+          yamlData = undefined;
+        }
 
-      const info = getSchemaHoverInfo(path, activeSchema, yamlData);
-      if (!info) return null;
+        const info = getSchemaHoverInfo(path, activeSchema, yamlData);
+        if (!info) return null;
 
-      const parts: string[] = [];
-      if (isNonEmptyString(info.markdownDescription)) {
-        parts.push(info.markdownDescription);
-      } else if (isNonEmptyString(info.description)) {
-        parts.push(info.description);
-      }
-      if (info.enumValues !== undefined && info.enumValues.length > 0) {
-        const enumList = info.enumValues.map((v) => "`" + v + "`").join(", ");
-        parts.push("\nAllowed values: " + enumList);
-      }
+        const parts: string[] = [];
+        if (isNonEmptyString(info.markdownDescription)) {
+          parts.push(info.markdownDescription);
+        } else if (isNonEmptyString(info.description)) {
+          parts.push(info.description);
+        }
+        if (info.enumValues !== undefined && info.enumValues.length > 0) {
+          const enumList = info.enumValues.map((v) => "`" + v + "`").join(", ");
+          parts.push("\nAllowed values: " + enumList);
+        }
 
-      const word = model.getWordAtPosition(position);
-      return {
-        range: word
-          ? new monaco.Range(
-              position.lineNumber,
-              word.startColumn,
-              position.lineNumber,
-              word.endColumn
-            )
-          : new monaco.Range(
-              position.lineNumber,
-              1,
-              position.lineNumber,
-              model.getLineMaxColumn(position.lineNumber)
-            ),
-        contents: [{ value: parts.join("\n") }]
-      };
-    }
-  }));
+        const word = model.getWordAtPosition(position);
+        return {
+          range: word
+            ? new monaco.Range(
+                position.lineNumber,
+                word.startColumn,
+                position.lineNumber,
+                word.endColumn
+              )
+            : new monaco.Range(
+                position.lineNumber,
+                1,
+                position.lineNumber,
+                model.getLineMaxColumn(position.lineNumber)
+              ),
+          contents: [{ value: parts.join("\n") }],
+        };
+      },
+    })
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -642,7 +644,7 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
   language,
   readOnly = false,
   jsonSchema,
-  onChange
+  onChange,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -673,14 +675,14 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
       if (editor) {
         editor.updateOptions({
           fontFamily: getEditorFontFamily(),
-          fontSize: getEditorFontSize()
+          fontSize: getEditorFontSize(),
         });
       }
     });
     observer.observe(document.body, { attributes: true, attributeFilter: ["class", "style"] });
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["class", "style"]
+      attributeFilter: ["class", "style"],
     });
     return () => observer.disconnect();
   }, []);
@@ -732,7 +734,7 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
       insertSpaces: true,
       renderWhitespace: "selection",
       wordWrap: "on",
-      fixedOverflowWidgets: true
+      fixedOverflowWidgets: true,
     });
 
     const editor = editorRef.current;
@@ -791,8 +793,8 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
       [
         {
           range: model.getFullModelRange(),
-          text: next
-        }
+          text: next,
+        },
       ],
       () => null
     );

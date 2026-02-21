@@ -40,8 +40,8 @@ function withGroupId<T extends TopoNode>(node: T, groupId: string): T {
     ...node,
     data: {
       ...node.data,
-      groupId
-    }
+      groupId,
+    },
   };
 }
 

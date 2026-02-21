@@ -24,7 +24,9 @@ function toRecord(value: unknown): Record<string, unknown> | undefined {
   return record;
 }
 
-function selectIconUsageEntries(state: { nodes: Array<{ id: string; data?: unknown }> }): IconUsageEntry[] {
+function selectIconUsageEntries(state: {
+  nodes: Array<{ id: string; data?: unknown }>;
+}): IconUsageEntry[] {
   const entries: IconUsageEntry[] = [];
   for (const node of state.nodes) {
     const data = toRecord(node.data);
@@ -66,7 +68,7 @@ export function useIconReconciliation(): void {
   useEffect(() => {
     const usedIcons = extractUsedCustomIcons(
       iconUsageEntries.map((entry) => ({
-        data: { topoViewerRole: entry.topoViewerRole ?? undefined }
+        data: { topoViewerRole: entry.topoViewerRole ?? undefined },
       }))
     );
     const prevUsedIcons = prevUsedIconsRef.current;

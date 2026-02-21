@@ -8,7 +8,7 @@ import {
   DynamicList,
   KeyValueList,
   PanelAddSection,
-  PanelSection
+  PanelSection,
 } from "../../ui/form";
 
 import type { TabProps } from "./types";
@@ -18,7 +18,7 @@ type StartupConfigMode = "default" | "enforce" | "suppress";
 const STARTUP_CONFIG_MODE_OPTIONS = [
   { value: "default", label: "Default" },
   { value: "enforce", label: "Enforce startup config" },
-  { value: "suppress", label: "Suppress startup config" }
+  { value: "suppress", label: "Suppress startup config" },
 ];
 
 function isStartupConfigMode(value: string): value is StartupConfigMode {
@@ -40,7 +40,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
   const handleModeChange = (newMode: StartupConfigMode) => {
     onChange({
       enforceStartupConfig: newMode === "enforce",
-      suppressStartupConfig: newMode === "suppress"
+      suppressStartupConfig: newMode === "suppress",
     });
   };
 

@@ -13,7 +13,7 @@ export {
   DEFAULT_ATTACH_SHELL_CMD,
   DEFAULT_ATTACH_TELNET_PORT,
   ImagePullPolicy,
-  ContainerAction
+  ContainerAction,
 } from "./consts";
 
 // Docker utilities
@@ -23,14 +23,14 @@ export {
   startContainer,
   stopContainer,
   pauseContainer,
-  unpauseContainer
+  unpauseContainer,
 } from "./docker/docker";
 
 export {
   onDockerImagesUpdated,
   getDockerImages,
   refreshDockerImages,
-  startDockerImageEventMonitor
+  startDockerImageEventMonitor,
 } from "./docker/images";
 
 // Note: packetflix is not exported from index to avoid circular dependency
@@ -55,7 +55,7 @@ export {
   installContainerlab,
   checkAndUpdateClabIfNeeded,
   getSelectedLabNode,
-  sanitize
+  sanitize,
 } from "./utils";
 
 // Clab utilities

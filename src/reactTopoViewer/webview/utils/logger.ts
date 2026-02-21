@@ -7,7 +7,7 @@ import {
   type LogLevel,
   formatMessage,
   getCallerFileLine,
-  createLogger
+  createLogger,
 } from "../../shared/utilities/loggerUtils";
 
 declare global {
@@ -29,7 +29,7 @@ function logMessage(level: LogLevel, message: unknown): void {
       command: "reactTopoViewerLog",
       level,
       message: formatted,
-      fileLine
+      fileLine,
     });
   }
 }

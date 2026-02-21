@@ -17,7 +17,7 @@ export const PanelEmptyState: React.FC<PanelEmptyStateProps> = ({ icon, message 
       height: "100%",
       gap: 2,
       color: "text.secondary",
-      p: 4
+      p: 4,
     }}
   >
     {icon}

@@ -11,7 +11,7 @@ export {
   saveNodeGroupMembership,
   saveAllNodeGroupMemberships,
   saveAnnotationNodesFromGraph,
-  saveAnnotationNodesWithMemberships
+  saveAnnotationNodesWithMemberships,
 } from "./annotationSaveHelpers";
 
 export {
@@ -23,7 +23,7 @@ export {
   saveNetworkNodesFromGraph,
   saveNodePositions,
   saveNodePositionsWithAnnotations,
-  saveNodePositionsWithMemberships
+  saveNodePositionsWithMemberships,
 } from "./topologyCrud";
 
 export type { NodeSaveData, LinkSaveData, NetworkNodeData } from "./topologyCrud";

@@ -22,7 +22,7 @@ import {
   setLocalLabsProvider,
   setRunningLabsProvider,
   setHelpFeedbackProvider,
-  setHideNonOwnedLabsState
+  setHideNonOwnedLabsState,
 } from "./globals";
 import { WelcomePage } from "./welcomePage";
 import { registerClabImageCompletion } from "./yaml/imageCompletion";
@@ -32,7 +32,7 @@ import {
   LocalLabTreeDataProvider,
   RunningLabTreeDataProvider,
   HelpFeedbackProvider,
-  isPollingMode
+  isPollingMode,
 } from "./treeView";
 import {
   refreshSshxSessions,
@@ -41,7 +41,7 @@ import {
   onContainerStateChanged,
   onFallbackDataChanged,
   stopFallbackPolling,
-  stopEventStream
+  stopEventStream,
 } from "./services";
 import { ContainerlabExplorerViewProvider } from "./webviews/explorer/containerlabExplorerViewProvider";
 
@@ -76,7 +76,7 @@ function registerProcessShutdownHooks(context: vscode.ExtensionContext): void {
       process.removeListener("SIGINT", handleSigint);
       process.removeListener("SIGHUP", handleSighup);
       stopRealtimeBackgroundWorkers();
-    }
+    },
   });
 }
 
@@ -95,7 +95,7 @@ function registerUnsupportedViews(context: vscode.ExtensionContext) {
   const unsupportedProvider: vscode.WebviewViewProvider = {
     resolveWebviewView(webviewView) {
       webviewView.webview.options = {
-        enableScripts: false
+        enableScripts: false,
       };
       webviewView.webview.html = `<!DOCTYPE html>
 <html lang="en">
@@ -135,7 +135,7 @@ function registerUnsupportedViews(context: vscode.ExtensionContext) {
           }
         })
       );
-    }
+    },
   };
 
   context.subscriptions.push(
@@ -170,7 +170,7 @@ async function createTopoViewerTemplateFileCommand() {
     title: "Enter containerlab topology template file name",
     defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
     saveLabel: "Create Containerlab topology template file",
-    filters: { "Containerlab YAML": ["clab.yml", "clab.yaml"], YAML: ["yaml", "yml"] }
+    filters: { "Containerlab YAML": ["clab.yml", "clab.yaml"], YAML: ["yaml", "yml"] },
   });
   if (!uri) {
     vscode.window.showWarningMessage("No file path selected. Operation canceled.");
@@ -309,7 +309,7 @@ function registerCommands(context: vscode.ExtensionContext) {
     ["containerlab.lab.fcli.ni", cmd.fcliNi],
     ["containerlab.lab.fcli.subif", cmd.fcliSubif],
     ["containerlab.lab.fcli.sysInfo", cmd.fcliSysInfo],
-    ["containerlab.lab.fcli.custom", cmd.fcliCustom]
+    ["containerlab.lab.fcli.custom", cmd.fcliCustom],
   ];
   commands.forEach(([name, handler]) => {
     context.subscriptions.push(vscode.commands.registerCommand(name, handler));
@@ -403,7 +403,7 @@ function registerRealtimeUpdates(context: vscode.ExtensionContext) {
   context.subscriptions.push({
     dispose: () => {
       stopRealtimeBackgroundWorkers();
-    }
+    },
   });
 
   ins.refreshFromEventStream();
@@ -576,12 +576,15 @@ export async function activate(context: vscode.ExtensionContext) {
   // to show running lab count on the activity icon before the explorer is opened.
   const activityBadgeProxyProvider: vscode.TreeDataProvider<vscode.TreeItem> = {
     getTreeItem: (element: vscode.TreeItem) => element,
-    getChildren: async () => []
+    getChildren: async () => [],
   };
-  const activityBadgeProxyView = vscode.window.createTreeView("containerlabActivityBadgeProxyView", {
-    treeDataProvider: activityBadgeProxyProvider,
-    showCollapseAll: false
-  });
+  const activityBadgeProxyView = vscode.window.createTreeView(
+    "containerlabActivityBadgeProxyView",
+    {
+      treeDataProvider: activityBadgeProxyProvider,
+      showCollapseAll: false,
+    }
+  );
   const updateActivityBadgeProxy = async () => {
     try {
       const runningLabCount = await newRunningProvider.getRootChildrenCount();
@@ -589,7 +592,7 @@ export async function activate(context: vscode.ExtensionContext) {
         runningLabCount > 0
           ? {
               value: runningLabCount,
-              tooltip: runningLabCount === 1 ? "1 running lab" : `${runningLabCount} running labs`
+              tooltip: runningLabCount === 1 ? "1 running lab" : `${runningLabCount} running labs`,
             }
           : undefined;
     } catch {
@@ -621,7 +624,7 @@ export async function activate(context: vscode.ExtensionContext) {
     runningProvider: newRunningProvider,
     localProvider: newLocalProvider,
     helpProvider: newHelpProvider,
-    isLocalCaptureAllowed
+    isLocalCaptureAllowed,
   });
   void vscode.commands.executeCommand(
     "setContext",
@@ -637,7 +640,7 @@ export async function activate(context: vscode.ExtensionContext) {
       ContainerlabExplorerViewProvider.viewType,
       explorerViewProvider,
       {
-        webviewOptions: { retainContextWhenHidden: true }
+        webviewOptions: { retainContextWhenHidden: true },
       }
     )
   );
@@ -655,7 +658,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Expose a stable API surface for other extensions to access providers safely.
   return {
     getLocalLabsProvider: () => localLabsProvider,
-    getRunningLabsProvider: () => runningLabsProvider
+    getRunningLabsProvider: () => runningLabsProvider,
   };
 }
 

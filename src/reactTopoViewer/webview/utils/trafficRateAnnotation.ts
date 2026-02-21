@@ -11,7 +11,7 @@ const TRAFFIC_STAT_KEYS: Array<keyof InterfaceStatsPayload> = [
   "rxBytes",
   "txBytes",
   "rxPackets",
-  "txPackets"
+  "txPackets",
 ];
 
 const INTERVAL_KEY: keyof InterfaceStatsPayload = "statsIntervalSeconds";
@@ -112,12 +112,15 @@ export function getTrafficMonitorOptions(edges: Edge[]): TrafficMonitorOptions {
   const nodeIds = Array.from(interfacesByNode.keys()).sort((a, b) => a.localeCompare(b));
   const normalizedMap = new Map<string, string[]>();
   for (const [nodeId, interfaces] of interfacesByNode.entries()) {
-    normalizedMap.set(nodeId, Array.from(interfaces).sort((a, b) => a.localeCompare(b)));
+    normalizedMap.set(
+      nodeId,
+      Array.from(interfaces).sort((a, b) => a.localeCompare(b))
+    );
   }
 
   return {
     nodeIds,
-    interfacesByNode: normalizedMap
+    interfacesByNode: normalizedMap,
   };
 }
 
@@ -167,7 +170,7 @@ export function resolveTrafficRateStats(
   return {
     stats,
     endpointCount: endpointIds.length,
-    endpointKey
+    endpointKey,
   };
 }
 

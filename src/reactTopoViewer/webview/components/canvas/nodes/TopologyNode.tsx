@@ -15,7 +15,7 @@ import { generateEncodedSVG, type NodeType } from "../../../icons/SvgGenerator";
 import {
   useLinkCreationContext,
   useNodeRenderConfig,
-  useEasterEggGlow
+  useEasterEggGlow,
 } from "../../../stores/canvasStore";
 import { useCustomIcons, useDeploymentState } from "../../../stores/topoViewerStore";
 import { getCustomIconMap } from "../../../utils/iconUtils";
@@ -25,7 +25,7 @@ import {
   HIDDEN_HANDLE_STYLE,
   getNodeDirectionRotation,
   getNodeRuntimeBadgeState,
-  type NodeRuntimeBadgeState
+  type NodeRuntimeBadgeState,
 } from "./nodeStyles";
 
 /**
@@ -45,7 +45,7 @@ const NODE_TYPE_SET: ReadonlySet<string> = new Set([
   "ue",
   "cloud",
   "client",
-  "bridge"
+  "bridge",
 ]);
 
 function isNodeType(value: string): value is NodeType {
@@ -54,7 +54,7 @@ function isNodeType(value: string): value is NodeType {
 
 const FALLBACK_NODE_DATA: TopologyNodeData = {
   label: "",
-  role: "default"
+  role: "default",
 };
 
 function isTopologyNodeData(value: unknown): value is TopologyNodeData {
@@ -81,12 +81,12 @@ const CONTAINER_STYLE_BASE: React.CSSProperties = {
   position: "relative",
   width: ICON_SIZE,
   height: ICON_SIZE,
-  overflow: "visible"
+  overflow: "visible",
 };
 
 const CONTAINER_STYLE_LINK_TARGET: React.CSSProperties = {
   ...CONTAINER_STYLE_BASE,
-  cursor: "crosshair"
+  cursor: "crosshair",
 };
 
 const ICON_STYLE_BASE: React.CSSProperties = {
@@ -95,7 +95,7 @@ const ICON_STYLE_BASE: React.CSSProperties = {
   flexShrink: 0,
   backgroundSize: "cover",
   backgroundPosition: "center",
-  backgroundRepeat: "no-repeat"
+  backgroundRepeat: "no-repeat",
 };
 
 const BADGE_STYLE_BASE: React.CSSProperties = {
@@ -110,7 +110,7 @@ const BADGE_STYLE_BASE: React.CSSProperties = {
   lineHeight: 0,
   borderRadius: 999,
   pointerEvents: "none",
-  zIndex: 4
+  zIndex: 4,
 };
 
 function getRuntimeBadgeColors(state: NodeRuntimeBadgeState): {
@@ -160,7 +160,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
     state,
     labelPosition,
     direction,
-    labelBackgroundColor
+    labelBackgroundColor,
   } = nodeData;
   const { linkSourceNode } = useLinkCreationContext();
   const { suppressLabels } = useNodeRenderConfig();
@@ -197,7 +197,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
       transform: directionRotation !== 0 ? `rotate(${directionRotation}deg)` : undefined,
       // Use outline for selection - doesn't affect layout
       outline: selected ? SELECTED_OUTLINE : "none",
-      outlineOffset: 1
+      outlineOffset: 1,
     };
 
     // Apply easter egg glow effect if active
@@ -233,7 +233,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
     () => ({
       ...BADGE_STYLE_BASE,
       backgroundColor: runtimeBadgeColors.bg,
-      border: `1px solid ${runtimeBadgeColors.border}`
+      border: `1px solid ${runtimeBadgeColors.border}`,
     }),
     [runtimeBadgeColors.bg, runtimeBadgeColors.border]
   );
@@ -245,7 +245,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
         backgroundColor: labelBackgroundColor,
         iconSize: ICON_SIZE,
         fontSize: "0.7rem",
-        maxWidth: 110
+        maxWidth: 110,
       }),
     [labelPosition, direction, labelBackgroundColor]
   );

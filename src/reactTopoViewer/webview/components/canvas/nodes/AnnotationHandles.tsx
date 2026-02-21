@@ -102,7 +102,7 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
   currentRotation,
   onRotationChange,
   onRotationStart,
-  onRotationEnd
+  onRotationEnd,
 }) => {
   const [isRotating, setIsRotating] = useState(false);
   const lastEmittedRotationRef = useRef<number>(currentRotation);
@@ -188,7 +188,7 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
         startAngle,
         centerX,
         centerY,
-        startRotation: currentRotation
+        startRotation: currentRotation,
       };
     },
     [currentRotation, onRotationStart]
@@ -208,7 +208,7 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
           backgroundColor: SELECTION_COLOR,
           transform: "translateX(-50%)",
           pointerEvents: "none",
-          opacity: 0.6
+          opacity: 0.6,
         }}
       />
       {/* Rotation handle */}
@@ -240,7 +240,7 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
           cursor: isRotating ? ROTATE_CURSOR_ACTIVE : ROTATE_CURSOR,
           boxShadow: HANDLE_BOX_SHADOW,
           zIndex: 1000,
-          pointerEvents: "auto"
+          pointerEvents: "auto",
         }}
         title="Drag to rotate (Shift for 15° snap)"
       />
@@ -280,7 +280,7 @@ export const LineResizeHandle: React.FC<LineResizeHandleProps> = ({
   lineStartOffset,
   mode,
   onPositionChange,
-  onDragEnd
+  onDragEnd,
 }) => {
   const [isResizing, setIsResizing] = useState(false);
   const reactFlow = useReactFlow();
@@ -312,7 +312,7 @@ export const LineResizeHandle: React.FC<LineResizeHandleProps> = ({
         startClientY: e.clientY,
         startHandleX: origin.x,
         startHandleY: origin.y,
-        zoom
+        zoom,
       });
 
       setIsResizing(true);
@@ -408,7 +408,7 @@ export const LineResizeHandle: React.FC<LineResizeHandleProps> = ({
         cursor: getHandleCursor(mode, isResizing),
         boxShadow: HANDLE_BOX_SHADOW,
         zIndex: 1000,
-        pointerEvents: "auto"
+        pointerEvents: "auto",
       }}
       title="Drag to resize line"
     />

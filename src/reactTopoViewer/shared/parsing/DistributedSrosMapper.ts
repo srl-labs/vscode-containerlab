@@ -221,7 +221,7 @@ export function findDistributedSrosInterface(params: {
       ifaceName,
       fullPrefix,
       labName,
-      components
+      components,
     });
   }
 
@@ -231,7 +231,7 @@ export function findDistributedSrosInterface(params: {
     candidateNames,
     ifaceName,
     provider,
-    labName
+    labName,
   });
 }
 
@@ -256,7 +256,7 @@ export function findDistributedSrosContainer(params: {
       baseNodeName,
       fullPrefix,
       labName,
-      components
+      components,
     });
   }
 

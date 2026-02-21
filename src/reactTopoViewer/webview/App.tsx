@@ -15,7 +15,7 @@ import {
   useStoreInitialization,
   useGraphMessageSubscription,
   useTopoViewerMessageSubscription,
-  useTopologyHostInitialization
+  useTopologyHostInitialization,
 } from "./hooks/app";
 import { AppContent } from "./AppContent";
 

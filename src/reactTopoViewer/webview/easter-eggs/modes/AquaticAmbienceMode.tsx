@@ -19,7 +19,7 @@ const COLORS = {
   teal: { r: 0, g: 128, b: 128 },
   aqua: { r: 0, g: 180, b: 200 },
   lightBlue: { r: 135, g: 206, b: 235 },
-  white: { r: 255, g: 255, b: 255 }
+  white: { r: 255, g: 255, b: 255 },
 };
 
 /** Section to color mapping */
@@ -29,7 +29,7 @@ const SECTION_COLORS: RGBColor[] = [
   COLORS.teal,
   COLORS.oceanBlue,
   COLORS.aqua,
-  COLORS.lightBlue
+  COLORS.lightBlue,
 ];
 
 function getSectionColor(section: number): RGBColor {
@@ -60,7 +60,7 @@ function initializeBubbles(width: number, height: number): void {
       speed: 0.3 + Math.random() * 0.5,
       wobblePhase: Math.random() * Math.PI * 2,
       wobbleSpeed: 0.01 + Math.random() * 0.02,
-      alpha: 0.3 + Math.random() * 0.4
+      alpha: 0.3 + Math.random() * 0.4,
     });
     /* eslint-enable sonarjs/pseudo-random */
   }
@@ -136,7 +136,7 @@ const AquaticCanvas: React.FC<{
         pointerEvents: "none",
         zIndex: 99998,
         width: "100%",
-        height: "100%"
+        height: "100%",
       }}
     />
   );
@@ -351,7 +351,7 @@ export const AquaticAmbienceMode: React.FC<BaseModeProps> = ({
   isActive,
   onClose,
   onSwitchMode,
-  modeName
+  modeName,
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useAquaticAmbienceAudio();
@@ -407,7 +407,7 @@ export const AquaticAmbienceMode: React.FC<BaseModeProps> = ({
           alignItems: "flex-end",
           justifyContent: "center",
           pb: 4,
-          gap: 2
+          gap: 2,
         }}
       >
         <Box
@@ -429,7 +429,7 @@ export const AquaticAmbienceMode: React.FC<BaseModeProps> = ({
             fontSize: "14px",
             fontWeight: 600,
             textShadow: "0 0 10px rgba(135, 206, 235, 0.8)",
-            boxShadow: "0 0 20px rgba(0, 180, 200, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.1)"
+            boxShadow: "0 0 20px rgba(0, 180, 200, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.1)",
           }}
           title={`Current: ${modeName}`}
         >
@@ -461,7 +461,7 @@ export const AquaticAmbienceMode: React.FC<BaseModeProps> = ({
             fontSize: "14px",
             fontWeight: 600,
             textShadow: "0 0 10px rgba(0, 180, 200, 0.8)",
-            boxShadow: "0 0 20px rgba(0, 128, 128, 0.5), inset 0 0 20px rgba(0, 180, 200, 0.1)"
+            boxShadow: "0 0 20px rgba(0, 128, 128, 0.5), inset 0 0 20px rgba(0, 180, 200, 0.1)",
           }}
         >
           Surface

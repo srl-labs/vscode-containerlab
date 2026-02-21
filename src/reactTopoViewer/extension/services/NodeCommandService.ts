@@ -9,7 +9,7 @@ import {
   type ClabContainerTreeNode,
   type ClabInterfaceTreeNode,
   type ClabLabTreeNode,
-  flattenContainers
+  flattenContainers,
 } from "../../../treeView/common";
 import { runningLabsProvider } from "../../../globals";
 import type { EndpointResult } from "../../shared/types/endpoint";
@@ -37,10 +37,7 @@ function isClabLabTreeNode(value: unknown): value is ClabLabTreeNode {
     return false;
   }
   const labPathRecord = asRecord(labPath);
-  return (
-    typeof labPathRecord.absolute === "string" &&
-    labPathRecord.absolute.length > 0
-  );
+  return typeof labPathRecord.absolute === "string" && labPathRecord.absolute.length > 0;
 }
 
 function labelToString(label: vscode.TreeItemLabel | string | undefined): string {
@@ -64,7 +61,7 @@ function createDefaultContainerNode(nodeName: string): ClabContainerTreeNode {
     interfaces: [],
     labPath: { absolute: "", relative: "" },
     IPv4Address: "",
-    IPv6Address: ""
+    IPv6Address: "",
   } as ClabContainerTreeNode;
 }
 
@@ -86,7 +83,7 @@ function createInterfaceObject(
     mac: "",
     mtu: 0,
     ifIndex: 0,
-    state: ""
+    state: "",
   } as ClabInterfaceTreeNode;
 }
 

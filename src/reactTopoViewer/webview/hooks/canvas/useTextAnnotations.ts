@@ -55,7 +55,7 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
         textDecoration: lastTextStyleRef.current.textDecoration ?? "none",
         textAlign: lastTextStyleRef.current.textAlign ?? "left",
         fontFamily: lastTextStyleRef.current.fontFamily ?? "Arial",
-        groupId: parentGroup?.id
+        groupId: parentGroup?.id,
       };
     },
     [derived.groups]
@@ -126,7 +126,7 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
         fontStyle: annotation.fontStyle,
         textDecoration: annotation.textDecoration,
         textAlign: annotation.textAlign,
-        fontFamily: annotation.fontFamily
+        fontFamily: annotation.fontFamily,
       };
 
       persist();
@@ -185,7 +185,7 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
       deleteSelectedTextAnnotations,
       onTextRotationStart,
       onTextRotationEnd,
-      handleTextCanvasClick
+      handleTextCanvasClick,
     }),
     [
       handleAddText,
@@ -196,7 +196,7 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
       deleteSelectedTextAnnotations,
       onTextRotationStart,
       onTextRotationEnd,
-      handleTextCanvasClick
+      handleTextCanvasClick,
     ]
   );
 }

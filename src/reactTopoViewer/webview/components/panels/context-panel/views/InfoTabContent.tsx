@@ -24,7 +24,7 @@ const InfoPlaceholder: React.FC = () => (
 
 export const InfoTabContent: React.FC<InfoTabContentProps> = ({
   selectedNodeData,
-  selectedLinkData
+  selectedLinkData,
 }) => {
   const panelView = useContextPanelContent();
 

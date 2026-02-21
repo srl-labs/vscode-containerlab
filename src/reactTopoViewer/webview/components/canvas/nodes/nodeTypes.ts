@@ -7,7 +7,7 @@ import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   TRAFFIC_RATE_NODE_TYPE,
-  GROUP_NODE_TYPE
+  GROUP_NODE_TYPE,
 } from "../../../annotations/annotationNodeConverters";
 
 import { TopologyNode } from "./TopologyNode";
@@ -28,7 +28,7 @@ export const nodeTypes: NodeTypes = {
   [FREE_TEXT_NODE_TYPE]: FreeTextNode,
   [FREE_SHAPE_NODE_TYPE]: FreeShapeNode,
   [TRAFFIC_RATE_NODE_TYPE]: TrafficRateNode,
-  [GROUP_NODE_TYPE]: GroupNode
+  [GROUP_NODE_TYPE]: GroupNode,
 };
 
 /**
@@ -40,5 +40,5 @@ export const nodeTypesLite: NodeTypes = {
   [FREE_TEXT_NODE_TYPE]: FreeTextNode,
   [FREE_SHAPE_NODE_TYPE]: FreeShapeNode,
   [TRAFFIC_RATE_NODE_TYPE]: TrafficRateNode,
-  [GROUP_NODE_TYPE]: GroupNode
+  [GROUP_NODE_TYPE]: GroupNode,
 };

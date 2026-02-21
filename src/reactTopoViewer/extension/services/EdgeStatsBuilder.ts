@@ -78,7 +78,7 @@ export function buildNodeRuntimeUpdates(
         state: container.state,
         status: container.status,
         mgmtIpv4Address: container.IPv4Address,
-        mgmtIpv6Address: container.IPv6Address
+        mgmtIpv6Address: container.IPv6Address,
       });
     }
   }
@@ -95,7 +95,7 @@ function buildSingleEdgeUpdate(
   context: EdgeStatsBuilderContext
 ): EdgeStatsUpdate | null {
   const edgeData = edge.data;
-  const extraData = (edgeData?.extraData ?? {});
+  const extraData = edgeData?.extraData ?? {};
 
   // Look up fresh interface data
   const { sourceIface, targetIface } = lookupEdgeInterfaces(

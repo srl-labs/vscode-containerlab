@@ -6,7 +6,7 @@ import type {
   ClabTopology,
   NodeAnnotation,
   NetworkNodeAnnotation,
-  TopologyAnnotations
+  TopologyAnnotations,
 } from "../types/topology";
 import { DEFAULT_INTERFACE_PATTERNS } from "../constants/interfacePatterns";
 
@@ -18,7 +18,7 @@ import type {
   ContainerDataProvider,
   ContainerInfo,
   InterfacePatternMigration,
-  ParserLogger
+  ParserLogger,
 } from "./types";
 
 // ============================================================================
@@ -117,7 +117,7 @@ export function getContainerData(
     fullPrefix,
     labName,
     provider: opts.containerDataProvider,
-    components: getNodeComponents(resolvedNode)
+    components: getNodeComponents(resolvedNode),
   });
 }
 
@@ -138,7 +138,7 @@ function buildContainerFields(
   return {
     mgmtIpv4Address: containerData.IPv4Address,
     mgmtIpv6Address: containerData.IPv6Address,
-    state: containerData.state
+    state: containerData.state,
   };
 }
 
@@ -176,7 +176,7 @@ export function createNodeExtraData(params: {
     cleanedLabels,
     includeContainerData,
     interfacePatternMapping,
-    nodeAnn
+    nodeAnn,
   } = params;
 
   const kind = mergedNode.kind ?? "";
@@ -211,7 +211,7 @@ export function createNodeExtraData(params: {
     name: nodeName,
     shortname: nodeName,
     state: containerFields.state,
-    weight: "3"
+    weight: "3",
   };
   if (interfacePattern !== undefined && interfacePattern.length > 0) {
     extraData.interfacePattern = interfacePattern;
@@ -219,7 +219,7 @@ export function createNodeExtraData(params: {
 
   return {
     extraData,
-    migrationPattern: needsMigration ? interfacePattern : undefined
+    migrationPattern: needsMigration ? interfacePattern : undefined,
   };
 }
 
@@ -318,7 +318,7 @@ export function buildNodeElement(params: {
     labName,
     nodeAnn,
     nodeIndex,
-    interfacePatternMapping
+    interfacePatternMapping,
   } = params;
   const mergedNode = resolveNodeConfig(parsed, nodeObj);
   const nodePropKeys = new Set(Object.keys(nodeObj));
@@ -339,7 +339,7 @@ export function buildNodeElement(params: {
     cleanedLabels,
     includeContainerData: opts.includeContainerData ?? false,
     interfacePatternMapping,
-    nodeAnn
+    nodeAnn,
   });
 
   const labels = mergedNode.labels;
@@ -359,7 +359,7 @@ export function buildNodeElement(params: {
       ...iconVisuals,
       lat,
       lng,
-      extraData
+      extraData,
     },
     position,
     removed: false,
@@ -368,7 +368,7 @@ export function buildNodeElement(params: {
     locked: false,
     grabbed: false,
     grabbable: true,
-    classes: ""
+    classes: "",
   };
 
   return { element, migrationPattern };
@@ -413,7 +413,7 @@ export function addNodeElements(
       labName,
       nodeAnn,
       nodeIndex,
-      interfacePatternMapping
+      interfacePatternMapping,
     });
     elements.push(element);
     // Track migrations for nodes that need interfacePattern written to annotations

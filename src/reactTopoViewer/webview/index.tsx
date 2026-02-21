@@ -33,16 +33,14 @@ subscribeToWebviewMessages((event) => {
     // Dispatch a custom event so hooks can react to the update
     window.dispatchEvent(
       new CustomEvent("docker-images-updated", {
-        detail: message.dockerImages
+        detail: message.dockerImages,
       })
     );
   }
 });
 
 // Log bootstrap data
-const customNodeCount = Array.isArray(initialData.customNodes)
-  ? initialData.customNodes.length
-  : 0;
+const customNodeCount = Array.isArray(initialData.customNodes) ? initialData.customNodes.length : 0;
 const iconCount = Array.isArray(initialData.customIcons) ? initialData.customIcons.length : 0;
 log.info(
   `[ReactTopoViewer] Bootstrap data loaded (customNodes: ${customNodeCount}, customIcons: ${iconCount})`
