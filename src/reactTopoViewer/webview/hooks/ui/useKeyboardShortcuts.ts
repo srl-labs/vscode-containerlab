@@ -5,6 +5,12 @@ import { useEffect, useCallback } from "react";
 
 import { log } from "../../utils/logger";
 import { useGraphStore } from "../../stores/graphStore";
+import {
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE,
+  TRAFFIC_RATE_NODE_TYPE,
+  GROUP_NODE_TYPE
+} from "../../annotations/annotationNodeConverters";
 
 interface KeyboardShortcutsOptions {
   mode: "edit" | "view";
@@ -356,7 +362,47 @@ function handleDelete(
   onDeleteAnnotations?: () => void
 ): boolean {
   if (event.key !== "Delete" && event.key !== "Backspace") return false;
-  if (mode !== "edit" || isLocked) return false;
+  if (isLocked) return false;
+
+  // In view mode (running/deployed labs), allow deleting annotations only when unlocked.
+  if (mode !== "edit") {
+    const { nodes, edges } = useGraphStore.getState();
+    const selectedNodes = nodes.filter((n) => n.selected);
+    const hasSelectedEdges = edges.some((e) => e.selected) || Boolean(selectedEdge);
+    const hasSelectedNonAnnotationNode = selectedNodes.some(
+      (node) =>
+        node.type !== FREE_TEXT_NODE_TYPE &&
+        node.type !== FREE_SHAPE_NODE_TYPE &&
+        node.type !== GROUP_NODE_TYPE &&
+        node.type !== TRAFFIC_RATE_NODE_TYPE
+    );
+    const hasSelectedAnnotationNodes = selectedNodes.some(
+      (node) =>
+        node.type === FREE_TEXT_NODE_TYPE ||
+        node.type === FREE_SHAPE_NODE_TYPE ||
+        node.type === GROUP_NODE_TYPE ||
+        node.type === TRAFFIC_RATE_NODE_TYPE
+    );
+
+    // If canvas selection includes only annotation nodes, use batched delete path
+    // so deletion works even when annotation UI selection is out of sync.
+    if (
+      onDeleteSelection &&
+      hasSelectedAnnotationNodes &&
+      !hasSelectedEdges &&
+      !hasSelectedNonAnnotationNode &&
+      !selectedNode
+    ) {
+      log.info("[Keyboard] Deleting selected annotation nodes (view mode)");
+      onDeleteSelection();
+      event.preventDefault();
+      return true;
+    }
+
+    const handled = deleteSelectedAnnotations(selectedAnnotationIds, onDeleteAnnotations);
+    if (handled) event.preventDefault();
+    return handled;
+  }
 
   if (onDeleteSelection) {
     const { nodes, edges } = useGraphStore.getState();

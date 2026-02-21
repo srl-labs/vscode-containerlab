@@ -113,7 +113,7 @@ interface PaneMenuBuilderContext extends PaneMenuActions {
  * Build context menu for free text annotations
  */
 function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isEditMode, isLocked, closeContextMenu, editFreeText, deleteFreeText } = ctx;
+  const { targetId, isLocked, closeContextMenu, editFreeText, deleteFreeText } = ctx;
 
   const items: ContextMenuItem[] = [
     {
@@ -127,7 +127,7 @@ function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
       }
     }
   ];
-  if (isEditMode) {
+  if (!isLocked) {
     items.push(
       { id: DIVIDER_ID, label: "", divider: true },
       {
@@ -150,7 +150,7 @@ function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
  * Build context menu for free shape annotations
  */
 function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isEditMode, isLocked, closeContextMenu, editFreeShape, deleteFreeShape } = ctx;
+  const { targetId, isLocked, closeContextMenu, editFreeShape, deleteFreeShape } = ctx;
 
   const items: ContextMenuItem[] = [
     {
@@ -164,7 +164,7 @@ function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
       }
     }
   ];
-  if (isEditMode) {
+  if (!isLocked) {
     items.push(
       { id: DIVIDER_ID, label: "", divider: true },
       {
@@ -187,7 +187,7 @@ function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
  * Build context menu for group annotations
  */
 function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isEditMode, isLocked, closeContextMenu, editGroup, deleteGroup } = ctx;
+  const { targetId, isLocked, closeContextMenu, editGroup, deleteGroup } = ctx;
 
   const items: ContextMenuItem[] = [
     {
@@ -201,7 +201,7 @@ function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
       }
     }
   ];
-  if (isEditMode) {
+  if (!isLocked) {
     items.push(
       { id: DIVIDER_ID, label: "", divider: true },
       {
@@ -224,7 +224,7 @@ function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
  * Build context menu for traffic-rate annotations
  */
 function buildTrafficRateContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isEditMode, isLocked, closeContextMenu, editTrafficRate, deleteTrafficRate } =
+  const { targetId, isLocked, closeContextMenu, editTrafficRate, deleteTrafficRate } =
     ctx;
 
   const items: ContextMenuItem[] = [
@@ -240,7 +240,7 @@ function buildTrafficRateContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     }
   ];
 
-  if (isEditMode) {
+  if (!isLocked) {
     items.push(
       { id: DIVIDER_ID, label: "", divider: true },
       {

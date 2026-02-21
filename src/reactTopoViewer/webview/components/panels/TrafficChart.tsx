@@ -7,6 +7,8 @@ import { LineChart } from "@mui/x-charts/LineChart";
 import type { InterfaceStatsPayload, EndpointStatsHistory } from "../../../shared/types/topology";
 
 const MAX_GRAPH_POINTS = 60;
+const MIN_TIMESTAMP_STEP_SECONDS = 0.001;
+const DELAY_FALLBACK_MULTIPLIER = 3;
 
 interface BpsUnit {
   divisor: number;
@@ -49,6 +51,37 @@ function createEmptyHistory(): EndpointStatsHistory {
     rxPps: [],
     txPps: []
   };
+}
+
+function resolveValidIntervalSeconds(stats: InterfaceStatsPayload | undefined): number | undefined {
+  const interval = stats?.statsIntervalSeconds;
+  if (typeof interval !== "number" || !Number.isFinite(interval) || interval <= 0) {
+    return undefined;
+  }
+  return interval;
+}
+
+function resolveNextTimestampSeconds(
+  history: EndpointStatsHistory,
+  stats: InterfaceStatsPayload | undefined,
+  nowSeconds: number
+): number {
+  const prev = history.timestamps[history.timestamps.length - 1];
+  if (typeof prev !== "number" || !Number.isFinite(prev)) {
+    return nowSeconds;
+  }
+
+  const interval = resolveValidIntervalSeconds(stats);
+  if (!interval) {
+    return Math.max(nowSeconds, prev + MIN_TIMESTAMP_STEP_SECONDS);
+  }
+
+  const expected = prev + interval;
+  if (nowSeconds - expected > interval * DELAY_FALLBACK_MULTIPLIER) {
+    return nowSeconds;
+  }
+
+  return expected;
 }
 
 function resolveChartMargin(compact: boolean, showLegend: boolean, scale: number) {
@@ -114,7 +147,16 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
   // Track last-seen stats to avoid double-push in Strict Mode
   const lastStatsRef = useRef<InterfaceStatsPayload | undefined>(undefined);
 
-  const { xData, rxBpsData, txBpsData, rxPpsData, txPpsData, unitLabel } = useMemo(() => {
+  const {
+    xData,
+    rxBpsData,
+    txBpsData,
+    rxPpsData,
+    txPpsData,
+    unitLabel,
+    xMin,
+    xMax
+  } = useMemo(() => {
     let history = historyStore.get(endpointKey);
     if (!history) {
       history = createEmptyHistory();
@@ -125,7 +167,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
     if (stats && stats !== lastStatsRef.current) {
       lastStatsRef.current = stats;
 
-      history.timestamps.push(Date.now() / 1000);
+      history.timestamps.push(resolveNextTimestampSeconds(history, stats, Date.now() / 1000));
       history.rxBps.push(stats.rxBps ?? 0);
       history.txBps.push(stats.txBps ?? 0);
       history.rxPps.push(stats.rxPps ?? 0);
@@ -152,6 +194,28 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
 
     // Convert epoch seconds to Date objects for the time axis
     const x = history.timestamps.map((ts) => new Date(ts * 1000));
+    const lastTimestamp = history.timestamps[history.timestamps.length - 1];
+
+    let xMinValue: Date | undefined;
+    let xMaxValue: Date | undefined;
+    if (typeof lastTimestamp === "number" && Number.isFinite(lastTimestamp)) {
+      const intervalSeconds =
+        resolveValidIntervalSeconds(stats) ??
+        (history.timestamps.length >= 2
+          ? Math.max(
+              history.timestamps[history.timestamps.length - 1] -
+                history.timestamps[history.timestamps.length - 2],
+              MIN_TIMESTAMP_STEP_SECONDS
+            )
+          : 1);
+      const visiblePointSpan = Math.max(
+        1,
+        Math.min(history.timestamps.length - 1, MAX_GRAPH_POINTS - 1)
+      );
+      const windowSeconds = intervalSeconds * visiblePointSpan;
+      xMinValue = new Date((lastTimestamp - windowSeconds) * 1000);
+      xMaxValue = new Date(lastTimestamp * 1000);
+    }
 
     return {
       xData: x,
@@ -159,7 +223,9 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
       txBpsData: txScaled,
       rxPpsData: [...history.rxPps],
       txPpsData: [...history.txPps],
-      unitLabel: unit.label
+      unitLabel: unit.label,
+      xMin: xMinValue,
+      xMax: xMaxValue
     };
   }, [stats, endpointKey]);
   const margin = resolveChartMargin(compact, showLegend, scale);
@@ -184,6 +250,8 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
           {
             data: xData,
             scaleType: "time",
+            min: xMin,
+            max: xMax,
             disableLine: true,
             disableTicks: true,
             valueFormatter: (v: Date) => v.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),

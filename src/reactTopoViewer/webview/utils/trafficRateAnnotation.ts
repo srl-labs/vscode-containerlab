@@ -14,6 +14,8 @@ const TRAFFIC_STAT_KEYS: Array<keyof InterfaceStatsPayload> = [
   "txPackets"
 ];
 
+const INTERVAL_KEY: keyof InterfaceStatsPayload = "statsIntervalSeconds";
+
 interface EdgeDataWithStats extends Partial<TopologyEdgeData> {
   extraData?: Record<string, unknown>;
 }
@@ -35,6 +37,11 @@ function toStatsPayload(value: unknown): InterfaceStatsPayload | undefined {
     }
   }
 
+  const interval = source[INTERVAL_KEY];
+  if (typeof interval === "number" && Number.isFinite(interval) && interval > 0) {
+    stats.statsIntervalSeconds = interval;
+  }
+
   return Object.keys(stats).length > 0 ? stats : undefined;
 }
 
@@ -52,6 +59,15 @@ function addStats(
     if (typeof right !== "number") continue;
     merged[key] = (typeof left === "number" ? left : 0) + right;
   }
+
+  const leftInterval = merged.statsIntervalSeconds;
+  const rightInterval = next.statsIntervalSeconds;
+  if (typeof leftInterval === "number" && typeof rightInterval === "number") {
+    merged.statsIntervalSeconds = Math.min(leftInterval, rightInterval);
+  } else if (typeof rightInterval === "number") {
+    merged.statsIntervalSeconds = rightInterval;
+  }
+
   return merged;
 }
 

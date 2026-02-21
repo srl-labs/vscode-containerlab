@@ -82,24 +82,33 @@ function handleAltDelete(
   handleDeleteNode: (nodeId: string) => void,
   annotationHandlers?: AnnotationHandlers
 ): boolean {
-  if (!event.altKey || mode !== "edit" || isLocked) return false;
-  event.stopPropagation();
+  if (!event.altKey || isLocked) return false;
+
+  // Annotation overlays are editable in unlocked view mode (running labs).
   if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers?.onDeleteFreeText) {
+    event.stopPropagation();
     annotationHandlers.onDeleteFreeText(node.id);
     return true;
   }
   if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers?.onDeleteFreeShape) {
+    event.stopPropagation();
     annotationHandlers.onDeleteFreeShape(node.id);
     return true;
   }
   if (node.type === GROUP_NODE_TYPE && annotationHandlers?.onDeleteGroup) {
+    event.stopPropagation();
     annotationHandlers.onDeleteGroup(node.id);
     return true;
   }
   if (node.type === TRAFFIC_RATE_NODE_TYPE && annotationHandlers?.onDeleteTrafficRate) {
+    event.stopPropagation();
     annotationHandlers.onDeleteTrafficRate(node.id);
     return true;
   }
+
+  if (mode !== "edit") return false;
+
+  event.stopPropagation();
   handleDeleteNode(node.id);
   return true;
 }
@@ -459,10 +468,12 @@ function handleCanvasDropEvent(params: {
   const { event, mode, isLocked, reactFlowInstanceRef, handlers } = params;
   event.preventDefault();
 
-  if (mode !== "edit" || isLocked) return;
+  if (isLocked) return;
 
   const data = parseCanvasDropData(event);
   if (!data) return;
+  // Deployed labs run in view mode, but unlocked users can still place annotation overlays.
+  if (mode !== "edit" && data.type !== "annotation") return;
 
   const rfInstance = reactFlowInstanceRef.current;
   if (!rfInstance) return;
