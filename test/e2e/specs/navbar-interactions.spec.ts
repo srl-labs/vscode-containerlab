@@ -91,10 +91,7 @@ test.describe("Navbar Interactions", () => {
   });
 
   test.describe("Layout Dropdown", () => {
-    test("layout dropdown opens, has options, and closes on click outside", async ({
-      page,
-      topoViewerPage
-    }) => {
+    test("layout dropdown opens, has options, and closes on click outside", async ({ page }) => {
       const layoutBtn = page.locator('[data-testid="navbar-layout"]');
       await layoutBtn.click();
       await page.waitForTimeout(200);

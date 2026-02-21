@@ -83,8 +83,22 @@ const COMMUNITY_LINKS: ReadonlyArray<{ label: string; href: string }> = [
   { label: "Discord", href: "https://discord.gg/vAyddtaEV9" }
 ];
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toWelcomeInitialData(value: unknown): WelcomeInitialData {
+  if (!isRecord(value)) {
+    return {};
+  }
+  return {
+    extensionVersion:
+      typeof value.extensionVersion === "string" ? value.extensionVersion : undefined
+  };
+}
+
 function WelcomePageApp(): React.JSX.Element {
-  const initialData = (window.__INITIAL_DATA__ ?? {}) as WelcomeInitialData;
+  const initialData = toWelcomeInitialData(window.__INITIAL_DATA__);
   const extensionVersion = initialData.extensionVersion ?? "unknown";
 
   const postMessage = usePostMessage<WelcomeOutgoingMessage>();
@@ -95,10 +109,6 @@ function WelcomePageApp(): React.JSX.Element {
   const [isLoadingRepos, setIsLoadingRepos] = React.useState(true);
 
   useMessageListener<WelcomeIncomingMessage>((message) => {
-    if (message.command !== "reposLoaded") {
-      return;
-    }
-
     setRepos(Array.isArray(message.repos) ? message.repos : []);
     setUsingFallback(Boolean(message.usingFallback));
     setIsLoadingRepos(false);
@@ -146,7 +156,11 @@ function WelcomePageApp(): React.JSX.Element {
                     Welcome to Containerlab
                   </Typography>
                   <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                    <Chip size="small" variant="outlined" label={`Extension v${extensionVersion}`} />
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={`Extension v${extensionVersion}`}
+                    />
                     {COMMUNITY_LINKS.map((link) => (
                       <Chip
                         key={link.label}
@@ -270,11 +284,20 @@ function WelcomePageApp(): React.JSX.Element {
                             sx={{ alignItems: "flex-start" }}
                           >
                             <Stack spacing={0.5} sx={{ width: "100%", minWidth: 0 }}>
-                              <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                alignItems="center"
+                                sx={{ minWidth: 0 }}
+                              >
                                 <Typography
                                   component="span"
                                   variant="body2"
-                                  sx={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}
+                                  sx={{
+                                    fontWeight: 600,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis"
+                                  }}
                                 >
                                   {repo.name}
                                 </Typography>

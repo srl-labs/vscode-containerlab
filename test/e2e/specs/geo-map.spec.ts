@@ -17,10 +17,13 @@ test.describe("GeoMap Layout", () => {
     return page.evaluate((id: string) => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
-      if (!rf) return null;
+      if (rf === undefined || rf === null) return null;
       const node = (rf.getNodes?.() ?? []).find((n: any) => n.id === id);
-      if (!node?.data?.geoCoordinates) return null;
-      const { lat, lng } = node.data.geoCoordinates;
+      const geo = node?.data?.geoCoordinates;
+      if (typeof geo !== "object" || geo === null) return null;
+      const lat = Reflect.get(geo, "lat");
+      const lng = Reflect.get(geo, "lng");
+      if (typeof lat !== "number" || typeof lng !== "number") return null;
       return { lat, lng };
     }, nodeId);
   };
@@ -56,7 +59,7 @@ test.describe("GeoMap Layout", () => {
     // Enable geo layout
     await page.evaluate((layout) => {
       const dev = (window as any).__DEV__;
-      if (dev?.setLayout) {
+      if (typeof dev?.setLayout === "function") {
         dev.setLayout(layout);
       } else {
         throw new Error("setLayout not available");

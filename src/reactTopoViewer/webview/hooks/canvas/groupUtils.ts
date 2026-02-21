@@ -107,7 +107,7 @@ export function findParentGroupForBounds(
 
   for (const group of groups) {
     // Skip the group itself
-    if (excludeId && group.id === excludeId) continue;
+    if (excludeId !== undefined && group.id === excludeId) continue;
 
     // Check if this group fully contains the inner bounds
     if (isGroupInsideGroup(innerBounds, group)) {
@@ -142,9 +142,9 @@ export function handleNodeMembershipChange(
   onMembershipWillChange?.(nodeId, oldGroupId, newGroupId);
 
   // Apply the change
-  if (newGroupId && targetGroup) {
+  if (newGroupId !== null && targetGroup !== null) {
     actions.addNodeToGroup(nodeId, newGroupId);
-  } else if (oldGroupId) {
+  } else if (oldGroupId !== null) {
     actions.removeNodeFromGroup(nodeId);
   }
 }

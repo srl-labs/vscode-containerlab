@@ -34,11 +34,11 @@ export class CustomNodeConfigManager {
       let customNodes = config.get<CustomNodeConfig[]>("customNodes", []);
       const { oldName, ...nodeData } = data;
 
-      if (data.setDefault) {
+      if (data.setDefault === true) {
         customNodes = customNodes.map((n) => ({ ...n, setDefault: false }));
       }
 
-      if (oldName) {
+      if (oldName !== undefined && oldName.length > 0) {
         const oldIndex = customNodes.findIndex((n) => n.name === oldName);
         if (oldIndex >= 0) {
           customNodes[oldIndex] = nodeData;
@@ -57,7 +57,7 @@ export class CustomNodeConfigManager {
       await config.update("customNodes", customNodes, vscode.ConfigurationTarget.Global);
       const defaultCustomNode = customNodes.find((n) => n.setDefault === true);
       log.info(`Saved custom node ${data.name}`);
-      return { result: { customNodes, defaultNode: defaultCustomNode?.name || "" }, error: null };
+      return { result: { customNodes, defaultNode: defaultCustomNode?.name ?? "" }, error: null };
     } catch (err) {
       const error = `Error saving custom node: ${err}`;
       log.error(`Error saving custom node: ${JSON.stringify(err, null, 2)}`);
@@ -77,26 +77,21 @@ export class CustomNodeConfigManager {
       const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
       const customNodes = config.get<CustomNodeConfig[]>("customNodes", []);
 
-      let found = false;
-      const updatedNodes = customNodes.map((node) => {
-        const updated = { ...node, setDefault: false };
-        if (node.name === name) {
-          found = true;
-          updated.setDefault = true;
-        }
-        return updated;
-      });
-
-      if (!found) {
+      const targetIndex = customNodes.findIndex((node) => node.name === name);
+      if (targetIndex < 0) {
         throw new Error(`Custom node ${name} not found`);
       }
+      const updatedNodes = customNodes.map((node, index) => ({
+        ...node,
+        setDefault: index === targetIndex
+      }));
 
       await config.update("customNodes", updatedNodes, vscode.ConfigurationTarget.Global);
       const defaultCustomNode = updatedNodes.find((n) => n.setDefault === true);
       log.info(`Set default custom node ${name}`);
 
       return {
-        result: { customNodes: updatedNodes, defaultNode: defaultCustomNode?.name || "" },
+        result: { customNodes: updatedNodes, defaultNode: defaultCustomNode?.name ?? "" },
         error: null
       };
     } catch (err) {
@@ -118,7 +113,7 @@ export class CustomNodeConfigManager {
       const defaultCustomNode = filteredNodes.find((n) => n.setDefault === true);
       log.info(`Deleted custom node ${name}`);
       return {
-        result: { customNodes: filteredNodes, defaultNode: defaultCustomNode?.name || "" },
+        result: { customNodes: filteredNodes, defaultNode: defaultCustomNode?.name ?? "" },
         error: null
       };
     } catch (err) {
@@ -138,9 +133,9 @@ export class CustomNodeConfigManager {
   } {
     const defaultCustomNode = customNodes.find((node) => node.setDefault === true);
     return {
-      defaultNode: defaultCustomNode?.name || "",
-      defaultKind: defaultCustomNode?.kind || "nokia_srlinux",
-      defaultType: defaultCustomNode?.type || ""
+      defaultNode: defaultCustomNode?.name ?? "",
+      defaultKind: defaultCustomNode?.kind ?? "nokia_srlinux",
+      defaultType: defaultCustomNode?.type ?? ""
     };
   }
 
@@ -150,7 +145,7 @@ export class CustomNodeConfigManager {
   buildImageMapping(customNodes: CustomNodeConfig[]): Record<string, string> {
     const imageMapping: Record<string, string> = {};
     for (const node of customNodes) {
-      if (node.image && node.kind) {
+      if (node.image !== undefined && node.image.length > 0 && node.kind.length > 0) {
         imageMapping[node.kind] = node.image;
       }
     }

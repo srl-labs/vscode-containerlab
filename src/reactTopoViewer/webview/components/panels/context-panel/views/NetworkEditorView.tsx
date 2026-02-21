@@ -43,6 +43,22 @@ export interface NetworkEditorFooterRef {
 const NETWORK_TYPE_OPTIONS = NETWORK_TYPES.map((type) => ({ value: type, label: type }));
 const MACVLAN_MODE_OPTIONS = MACVLAN_MODES.map((mode) => ({ value: mode, label: mode }));
 
+function isNetworkType(value: string): value is NetworkType {
+  switch (value) {
+    case "host":
+    case "mgmt-net":
+    case "macvlan":
+    case "vxlan":
+    case "vxlan-stitch":
+    case "dummy":
+    case "bridge":
+    case "ovs-bridge":
+      return true;
+    default:
+      return false;
+  }
+}
+
 // This form is intentionally dense (conditional sections depend on network type).
 /* eslint-disable complexity */
 const NetworkEditorContent: React.FC<{
@@ -72,7 +88,11 @@ const NetworkEditorContent: React.FC<{
           label="Network Type"
           options={NETWORK_TYPE_OPTIONS}
           value={formData.networkType}
-          onChange={(v) => handleNetworkTypeChange(v as NetworkType)}
+          onChange={(v) => {
+            if (isNetworkType(v)) {
+              handleNetworkTypeChange(v);
+            }
+          }}
           placeholder="Select network type..."
           allowFreeText={false}
         />
@@ -103,7 +123,7 @@ const NetworkEditorContent: React.FC<{
             id="macvlan-mode"
             label="Mode"
             options={MACVLAN_MODE_OPTIONS}
-            value={formData.macvlanMode || "bridge"}
+            value={formData.macvlanMode ?? "bridge"}
             onChange={(v) => onChange({ macvlanMode: v })}
             placeholder="Select mode..."
             allowFreeText={false}
@@ -113,7 +133,7 @@ const NetworkEditorContent: React.FC<{
         <InputField
           id="network-mac"
           label="MAC Address"
-          value={formData.mac || ""}
+          value={formData.mac ?? ""}
           onChange={(v) => onChange({ mac: v })}
           placeholder="e.g., 00:11:22:33:44:55 (optional)"
         />
@@ -126,7 +146,7 @@ const NetworkEditorContent: React.FC<{
             <InputField
               id="vxlan-remote"
               label="Remote"
-              value={formData.vxlanRemote || ""}
+              value={formData.vxlanRemote ?? ""}
               onChange={(v) => onChange({ vxlanRemote: v })}
               placeholder="Remote endpoint IP address"
             />
@@ -134,21 +154,21 @@ const NetworkEditorContent: React.FC<{
               <InputField
                 id="vxlan-vni"
                 label="VNI"
-                value={formData.vxlanVni || ""}
+                value={formData.vxlanVni ?? ""}
                 onChange={(v) => onChange({ vxlanVni: v })}
                 placeholder="e.g., 100"
               />
               <InputField
                 id="vxlan-dst-port"
                 label="Dst Port"
-                value={formData.vxlanDstPort || ""}
+                value={formData.vxlanDstPort ?? ""}
                 onChange={(v) => onChange({ vxlanDstPort: v })}
                 placeholder="e.g., 4789"
               />
               <InputField
                 id="vxlan-src-port"
                 label="Src Port"
-                value={formData.vxlanSrcPort || ""}
+                value={formData.vxlanSrcPort ?? ""}
                 onChange={(v) => onChange({ vxlanSrcPort: v })}
                 placeholder="e.g., 0"
               />
@@ -165,7 +185,7 @@ const NetworkEditorContent: React.FC<{
               id="network-mtu"
               label="MTU"
               type="number"
-              value={formData.mtu || ""}
+              value={formData.mtu ?? ""}
               onChange={(v) => onChange({ mtu: v })}
               placeholder="e.g., 9000"
               min={1}
@@ -173,7 +193,7 @@ const NetworkEditorContent: React.FC<{
             />
             <Section title="Vars">
               <KeyValueList
-                items={formData.vars || {}}
+                items={formData.vars ?? {}}
                 onChange={(items) => onChange({ vars: items })}
                 keyPlaceholder="Variable name"
                 valuePlaceholder="Value"
@@ -182,7 +202,7 @@ const NetworkEditorContent: React.FC<{
             </Section>
             <Section title="Labels">
               <KeyValueList
-                items={formData.labels || {}}
+                items={formData.labels ?? {}}
                 onChange={(items) => onChange({ labels: items })}
                 keyPlaceholder="Label name"
                 valuePlaceholder="Value"

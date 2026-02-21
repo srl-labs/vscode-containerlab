@@ -34,8 +34,12 @@ export function createReactWebviewHtml(options: ReactWebviewHtmlOptions): string
   const nonce = randomBytes(16).toString("hex");
 
   const connectDirective = uniqueSources([webview.cspSource, ...(connectSrc ?? [])]);
-  const frameDirective = frameSrc && frameSrc.length > 0 ? `; frame-src ${uniqueSources(frameSrc)}` : "";
-  const bodyAttributes = webviewKind ? ` data-webview-kind="${webviewKind}"` : "";
+  const frameDirective =
+    frameSrc && frameSrc.length > 0 ? `; frame-src ${uniqueSources(frameSrc)}` : "";
+  const bodyAttributes =
+    webviewKind !== undefined && webviewKind.length > 0
+      ? ` data-webview-kind="${webviewKind}"`
+      : "";
 
   const initialDataJson = JSON.stringify(initialData ?? {}).replaceAll("<", "\\u003c");
 

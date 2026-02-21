@@ -188,7 +188,7 @@ export async function saveNodePositionsWithMemberships(
             { command: "savePositions", payload: positions },
             {
               command: "setNodeGroupMemberships",
-              payload: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId ?? null }))
+              payload: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId }))
             }
           ]
         }

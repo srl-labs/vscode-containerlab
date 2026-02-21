@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Edge } from "@xyflow/react";
 
 import type { InterfaceStatsPayload } from "../../../shared/types/topology";
+import { getRecordUnknown } from "../../../shared/utilities/typeHelpers";
 import { useGraphStore } from "../../stores/graphStore";
 
 const UPDATE_INTERVAL_MS = 1000;
@@ -43,9 +44,11 @@ function seededFraction(seed: number): number {
   return raw - Math.floor(raw);
 }
 
-function resolveRateProfile(
-  seed: number
-): { baseRxBps: number; baseTxBps: number; avgPacketBytes: number } {
+function resolveRateProfile(seed: number): {
+  baseRxBps: number;
+  baseTxBps: number;
+  avgPacketBytes: number;
+} {
   const profile = seed % 3;
 
   if (profile === 0) {
@@ -155,8 +158,8 @@ function applyMockStatsToEdge(
   const sourceStats = buildMockStats(sourceState, stepSeconds);
   const targetStats = buildMockStats(targetState, stepSeconds);
 
-  const data = (edge.data ?? {}) as Record<string, unknown>;
-  const extraData = (data.extraData ?? {}) as Record<string, unknown>;
+  const data = getRecordUnknown(edge.data) ?? {};
+  const extraData = getRecordUnknown(data.extraData) ?? {};
 
   return {
     ...edge,

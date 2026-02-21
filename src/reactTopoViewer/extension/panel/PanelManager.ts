@@ -42,7 +42,7 @@ export function createPanel(config: PanelConfig): vscode.WebviewPanel {
   const panel = vscode.window.createWebviewPanel(
     config.viewType,
     config.title,
-    config.column || vscode.ViewColumn.One,
+    config.column ?? vscode.ViewColumn.One,
     options
   );
 
@@ -109,7 +109,7 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
   const nonce = generateNonce();
 
   // Serialize initial data
-  const initialDataJson = JSON.stringify(bootstrapData || {});
+  const initialDataJson = JSON.stringify(bootstrapData ?? {});
 
   return `<!DOCTYPE html>
 <html lang="en">

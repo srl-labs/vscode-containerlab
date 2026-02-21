@@ -76,7 +76,7 @@ function postProcessHtml(html: string): string {
  * @returns Sanitized HTML string
  */
 export function renderMarkdown(text: string): string {
-  if (!text?.trim()) {
+  if (text.trim().length === 0) {
     return "";
   }
   const rendered = markdownRenderer.render(text);

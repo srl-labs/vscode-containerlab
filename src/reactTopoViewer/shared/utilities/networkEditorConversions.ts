@@ -20,26 +20,26 @@ function parseNetworkType(
   // Check extraData.kind first (new network creation format)
   const extraKind = getStringOrEmpty(extraData.kind);
   if (extraKind && isValidNetworkType(extraKind)) {
-    return extraKind as NetworkType;
+    return extraKind;
   }
 
   // Check top-level kind field
   const topKind = getStringOrEmpty(rawData.kind);
   if (topKind && isValidNetworkType(topKind)) {
-    return topKind as NetworkType;
+    return topKind;
   }
 
   // Check top-level type field (mock data format)
   const topType = getStringOrEmpty(rawData.type);
   if (topType && isValidNetworkType(topType)) {
-    return topType as NetworkType;
+    return topType;
   }
 
   // Fall back to parsing from node ID
   const parts = nodeId.split(":");
   const prefix = parts[0];
   if (isValidNetworkType(prefix)) {
-    return prefix as NetworkType;
+    return prefix;
   }
 
   // Default to host if we can't determine
@@ -49,7 +49,7 @@ function parseNetworkType(
 /**
  * Check if a string is a valid network type
  */
-function isValidNetworkType(type: string): boolean {
+function isValidNetworkType(type: string): type is NetworkType {
   return [
     "host",
     "mgmt-net",
@@ -108,7 +108,7 @@ export function convertToNetworkEditorData(
   if (!rawData) return null;
 
   const nodeId = getStringOrEmpty(rawData.id);
-  const extra = (rawData.extraData as Record<string, unknown>) || {};
+  const extra = getRecord(rawData.extraData) ?? {};
   const networkType = parseNetworkType(nodeId, rawData, extra);
 
   return {
@@ -128,8 +128,8 @@ export function convertToNetworkEditorData(
     // MTU
     mtu: getStringOrEmpty(extra.extMtu),
     // Optional metadata (check extVars/extLabels first, fall back to vars/labels)
-    vars: getRecord(extra.extVars) || getRecord(extra.vars),
-    labels: getRecord(extra.extLabels) || getRecord(extra.labels)
+    vars: getRecord(extra.extVars) ?? getRecord(extra.vars),
+    labels: getRecord(extra.extLabels) ?? getRecord(extra.labels)
   };
 }
 
@@ -137,28 +137,31 @@ export function convertToNetworkEditorData(
  * Convert NetworkEditorData back to extraData format for saving
  */
 export function convertNetworkEditorDataToYaml(data: NetworkEditorData): Record<string, unknown> {
+  const hasNonEmptyString = (value: string | undefined): value is string =>
+    value !== undefined && value.length > 0;
+
   const result: Record<string, unknown> = {
     kind: data.networkType
   };
 
   // VXLAN-specific fields
-  if (data.vxlanRemote) result.extRemote = data.vxlanRemote;
-  if (data.vxlanVni) result.extVni = data.vxlanVni;
-  if (data.vxlanDstPort) result.extDstPort = data.vxlanDstPort;
-  if (data.vxlanSrcPort) result.extSrcPort = data.vxlanSrcPort;
+  if (hasNonEmptyString(data.vxlanRemote)) result.extRemote = data.vxlanRemote;
+  if (hasNonEmptyString(data.vxlanVni)) result.extVni = data.vxlanVni;
+  if (hasNonEmptyString(data.vxlanDstPort)) result.extDstPort = data.vxlanDstPort;
+  if (hasNonEmptyString(data.vxlanSrcPort)) result.extSrcPort = data.vxlanSrcPort;
 
   // MACVLAN mode
-  if (data.macvlanMode) result.extMode = data.macvlanMode;
+  if (hasNonEmptyString(data.macvlanMode)) result.extMode = data.macvlanMode;
 
   // MAC address
-  if (data.mac) result.extMac = data.mac;
+  if (hasNonEmptyString(data.mac)) result.extMac = data.mac;
 
   // MTU
-  if (data.mtu) result.extMtu = data.mtu;
+  if (hasNonEmptyString(data.mtu)) result.extMtu = data.mtu;
 
   // Metadata
-  if (data.vars && Object.keys(data.vars).length > 0) result.vars = data.vars;
-  if (data.labels && Object.keys(data.labels).length > 0) result.labels = data.labels;
+  if (data.vars !== undefined && Object.keys(data.vars).length > 0) result.vars = data.vars;
+  if (data.labels !== undefined && Object.keys(data.labels).length > 0) result.labels = data.labels;
 
   return result;
 }

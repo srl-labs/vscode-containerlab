@@ -10,7 +10,7 @@ import type {
 const ERR_NO_LAB_NODE = "No lab node selected.";
 const ERR_NO_IFACE_NODE = "No interface node selected.";
 
-export function copyLabPath(node: ClabLabTreeNode) {
+export function copyLabPath(node: ClabLabTreeNode | undefined) {
   if (!node) {
     vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
@@ -29,7 +29,7 @@ export function copyLabPath(node: ClabLabTreeNode) {
   });
 }
 
-export function copyContainerIPv4Address(node: ClabContainerTreeNode) {
+export function copyContainerIPv4Address(node: ClabContainerTreeNode | undefined) {
   if (!node) {
     vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
@@ -50,7 +50,7 @@ export function copyContainerIPv4Address(node: ClabContainerTreeNode) {
   });
 }
 
-export function copyContainerIPv6Address(node: ClabContainerTreeNode) {
+export function copyContainerIPv6Address(node: ClabContainerTreeNode | undefined) {
   if (!node) {
     vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
@@ -71,7 +71,7 @@ export function copyContainerIPv6Address(node: ClabContainerTreeNode) {
   });
 }
 
-export function copyContainerName(node: ClabContainerTreeNode) {
+export function copyContainerName(node: ClabContainerTreeNode | undefined) {
   if (!node) {
     vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
@@ -91,7 +91,7 @@ export function copyContainerName(node: ClabContainerTreeNode) {
   });
 }
 
-export function copyContainerID(node: ClabContainerTreeNode) {
+export function copyContainerID(node: ClabContainerTreeNode | undefined) {
   if (!node) {
     vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
@@ -110,7 +110,7 @@ export function copyContainerID(node: ClabContainerTreeNode) {
   });
 }
 
-export function copyContainerKind(node: ClabContainerTreeNode) {
+export function copyContainerKind(node: ClabContainerTreeNode | undefined) {
   if (!node) {
     vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
@@ -129,7 +129,7 @@ export function copyContainerKind(node: ClabContainerTreeNode) {
   });
 }
 
-export function copyContainerImage(node: ClabContainerTreeNode) {
+export function copyContainerImage(node: ClabContainerTreeNode | undefined) {
   if (!node) {
     vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
@@ -150,7 +150,7 @@ export function copyContainerImage(node: ClabContainerTreeNode) {
   });
 }
 
-export function copyMACAddress(node: ClabInterfaceTreeNode) {
+export function copyMACAddress(node: ClabInterfaceTreeNode | undefined) {
   if (!node) {
     vscode.window.showErrorMessage(ERR_NO_IFACE_NODE);
     return;

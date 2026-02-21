@@ -26,7 +26,6 @@ import { TopologyParser } from "../parsing/TopologyParser";
 import { applyInterfacePatternMigrations } from "../utilities";
 import type { FileSystemAdapter, IOLogger } from "../io/types";
 import { AnnotationsIO, TopologyIO, TransactionalFileSystemAdapter } from "../io";
-import type { NodeSaveData } from "../io";
 import { createEmptyAnnotations } from "../annotations/types";
 
 interface TopologyHostCoreOptions {
@@ -261,67 +260,40 @@ export class TopologyHostCore implements TopologyHost {
   // Command execution
   // ---------------------------------------------------------------------------
 
-  private readonly commandHandlers: Record<
-    TopologyHostCommand["command"],
-    (command: TopologyHostCommand) => Promise<void>
-  > = {
-    addNode: (cmd) => this.handleNodeCommand(cmd as Parameters<typeof this.handleNodeCommand>[0]),
-    editNode: (cmd) => this.handleNodeCommand(cmd as Parameters<typeof this.handleNodeCommand>[0]),
-    deleteNode: (cmd) =>
-      this.handleNodeCommand(cmd as Parameters<typeof this.handleNodeCommand>[0]),
-    addLink: (cmd) => this.handleLinkCommand(cmd as Parameters<typeof this.handleLinkCommand>[0]),
-    editLink: (cmd) => this.handleLinkCommand(cmd as Parameters<typeof this.handleLinkCommand>[0]),
-    deleteLink: (cmd) =>
-      this.handleLinkCommand(cmd as Parameters<typeof this.handleLinkCommand>[0]),
-    setYamlContent: (cmd) =>
-      this.handleSourceContentCommand(
-        cmd as Extract<TopologyHostCommand, { command: "setYamlContent" }>
-      ),
-    setAnnotationsContent: (cmd) =>
-      this.handleSourceContentCommand(
-        cmd as Extract<TopologyHostCommand, { command: "setAnnotationsContent" }>
-      ),
-    savePositions: (cmd) =>
-      this.handleSaveCommand(cmd as Parameters<typeof this.handleSaveCommand>[0]),
-    savePositionsAndAnnotations: (cmd) =>
-      this.handleSaveCommand(cmd as Parameters<typeof this.handleSaveCommand>[0]),
-    setAnnotations: (cmd) =>
-      this.handleAnnotationSettingsCommand(
-        cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]
-      ),
-    setAnnotationsWithMemberships: (cmd) =>
-      this.handleAnnotationSettingsCommand(
-        cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]
-      ),
-    batch: (cmd) =>
-      this.handleBatchCommand(cmd as Extract<TopologyHostCommand, { command: "batch" }>),
-    setEdgeAnnotations: (cmd) =>
-      this.handleAnnotationSettingsCommand(
-        cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]
-      ),
-    setViewerSettings: (cmd) =>
-      this.handleAnnotationSettingsCommand(
-        cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]
-      ),
-    setNodeGroupMembership: (cmd) =>
-      this.handleNodeGroupMemberships(cmd as Parameters<typeof this.handleNodeGroupMemberships>[0]),
-    setNodeGroupMemberships: (cmd) =>
-      this.handleNodeGroupMemberships(cmd as Parameters<typeof this.handleNodeGroupMemberships>[0]),
-    setLabSettings: (cmd) =>
-      this.applyLabSettings(
-        (cmd as Extract<TopologyHostCommand, { command: "setLabSettings" }>).payload
-      ),
-    // undo/redo are handled specially before executeCommand is called; these should never be reached
-    undo: () => Promise.reject(new Error("undo handled before executeCommand")),
-    redo: () => Promise.reject(new Error("redo handled before executeCommand"))
-  };
-
   private async executeCommand(command: TopologyHostCommand): Promise<void> {
-    const handler = this.commandHandlers[command.command];
-    if (!handler) {
-      throw new Error(`Unknown command: ${command.command}`);
+    if (isNodeHostCommand(command)) {
+      await this.handleNodeCommand(command);
+      return;
     }
-    await handler(command);
+    if (isLinkHostCommand(command)) {
+      await this.handleLinkCommand(command);
+      return;
+    }
+    if (isSourceContentHostCommand(command)) {
+      await this.handleSourceContentCommand(command);
+      return;
+    }
+    if (isSaveHostCommand(command)) {
+      await this.handleSaveCommand(command);
+      return;
+    }
+    if (isAnnotationHostCommand(command)) {
+      await this.handleAnnotationSettingsCommand(command);
+      return;
+    }
+    if (isMembershipHostCommand(command)) {
+      await this.handleNodeGroupMemberships(command);
+      return;
+    }
+    if (command.command === "batch") {
+      await this.handleBatchCommand(command);
+      return;
+    }
+    if (command.command === "setLabSettings") {
+      await this.applyLabSettings(command.payload);
+      return;
+    }
+    throw new Error(`${command.command} handled before executeCommand`);
   }
 
   private async handleNodeCommand(
@@ -376,7 +348,7 @@ export class TopologyHostCore implements TopologyHost {
     command: Extract<TopologyHostCommand, { command: "setYamlContent" | "setAnnotationsContent" }>
   ): Promise<void> {
     if (command.command === "setYamlContent") {
-      const content = command.payload?.content ?? "";
+      const content = command.payload.content;
       const doc = YAML.parseDocument(content);
       if (doc.errors.length > 0) {
         const details = doc.errors.map((e) => e.message).join("\n");
@@ -387,7 +359,7 @@ export class TopologyHostCore implements TopologyHost {
       return;
     }
 
-    const raw = command.payload?.content ?? "";
+    const raw = command.payload.content;
     const content = raw.trim().length === 0 ? "{}\n" : raw;
     try {
       JSON.parse(content);
@@ -403,7 +375,7 @@ export class TopologyHostCore implements TopologyHost {
   private async handleBatchCommand(
     command: Extract<TopologyHostCommand, { command: "batch" }>
   ): Promise<void> {
-    const commands = command.payload.commands ?? [];
+    const commands = command.payload.commands;
     this.topologyIO.beginBatch();
     try {
       for (const entry of commands) {
@@ -488,10 +460,11 @@ export class TopologyHostCore implements TopologyHost {
       throw new Error("Topology document not initialized");
     }
 
-    const rootMap = doc.contents as YAML.YAMLMap | undefined;
-    if (!rootMap || !YAML.isMap(rootMap)) {
+    const rootContents = doc.contents;
+    if (!rootContents || !YAML.isMap(rootContents)) {
       throw new Error("YAML document root is not a map");
     }
+    const rootMap = rootContents;
 
     if (settings.name !== undefined) {
       setKey(rootMap, "name", doc.createNode(settings.name));
@@ -528,12 +501,13 @@ export class TopologyHostCore implements TopologyHost {
 
       if (existingIndex >= 0) {
         const existing = nodeAnnotations[existingIndex];
-        if (groupId) {
+        if (groupId !== null && groupId !== "") {
           nodeAnnotations[existingIndex] = { ...existing, groupId };
         } else {
-          nodeAnnotations[existingIndex] = omitGroupFields(existing) as typeof existing;
+          const { group: _group, groupId: _groupId, ...rest } = existing;
+          nodeAnnotations[existingIndex] = rest;
         }
-      } else if (groupId) {
+      } else if (groupId !== null && groupId !== "") {
         nodeAnnotations.push({ id: nodeId, groupId });
       }
 
@@ -784,14 +758,12 @@ export class TopologyHostCore implements TopologyHost {
         const newId = missingIds[0];
         const newPrefix = getIdPrefix(newId);
         const prefixMatches = orphanAnnotations.filter((n) => getIdPrefix(n.id) === newPrefix);
-        const candidate = prefixMatches[0] || orphanAnnotations[0];
-        if (candidate) {
-          const oldId = candidate.id;
-          candidate.id = newId;
-          await this.annotationsIO.saveAnnotations(this.yamlFilePath, annotations);
-          this.logger.info(`Migrated annotation id from ${oldId} to ${newId} after YAML rename`);
-          return true;
-        }
+        const candidate = prefixMatches[0] ?? orphanAnnotations[0];
+        const oldId = candidate.id;
+        candidate.id = newId;
+        await this.annotationsIO.saveAnnotations(this.yamlFilePath, annotations);
+        this.logger.info(`Migrated annotation id from ${oldId} to ${newId} after YAML rename`);
+        return true;
       }
     } catch (err) {
       this.logger.warn(`Failed to reconcile annotations on rename: ${err}`);
@@ -841,7 +813,7 @@ export class TopologyHostCore implements TopologyHost {
     if (!this.topologyIO.isInitialized()) {
       const result = await this.topologyIO.initializeFromFile(this.yamlFilePath);
       if (!result.success) {
-        throw new Error(result.error || "Failed to initialize topology");
+        throw new Error(result.error ?? "Failed to initialize topology");
       }
     }
   }
@@ -851,12 +823,81 @@ export class TopologyHostCore implements TopologyHost {
 // Helper utilities (shared with lab settings + migrations)
 // ---------------------------------------------------------------------------
 
+function isNodeHostCommand(
+  command: TopologyHostCommand
+): command is Extract<TopologyHostCommand, { command: "addNode" | "editNode" | "deleteNode" }> {
+  return (
+    command.command === "addNode" ||
+    command.command === "editNode" ||
+    command.command === "deleteNode"
+  );
+}
+
+function isLinkHostCommand(
+  command: TopologyHostCommand
+): command is Extract<TopologyHostCommand, { command: "addLink" | "editLink" | "deleteLink" }> {
+  return (
+    command.command === "addLink" ||
+    command.command === "editLink" ||
+    command.command === "deleteLink"
+  );
+}
+
+function isSourceContentHostCommand(
+  command: TopologyHostCommand
+): command is Extract<
+  TopologyHostCommand,
+  { command: "setYamlContent" | "setAnnotationsContent" }
+> {
+  return command.command === "setYamlContent" || command.command === "setAnnotationsContent";
+}
+
+function isSaveHostCommand(
+  command: TopologyHostCommand
+): command is Extract<
+  TopologyHostCommand,
+  { command: "savePositions" | "savePositionsAndAnnotations" }
+> {
+  return command.command === "savePositions" || command.command === "savePositionsAndAnnotations";
+}
+
+function isAnnotationHostCommand(command: TopologyHostCommand): command is Extract<
+  TopologyHostCommand,
+  {
+    command:
+      | "setAnnotations"
+      | "setAnnotationsWithMemberships"
+      | "setEdgeAnnotations"
+      | "setViewerSettings";
+  }
+> {
+  return (
+    command.command === "setAnnotations" ||
+    command.command === "setAnnotationsWithMemberships" ||
+    command.command === "setEdgeAnnotations" ||
+    command.command === "setViewerSettings"
+  );
+}
+
+function isMembershipHostCommand(
+  command: TopologyHostCommand
+): command is Extract<
+  TopologyHostCommand,
+  { command: "setNodeGroupMembership" | "setNodeGroupMemberships" }
+> {
+  return (
+    command.command === "setNodeGroupMembership" || command.command === "setNodeGroupMemberships"
+  );
+}
+
 function isRenameEditCommand(command: TopologyHostCommand): boolean {
   if (command.command !== "editNode") return false;
-  const payload = command.payload as NodeSaveData & { oldName?: string };
-  const oldName = typeof payload.oldName === "string" ? payload.oldName.trim() : "";
+  const payload = command.payload;
+  const payloadRecord = toRecord(payload);
+  const oldNameRaw = payloadRecord?.oldName;
+  const oldName = typeof oldNameRaw === "string" ? oldNameRaw.trim() : "";
   const nextName = typeof payload.name === "string" ? payload.name.trim() : "";
-  return Boolean(oldName && nextName && oldName !== nextName);
+  return oldName !== "" && nextName !== "" && oldName !== nextName;
 }
 
 function shouldSkipHistory(command: TopologyHostCommand): boolean {
@@ -866,7 +907,7 @@ function shouldSkipHistory(command: TopologyHostCommand): boolean {
     command.command === "setYamlContent" ||
     command.command === "setAnnotationsContent"
   ) {
-    return (command as unknown as { skipHistory?: boolean }).skipHistory === true;
+    return command.skipHistory === true;
   }
   return false;
 }
@@ -897,6 +938,14 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function toRecord(value: unknown): Record<string, unknown> | undefined {
+  return isRecord(value) ? value : undefined;
+}
+
 function toFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim().length > 0) {
@@ -907,8 +956,8 @@ function toFiniteNumber(value: unknown): number | undefined {
 }
 
 function toPosition(value: unknown): { x: number; y: number } | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const rec = value as Record<string, unknown>;
+  if (!isRecord(value)) return undefined;
+  const rec = value;
   const x = toFiniteNumber(rec.x);
   const y = toFiniteNumber(rec.y);
   if (x === undefined || y === undefined) return undefined;
@@ -921,8 +970,7 @@ function errorToMessage(error: unknown): string {
 }
 
 function isFileNotFoundError(error: unknown): boolean {
-  const errWithCode = error as { code?: unknown };
-  if (typeof errWithCode.code === "string" && errWithCode.code === "ENOENT") {
+  if (isRecord(error) && error.code === "ENOENT") {
     return true;
   }
   const msg = errorToMessage(error);
@@ -930,15 +978,15 @@ function isFileNotFoundError(error: unknown): boolean {
 }
 
 function normalizeParsedTopologyValue(parsed: unknown): ClabTopology {
-  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-    return parsed as ClabTopology;
+  if (isRecord(parsed)) {
+    return parsed;
   }
   return {};
 }
 
 function hasStrictNumericPosition(value: unknown): boolean {
-  if (!value || typeof value !== "object") return false;
-  const rec = value as Record<string, unknown>;
+  if (!isRecord(value)) return false;
+  const rec = value;
   return (
     typeof rec.x === "number" &&
     Number.isFinite(rec.x) &&
@@ -967,9 +1015,7 @@ function normalizeLegacyFreeTextDimensions(annotation: FreeTextAnnotation): {
   const mediaWidth = width ?? LEGACY_DEFAULT_MEDIA_TEXT_WIDTH;
 
   const normalizedWidth = isMedia ? mediaWidth : width;
-  const normalizedHeight = isMedia
-    ? (height ?? inferLegacyMediaTextHeight(mediaWidth))
-    : height;
+  const normalizedHeight = isMedia ? (height ?? inferLegacyMediaTextHeight(mediaWidth)) : height;
 
   const changed =
     (annotation.width !== undefined && annotation.width !== normalizedWidth) ||
@@ -1119,11 +1165,12 @@ function normalizeLegacyGroupStyleAnnotation(
   };
 }
 
-function migrateLegacyAnnotations(
-  annotations: TopologyAnnotations
-): { annotations: TopologyAnnotations; modified: boolean } {
+function migrateLegacyAnnotations(annotations: TopologyAnnotations): {
+  annotations: TopologyAnnotations;
+  modified: boolean;
+} {
   const nodeAnnotations = annotations.nodeAnnotations ?? [];
-  let modified = false;
+  let modifiedCount = 0;
 
   const freeTextAnnotations = (annotations.freeTextAnnotations ?? []).map((annotation) => {
     const normalizedPosition = toPosition(annotation.position);
@@ -1132,10 +1179,10 @@ function migrateLegacyAnnotations(
     if (!hasPositionFix && !dimensions.changed) {
       return annotation;
     }
-    modified = true;
+    modifiedCount += 1;
     const normalizedAnnotation: FreeTextAnnotation = {
       ...annotation,
-      position: normalizedPosition ?? { x: 0, y: 0 },
+      position: normalizedPosition ?? { x: 0, y: 0 }
     };
     if (dimensions.width !== undefined) {
       normalizedAnnotation.width = dimensions.width;
@@ -1159,7 +1206,7 @@ function migrateLegacyAnnotations(
     if (!needsPositionFix && !needsEndFix) {
       return annotation;
     }
-    modified = true;
+    modifiedCount += 1;
     return {
       ...annotation,
       position: normalizedPosition ?? { x: 0, y: 0 },
@@ -1173,11 +1220,11 @@ function migrateLegacyAnnotations(
       return normalizedGroup.annotation;
     }
 
-    modified = true;
+    modifiedCount += 1;
     return normalizedGroup.annotation;
   });
 
-  if (!modified) {
+  if (modifiedCount === 0) {
     return { annotations, modified: false };
   }
 
@@ -1188,23 +1235,25 @@ function migrateLegacyAnnotations(
       freeShapeAnnotations,
       groupStyleAnnotations
     },
-    modified: true
+    modified: modifiedCount > 0
   };
 }
 
 function extractLabSettings(doc: YAML.Document.Parsed): LabSettings {
   const settings: LabSettings = {};
-  const name = doc.get("name") as string | undefined;
-  const prefix = doc.get("prefix") as string | undefined;
-  const mgmtRaw = doc.get("mgmt") as YAML.YAMLMap | Record<string, unknown> | undefined;
+  const nameValue = doc.get("name");
+  const name = typeof nameValue === "string" ? nameValue : undefined;
+  const prefixValue = doc.get("prefix");
+  const prefix = typeof prefixValue === "string" ? prefixValue : undefined;
+  const mgmtRaw = doc.get("mgmt");
   const mgmt =
-    mgmtRaw && typeof (mgmtRaw as { toJSON?: () => unknown }).toJSON === "function"
-      ? ((mgmtRaw as YAML.YAMLMap).toJSON() as Record<string, unknown>)
-      : (mgmtRaw as Record<string, unknown> | undefined);
+    mgmtRaw !== undefined && mgmtRaw !== null && YAML.isMap(mgmtRaw)
+      ? toRecord(mgmtRaw.toJSON())
+      : toRecord(mgmtRaw);
 
-  if (name) settings.name = name;
+  if (name !== undefined && name !== "") settings.name = name;
   if (prefix !== undefined) settings.prefix = prefix;
-  if (mgmt && typeof mgmt === "object") {
+  if (mgmt !== undefined) {
     settings.mgmt = mgmt;
   }
 
@@ -1229,29 +1278,6 @@ function persistGraphLabelMigrations(
   return { ...annotations, nodeAnnotations };
 }
 
-type NodeAnnotationLike = { id: string; groupId?: string; group?: unknown };
-
-function omitKeys<T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
-  const keysToOmit = new Set<string>(keys as string[]);
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (!keysToOmit.has(key)) {
-      result[key] = value;
-    }
-  }
-  return result as Omit<T, K>;
-}
-
-function omitGroupFields<T extends NodeAnnotationLike>(
-  obj: T
-): Omit<T, "group" | "groupId"> & { id: string } {
-  return omitKeys(obj, ["group", "groupId"]) as Omit<T, "group" | "groupId"> & { id: string };
-}
-
-function omitGroupOnly<T extends NodeAnnotationLike>(obj: T): Omit<T, "group"> {
-  return omitKeys(obj, ["group"]) as Omit<T, "group">;
-}
-
 function mergeAnnotationsPayload(
   current: TopologyAnnotations,
   annotations: Partial<TopologyAnnotations>
@@ -1271,7 +1297,9 @@ function applyNodeGroupMembershipsToAnnotations(
   memberships: Array<{ nodeId: string; groupId: string | null }>
 ): TopologyAnnotations {
   const membershipMap = new Map(
-    memberships.filter((m) => m.groupId).map((m) => [m.nodeId, m.groupId!])
+    memberships.flatMap((m) =>
+      m.groupId !== null && m.groupId !== "" ? ([[m.nodeId, m.groupId]] as const) : []
+    )
   );
 
   const existingAnnotations = annotations.nodeAnnotations ?? [];
@@ -1281,7 +1309,7 @@ function applyNodeGroupMembershipsToAnnotations(
   for (const [nodeId, groupId] of membershipMap) {
     const existing = existingMap.get(nodeId);
     if (existing) {
-      const rest = omitGroupOnly(existing);
+      const { group: _group, ...rest } = existing;
       result.push({ ...rest, groupId });
       existingMap.delete(nodeId);
     } else {
@@ -1291,7 +1319,7 @@ function applyNodeGroupMembershipsToAnnotations(
 
   for (const [nodeId, annotation] of existingMap) {
     if (!membershipMap.has(nodeId)) {
-      const rest = omitGroupFields(annotation);
+      const { group: _group, groupId: _groupId, ...rest } = annotation;
       if (Object.keys(rest).length > 1 || (Object.keys(rest).length === 1 && rest.id)) {
         result.push(rest);
       }

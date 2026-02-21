@@ -18,7 +18,7 @@ export async function modelToPageCoords(
     ({ mx, my, sel }) => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
-      if (!rf) return { x: 0, y: 0 };
+      if (rf === undefined || rf === null) return { x: 0, y: 0 };
 
       const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
       const container = document.querySelector(sel);
@@ -45,7 +45,7 @@ export async function pageToModelCoords(
     ({ px, py, sel }) => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
-      if (!rf) return { x: 0, y: 0 };
+      if (rf === undefined || rf === null) return { x: 0, y: 0 };
 
       const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
       const container = document.querySelector(sel);
@@ -102,7 +102,7 @@ export async function getAllNodeIds(page: Page): Promise<string[]> {
     (types) => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
-      if (!rf) return [];
+      if (rf === undefined || rf === null) return [];
       const nodes = rf.getNodes?.() ?? [];
       return nodes
         .filter((n: any) => n.type === types.topo || n.type === types.network)
@@ -119,7 +119,7 @@ export async function getAllEdgeIds(page: Page): Promise<string[]> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
     const rf = dev?.rfInstance;
-    if (!rf) return [];
+    if (rf === undefined || rf === null) return [];
     const edges = rf.getEdges?.() ?? [];
     return edges.map((e: any) => e.id);
   });
@@ -132,7 +132,7 @@ export async function isNodeSelected(page: Page, nodeId: string): Promise<boolea
   return await page.evaluate((id) => {
     const dev = (window as any).__DEV__;
     const rf = dev?.rfInstance;
-    if (!rf) return false;
+    if (rf === undefined || rf === null) return false;
     const nodes = rf.getNodes?.() ?? [];
     const node = nodes.find((n: any) => n.id === id);
     return node?.selected ?? false;
@@ -239,11 +239,11 @@ export async function openNodeContextMenu(page: Page, nodeId: string): Promise<v
     ({ id, sel }) => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
-      if (!rf) return null;
+      if (rf === undefined || rf === null) return null;
 
       const nodes = rf.getNodes?.() ?? [];
       const node = nodes.find((n: any) => n.id === id);
-      if (!node) return null;
+      if (node === undefined || node === null) return null;
 
       const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
       const container = document.querySelector(sel);
@@ -276,7 +276,13 @@ export async function openNodeContextMenu(page: Page, nodeId: string): Promise<v
 export async function openNetworkEditor(page: Page, nodeId: string): Promise<void> {
   const opened = await page.evaluate((id) => {
     const dev = (window as any).__DEV__;
-    if (!dev?.openNetworkEditor) return false;
+    if (
+      dev === undefined ||
+      dev === null ||
+      typeof dev.openNetworkEditor !== "function"
+    ) {
+      return false;
+    }
     dev.openNetworkEditor(id);
     return true;
   }, nodeId);
@@ -306,7 +312,7 @@ export async function getSelectedNodeCount(page: Page): Promise<number> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
     const rf = dev?.rfInstance;
-    if (!rf) return 0;
+    if (rf === undefined || rf === null) return 0;
     const nodes = rf.getNodes?.() ?? [];
     return nodes.filter((n: any) => n.selected).length;
   });
@@ -319,7 +325,7 @@ export async function getSelectedNodeIds(page: Page): Promise<string[]> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
     const rf = dev?.rfInstance;
-    if (!rf) return [];
+    if (rf === undefined || rf === null) return [];
     const nodes = rf.getNodes?.() ?? [];
     return nodes.filter((n: any) => n.selected).map((n: any) => n.id);
   });
@@ -332,7 +338,7 @@ export async function getSelectedEdgeCount(page: Page): Promise<number> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
     const rf = dev?.rfInstance;
-    if (!rf) return 0;
+    if (rf === undefined || rf === null) return 0;
     const edges = rf.getEdges?.() ?? [];
     return edges.filter((e: any) => e.selected).length;
   });
@@ -345,7 +351,7 @@ export async function getSelectedEdgeIds(page: Page): Promise<string[]> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
     const rf = dev?.rfInstance;
-    if (!rf) return [];
+    if (rf === undefined || rf === null) return [];
     const edges = rf.getEdges?.() ?? [];
     return edges.filter((e: any) => e.selected).map((e: any) => e.id);
   });
@@ -366,7 +372,7 @@ export async function getEdgeCount(page: Page): Promise<number> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
     const rf = dev?.rfInstance;
-    if (!rf) return 0;
+    if (rf === undefined || rf === null) return 0;
     const edges = rf.getEdges?.() ?? [];
     return edges.length;
   });
@@ -381,18 +387,31 @@ export async function getEdgeBoundingBox(
 ): Promise<{ x: number; y: number; width: number; height: number } | null> {
   return await page.evaluate(
     ({ id, sel }) => {
-      const dev = (window as any).__DEV__;
-      const rf = dev?.rfInstance;
-      if (!rf) return null;
+      const getEdgeContext = (): {
+        rf: any;
+        sourceNode: any;
+        targetNode: any;
+      } | null => {
+        const dev = (window as any).__DEV__;
+        const rf = dev?.rfInstance;
+        if (rf === undefined || rf === null) return null;
 
-      const edges = rf.getEdges?.() ?? [];
-      const edge = edges.find((e: any) => e.id === id);
-      if (!edge) return null;
+        const edges = rf.getEdges?.() ?? [];
+        const edge = edges.find((e: any) => e.id === id);
+        if (edge === undefined || edge === null) return null;
 
-      const nodes = rf.getNodes?.() ?? [];
-      const sourceNode = nodes.find((n: any) => n.id === edge.source);
-      const targetNode = nodes.find((n: any) => n.id === edge.target);
-      if (!sourceNode || !targetNode) return null;
+        const nodes = rf.getNodes?.() ?? [];
+        const sourceNode = nodes.find((n: any) => n.id === edge.source);
+        const targetNode = nodes.find((n: any) => n.id === edge.target);
+        if (sourceNode === undefined || sourceNode === null) return null;
+        if (targetNode === undefined || targetNode === null) return null;
+
+        return { rf, sourceNode, targetNode };
+      };
+
+      const context = getEdgeContext();
+      if (context === null) return null;
+      const { rf, sourceNode, targetNode } = context;
 
       const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
       const container = document.querySelector(sel);
@@ -427,7 +446,7 @@ export async function getEdgeMidpoint(
     ({ id, sel }) => {
       const getPathMidpoint = (): { x: number; y: number } | null => {
         const interactionId = `${id}-interaction`;
-        const pathEl = document.getElementById(interactionId) || document.getElementById(id);
+        const pathEl = document.getElementById(interactionId) ?? document.getElementById(id);
         if (!pathEl) return null;
         const rect = pathEl.getBoundingClientRect();
         if (rect.width <= 0 && rect.height <= 0) return null;
@@ -438,18 +457,31 @@ export async function getEdgeMidpoint(
       };
 
       const getGraphMidpoint = (): { x: number; y: number } | null => {
-        const dev = (window as any).__DEV__;
-        const rf = dev?.rfInstance;
-        if (!rf) return null;
+        const getEdgeContext = (): {
+          rf: any;
+          sourceNode: any;
+          targetNode: any;
+        } | null => {
+          const dev = (window as any).__DEV__;
+          const rf = dev?.rfInstance;
+          if (rf === undefined || rf === null) return null;
 
-        const edges = rf.getEdges?.() ?? [];
-        const edge = edges.find((e: any) => e.id === id);
-        if (!edge) return null;
+          const edges = rf.getEdges?.() ?? [];
+          const edge = edges.find((e: any) => e.id === id);
+          if (edge === undefined || edge === null) return null;
 
-        const nodes = rf.getNodes?.() ?? [];
-        const sourceNode = nodes.find((n: any) => n.id === edge.source);
-        const targetNode = nodes.find((n: any) => n.id === edge.target);
-        if (!sourceNode || !targetNode) return null;
+          const nodes = rf.getNodes?.() ?? [];
+          const sourceNode = nodes.find((n: any) => n.id === edge.source);
+          const targetNode = nodes.find((n: any) => n.id === edge.target);
+          if (sourceNode === undefined || sourceNode === null) return null;
+          if (targetNode === undefined || targetNode === null) return null;
+
+          return { rf, sourceNode, targetNode };
+        };
+
+        const context = getEdgeContext();
+        if (context === null) return null;
+        const { rf, sourceNode, targetNode } = context;
 
         const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
         const container = document.querySelector(sel);
@@ -479,17 +511,17 @@ export async function pressShortcut(
   key: string,
   modifiers: { ctrl?: boolean; shift?: boolean; alt?: boolean; meta?: boolean } = {}
 ): Promise<void> {
-  if (modifiers.ctrl) await page.keyboard.down("Control");
-  if (modifiers.shift) await page.keyboard.down("Shift");
-  if (modifiers.alt) await page.keyboard.down("Alt");
-  if (modifiers.meta) await page.keyboard.down("Meta");
+  if (modifiers.ctrl === true) await page.keyboard.down("Control");
+  if (modifiers.shift === true) await page.keyboard.down("Shift");
+  if (modifiers.alt === true) await page.keyboard.down("Alt");
+  if (modifiers.meta === true) await page.keyboard.down("Meta");
 
   await page.keyboard.press(key);
 
-  if (modifiers.meta) await page.keyboard.up("Meta");
-  if (modifiers.alt) await page.keyboard.up("Alt");
-  if (modifiers.shift) await page.keyboard.up("Shift");
-  if (modifiers.ctrl) await page.keyboard.up("Control");
+  if (modifiers.meta === true) await page.keyboard.up("Meta");
+  if (modifiers.alt === true) await page.keyboard.up("Alt");
+  if (modifiers.shift === true) await page.keyboard.up("Shift");
+  if (modifiers.ctrl === true) await page.keyboard.up("Control");
 }
 
 /**

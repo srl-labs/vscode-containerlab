@@ -9,6 +9,7 @@ import type {
   TopologyHostResponseMessage,
   TopologySnapshot
 } from "../../shared/types/messages";
+import { getRecordUnknown } from "../../shared/utilities/typeHelpers";
 import { useTopoViewerStore } from "../stores/topoViewerStore";
 
 import { dispatchTopologyCommand, requestSnapshot, setHostRevision } from "./topologyHostClient";
@@ -22,10 +23,22 @@ interface ExecuteOptions {
   applySnapshot?: boolean;
 }
 
+function isVoidCallback(value: unknown): value is () => void {
+  return typeof value === "function";
+}
+
+function getDevHostUpdateHandler(): (() => void) | undefined {
+  if (typeof window === "undefined") return undefined;
+  const dev = getRecordUnknown(getRecordUnknown(window)?.__DEV__) ?? {};
+  const handler = dev.onHostUpdate;
+  if (!isVoidCallback(handler)) {
+    return undefined;
+  }
+  return handler;
+}
+
 function notifyDevHostUpdate(): void {
-  if (typeof window === "undefined") return;
-  const dev = (window as unknown as { __DEV__?: { onHostUpdate?: () => void } }).__DEV__;
-  dev?.onHostUpdate?.();
+  getDevHostUpdateHandler()?.();
 }
 
 async function handleHostResponse(

@@ -11,13 +11,13 @@ export function useApplySaveHandlers<T>(
   afterApply?: () => void
 ): { handleApply: () => void; handleSave: () => void } {
   const handleApply = useCallback(() => {
-    if (!formData) return;
+    if (formData === null) return;
     onApply(formData);
     afterApply?.();
   }, [formData, onApply, afterApply]);
 
   const handleSave = useCallback(() => {
-    if (!formData) return;
+    if (formData === null) return;
     onSave(formData);
   }, [formData, onSave]);
 

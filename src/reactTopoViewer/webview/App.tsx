@@ -23,9 +23,8 @@ import { AppContent } from "./AppContent";
 export const App: React.FC<{ initialData?: InitialGraphData }> = ({ initialData }) => {
   const reactFlowRef = React.useRef<ReactFlowCanvasRef>(null);
   const [rfInstance, setRfInstance] = React.useState<ReactFlowInstance | null>(null);
-  const layoutControls = useLayoutControls(
-    reactFlowRef as unknown as React.RefObject<CanvasRef | null>
-  );
+  const layoutCanvasRef: React.RefObject<CanvasRef | null> = reactFlowRef;
+  const layoutControls = useLayoutControls(layoutCanvasRef);
 
   // Initialize stores with initial data
   useStoreInitialization({ initialData });

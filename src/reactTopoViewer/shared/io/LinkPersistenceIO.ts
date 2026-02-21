@@ -17,11 +17,11 @@ import { createQuotedScalar, setOrDelete } from "./YamlDocumentIO";
 function getLinksSeqOrError(
   doc: YAML.Document.Parsed
 ): { linksSeq: YAML.YAMLSeq } | { error: SaveResult } {
-  const linksSeq = doc.getIn(["topology", "links"], true) as YAML.YAMLSeq | undefined;
-  if (!linksSeq || !YAML.isSeq(linksSeq)) {
+  const linksNode = doc.getIn(["topology", "links"], true);
+  if (!YAML.isSeq(linksNode)) {
     return { error: { success: false, error: ERROR_LINKS_NOT_SEQ } };
   }
-  return { linksSeq };
+  return { linksSeq: linksNode };
 }
 
 /**
@@ -77,6 +77,10 @@ const SINGLE_ENDPOINT_TYPES = new Set([
   "dummy"
 ]);
 
+function hasText(value: string | undefined): value is string {
+  return value !== undefined && value !== "";
+}
+
 /**
  * Creates a link entry in brief format: endpoints: ["node1:eth1", "node2:eth1"]
  */
@@ -84,10 +88,10 @@ function createBriefLink(doc: YAML.Document, linkData: LinkSaveData): YAML.YAMLM
   const linkMap = new YAML.YAMLMap();
   linkMap.flow = false;
 
-  const srcStr = linkData.sourceEndpoint
+  const srcStr = hasText(linkData.sourceEndpoint)
     ? `${linkData.source}:${linkData.sourceEndpoint}`
     : linkData.source;
-  const dstStr = linkData.targetEndpoint
+  const dstStr = hasText(linkData.targetEndpoint)
     ? `${linkData.target}:${linkData.targetEndpoint}`
     : linkData.target;
 
@@ -128,7 +132,7 @@ function setEndpointField(
   value: string | undefined,
   quoted = false
 ): void {
-  if (!value) return;
+  if (!hasText(value)) return;
   epMap.set(key, quoted ? createQuotedScalar(doc, value) : doc.createNode(value));
 }
 
@@ -221,11 +225,11 @@ function applyHostInterfaceProperties(
   extra: LinkSaveData["extraData"],
   specialNodeId: string
 ): void {
-  const hostInterface = extra?.extHostInterface || extractSpecialNodeInterface(specialNodeId);
-  if (hostInterface) {
+  const hostInterface = extra?.extHostInterface ?? extractSpecialNodeInterface(specialNodeId);
+  if (hasText(hostInterface)) {
     linkMap.set("host-interface", doc.createNode(hostInterface));
   }
-  if (linkType === "macvlan" && extra?.extMode) {
+  if (linkType === "macvlan" && hasText(extra?.extMode)) {
     linkMap.set("mode", doc.createNode(extra.extMode));
   }
 }
@@ -251,7 +255,7 @@ function applyVxlanProperties(
 ): void {
   const parsed = extractVxlanProperties(specialNodeId);
 
-  const remote = extra?.extRemote || parsed.remote || VXLAN_DEFAULTS.remote;
+  const remote = extra?.extRemote ?? parsed.remote ?? VXLAN_DEFAULTS.remote;
   const vni = toNumber(extra?.extVni ?? parsed.vni, VXLAN_DEFAULTS.vni);
   const dstPort = toNumber(extra?.extDstPort ?? parsed.dstPort, VXLAN_DEFAULTS.dstPort);
 
@@ -259,8 +263,10 @@ function applyVxlanProperties(
   linkMap.set("vni", doc.createNode(vni));
   linkMap.set("dst-port", doc.createNode(dstPort));
 
-  const srcPort = extra?.extSrcPort || parsed.srcPort;
-  if (srcPort) linkMap.set("src-port", doc.createNode(toNumber(srcPort, 0)));
+  const srcPort = extra?.extSrcPort ?? parsed.srcPort;
+  if (srcPort !== undefined && srcPort !== "") {
+    linkMap.set("src-port", doc.createNode(toNumber(srcPort, 0)));
+  }
 }
 
 /**
@@ -297,32 +303,32 @@ function createDualEndpointSeq(
   const srcEp = new YAML.YAMLMap();
   srcEp.flow = false;
   srcEp.set("node", createQuotedScalar(doc, linkData.source));
-  if (linkData.sourceEndpoint) {
+  if (hasText(linkData.sourceEndpoint)) {
     srcEp.set("interface", createQuotedScalar(doc, linkData.sourceEndpoint));
   }
-  if (extra?.extSourceMac) {
+  if (hasText(extra?.extSourceMac)) {
     srcEp.set("mac", doc.createNode(extra.extSourceMac));
   }
-  if (extra?.extSourceIpv4) {
+  if (hasText(extra?.extSourceIpv4)) {
     srcEp.set("ipv4", doc.createNode(extra.extSourceIpv4));
   }
-  if (extra?.extSourceIpv6) {
+  if (hasText(extra?.extSourceIpv6)) {
     srcEp.set("ipv6", doc.createNode(extra.extSourceIpv6));
   }
 
   const dstEp = new YAML.YAMLMap();
   dstEp.flow = false;
   dstEp.set("node", createQuotedScalar(doc, linkData.target));
-  if (linkData.targetEndpoint) {
+  if (hasText(linkData.targetEndpoint)) {
     dstEp.set("interface", createQuotedScalar(doc, linkData.targetEndpoint));
   }
-  if (extra?.extTargetMac) {
+  if (hasText(extra?.extTargetMac)) {
     dstEp.set("mac", doc.createNode(extra.extTargetMac));
   }
-  if (extra?.extTargetIpv4) {
+  if (hasText(extra?.extTargetIpv4)) {
     dstEp.set("ipv4", doc.createNode(extra.extTargetIpv4));
   }
-  if (extra?.extTargetIpv6) {
+  if (hasText(extra?.extTargetIpv6)) {
     dstEp.set("ipv6", doc.createNode(extra.extTargetIpv6));
   }
 
@@ -338,10 +344,10 @@ function createExtendedLink(doc: YAML.Document, linkData: LinkSaveData): YAML.YA
   const linkMap = new YAML.YAMLMap();
   linkMap.flow = false;
 
-  const extra = linkData.extraData || {};
+  const extra = linkData.extraData ?? {};
   const inferredType = inferSpecialLinkType(linkData);
   const rawType = typeof extra.extType === "string" ? extra.extType.trim() : "";
-  const linkType = rawType && rawType !== "veth" ? rawType : inferredType || "veth";
+  const linkType = rawType && rawType !== "veth" ? rawType : (inferredType ?? "veth");
 
   linkMap.set("type", doc.createNode(linkType));
 
@@ -364,7 +370,7 @@ function createExtendedLink(doc: YAML.Document, linkData: LinkSaveData): YAML.YA
  * Checks if link data has extended properties requiring extended format
  */
 function hasExtendedProperties(linkData: LinkSaveData): boolean {
-  const extra = linkData.extraData || {};
+  const extra = linkData.extraData ?? {};
   const extendedKeys = [
     "extMtu",
     "extSourceMac",
@@ -382,17 +388,23 @@ function hasExtendedProperties(linkData: LinkSaveData): boolean {
   ];
 
   if (extendedKeys.some((k) => extra[k] !== undefined && extra[k] !== "")) return true;
-  if (extra.extVars && typeof extra.extVars === "object" && Object.keys(extra.extVars).length > 0)
-    return true;
   if (
-    extra.extLabels &&
+    extra.extVars !== undefined &&
+    typeof extra.extVars === "object" &&
+    Object.keys(extra.extVars).length > 0
+  ) {
+    return true;
+  }
+  if (
+    extra.extLabels !== undefined &&
     typeof extra.extLabels === "object" &&
     Object.keys(extra.extLabels).length > 0
-  )
+  ) {
     return true;
-  if (extra.extType && extra.extType !== "veth") return true;
+  }
+  if (hasText(extra.extType) && extra.extType !== "veth") return true;
   const inferredType = inferSpecialLinkType(linkData);
-  if (inferredType && inferredType !== "veth") return true;
+  if (inferredType !== null && inferredType !== "veth") return true;
 
   return false;
 }
@@ -414,11 +426,11 @@ function extractLinkTypeFromSpecialNode(nodeId: string): string | null {
 function inferSpecialLinkType(linkData: LinkSaveData): string | null {
   if (isSpecialNode(linkData.source)) {
     const sourceType = extractLinkTypeFromSpecialNode(linkData.source);
-    if (sourceType) return sourceType;
+    if (sourceType !== null && sourceType !== "") return sourceType;
   }
   if (isSpecialNode(linkData.target)) {
     const targetType = extractLinkTypeFromSpecialNode(linkData.target);
-    if (targetType) return targetType;
+    if (targetType !== null && targetType !== "") return targetType;
   }
   return null;
 }
@@ -437,21 +449,21 @@ function getLinkKey(linkData: LinkSaveData): string {
 
   if (sourceIsSpecial) {
     const linkType = extractLinkTypeFromSpecialNode(linkData.source);
-    src = linkType || linkData.source;
-    dst = linkData.targetEndpoint
+    src = linkType ?? linkData.source;
+    dst = hasText(linkData.targetEndpoint)
       ? `${linkData.target}:${linkData.targetEndpoint}`
       : linkData.target;
   } else if (targetIsSpecial) {
     const linkType = extractLinkTypeFromSpecialNode(linkData.target);
-    src = linkData.sourceEndpoint
+    src = hasText(linkData.sourceEndpoint)
       ? `${linkData.source}:${linkData.sourceEndpoint}`
       : linkData.source;
-    dst = linkType || linkData.target;
+    dst = linkType ?? linkData.target;
   } else {
-    src = linkData.sourceEndpoint
+    src = hasText(linkData.sourceEndpoint)
       ? `${linkData.source}:${linkData.sourceEndpoint}`
       : linkData.source;
-    dst = linkData.targetEndpoint
+    dst = hasText(linkData.targetEndpoint)
       ? `${linkData.target}:${linkData.targetEndpoint}`
       : linkData.target;
   }
@@ -468,9 +480,10 @@ function extractEndpointString(ep: unknown): string | null {
     return String(ep.value);
   }
   if (YAML.isMap(ep)) {
-    const node = (ep as YAML.YAMLMap).get("node");
-    const iface = (ep as YAML.YAMLMap).get("interface");
-    return iface ? `${node}:${iface}` : String(node);
+    const node = ep.get("node");
+    const iface = ep.get("interface");
+    if (iface === undefined || iface === null || iface === "") return String(node);
+    return `${node}:${String(iface)}`;
   }
   return null;
 }
@@ -486,7 +499,7 @@ function getYamlLinkKey(linkMap: YAML.YAMLMap): string | null {
   if (YAML.isSeq(endpointsSeq)) {
     for (const ep of endpointsSeq.items) {
       const epStr = extractEndpointString(ep);
-      if (epStr) endpoints.push(epStr);
+      if (epStr !== null && epStr !== "") endpoints.push(epStr);
     }
   }
 
@@ -494,14 +507,14 @@ function getYamlLinkKey(linkMap: YAML.YAMLMap): string | null {
   const endpoint = linkMap.get("endpoint", true);
   if (YAML.isMap(endpoint)) {
     const epStr = extractEndpointString(endpoint);
-    if (epStr) endpoints.push(epStr);
+    if (epStr !== null && epStr !== "") endpoints.push(epStr);
   }
 
   if (endpoints.length < 1) return null;
 
   // For single-endpoint types, the second endpoint is the type (host, mgmt-net, etc.)
   const linkType = linkMap.get("type");
-  if (endpoints.length === 1 && linkType) {
+  if (endpoints.length === 1 && linkType !== undefined && linkType !== null) {
     endpoints.push(String(linkType));
   }
 
@@ -515,8 +528,8 @@ function getYamlLinkKey(linkMap: YAML.YAMLMap): string | null {
  * to match the YAML format where single-endpoint links use the type as the second key part.
  */
 function getLookupKey(linkData: LinkSaveData): string {
-  const source = linkData.originalSource || linkData.source;
-  const target = linkData.originalTarget || linkData.target;
+  const source = linkData.originalSource ?? linkData.source;
+  const target = linkData.originalTarget ?? linkData.target;
   const sourceEndpoint = linkData.originalSourceEndpoint ?? linkData.sourceEndpoint;
   const targetEndpoint = linkData.originalTargetEndpoint ?? linkData.targetEndpoint;
 
@@ -530,17 +543,17 @@ function getLookupKey(linkData: LinkSaveData): string {
   if (sourceIsSpecial) {
     // Source is special node - use link type for that side, node:iface for other side
     const linkType = extractLinkTypeFromSpecialNode(source);
-    src = linkType || source;
-    dst = targetEndpoint ? `${target}:${targetEndpoint}` : target;
+    src = linkType ?? source;
+    dst = hasText(targetEndpoint) ? `${target}:${targetEndpoint}` : target;
   } else if (targetIsSpecial) {
     // Target is special node - use link type for that side, node:iface for other side
     const linkType = extractLinkTypeFromSpecialNode(target);
-    src = sourceEndpoint ? `${source}:${sourceEndpoint}` : source;
-    dst = linkType || target;
+    src = hasText(sourceEndpoint) ? `${source}:${sourceEndpoint}` : source;
+    dst = linkType ?? target;
   } else {
     // Normal veth link - use both endpoints
-    src = sourceEndpoint ? `${source}:${sourceEndpoint}` : source;
-    dst = targetEndpoint ? `${target}:${targetEndpoint}` : target;
+    src = hasText(sourceEndpoint) ? `${source}:${sourceEndpoint}` : source;
+    dst = hasText(targetEndpoint) ? `${target}:${targetEndpoint}` : target;
   }
 
   return [src, dst].slice().sort().join("|");
@@ -552,13 +565,13 @@ function getLookupKey(linkData: LinkSaveData): string {
  * directly in endpoints arrays (e.g. "host:eth0") instead of type-based links.
  */
 function getLegacyLookupKey(linkData: LinkSaveData): string {
-  const source = linkData.originalSource || linkData.source;
-  const target = linkData.originalTarget || linkData.target;
+  const source = linkData.originalSource ?? linkData.source;
+  const target = linkData.originalTarget ?? linkData.target;
   const sourceEndpoint = linkData.originalSourceEndpoint ?? linkData.sourceEndpoint;
   const targetEndpoint = linkData.originalTargetEndpoint ?? linkData.targetEndpoint;
 
-  const src = sourceEndpoint ? `${source}:${sourceEndpoint}` : source;
-  const dst = targetEndpoint ? `${target}:${targetEndpoint}` : target;
+  const src = hasText(sourceEndpoint) ? `${source}:${sourceEndpoint}` : source;
+  const dst = hasText(targetEndpoint) ? `${target}:${targetEndpoint}` : target;
   return [src, dst].slice().sort().join("|");
 }
 
@@ -572,12 +585,16 @@ export function addLinkToDoc(
 ): SaveResult {
   try {
     // Ensure links array exists
-    let linksSeq = doc.getIn(["topology", "links"], true) as YAML.YAMLSeq | undefined;
-    if (!linksSeq) {
+    const linksNode = doc.getIn(["topology", "links"], true);
+    let linksSeq: YAML.YAMLSeq;
+    if (YAML.isSeq(linksNode)) {
+      linksSeq = linksNode;
+    } else {
       linksSeq = new YAML.YAMLSeq();
       linksSeq.flow = false;
-      const topoMap = doc.getIn(["topology"], true) as YAML.YAMLMap;
-      if (topoMap && YAML.isMap(topoMap)) {
+      const topoNode = doc.getIn(["topology"], true);
+      if (YAML.isMap(topoNode)) {
+        const topoMap = topoNode;
         topoMap.set("links", linksSeq);
       } else {
         return { success: false, error: "YAML topology is not a map" };
@@ -588,7 +605,7 @@ export function addLinkToDoc(
     const newKey = getLinkKey(linkData);
     for (const item of linksSeq.items) {
       if (YAML.isMap(item)) {
-        const existingKey = getYamlLinkKey(item as YAML.YAMLMap);
+        const existingKey = getYamlLinkKey(item);
         if (existingKey === newKey) {
           return { success: false, error: "Link already exists" };
         }
@@ -633,7 +650,7 @@ export function editLinkInDoc(
         const item = linksSeq.items[i];
         if (!YAML.isMap(item)) continue;
 
-        const existingKey = getYamlLinkKey(item as YAML.YAMLMap);
+        const existingKey = getYamlLinkKey(item);
         if (existingKey === key) {
           // Replace with updated link (using the new values)
           const updatedLink = hasExtendedProperties(linkData)
@@ -688,7 +705,7 @@ export function deleteLinkFromDoc(
 
     linksSeq.items = linksSeq.items.filter((item) => {
       if (!YAML.isMap(item)) return true;
-      const existingKey = getYamlLinkKey(item as YAML.YAMLMap);
+      const existingKey = getYamlLinkKey(item);
       return existingKey !== targetKey;
     });
 
@@ -697,7 +714,7 @@ export function deleteLinkFromDoc(
       if (legacyKey !== targetKey) {
         linksSeq.items = linksSeq.items.filter((item) => {
           if (!YAML.isMap(item)) return true;
-          const existingKey = getYamlLinkKey(item as YAML.YAMLMap);
+          const existingKey = getYamlLinkKey(item);
           return existingKey !== legacyKey;
         });
       }

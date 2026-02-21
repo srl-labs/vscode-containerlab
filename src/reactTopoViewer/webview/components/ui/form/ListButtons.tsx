@@ -31,12 +31,7 @@ interface AddItemButtonProps {
 }
 
 export const AddItemButton: React.FC<AddItemButtonProps> = ({ onAdd, label = "Add", disabled }) => (
-  <Button
-    size="small"
-    startIcon={<AddIcon />}
-    onClick={onAdd}
-    disabled={disabled}
-  >
+  <Button size="small" startIcon={<AddIcon />} onClick={onAdd} disabled={disabled}>
     {label}
   </Button>
 );

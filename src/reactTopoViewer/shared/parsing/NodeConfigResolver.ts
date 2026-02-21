@@ -5,6 +5,10 @@
 
 import type { ClabTopology, ClabNode } from "../types/topology";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 /**
  * Gets a section from the topology configuration.
  */
@@ -12,7 +16,8 @@ function getSection(
   source: Record<string, ClabNode> | undefined,
   key: string | undefined
 ): ClabNode {
-  return key && source?.[key] ? source[key] : {};
+  if (source === undefined || key === undefined || key.length === 0) return {};
+  return source[key] ?? {};
 }
 
 /**
@@ -29,11 +34,13 @@ function resolveKindName(
 /**
  * Merges node labels from multiple sources.
  */
-function mergeNodeLabels(
-  ...labels: (Record<string, unknown> | undefined)[]
-): Record<string, unknown> {
-  const filtered = labels.filter((l): l is Record<string, unknown> => Boolean(l));
-  return Object.assign({}, ...filtered) as Record<string, unknown>;
+function mergeNodeLabels(...labels: unknown[]): Record<string, unknown> {
+  const merged: Record<string, unknown> = {};
+  for (const label of labels) {
+    if (!isRecord(label)) continue;
+    Object.assign(merged, label);
+  }
+  return merged;
 }
 
 /**
@@ -54,11 +61,6 @@ export function resolveNodeConfig(parsed: ClabTopology, node: ClabNode): ClabNod
     ...groupCfg,
     ...node,
     kind: kindName,
-    labels: mergeNodeLabels(
-      defaults.labels as Record<string, unknown>,
-      kindCfg.labels as Record<string, unknown>,
-      groupCfg.labels as Record<string, unknown>,
-      node.labels as Record<string, unknown>
-    )
+    labels: mergeNodeLabels(defaults.labels, kindCfg.labels, groupCfg.labels, node.labels)
   };
 }

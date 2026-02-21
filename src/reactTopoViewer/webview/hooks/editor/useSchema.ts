@@ -76,20 +76,18 @@ export function useSchema(): UseSchemaResult {
       return;
     }
 
-    const kinds = data.kinds || [];
+    const kinds = data.kinds;
     const typesByKind = new Map<string, string[]>();
     const kindsWithTypeSupport = new Set<string>();
 
     // Convert Record to Map and build kindsWithTypeSupport set
-    if (data.typesByKind) {
-      for (const [kind, types] of Object.entries(data.typesByKind)) {
-        typesByKind.set(kind, types);
-        kindsWithTypeSupport.add(kind);
-      }
+    for (const [kind, types] of Object.entries(data.typesByKind)) {
+      typesByKind.set(kind, types);
+      kindsWithTypeSupport.add(kind);
     }
 
     // Get SROS component types
-    const srosComponentTypes = data.srosComponentTypes || EMPTY_SROS_TYPES;
+    const srosComponentTypes = data.srosComponentTypes ?? EMPTY_SROS_TYPES;
 
     log.info(
       `Schema loaded: ${kinds.length} kinds, ${typesByKind.size} kinds with type options, SROS types: sfm=${srosComponentTypes.sfm.length}, cpm=${srosComponentTypes.cpm.length}, card=${srosComponentTypes.card.length}, mda=${srosComponentTypes.mda.length}`
@@ -108,7 +106,7 @@ export function useSchema(): UseSchemaResult {
   // Get types for a specific kind
   const getTypesForKind = useCallback(
     (kind: string): string[] => {
-      return schemaData.typesByKind.get(kind) || [];
+      return schemaData.typesByKind.get(kind) ?? [];
     },
     [schemaData.typesByKind]
   );

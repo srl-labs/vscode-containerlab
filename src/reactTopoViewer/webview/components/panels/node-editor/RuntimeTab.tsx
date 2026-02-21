@@ -23,7 +23,7 @@ const RESTART_POLICY_OPTIONS = [
 
 export const RuntimeTab: React.FC<TabProps> = ({ data, onChange }) => {
   const handleAddExec = () => {
-    onChange({ exec: [...(data.exec || []), ""] });
+    onChange({ exec: [...(data.exec ?? []), ""] });
   };
 
   return (
@@ -32,21 +32,21 @@ export const RuntimeTab: React.FC<TabProps> = ({ data, onChange }) => {
         <InputField
           id="node-user"
           label="User"
-          value={data.user || ""}
+          value={data.user ?? ""}
           onChange={(value) => onChange({ user: value })}
           placeholder="Container user"
         />
         <InputField
           id="node-entrypoint"
           label="Entrypoint"
-          value={data.entrypoint || ""}
+          value={data.entrypoint ?? ""}
           onChange={(value) => onChange({ entrypoint: value })}
           placeholder="Container entrypoint"
         />
         <InputField
           id="node-cmd"
           label="Command"
-          value={data.cmd || ""}
+          value={data.cmd ?? ""}
           onChange={(value) => onChange({ cmd: value })}
           placeholder="Container command"
         />
@@ -54,7 +54,7 @@ export const RuntimeTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       <PanelAddSection title="Exec Commands" onAdd={handleAddExec}>
         <DynamicList
-          items={data.exec || []}
+          items={data.exec ?? []}
           onChange={(items) => onChange({ exec: items })}
           placeholder="Command to execute"
           hideAddButton
@@ -75,14 +75,14 @@ export const RuntimeTab: React.FC<TabProps> = ({ data, onChange }) => {
         <SelectField
           id="node-restart-policy"
           label="Restart Policy"
-          value={data.restartPolicy || ""}
+          value={data.restartPolicy ?? ""}
           onChange={(value) => onChange({ restartPolicy: value })}
           options={RESTART_POLICY_OPTIONS}
         />
         <CheckboxField
           id="node-auto-remove"
           label="Auto-remove container on exit"
-          checked={data.autoRemove || false}
+          checked={data.autoRemove ?? false}
           onChange={(checked) => onChange({ autoRemove: checked })}
         />
       </PanelSection>

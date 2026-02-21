@@ -77,7 +77,8 @@ function getMouseButtonName(button: number): string | null {
 /** Check if event target is an ignored tag */
 function isIgnoredTag(target: EventTarget | null, ignoredTags: string[]): boolean {
   if (!target) return false;
-  const tag = (target as HTMLElement).tagName;
+  if (!(target instanceof Element)) return false;
+  const tag = target.tagName;
   return ignoredTags.includes(tag);
 }
 
@@ -93,7 +94,7 @@ function formatKeyboardShortcut(e: KeyboardEvent): string | null {
 function formatMouseShortcut(e: MouseEvent): string | null {
   const modifiers = getModifiers(e);
   const click = getMouseButtonName(e.button);
-  if (!click) return null;
+  if (click === null) return null;
   return [...modifiers, click].join(" + ");
 }
 
@@ -137,13 +138,13 @@ export function useShortcutDisplay(): UseShortcutDisplayResult {
     function handleKeydown(e: KeyboardEvent) {
       if (e.repeat || isIgnoredTag(e.target, KEYBOARD_IGNORE_TAGS)) return;
       const shortcut = formatKeyboardShortcut(e);
-      if (shortcut) addShortcut(shortcut);
+      if (shortcut !== null && shortcut.length > 0) addShortcut(shortcut);
     }
 
     function handleMousedown(e: MouseEvent) {
       if (isIgnoredTag(e.target, MOUSE_IGNORE_TAGS)) return;
       const shortcut = formatMouseShortcut(e);
-      if (shortcut) addShortcut(shortcut);
+      if (shortcut !== null && shortcut.length > 0) addShortcut(shortcut);
     }
 
     window.addEventListener("keydown", handleKeydown);

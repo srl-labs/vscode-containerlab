@@ -22,7 +22,7 @@ interface LabAction {
 /**
  * Map of available lab lifecycle actions.
  */
-const LAB_ACTIONS: Record<string, LabAction> = {
+const LAB_ACTIONS: Partial<Record<string, LabAction>> = {
   deployLab: {
     command: "containerlab.lab.deploy",
     resultMsg: "Lab deployment initiated",

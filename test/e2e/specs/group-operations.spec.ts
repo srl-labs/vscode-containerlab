@@ -446,7 +446,7 @@ test.describe("Group Operations - File Persistence", () => {
 
   test("created group appears in annotations file", async ({ page, topoViewerPage }) => {
     const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
-    const initialGroupCount = initialAnnotations.groupStyleAnnotations?.length || 0;
+    const initialGroupCount = initialAnnotations.groupStyleAnnotations?.length ?? 0;
 
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
@@ -465,7 +465,7 @@ test.describe("Group Operations - File Persistence", () => {
     await page.waitForTimeout(700);
 
     const updatedAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
-    const updatedGroupCount = updatedAnnotations.groupStyleAnnotations?.length || 0;
+    const updatedGroupCount = updatedAnnotations.groupStyleAnnotations?.length ?? 0;
     expect(updatedGroupCount).toBe(initialGroupCount + 1);
   });
 

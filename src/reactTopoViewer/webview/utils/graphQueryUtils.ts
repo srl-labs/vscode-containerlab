@@ -12,6 +12,30 @@ export function getNodeById(nodes: TopoNode[], id: string): TopoNode | null {
 }
 
 /**
+ * Runtime guard for TopoNode-like objects.
+ */
+export function isTopoNodeLike(value: unknown): value is TopoNode {
+  if (typeof value !== "object" || value === null) return false;
+  const id: unknown = Reflect.get(value, "id");
+  const position: unknown = Reflect.get(value, "position");
+  if (typeof id !== "string" || typeof position !== "object" || position === null) return false;
+  const x: unknown = Reflect.get(position, "x");
+  const y: unknown = Reflect.get(position, "y");
+  return typeof x === "number" && typeof y === "number";
+}
+
+/**
+ * Runtime guard for TopoEdge-like objects.
+ */
+export function isTopoEdgeLike(value: unknown): value is TopoEdge {
+  if (typeof value !== "object" || value === null) return false;
+  const id: unknown = Reflect.get(value, "id");
+  const source: unknown = Reflect.get(value, "source");
+  const target: unknown = Reflect.get(value, "target");
+  return typeof id === "string" && typeof source === "string" && typeof target === "string";
+}
+
+/**
  * Check if an edge exists between two nodes (in either direction)
  */
 export function hasEdgeBetween(edges: TopoEdge[], sourceId: string, targetId: string): boolean {

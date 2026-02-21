@@ -72,6 +72,10 @@ export interface NormalizedLink {
   type?: string;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 // ============================================================================
 // Endpoint Parsing
 // ============================================================================
@@ -93,7 +97,7 @@ export function splitEndpoint(
  * Builds a host/mgmt-net/macvlan ID.
  */
 function buildHostyId(t: string, linkObj: Record<string, unknown>): string {
-  return `${t}:${linkObj?.["host-interface"] ?? ""}`;
+  return `${t}:${linkObj["host-interface"] ?? ""}`;
 }
 
 /**
@@ -102,7 +106,7 @@ function buildHostyId(t: string, linkObj: Record<string, unknown>): string {
  */
 function buildVxlanId(linkObj: unknown, ctx: DummyContext): string {
   const cached = ctx.vxlanLinkMap.get(linkObj);
-  if (cached) return cached;
+  if (cached !== undefined && cached !== "") return cached;
   const vxlanId = `vxlan:vxlan${ctx.vxlanCounter}`;
   ctx.vxlanCounter += 1;
   ctx.vxlanLinkMap.set(linkObj, vxlanId);
@@ -115,7 +119,7 @@ function buildVxlanId(linkObj: unknown, ctx: DummyContext): string {
  */
 function buildVxlanStitchId(linkObj: unknown, ctx: DummyContext): string {
   const cached = ctx.vxlanStitchLinkMap.get(linkObj);
-  if (cached) return cached;
+  if (cached !== undefined && cached !== "") return cached;
   const vxlanId = `vxlan-stitch:vxlan${ctx.vxlanStitchCounter}`;
   ctx.vxlanStitchCounter += 1;
   ctx.vxlanStitchLinkMap.set(linkObj, vxlanId);
@@ -128,7 +132,7 @@ function buildVxlanStitchId(linkObj: unknown, ctx: DummyContext): string {
  */
 function buildDummyId(linkObj: unknown, ctx: DummyContext): string {
   const cached = ctx.dummyLinkMap.get(linkObj);
-  if (cached) return cached;
+  if (cached !== undefined && cached !== "") return cached;
   const dummyId = `dummy${ctx.dummyCounter}`;
   ctx.dummyCounter += 1;
   ctx.dummyLinkMap.set(linkObj, dummyId);
@@ -150,6 +154,12 @@ export function normalizeSingleTypeToSpecialId(
   return "";
 }
 
+function toEndpointPair(endpoints: unknown[]): { endA: unknown; endB: unknown } | null {
+  const [a, b] = endpoints;
+  if (a === undefined || a === null || b === undefined || b === null) return null;
+  return { endA: a, endB: b };
+}
+
 // ============================================================================
 // Link Normalization
 // ============================================================================
@@ -161,25 +171,23 @@ export function normalizeLinkToTwoEndpoints(
   linkObj: Record<string, unknown>,
   ctx: DummyContext
 ): NormalizedLink | null {
-  const t = linkObj?.type as string | undefined;
+  const t = typeof linkObj.type === "string" ? linkObj.type : undefined;
   if (t === "veth") {
-    const endpoints = linkObj?.endpoints as unknown[] | undefined;
-    const [a, b] = endpoints ?? [];
-    if (!a || !b) return null;
-    return { endA: a, endB: b, type: t };
+    const endpoints: unknown[] = Array.isArray(linkObj.endpoints) ? linkObj.endpoints : [];
+    const pair = toEndpointPair(endpoints);
+    return pair ? { ...pair, type: t } : null;
   }
 
   if (SINGLE_ENDPOINT_TYPES.has(t ?? "")) {
-    const a = linkObj?.endpoint;
-    if (!a) return null;
-    const special = normalizeSingleTypeToSpecialId(t!, linkObj, ctx);
+    const a = linkObj.endpoint;
+    if (a === undefined || a === null) return null;
+    const special = normalizeSingleTypeToSpecialId(t ?? "", linkObj, ctx);
     return { endA: a, endB: special, type: t };
   }
 
-  const endpoints = linkObj?.endpoints as unknown[] | undefined;
-  const [a, b] = endpoints ?? [];
-  if (!a || !b) return null;
-  return { endA: a, endB: b, type: t };
+  const endpoints: unknown[] = Array.isArray(linkObj.endpoints) ? linkObj.endpoints : [];
+  const pair = toEndpointPair(endpoints);
+  return pair ? { ...pair, type: t } : null;
 }
 
 // ============================================================================
@@ -232,9 +240,8 @@ export function shouldOmitEndpoint(node: string): boolean {
  * Extracts MAC address from an endpoint object.
  */
 export function extractEndpointMac(endpoint: unknown): string {
-  return typeof endpoint === "object" && endpoint !== null
-    ? (((endpoint as Record<string, unknown>)?.mac as string) ?? "")
-    : "";
+  if (!isRecord(endpoint)) return "";
+  return typeof endpoint.mac === "string" ? endpoint.mac : "";
 }
 
 // ============================================================================

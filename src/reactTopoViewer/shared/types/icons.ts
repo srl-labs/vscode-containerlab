@@ -86,7 +86,7 @@ export function extractUsedCustomIcons<T extends { data?: { topoViewerRole?: str
   const usedIcons = new Set<string>();
   for (const el of elements) {
     const role = el.data?.topoViewerRole;
-    if (role && !isBuiltInIcon(role)) {
+    if (role !== undefined && role.length > 0 && !isBuiltInIcon(role)) {
       usedIcons.add(role);
     }
   }

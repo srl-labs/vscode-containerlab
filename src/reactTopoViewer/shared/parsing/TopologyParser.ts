@@ -306,7 +306,7 @@ export function parseTopologyForEditorRFParsed(
 }
 
 function normalizeParsedTopology(parsed: unknown): ClabTopology {
-  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+  if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
     return parsed as ClabTopology;
   }
   return {};

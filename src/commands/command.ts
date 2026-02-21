@@ -103,7 +103,10 @@ export function cancelActiveCommand(): boolean {
   if (!activeSpinnerProcess || activeSpinnerProcess.killed) {
     return false;
   }
-  const suffix = activeSpinnerCommand ? ` for ${activeSpinnerCommand}` : "";
+  const suffix =
+    activeSpinnerCommand !== null && activeSpinnerCommand.length > 0
+      ? ` for ${activeSpinnerCommand}`
+      : "";
   outputChannel.info(`[command] Cancellation requested${suffix}`);
   activeSpinnerProcess.kill();
   return true;
@@ -120,11 +123,11 @@ export async function execCommandInOutput(
   const [cmd, ...args] = splitArgs(command);
   const proc = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
 
-  if (show) {
+  if (show === true) {
     outputChannel.show();
   }
 
-  proc.stdout?.on("data", (data: Buffer) => {
+  proc.stdout.on("data", (data: Buffer) => {
     const cleaned = utils.stripAnsi(data.toString());
     outputChannel.info(cleaned);
     if (stdoutCb) {
@@ -132,7 +135,7 @@ export async function execCommandInOutput(
     }
   });
 
-  proc.stderr?.on("data", (data: Buffer) => {
+  proc.stderr.on("data", (data: Buffer) => {
     const cleaned = utils.stripAnsi(data.toString());
     outputChannel.info(cleaned);
     if (stderrCb) {
@@ -188,7 +191,7 @@ export class Command {
 
   constructor(options: CmdOptions) {
     this.command = options.command;
-    this.useSpinner = options.useSpinner || false;
+    this.useSpinner = options.useSpinner ?? false;
     this.spinnerMsg = options.spinnerMsg;
     this.terminalName = options.terminalName;
     this.onOutputLineCallback = options.onOutputLine;
@@ -215,7 +218,7 @@ export class Command {
   private getCwd(): string {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     const cwd = workspaceFolder ?? path.join(os.homedir(), ".clab");
-    if (!workspaceFolder) {
+    if (workspaceFolder === undefined || workspaceFolder.length === 0) {
       try {
         fs.mkdirSync(cwd, { recursive: true });
       } catch {
@@ -314,9 +317,11 @@ export class Command {
     } catch (err: unknown) {
       const command = cmd[1];
       const errMessage = err instanceof Error ? err.message : String(err);
-      const failMsg = this.spinnerMsg?.failMsg
-        ? `${this.spinnerMsg.failMsg}. Err: ${err}`
-        : `${utils.titleCase(command)} failed: ${errMessage}`;
+      const customFailMsg = this.spinnerMsg?.failMsg;
+      const failMsg =
+        customFailMsg !== undefined && customFailMsg.length > 0
+          ? `${customFailMsg}. Err: ${err}`
+          : `${utils.titleCase(command)} failed: ${errMessage}`;
       const viewOutputBtn = await vscode.window.showErrorMessage(failMsg, "View logs");
       if (viewOutputBtn === "View logs") {
         outputChannel.show();

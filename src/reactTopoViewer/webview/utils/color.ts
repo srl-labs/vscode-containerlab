@@ -30,7 +30,8 @@ function parseRgb(value: string): { hex: string; alpha?: number } | null {
   const r = parseInt(match[1], 10);
   const g = parseInt(match[2], 10);
   const b = parseInt(match[3], 10);
-  const alphaRaw = match[4] != null ? parseFloat(match[4]) : undefined;
+  const alphaParsed = Number.parseFloat(match[4]);
+  const alphaRaw = Number.isFinite(alphaParsed) ? alphaParsed : undefined;
   const alpha = alphaRaw !== undefined ? Math.min(1, Math.max(0, alphaRaw)) : undefined;
   return { hex: "#" + toHexByte(r) + toHexByte(g) + toHexByte(b), alpha };
 }
@@ -79,7 +80,7 @@ export function parseLuminance(color: string): number | null {
 }
 
 export function normalizeHexColor(value: string | undefined, fallback = "#000000"): string {
-  if (!value) return fallback;
+  if (value === undefined || value.length === 0) return fallback;
   const trimmed = value.trim();
   if (trimmed.startsWith("#")) {
     const hex = trimmed.toLowerCase();
@@ -122,18 +123,22 @@ export function invertHexColor(hex: string, fallback = "#ffffff", strength = 0.5
 export function normalizeShapeAnnotationColors(
   annotation: FreeShapeAnnotation
 ): FreeShapeAnnotation {
+  const fillColorValue = annotation.fillColor;
   const hasFillColor = annotation.fillColor !== undefined;
-  const fill = hasFillColor && annotation.fillColor ? parseRgb(annotation.fillColor) : null;
+  const hasFillColorValue = typeof fillColorValue === "string" && fillColorValue.length > 0;
+  const fill = hasFillColor && hasFillColorValue ? parseRgb(fillColorValue) : null;
   const fillColor = hasFillColor
     ? normalizeHexColor(annotation.fillColor, "#ffffff")
     : annotation.fillColor;
   const fillOpacity = annotation.fillOpacity ?? fill?.alpha;
+  const hasBorderColor =
+    typeof annotation.borderColor === "string" && annotation.borderColor.length > 0;
 
   return {
     ...annotation,
     fillColor,
     fillOpacity,
-    borderColor: annotation.borderColor
+    borderColor: hasBorderColor
       ? normalizeHexColor(annotation.borderColor, "#000000")
       : annotation.borderColor
   };

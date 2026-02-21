@@ -7,7 +7,6 @@
  * Returns true on success, false on failure.
  */
 export async function copyToClipboard(text: string): Promise<boolean> {
-  if (typeof window === "undefined" || !window.navigator?.clipboard) return false;
   try {
     await window.navigator.clipboard.writeText(text);
     return true;

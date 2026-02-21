@@ -368,7 +368,7 @@ async function renderAudio(): Promise<AudioBuffer> {
     createPadChordOffline(ctx, masterGain, CHORD_PADS.Bdim_add9, padTime, padDuration);
 
     for (const note of FULL_MELODY) {
-      if (!note.isRest) {
+      if (note.isRest !== true) {
         const startTime = (note.beat - 1) * BEAT;
         scheduleNoteOffline(ctx, masterGain, note.frequency, startTime, note.duration);
       }

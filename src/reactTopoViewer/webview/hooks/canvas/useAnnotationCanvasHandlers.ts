@@ -48,12 +48,15 @@ function useEscapeToCancelAddMode(
   annotationHandlers?: AnnotationHandlers
 ) {
   useEffect(() => {
-    if (!annotationMode?.isAddTextMode && !annotationMode?.isAddShapeMode) return;
+    const activeAnnotationMode = annotationMode;
+    const isAddTextMode = activeAnnotationMode?.isAddTextMode === true;
+    const isAddShapeMode = activeAnnotationMode?.isAddShapeMode === true;
+    if (activeAnnotationMode === undefined || (!isAddTextMode && !isAddShapeMode)) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      if (annotationMode.isAddTextMode) annotationHandlers?.disableAddTextMode();
-      if (annotationMode.isAddShapeMode) annotationHandlers?.disableAddShapeMode();
+      if (activeAnnotationMode.isAddTextMode === true) annotationHandlers?.disableAddTextMode();
+      if (activeAnnotationMode.isAddShapeMode === true) annotationHandlers?.disableAddShapeMode();
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -82,8 +85,8 @@ function useWrappedPaneClick(
       }
 
       // Handle Shift+Click for node creation in edit mode
-      if (event.shiftKey && mode === "edit" && !isLocked && onShiftClickCreate) {
-        const bounds = (event.target as HTMLElement).getBoundingClientRect();
+      if (event.shiftKey && mode === "edit" && !isLocked && onShiftClickCreate !== undefined) {
+        const bounds = event.currentTarget.getBoundingClientRect();
         const position = rfInstance.screenToFlowPosition({
           x: event.clientX - bounds.left,
           y: event.clientY - bounds.top
@@ -93,8 +96,8 @@ function useWrappedPaneClick(
         return;
       }
 
-      if (annotationMode?.isAddTextMode && annotationHandlers) {
-        const bounds = (event.target as HTMLElement).getBoundingClientRect();
+      if (annotationMode?.isAddTextMode === true && annotationHandlers !== undefined) {
+        const bounds = event.currentTarget.getBoundingClientRect();
         const position = rfInstance.screenToFlowPosition({
           x: event.clientX - bounds.left,
           y: event.clientY - bounds.top
@@ -104,8 +107,8 @@ function useWrappedPaneClick(
         return;
       }
 
-      if (annotationMode?.isAddShapeMode && annotationHandlers) {
-        const bounds = (event.target as HTMLElement).getBoundingClientRect();
+      if (annotationMode?.isAddShapeMode === true && annotationHandlers !== undefined) {
+        const bounds = event.currentTarget.getBoundingClientRect();
         const position = rfInstance.screenToFlowPosition({
           x: event.clientX - bounds.left,
           y: event.clientY - bounds.top
@@ -118,12 +121,12 @@ function useWrappedPaneClick(
       // Explicitly deselect all nodes/edges when clicking on the pane
       // so selection clears even when React Flow doesn't do it implicitly.
       const nodes = rfInstance.getNodes();
-      const hasSelectedNodes = nodes.some((n) => n.selected);
+      const hasSelectedNodes = nodes.some((n) => n.selected === true);
       if (hasSelectedNodes) {
         rfInstance.setNodes(nodes.map((n) => ({ ...n, selected: false })));
       }
       const edges = rfInstance.getEdges();
-      const hasSelectedEdges = edges.some((e) => e.selected);
+      const hasSelectedEdges = edges.some((e) => e.selected === true);
       if (hasSelectedEdges) {
         rfInstance.setEdges(edges.map((e) => ({ ...e, selected: false })));
       }
@@ -190,14 +193,15 @@ function useWrappedNodeDoubleClick(
  * Hook for computing add mode state and message
  */
 function useAddModeState(annotationMode?: AnnotationModeState) {
-  const isInAddMode = annotationMode?.isAddTextMode || annotationMode?.isAddShapeMode || false;
+  const isInAddMode =
+    annotationMode?.isAddTextMode === true || annotationMode?.isAddShapeMode === true;
 
   const addModeMessage = useMemo(() => {
-    if (annotationMode?.isAddTextMode) {
+    if (annotationMode?.isAddTextMode === true) {
       return "Adding text — Press Escape to cancel";
     }
-    if (annotationMode?.isAddShapeMode) {
-      const shapeType = annotationMode.pendingShapeType || "shape";
+    if (annotationMode?.isAddShapeMode === true) {
+      const shapeType = annotationMode.pendingShapeType ?? "shape";
       return `Click on the canvas to add ${shapeType} — Press Escape to cancel`;
     }
     return null;

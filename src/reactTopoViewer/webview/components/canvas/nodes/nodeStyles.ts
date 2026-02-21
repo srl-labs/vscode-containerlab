@@ -85,7 +85,9 @@ export function buildNodeLabelStyle(params: {
     fontSize: params.fontSize,
     maxWidth: params.maxWidth ?? LABEL_STYLE_BASE.maxWidth,
     transformOrigin: "center center",
-    ...(labelBgColor ? { backgroundColor: labelBgColor } : {})
+    ...(labelBgColor !== undefined && labelBgColor.length > 0
+      ? { backgroundColor: labelBgColor }
+      : {})
   };
 
   switch (normalizeNodeLabelPosition(params.position)) {

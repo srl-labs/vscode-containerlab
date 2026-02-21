@@ -30,6 +30,10 @@ export interface LinkImpairmentFooterRef {
   hasChanges: boolean;
 }
 
+function isLinkImpairmentTabId(value: string): value is LinkImpairmentTabId {
+  return value === "source" || value === "target";
+}
+
 export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
   linkData,
   onError,
@@ -123,7 +127,11 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
     <EditorPanel
       tabs={tabs}
       activeTab={activeTab}
-      onTabChange={(id) => setActiveTab(id as LinkImpairmentTabId)}
+      onTabChange={(id) => {
+        if (isLinkImpairmentTabId(id)) {
+          setActiveTab(id);
+        }
+      }}
       tabProps={tabProps}
       readOnly={readOnly}
     />

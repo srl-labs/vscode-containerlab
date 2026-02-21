@@ -30,7 +30,7 @@ export function useEscapeKey(isOpen: boolean, onClose: () => void): void {
  * Hook that calls a callback when clicking outside the referenced element
  */
 export function useClickOutside(
-  ref: RefObject<HTMLElement>,
+  ref: RefObject<HTMLElement | null>,
   callback: () => void,
   enabled: boolean = true
 ): void {
@@ -38,7 +38,10 @@ export function useClickOutside(
     if (!enabled) return;
 
     const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      const element = ref.current;
+      if (element !== null && !element.contains(target)) {
         callback();
       }
     };

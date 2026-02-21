@@ -104,7 +104,7 @@ function isLabRunning(labPath: string): boolean {
     if (Array.isArray(containers) && containers.length > 0) {
       // Check the first container's lab path (all containers in a lab share the same path)
       const container = containers[0];
-      const containerLabPath = container.Labels?.["clab-topo-file"];
+      const containerLabPath = container.Labels["clab-topo-file"];
       if (containerLabPath === labPath) {
         return true;
       }
@@ -117,15 +117,16 @@ function resolveLabInfo(
   node?: ClabLabTreeNode
 ): { labPath: string; isViewMode: boolean } | undefined {
   if (
-    node &&
-    node.contextValue &&
+    node !== undefined &&
+    node.contextValue !== undefined &&
+    node.contextValue.length > 0 &&
     (node.contextValue === "containerlabLabDeployed" ||
       node.contextValue === "containerlabLabDeployedFavorite")
   ) {
-    return { labPath: node.labPath?.absolute || "", isViewMode: true };
+    return { labPath: node.labPath.absolute, isViewMode: true };
   }
 
-  if (node?.labPath?.absolute) {
+  if (node !== undefined && node.labPath.absolute.length > 0) {
     // Check if this lab is actually running
     const isRunning = isLabRunning(node.labPath.absolute);
     return { labPath: node.labPath.absolute, isViewMode: isRunning };
@@ -160,7 +161,7 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
 
   // Derive the lab name
   const labName =
-    node?.name ||
+    node?.name ??
     (labPath ? path.basename(labPath).replace(/\.clab\.(yml|yaml)$/i, "") : "Unknown Lab");
 
   // Use the provider to create/get the viewer

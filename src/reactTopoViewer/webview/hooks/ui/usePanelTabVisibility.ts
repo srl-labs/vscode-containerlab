@@ -40,16 +40,16 @@ export function usePanelTabVisibility(): PanelTabVisibility {
 
   // Edit tab: visible whenever an editor is active (any mode).
   // Some editors are view-mode features (Link Impairments, annotation editing).
-  const hasEditor = !!(
-    state.editingNode ||
-    state.editingEdge ||
-    state.editingNetwork ||
-    state.editingImpairment ||
-    annotationUI.editingTextAnnotation ||
-    annotationUI.editingShapeAnnotation ||
-    annotationUI.editingTrafficRateAnnotation ||
+  const hasEditor = [
+    state.editingNode,
+    state.editingEdge,
+    state.editingNetwork,
+    state.editingImpairment,
+    annotationUI.editingTextAnnotation,
+    annotationUI.editingShapeAnnotation,
+    annotationUI.editingTrafficRateAnnotation,
     annotationUI.editingGroup
-  );
+  ].some((value) => value !== null);
   const showEditTab = hasEditor;
 
   const editTabTitle = showEditTab ? panelView.title : undefined;

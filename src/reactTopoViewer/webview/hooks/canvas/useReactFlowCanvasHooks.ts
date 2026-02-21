@@ -6,7 +6,6 @@ import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
 import { applyLayout, type LayoutName } from "../../components/canvas/layout";
-import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 import { useGraphStore } from "../../stores/graphStore";
 import { log } from "../../utils/logger";
 import { allocateEndpointsForLink } from "../../utils/endpointAllocator";
@@ -80,7 +79,7 @@ export function useLinkCreation(
 
   const completeLinkCreation = useCallback(
     (targetNodeId: string) => {
-      if (!linkSourceNode) return;
+      if (linkSourceNode === null || linkSourceNode.length === 0) return;
 
       const isLoopLink = linkSourceNode === targetNodeId;
       log.info(
@@ -88,8 +87,8 @@ export function useLinkCreation(
       );
       const { nodes, edges } = useGraphStore.getState();
       const { sourceEndpoint, targetEndpoint } = allocateEndpointsForLink(
-        nodes as TopoNode[],
-        edges as TopoEdge[],
+        nodes,
+        edges,
         linkSourceNode,
         targetNodeId
       );
@@ -124,7 +123,7 @@ export function useLinkCreation(
   );
 
   useEffect(() => {
-    if (!linkSourceNode) return;
+    if (linkSourceNode === null || linkSourceNode.length === 0) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") cancelLinkCreation();
     };
@@ -155,7 +154,7 @@ export function useSourceNodePosition(linkSourceNode: string | null, nodes: Node
   // Only update position when linkSourceNode changes (not on every node position update)
   if (linkSourceNode !== lastSourceNodeRef.current) {
     lastSourceNodeRef.current = linkSourceNode;
-    if (!linkSourceNode) {
+    if (linkSourceNode === null || linkSourceNode.length === 0) {
       positionRef.current = null;
     } else {
       const node = nodes.find((n) => n.id === linkSourceNode);
@@ -188,11 +187,15 @@ export function useKeyboardDeleteHandlers(
       if (event.key !== "Delete" && event.key !== "Backspace") return;
       if (mode !== "edit" || isLocked) return;
 
-      const tagName = (event.target as HTMLElement).tagName;
+      if (!(event.target instanceof HTMLElement)) return;
+      const tagName = event.target.tagName;
       if (tagName === "INPUT" || tagName === "TEXTAREA") return;
 
-      if (selectedNode) handleDeleteNode(selectedNode);
-      else if (selectedEdge) handleDeleteEdge(selectedEdge);
+      if (selectedNode !== null && selectedNode.length > 0) {
+        handleDeleteNode(selectedNode);
+      } else if (selectedEdge !== null && selectedEdge.length > 0) {
+        handleDeleteEdge(selectedEdge);
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -223,10 +226,15 @@ function createPositionUpdater(positions: PositionEntry[]) {
 /** Schedule a fit view after layout application */
 function scheduleFitView(rfRef: React.RefObject<ReactFlowInstance | null>): void {
   setTimeout(() => {
-    rfRef.current?.fitView({ padding: 0.2, duration: 200 })?.catch(() => {
+    const fitViewPromise = rfRef.current?.fitView({ padding: 0.2, duration: 200 });
+    fitViewPromise?.catch(() => {
       /* ignore */
     });
   }, 100);
+}
+
+function isLayoutName(value: string): value is LayoutName {
+  return value === "preset" || value === "force";
 }
 
 export function useCanvasRefMethods(
@@ -240,7 +248,8 @@ export function useCanvasRefMethods(
     () => ({
       fit: () => reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 }),
       runLayout: (layoutName: string) => {
-        setNodes(applyLayout(layoutName as LayoutName, nodes, edges));
+        const resolvedLayout = isLayoutName(layoutName) ? layoutName : "preset";
+        setNodes(applyLayout(resolvedLayout, nodes, edges));
         scheduleFitView(reactFlowInstanceRef);
       },
       getReactFlowInstance: () => reactFlowInstanceRef.current,

@@ -15,8 +15,8 @@ import {
 } from "@mui/material";
 import { Close as CloseIcon } from "@mui/icons-material";
 
-import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 import { useGraphActions, useGraphStore } from "../../stores/graphStore";
+import { isTopoEdgeLike, isTopoNodeLike } from "../../utils/graphQueryUtils";
 
 import { CopyableCode } from "./bulk-link/CopyableCode";
 import { ConfirmBulkLinksModal } from "./bulk-link/ConfirmBulkLinksModal";
@@ -109,8 +109,14 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
   onClose
 }) => {
   const { addEdge } = useGraphActions();
-  const getCurrentNodes = React.useCallback(() => useGraphStore.getState().nodes as TopoNode[], []);
-  const getCurrentEdges = React.useCallback(() => useGraphStore.getState().edges as TopoEdge[], []);
+  const getCurrentNodes = React.useCallback(
+    () => useGraphStore.getState().nodes.filter((node) => isTopoNodeLike(node)),
+    []
+  );
+  const getCurrentEdges = React.useCallback(
+    () => useGraphStore.getState().edges.filter((edge) => isTopoEdgeLike(edge)),
+    []
+  );
 
   const [sourcePattern, setSourcePattern] = React.useState("");
   const [targetPattern, setTargetPattern] = React.useState("");
@@ -210,7 +216,7 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
               />
             </Box>
             <ExamplesSection />
-            {status && (
+            {status !== null && status.length > 0 && (
               <Alert severity="info" variant="outlined">
                 {status}
               </Alert>
@@ -223,11 +229,7 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button
-            size="small"
-            onClick={handleCompute}
-            data-testid="bulk-link-apply-btn"
-          >
+          <Button size="small" onClick={handleCompute} data-testid="bulk-link-apply-btn">
             Apply
           </Button>
         </DialogActions>

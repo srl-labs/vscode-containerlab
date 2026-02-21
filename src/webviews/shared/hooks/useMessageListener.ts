@@ -4,9 +4,7 @@ interface WebviewMessage {
   command: string;
 }
 
-export function useMessageListener<T extends WebviewMessage>(
-  handler: (message: T) => void
-): void {
+export function useMessageListener<T extends WebviewMessage>(handler: (message: T) => void): void {
   const handlerRef = useRef(handler);
 
   useEffect(() => {

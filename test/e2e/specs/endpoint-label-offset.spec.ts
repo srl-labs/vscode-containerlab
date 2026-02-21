@@ -126,7 +126,7 @@ test.describe("Endpoint Label Offset", () => {
     await topoViewerPage.writeAnnotationsFile(SIMPLE_FILE, {
       ...annotations,
       viewerSettings: {
-        ...(annotations.viewerSettings ?? {}),
+        ...annotations.viewerSettings,
         endpointLabelOffsetEnabled: true,
         endpointLabelOffset: TARGET_OFFSET
       }

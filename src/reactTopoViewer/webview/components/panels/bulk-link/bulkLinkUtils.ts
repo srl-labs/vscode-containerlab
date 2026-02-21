@@ -10,6 +10,12 @@ import { allocateEndpoint, type EndpointAllocator } from "../../../utils/endpoin
 
 export type LinkCandidate = { sourceId: string; targetId: string };
 
+function getNodeLabel(node: TopoNode): string {
+  const data = node.data;
+  const label: unknown = Reflect.get(data, "label");
+  return typeof label === "string" && label.length > 0 ? label : node.id;
+}
+
 function applyBackreferences(pattern: string, match: RegExpMatchArray | null): string {
   if (!pattern) return pattern;
 
@@ -21,7 +27,8 @@ function applyBackreferences(pattern: string, match: RegExpMatchArray | null): s
 
       if (fullMatch.startsWith("$<")) {
         if (
-          namedGroup &&
+          namedGroup !== undefined &&
+          namedGroup.length > 0 &&
           match.groups &&
           Object.prototype.hasOwnProperty.call(match.groups, namedGroup)
         ) {
@@ -30,7 +37,7 @@ function applyBackreferences(pattern: string, match: RegExpMatchArray | null): s
         return fullMatch;
       }
 
-      if (numberedGroup) {
+      if (numberedGroup !== undefined && numberedGroup.length > 0) {
         const index = Number(numberedGroup);
         if (!Number.isNaN(index) && index < match.length) {
           return match[index] ?? "";
@@ -90,7 +97,7 @@ function processTargetNode(
   const targetId = targetNode.id;
   if (sourceId === targetId) return; // Skip self-loops
 
-  const targetName = ((targetNode.data as Record<string, unknown>).label as string) || targetId;
+  const targetName = getNodeLabel(targetNode);
   if (!matchTargetWithBackrefs(targetName, targetFilterText, targetRegex, sourceMatch)) return;
   if (hasEdgeBetweenUtil(edges, sourceId, targetId)) return;
 
@@ -121,7 +128,7 @@ export function computeCandidates(
 
   for (const sourceNode of topologyNodes) {
     const sourceId = sourceNode.id;
-    const sourceName = ((sourceNode.data as Record<string, unknown>).label as string) || sourceId;
+    const sourceName = getNodeLabel(sourceNode);
 
     // Check if source matches filter
     const sourceMatch = getSourceMatch(sourceName, sourceRegex, sourceFallbackFilter);

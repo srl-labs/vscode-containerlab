@@ -2,7 +2,12 @@ import { useCallback, useMemo } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import { saveAllNodeGroupMemberships, saveAnnotationNodesFromGraph } from "../../services";
-import { useAnnotationUIActions, useAnnotationUIState, useGraphStore, useIsLocked } from "../../stores";
+import {
+  useAnnotationUIActions,
+  useAnnotationUIState,
+  useGraphStore,
+  useIsLocked
+} from "../../stores";
 import { collectNodeGroupMemberships } from "../../annotations/groupMembership";
 import { TRAFFIC_RATE_NODE_TYPE } from "../../annotations/annotationNodeConverters";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
@@ -88,10 +93,10 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
 
       while (stack.length > 0) {
         const current = stack.pop();
-        if (!current) continue;
+        if (current === undefined || current.length === 0) continue;
         for (const group of derived.groups) {
           const parentId = getGroupParentId(group);
-          if (!parentId || parentId !== current) continue;
+          if (parentId === null || parentId !== current) continue;
           if (!descendants.has(group.id)) {
             descendants.add(group.id);
             stack.push(group.id);
@@ -109,8 +114,8 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       const bounds = {
         x: position.x,
         y: position.y,
-        width: droppedGroup.width ?? 200,
-        height: droppedGroup.height ?? 150
+        width: droppedGroup.width,
+        height: droppedGroup.height
       };
       const excluded = getGroupDescendants(nodeId);
       excluded.add(nodeId);
@@ -385,8 +390,9 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       deleteTextAnnotation: textActions.deleteTextAnnotation,
       deleteSelectedTextAnnotations: textActions.deleteSelectedTextAnnotations,
       updateTextRotation: (id: string, rotation: number) => {
-        const currentRotation = derived.textAnnotations.find((annotation) => annotation.id === id)
-          ?.rotation;
+        const currentRotation = derived.textAnnotations.find(
+          (annotation) => annotation.id === id
+        )?.rotation;
         if ((currentRotation ?? 0) === rotation) return;
         derived.updateTextAnnotation(id, { rotation });
       },
@@ -416,8 +422,9 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       deleteShapeAnnotation: shapeActions.deleteShapeAnnotation,
       deleteSelectedShapeAnnotations: shapeActions.deleteSelectedShapeAnnotations,
       updateShapeRotation: (id, rotation) => {
-        const currentRotation = derived.shapeAnnotations.find((annotation) => annotation.id === id)
-          ?.rotation;
+        const currentRotation = derived.shapeAnnotations.find(
+          (annotation) => annotation.id === id
+        )?.rotation;
         if ((currentRotation ?? 0) === rotation) return;
         derived.updateShapeAnnotation(id, { rotation });
       },

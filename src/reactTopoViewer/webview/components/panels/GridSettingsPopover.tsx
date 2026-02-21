@@ -89,7 +89,7 @@ export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
           <Slider
             size="small"
             value={gridLineWidth}
-            onChange={(_e, value) => onGridLineWidthChange(value as number)}
+            onChange={(_e, value) => onGridLineWidthChange(value)}
             min={0.00001}
             max={2}
             step={0.1}
@@ -123,10 +123,7 @@ export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             Grid Color
           </Typography>
-          <ColorField
-            value={gridColor ?? defaultGridColor}
-            onChange={handleGridColorChange}
-          />
+          <ColorField value={gridColor ?? defaultGridColor} onChange={handleGridColorChange} />
         </Box>
 
         <Divider />
@@ -135,10 +132,7 @@ export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             Background Color
           </Typography>
-          <ColorField
-            value={gridBgColor ?? themeBgColor}
-            onChange={handleBgColorChange}
-          />
+          <ColorField value={gridBgColor ?? themeBgColor} onChange={handleBgColorChange} />
         </Box>
 
         {hasCustomColors && (

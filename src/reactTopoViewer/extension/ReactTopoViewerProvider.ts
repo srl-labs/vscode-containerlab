@@ -39,6 +39,26 @@ import {
 
 const INTERNAL_UPDATE_GRACE_MS = 250;
 const INTERNAL_UPDATE_CACHE_SYNC_DELAY_MS = 50;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isClabLabTreeNodeValue(value: unknown): value is ClabLabTreeNode {
+  if (!isRecord(value)) return false;
+  if (!isRecord(value.labPath)) return false;
+  return typeof value.labPath.absolute === "string";
+}
+
+function toClabLabNodeRecord(value: unknown): Record<string, ClabLabTreeNode> | undefined {
+  if (!isRecord(value)) return undefined;
+  const result: Record<string, ClabLabTreeNode> = {};
+  for (const [labName, node] of Object.entries(value)) {
+    if (!isClabLabTreeNodeValue(node)) continue;
+    result[labName] = node;
+  }
+  return result;
+}
 /**
  * React TopoViewer class that manages the webview panel
  */
@@ -112,9 +132,8 @@ export class ReactTopoViewer {
 
   private async loadRunningLabsData(): Promise<Record<string, ClabLabTreeNode> | undefined> {
     try {
-      return (await runningLabsProvider.discoverInspectLabs()) as
-        | Record<string, ClabLabTreeNode>
-        | undefined;
+      const labsData = await runningLabsProvider.discoverInspectLabs();
+      return toClabLabNodeRecord(labsData);
     } catch (err) {
       log.warn(`Failed to load running lab data: ${err}`);
       return undefined;
@@ -180,8 +199,8 @@ export class ReactTopoViewer {
 
     panel.webview.onDidReceiveMessage(
       async (message: unknown) => {
-        if (this.messageRouter) {
-          await this.messageRouter.handleMessage(message as Record<string, unknown>, panel);
+        if (this.messageRouter && isRecord(message)) {
+          await this.messageRouter.handleMessage(message, panel);
         }
       },
       undefined,
@@ -217,7 +236,7 @@ export class ReactTopoViewer {
     this.currentLabName = labName;
     this.isViewMode = viewMode;
 
-    if (fileUri?.fsPath) {
+    if (fileUri.fsPath.length > 0) {
       this.lastYamlFilePath = fileUri.fsPath;
     }
 
@@ -231,7 +250,7 @@ export class ReactTopoViewer {
     const config: PanelConfig = {
       viewType: this.viewType,
       title: labName,
-      column: column || vscode.ViewColumn.One,
+      column: column ?? vscode.ViewColumn.One,
       extensionUri: context.extensionUri
     };
     const panel = createPanel(config);
@@ -260,8 +279,7 @@ export class ReactTopoViewer {
       topologyHost: this.topologyHost,
       setInternalUpdate: (updating: boolean) => this.setInternalUpdate(updating),
       onHostSnapshot: (snapshot) => {
-        if (!snapshot) return;
-        this.lastTopologyEdges = snapshot.edges ?? [];
+        this.lastTopologyEdges = snapshot.edges;
         if (snapshot.labName && snapshot.labName !== this.currentLabName) {
           this.currentLabName = snapshot.labName;
           if (this.currentPanel) {
@@ -360,7 +378,7 @@ export class ReactTopoViewer {
           containerDataProvider
         });
         const snapshot = await this.topologyHost.getSnapshot();
-        this.lastTopologyEdges = snapshot.edges ?? [];
+        this.lastTopologyEdges = snapshot.edges;
         this.currentPanel.webview.postMessage({
           type: "topology-host:snapshot",
           protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
@@ -419,7 +437,7 @@ export class ReactTopoViewer {
     try {
       // Update cached labs data
       this.cacheClabTreeDataToTopoviewer = labsData;
-      if (this.topologyHost && this.isViewMode) {
+      if (this.topologyHost) {
         this.topologyHost.updateContext({
           containerDataProvider: new ContainerDataAdapter(labsData)
         });
@@ -472,9 +490,7 @@ export class ReactTopoViewerProvider {
   }
 
   public static getInstance(context: vscode.ExtensionContext): ReactTopoViewerProvider {
-    if (!ReactTopoViewerProvider.instance) {
-      ReactTopoViewerProvider.instance = new ReactTopoViewerProvider(context);
-    }
+    ReactTopoViewerProvider.instance ??= new ReactTopoViewerProvider(context);
     return ReactTopoViewerProvider.instance;
   }
 

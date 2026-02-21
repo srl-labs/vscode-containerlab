@@ -269,12 +269,11 @@ function handleCreateGroup(
 function handleSelectAll(event: KeyboardEvent): boolean {
   if (!(event.ctrlKey || event.metaKey) || event.key !== "a") return false;
 
-  const target = event.target as HTMLElement | null;
-  if (
-    target &&
-    (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
-  ) {
-    return false;
+  const target = event.target;
+  if (target instanceof HTMLElement) {
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+      return false;
+    }
   }
 
   const { nodes, edges, setNodes, setEdges } = useGraphStore.getState();
@@ -284,6 +283,10 @@ function handleSelectAll(event: KeyboardEvent): boolean {
   log.info("[Keyboard] Select all nodes and edges");
   event.preventDefault();
   return true;
+}
+
+function hasSelectedId(value: string | null): value is string {
+  return value !== null && value.length > 0;
 }
 
 /**
@@ -313,10 +316,10 @@ function deleteSelectedElements(
 ): boolean {
   let handled = false;
 
-  if (!selectedNode && !selectedEdge) {
+  if (!hasSelectedId(selectedNode) && !hasSelectedId(selectedEdge)) {
     const { nodes, edges } = useGraphStore.getState();
-    const selectedNodes = nodes.filter((n) => n.selected);
-    const selectedEdges = edges.filter((e) => e.selected);
+    const selectedNodes = nodes.filter((n) => n.selected === true);
+    const selectedEdges = edges.filter((e) => e.selected === true);
 
     if (selectedNodes.length > 0) {
       log.info(`[Keyboard] Deleting ${selectedNodes.length} selected nodes`);
@@ -331,13 +334,13 @@ function deleteSelectedElements(
     }
   }
 
-  if (selectedNode) {
+  if (hasSelectedId(selectedNode)) {
     log.info(`[Keyboard] Deleting node: ${selectedNode}`);
     onDeleteNode(selectedNode);
     handled = true;
   }
 
-  if (selectedEdge) {
+  if (hasSelectedId(selectedEdge)) {
     log.info(`[Keyboard] Deleting edge: ${selectedEdge}`);
     onDeleteEdge(selectedEdge);
     handled = true;
@@ -364,8 +367,9 @@ function handleDeleteInViewMode(
   onDeleteAnnotations: (() => void) | undefined
 ): boolean {
   const { nodes, edges } = useGraphStore.getState();
-  const selectedNodes = nodes.filter((node) => node.selected);
-  const hasSelectedEdges = edges.some((edge) => edge.selected) || Boolean(selectedEdge);
+  const selectedNodes = nodes.filter((node) => node.selected === true);
+  const hasSelectedEdges =
+    edges.some((edge) => edge.selected === true) || hasSelectedId(selectedEdge);
   const hasSelectedAnnotationNodes = selectedNodes.some((node) => isAnnotationType(node.type));
   const hasSelectedNonAnnotationNode = selectedNodes.some((node) => !isAnnotationType(node.type));
 
@@ -376,7 +380,7 @@ function handleDeleteInViewMode(
     hasSelectedAnnotationNodes &&
     !hasSelectedEdges &&
     !hasSelectedNonAnnotationNode &&
-    !selectedNode
+    !hasSelectedId(selectedNode)
   ) {
     log.info("[Keyboard] Deleting selected annotation nodes (view mode)");
     onDeleteSelection();
@@ -399,14 +403,15 @@ function handleBatchedDeleteInEditMode(
   if (!onDeleteSelection) return false;
 
   const { nodes, edges } = useGraphStore.getState();
-  const selectedNodeIds = nodes.filter((node) => node.selected).map((node) => node.id);
-  const selectedEdgeIds = edges.filter((edge) => edge.selected).map((edge) => edge.id);
-  let totalSelected = selectedNodeIds.length + selectedEdgeIds.length + (selectedAnnotationIds?.size ?? 0);
+  const selectedNodeIds = nodes.filter((node) => node.selected === true).map((node) => node.id);
+  const selectedEdgeIds = edges.filter((edge) => edge.selected === true).map((edge) => edge.id);
+  let totalSelected =
+    selectedNodeIds.length + selectedEdgeIds.length + (selectedAnnotationIds?.size ?? 0);
 
-  if (selectedNode && !selectedNodeIds.includes(selectedNode)) {
+  if (hasSelectedId(selectedNode) && !selectedNodeIds.includes(selectedNode)) {
     totalSelected += 1;
   }
-  if (selectedEdge && !selectedEdgeIds.includes(selectedEdge)) {
+  if (hasSelectedId(selectedEdge) && !selectedEdgeIds.includes(selectedEdge)) {
     totalSelected += 1;
   }
 
@@ -496,7 +501,7 @@ function handleEscape(
 
   // NOTE: Element deselection is handled via onDeselectAll callback
   // ReactFlow manages selection state internally
-  if (selectedNode || selectedEdge) {
+  if (hasSelectedId(selectedNode) || hasSelectedId(selectedEdge)) {
     log.debug("[Keyboard] Deselecting all");
     onDeselectAll();
     event.preventDefault();

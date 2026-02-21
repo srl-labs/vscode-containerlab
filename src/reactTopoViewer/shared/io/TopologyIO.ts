@@ -27,6 +27,47 @@ import { addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from "./LinkPersistenc
 
 // Types are available from ./NodePersistenceIO and ./LinkPersistenceIO directly
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isRecordOfRecords(value: unknown): value is Record<string, Record<string, unknown>> {
+  if (!isRecord(value)) return false;
+  return Object.values(value).every((entry) => isRecord(entry));
+}
+
+function toOptionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function toOptionalNullableString(value: unknown): string | null | undefined {
+  if (value === null) return null;
+  return typeof value === "string" ? value : undefined;
+}
+
+function toOptionalNumber(value: unknown): number | undefined {
+  return typeof value === "number" ? value : undefined;
+}
+
+function parseTopologyForInheritance(raw: unknown): ClabTopology {
+  if (!isRecord(raw)) return {};
+  const topologyRaw = raw.topology;
+  if (!isRecord(topologyRaw)) return {};
+
+  const topology: NonNullable<ClabTopology["topology"]> = {};
+  if (isRecord(topologyRaw.defaults)) {
+    topology.defaults = topologyRaw.defaults;
+  }
+  if (isRecordOfRecords(topologyRaw.kinds)) {
+    topology.kinds = topologyRaw.kinds;
+  }
+  if (isRecordOfRecords(topologyRaw.groups)) {
+    topology.groups = topologyRaw.groups;
+  }
+
+  return { topology };
+}
+
 /**
  * Helper to update position and/or geo coordinates on an annotation.
  * Only updates fields that are provided - this allows GeoMap mode to update
@@ -211,7 +252,7 @@ export class TopologyIO {
       return { success: false, error: ERROR_SERVICE_NOT_INIT };
     }
 
-    const topoObj = this.doc.toJS() as ClabTopology;
+    const topoObj = parseTopologyForInheritance(this.doc.toJS());
     const result = editNodeInDoc(this.doc, nodeData, topoObj, this.logger);
     if (!result.success) return result;
 
@@ -229,15 +270,15 @@ export class TopologyIO {
   ): NodeAnnotationData | undefined {
     if (!extraData) return undefined;
     return {
-      label: extraData.label as string | null | undefined,
-      icon: extraData.topoViewerRole as string | undefined,
-      iconColor: extraData.iconColor as string | undefined,
-      iconCornerRadius: extraData.iconCornerRadius as number | undefined,
-      labelPosition: extraData.labelPosition as string | null | undefined,
-      direction: extraData.direction as string | null | undefined,
-      labelBackgroundColor: extraData.labelBackgroundColor as string | null | undefined,
-      interfacePattern: extraData.interfacePattern as string | undefined,
-      groupId: includeGroupId ? (extraData.groupId as string | undefined) : undefined
+      label: toOptionalNullableString(extraData.label),
+      icon: toOptionalString(extraData.topoViewerRole),
+      iconColor: toOptionalString(extraData.iconColor),
+      iconCornerRadius: toOptionalNumber(extraData.iconCornerRadius),
+      labelPosition: toOptionalNullableString(extraData.labelPosition),
+      direction: toOptionalNullableString(extraData.direction),
+      labelBackgroundColor: toOptionalNullableString(extraData.labelBackgroundColor),
+      interfacePattern: toOptionalString(extraData.interfacePattern),
+      groupId: includeGroupId ? toOptionalString(extraData.groupId) : undefined
     };
   }
 
@@ -261,7 +302,7 @@ export class TopologyIO {
     nodeData: NodeSaveData,
     renamed?: { oldId: string; newId: string }
   ): Promise<void> {
-    const nodeId = renamed?.newId || nodeData.name || nodeData.id;
+    const nodeId = (renamed?.newId ?? nodeData.name) || nodeData.id;
     if (!nodeId) return;
 
     const annotationData = this.buildNodeAnnotationData(nodeData.extraData);
@@ -273,9 +314,7 @@ export class TopologyIO {
    * Helper to find or create a node annotation entry
    */
   private ensureNodeAnnotation(annotations: TopologyAnnotations, nodeId: string): NodeAnnotation {
-    if (!annotations.nodeAnnotations) {
-      annotations.nodeAnnotations = [];
-    }
+    annotations.nodeAnnotations ??= [];
 
     let existing = annotations.nodeAnnotations.find((n) => n.id === nodeId);
     if (!existing) {
@@ -358,10 +397,11 @@ export class TopologyIO {
       return { success: false, error: ERROR_SERVICE_NOT_INIT };
     }
 
-    const linksSeq = this.doc.getIn(["topology", "links"], true) as YAML.YAMLSeq | undefined;
-    if (!linksSeq || !YAML.isSeq(linksSeq)) {
+    const links = this.doc.getIn(["topology", "links"], true);
+    if (!YAML.isSeq(links)) {
       return { success: false, error: `Network node '${nodeId}' not found (no links in topology)` };
     }
+    const linksSeq = links;
 
     const initialCount = linksSeq.items.length;
     linksSeq.items = linksSeq.items.filter((item) => !this.linkMatchesNetworkNode(item, nodeId));
@@ -380,10 +420,10 @@ export class TopologyIO {
    */
   private linkMatchesNetworkNode(item: unknown, nodeId: string): boolean {
     if (!YAML.isMap(item)) return false;
-    const linkMap = item as YAML.YAMLMap;
+    const linkMap = item;
 
     const linkType = linkMap.get("type");
-    if (!linkType) return false;
+    if (linkType === undefined || linkType === null) return false;
     const typeStr = YAML.isScalar(linkType) ? String(linkType.value) : String(linkType);
 
     const expectedId = this.buildExpectedNetworkNodeId(typeStr, linkMap, nodeId);
@@ -400,7 +440,7 @@ export class TopologyIO {
   ): string | null {
     if (typeStr === "host") {
       const hostInterface = linkMap.get("host-interface");
-      if (hostInterface) {
+      if (hostInterface !== undefined && hostInterface !== null) {
         const ifaceStr = YAML.isScalar(hostInterface)
           ? String(hostInterface.value)
           : String(hostInterface);
@@ -556,9 +596,7 @@ export class TopologyIO {
 
     try {
       await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (annotations) => {
-        if (!annotations.nodeAnnotations) {
-          annotations.nodeAnnotations = [];
-        }
+        annotations.nodeAnnotations ??= [];
 
         for (const { id, position, geoCoordinates } of positions) {
           // Check if this is a network node (exists in networkNodeAnnotations)

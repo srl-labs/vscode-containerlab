@@ -2,11 +2,11 @@
  * Helpers for converting graph edges into host persistence payloads.
  */
 import type { LinkSaveData } from "../../shared/io/LinkPersistenceIO";
-import type { TopoEdge, TopologyEdgeData } from "../../shared/types/graph";
+import type { TopoEdge } from "../../shared/types/graph";
 
 export function toLinkSaveData(edge: TopoEdge): LinkSaveData {
-  const data = edge.data as TopologyEdgeData | undefined;
-  const extra = data?.extraData as Record<string, unknown> | undefined;
+  const data = edge.data;
+  const extra = data?.extraData;
   const yamlSource = extra?.yamlSourceNodeId;
   const yamlTarget = extra?.yamlTargetNodeId;
   return {

@@ -16,12 +16,12 @@ interface PortMapping {
  */
 export async function openBrowser(node: ClabContainerTreeNode) {
   const containerId = resolveContainerId(node);
-  if (!containerId) {
+  if (containerId === undefined || containerId.length === 0) {
     return;
   }
 
   const portMappings = await getExposedPorts(containerId);
-  if (!portMappings || portMappings.length === 0) {
+  if (portMappings.length === 0) {
     vscode.window.showInformationMessage(`No exposed ports found for container ${node.name}.`);
     return;
   }
@@ -71,15 +71,10 @@ async function pickPortMapping(portMappings: PortMapping[]): Promise<PortMapping
  * Get the exposed ports for a container using Dockerode
  */
 async function getExposedPorts(containerId: string): Promise<PortMapping[]> {
-  if (!dockerClient) {
-    outputChannel.error("Docker client not initialized");
-    return [];
-  }
-
   try {
     const container = dockerClient.getContainer(containerId);
     const containerInfo = await container.inspect();
-    const ports = containerInfo.NetworkSettings.Ports || {};
+    const ports = containerInfo.NetworkSettings.Ports;
 
     const mappings = collectPortMappings(ports);
 
@@ -143,7 +138,7 @@ function addBinding(
   containerPort: string,
   protocol: string
 ) {
-  if (!hostPort || portMap.has(hostPort)) {
+  if (hostPort === undefined || hostPort.length === 0 || portMap.has(hostPort)) {
     return;
   }
 

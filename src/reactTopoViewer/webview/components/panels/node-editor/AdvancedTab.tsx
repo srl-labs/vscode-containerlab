@@ -76,7 +76,11 @@ interface TlsCertificateSectionProps extends TabProps {
   certIssue: boolean;
 }
 
-const TlsCertificateSection: React.FC<TlsCertificateSectionProps> = ({ data, onChange, certIssue }) => (
+const TlsCertificateSection: React.FC<TlsCertificateSectionProps> = ({
+  data,
+  onChange,
+  certIssue
+}) => (
   <PanelSection title="TLS Certificate">
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
       <CheckboxField

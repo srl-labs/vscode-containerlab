@@ -1,0 +1,324 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [],
+  "categories": {
+    "correctness": "off"
+  },
+  "env": {
+    "builtin": true
+  },
+  "ignorePatterns": [
+    "**/*.js",
+    "out/**",
+    "dist/**",
+    "dist-dev/**",
+    "node_modules/**",
+    ".vscode-test.mjs",
+    "legacy-backup/**",
+    "labs/**",
+    "dev/**",
+    "src/utils/consts.ts"
+  ],
+  "rules": {
+    "constructor-super": "error",
+    "for-direction": "error",
+    "no-async-promise-executor": "error",
+    "no-case-declarations": "error",
+    "no-class-assign": "error",
+    "no-compare-neg-zero": "error",
+    "no-cond-assign": "error",
+    "no-const-assign": "error",
+    "no-constant-binary-expression": "error",
+    "no-constant-condition": "error",
+    "no-control-regex": "error",
+    "no-debugger": "error",
+    "no-delete-var": "error",
+    "no-dupe-class-members": "error",
+    "no-dupe-else-if": "error",
+    "no-dupe-keys": "error",
+    "no-duplicate-case": "error",
+    "no-empty": "error",
+    "no-empty-character-class": "error",
+    "no-empty-pattern": "error",
+    "no-empty-static-block": "error",
+    "no-ex-assign": "error",
+    "no-extra-boolean-cast": "error",
+    "no-fallthrough": "error",
+    "no-func-assign": "error",
+    "no-global-assign": "error",
+    "no-import-assign": "error",
+    "no-invalid-regexp": "error",
+    "no-irregular-whitespace": "error",
+    "no-loss-of-precision": "error",
+    "no-misleading-character-class": "error",
+    "no-new-native-nonconstructor": "error",
+    "no-nonoctal-decimal-escape": "error",
+    "no-obj-calls": "error",
+    "no-prototype-builtins": "error",
+    "no-redeclare": "error",
+    "no-regex-spaces": "error",
+    "no-self-assign": "error",
+    "no-setter-return": "error",
+    "no-shadow-restricted-names": "error",
+    "no-sparse-arrays": "error",
+    "no-this-before-super": "error",
+    "no-unexpected-multiline": "error",
+    "no-unsafe-finally": "error",
+    "no-unsafe-negation": "error",
+    "no-unsafe-optional-chaining": "error",
+    "no-unused-labels": "error",
+    "no-unused-private-class-members": "error",
+    "no-unused-vars": "error",
+    "no-unreachable": "error",
+    "no-unused-expressions": "error",
+    "no-useless-backreference": "error",
+    "no-useless-catch": "error",
+    "no-useless-computed-key": "error",
+    "no-useless-concat": "warn",
+    "no-useless-constructor": "error",
+    "no-useless-escape": "error",
+    "no-useless-rename": "error",
+    "no-useless-return": "error",
+    "no-with": "error",
+    "require-yield": "error",
+    "use-isnan": "error",
+    "valid-typeof": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.ts",
+        "**/*.tsx"
+      ],
+      "rules": {
+        "no-unused-vars": "off",
+        "@typescript-eslint/no-unused-vars": "error",
+        "@typescript-eslint/no-useless-empty-export": "error",
+        "complexity": [
+          "warn",
+          {
+            "max": 15
+          }
+        ],
+        "@typescript-eslint/no-floating-promises": "error",
+        "@typescript-eslint/no-misused-promises": "error",
+        "@typescript-eslint/await-thenable": "error",
+        "import-x/no-duplicates": "error",
+        "import-x/max-dependencies": [
+          "warn",
+          {
+            "max": 15
+          }
+        ],
+        "@typescript-eslint/consistent-type-imports": [
+          "error",
+          {
+            "prefer": "type-imports",
+            "fixStyle": "separate-type-imports"
+          }
+        ],
+        "@typescript-eslint/no-explicit-any": "warn",
+        "@typescript-eslint/no-unsafe-assignment": "warn",
+        "@typescript-eslint/no-unsafe-argument": "warn",
+        "@typescript-eslint/no-unsafe-member-access": "warn",
+        "@typescript-eslint/no-unsafe-call": "warn",
+        "@typescript-eslint/no-unsafe-return": "warn",
+        "@typescript-eslint/no-unsafe-type-assertion": "warn",
+        "@typescript-eslint/no-unnecessary-type-assertion": "warn",
+        "@typescript-eslint/no-unnecessary-condition": "warn",
+        "@typescript-eslint/prefer-nullish-coalescing": "warn",
+        "@typescript-eslint/strict-boolean-expressions": "warn",
+        "import-x/no-cycle": [
+          "error",
+          {
+            "maxDepth": 3
+          }
+        ],
+        "no-nested-ternary": "error",
+        "max-params": [
+          "warn",
+          {
+            "max": 10
+          }
+        ],
+        "no-console": [
+          "warn",
+          {
+            "allow": [
+              "warn",
+              "error"
+            ]
+          }
+        ],
+        "promise/no-multiple-resolved": "error",
+        "promise/no-new-statics": "error",
+        "promise/valid-params": "error",
+        "unicorn/no-useless-spread": "error",
+        "unicorn/no-useless-length-check": "error",
+        "unicorn/no-unnecessary-await": "error",
+        "unicorn/no-await-in-promise-methods": "error",
+        "unicorn/no-single-promise-in-promise-methods": "error",
+        "unicorn/no-invalid-remove-event-listener": "error",
+        "oxc/only-used-in-recursion": "error",
+        "oxc/uninvoked-array-callback": "error",
+        "oxc/missing-throw": "error"
+      },
+      "globals": {
+        "console": "readonly",
+        "process": "readonly",
+        "Buffer": "readonly",
+        "require": "readonly",
+        "setTimeout": "readonly",
+        "clearTimeout": "readonly",
+        "setInterval": "readonly",
+        "clearInterval": "readonly",
+        "window": "readonly",
+        "document": "readonly",
+        "fetch": "readonly",
+        "__dirname": "readonly",
+        "__filename": "readonly"
+      },
+      "plugins": [
+        "typescript",
+        "import",
+        "promise",
+        "unicorn",
+        "oxc"
+      ]
+    },
+    {
+      "files": [
+        "src/reactTopoViewer/**/*.ts",
+        "src/reactTopoViewer/**/*.tsx"
+      ],
+      "rules": {
+        "max-lines": [
+          "error",
+          {
+            "max": 3000,
+            "skipBlankLines": true,
+            "skipComments": true
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/reactTopoViewer/webview/**/*.tsx",
+        "src/topoViewer/**/*.tsx"
+      ],
+      "rules": {
+        "react/display-name": "error",
+        "react/jsx-key": "error",
+        "react/jsx-no-comment-textnodes": "error",
+        "react/jsx-no-duplicate-props": "error",
+        "react/jsx-no-target-blank": "error",
+        "react/jsx-no-undef": "error",
+        "react/button-has-type": "error",
+        "react/iframe-missing-sandbox": "error",
+        "react/no-children-prop": "error",
+        "react/no-danger": "warn",
+        "react/no-danger-with-children": "error",
+        "jsx-a11y/label-has-associated-control": "error",
+        "jsx-a11y/click-events-have-key-events": "warn",
+        "jsx-a11y/no-static-element-interactions": "warn",
+        "jsx-a11y/no-noninteractive-tabindex": "error",
+        "jsx-a11y/tabindex-no-positive": "error",
+        "react/no-direct-mutation-state": "error",
+        "react/no-find-dom-node": "error",
+        "react/no-is-mounted": "error",
+        "react/no-render-return-value": "error",
+        "react/no-string-refs": "error",
+        "react/no-unescaped-entities": "error",
+        "react/no-unknown-property": "error",
+        "react/no-unsafe": "off",
+        "react/react-in-jsx-scope": "off",
+        "react-hooks/rules-of-hooks": "error",
+        "react-hooks/exhaustive-deps": "warn",
+        "react-perf/jsx-no-jsx-as-prop": "off",
+        "react-perf/jsx-no-new-array-as-prop": "off",
+        "react-perf/jsx-no-new-function-as-prop": "off",
+        "react-perf/jsx-no-new-object-as-prop": "off",
+        "react/jsx-no-constructed-context-values": "error",
+        "react/forward-ref-uses-ref": "error",
+        "react/checked-requires-onchange-or-readonly": "error",
+        "react/jsx-no-useless-fragment": "warn"
+      },
+      "plugins": [
+        "react",
+        "jsx-a11y",
+        "react-perf"
+      ]
+    },
+    {
+      "files": [
+        "src/reactTopoViewer/webview/components/canvas/**/*.tsx",
+        "src/reactTopoViewer/webview/AppContent.tsx"
+      ],
+      "rules": {
+        "react-perf/jsx-no-new-array-as-prop": "warn",
+        "react-perf/jsx-no-new-function-as-prop": "warn"
+      },
+      "plugins": [
+        "react-perf"
+      ]
+    },
+    {
+      "files": [
+        "src/reactTopoViewer/webview/components/**/*.tsx"
+      ],
+      "rules": {
+        "unicorn/filename-case": [
+          "error",
+          {
+            "case": "pascalCase"
+          }
+        ]
+      },
+      "plugins": [
+        "unicorn"
+      ]
+    },
+    {
+      "files": [
+        "src/reactTopoViewer/webview/hooks/**/*.ts"
+      ],
+      "rules": {
+        "unicorn/filename-case": [
+          "error",
+          {
+            "case": "camelCase",
+            "ignore": [
+              "^index\\.ts$"
+            ]
+          }
+        ]
+      },
+      "plugins": [
+        "unicorn"
+      ]
+    },
+    {
+      "files": [
+        "test/**/*.ts",
+        "test/**/*.tsx",
+        "**/*.test.ts",
+        "**/*.test.tsx"
+      ],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-unsafe-assignment": "off",
+        "@typescript-eslint/no-unsafe-argument": "off",
+        "@typescript-eslint/no-unsafe-member-access": "off",
+        "@typescript-eslint/no-unsafe-call": "off",
+        "@typescript-eslint/no-unsafe-return": "off",
+        "@typescript-eslint/no-unsafe-type-assertion": "off",
+        "no-console": "off",
+        "no-unused-expressions": "off"
+      },
+      "plugins": [
+        "typescript"
+      ]
+    }
+  ]
+}

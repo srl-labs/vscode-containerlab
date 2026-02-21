@@ -51,6 +51,94 @@ interface EdgeMatchParams {
   targetEndpoint: string;
 }
 
+type BrowserMode = "edit" | "view";
+
+interface BrowserNodeLike {
+  id: string;
+  type?: string;
+  selected?: boolean;
+  position: { x: number; y: number };
+  data?: {
+    sourceEndpoint?: string;
+    targetEndpoint?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+interface BrowserEdgeLike {
+  id: string;
+  source: string;
+  target: string;
+  selected?: boolean;
+  sourceEndpoint?: string;
+  targetEndpoint?: string;
+  data?: {
+    sourceEndpoint?: string;
+    targetEndpoint?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+interface BrowserReactFlowLike {
+  getNodes?: () => BrowserNodeLike[];
+  setNodes?: (nodes: BrowserNodeLike[]) => void;
+  getEdges?: () => BrowserEdgeLike[];
+  setEdges?: (edges: BrowserEdgeLike[]) => void;
+  getViewport?: () => { x: number; y: number; zoom: number };
+  setViewport?: (viewport: { x: number; y: number; zoom: number }) => void;
+  fitView?: (options?: { padding?: number; maxZoom?: number }) => void;
+}
+
+interface BrowserDevApi {
+  rfInstance?: BrowserReactFlowLike | null;
+  mode?: () => string;
+  setMode?: (mode: BrowserMode) => void;
+  setModeState?: (mode: BrowserMode) => void;
+  isLocked?: () => boolean;
+  setLocked?: (locked: boolean) => void;
+  setLayout?: (layout: string) => void;
+  getReactGroups?: () => Array<{ id: string }>;
+  groupsCount?: number;
+  createGroupFromSelected?: () => void;
+  loadTopologyFile?: (file: string, sessionId: string) => Promise<void>;
+  getCurrentFile?: () => unknown;
+  selectNodesForClipboard?: (ids: string[]) => void;
+  selectNode?: (id: string) => void;
+  selectedNode?: () => string | null;
+  clearNodeSelection?: () => void;
+  selectEdge?: (id: string) => void;
+  selectedEdge?: () => string | null;
+  undoRedo?: { canUndo?: boolean; canRedo?: boolean };
+  handleNodeCreatedCallback?: (
+    nodeId: string,
+    nodeElement: Record<string, unknown>,
+    position: { x: number; y: number }
+  ) => void;
+  handleEdgeCreated?: (
+    sourceId: string,
+    targetId: string,
+    edgeData: {
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint: string;
+      targetEndpoint: string;
+    }
+  ) => void;
+  createNetworkAtPosition?: (position: { x: number; y: number }, networkType: string) => unknown;
+  stateManager?: {
+    groups?: { selectGroup?: (id: string) => void };
+    getAnnotations?: () => { nodeAnnotations?: Array<{ id: string; group?: string }> } | undefined;
+  };
+  groups?: { selectGroup?: (id: string) => void };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 const dispatchGroupKeyboardEvent = (): void => {
   const event = new KeyboardEvent("keydown", {
     key: "g",
@@ -68,21 +156,14 @@ const dispatchGroupKeyboardEvent = (): void => {
 function browserCreateGroup(): CreateGroupResult {
   const dev = (
     window as {
-      __DEV__?: {
-        rfInstance?: unknown;
-        mode?: () => string;
-        isLocked?: () => boolean;
-        getReactGroups?: () => unknown[];
-        createGroupFromSelected?: () => void;
-      };
+      __DEV__?: BrowserDevApi;
     }
   ).__DEV__;
   const rf = dev?.rfInstance;
   const getSelected = (): string[] => {
-    if (!rf) return [];
-    const nodes =
-      (rf as { getNodes?: () => Array<{ id: string; selected?: boolean }> }).getNodes?.() ?? [];
-    return nodes.filter((node) => node.selected).map((node) => node.id);
+    if (rf == null) return [];
+    const nodes = rf.getNodes?.() ?? [];
+    return nodes.filter((node) => node.selected === true).map((node) => node.id);
   };
   const getGroupCount = (): number => (dev?.getReactGroups?.() ?? []).length;
 
@@ -106,7 +187,7 @@ function browserCreateGroup(): CreateGroupResult {
     selectedAfter: getSelected(),
     groupsAfter: getGroupCount(),
     reactGroupsAfter: getGroupCount(),
-    hasRf: !!rf
+    hasRf: rf != null
   };
 }
 
@@ -120,9 +201,9 @@ function browserHasMatchingEdge({
   sourceEndpoint,
   targetEndpoint
 }: EdgeMatchParams): boolean {
-  const dev = (window as any).__DEV__;
+  const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
   const rf = dev?.rfInstance;
-  if (!rf) return false;
+  if (rf == null) return false;
   const edges = rf.getEdges?.() ?? [];
   const specialPrefixes = ["host:", "mgmt-net:", "macvlan:", "vxlan:", "vxlan-stitch:", "dummy"];
   const isSpecial = (id: string) => specialPrefixes.some((prefix) => id.startsWith(prefix));
@@ -131,7 +212,7 @@ function browserHasMatchingEdge({
     return isSpecial(expected) && edgeNode.startsWith(`${expected}:`);
   };
   const matches = (
-    edge: any,
+    edge: BrowserEdgeLike,
     expectedSource: string,
     expectedTarget: string,
     expectedSourceEndpoint: string,
@@ -152,7 +233,7 @@ function browserHasMatchingEdge({
   };
 
   return edges.some(
-    (edge: any) =>
+    (edge) =>
       matches(edge, sourceId, targetId, sourceEndpoint, targetEndpoint) ||
       matches(edge, targetId, sourceId, targetEndpoint, sourceEndpoint)
   );
@@ -163,11 +244,11 @@ function browserHasMatchingEdge({
  * Note: Helper logic is inlined for page.evaluate() compatibility.
  */
 function browserGetGroupDebugInfo(): GroupDebugInfo {
-  const dev = (window as any).__DEV__;
+  const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
   const reactGroups = dev?.getReactGroups?.() ?? [];
 
   // Inline helper: get group IDs
-  const getGroupIds = (groups: any[]): string[] => groups.map((g: any) => g.id);
+  const getGroupIds = (groups: Array<{ id: string }>): string[] => groups.map((g) => g.id);
 
   return {
     reactGroupCount: reactGroups.length,
@@ -182,12 +263,7 @@ function browserGetGroupDebugInfo(): GroupDebugInfo {
  * Topology files available in dev/topologies/ (file-based)
  */
 type TopologyFileName =
-  | "simple.clab.yml"
-  | "spine-leaf.clab.yml"
-  | "datacenter.clab.yml"
-  | "network.clab.yml"
-  | "empty.clab.yml"
-  | string; // Allow any filename for dynamic tests
+  string;
 
 /**
  * Annotations structure from file API
@@ -483,14 +559,14 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         });
         // Wait for dev hooks to be injected; app shell visibility can lag on cold startup.
         await page.waitForFunction(
-          () => (window as any).__DEV__ !== undefined,
+          () => (window as { __DEV__?: BrowserDevApi }).__DEV__ !== undefined,
           undefined,
           { timeout: 60000 }
         );
 
         // Wait for React Flow instance to be ready.
         await page.waitForFunction(
-          () => (window as any).__DEV__?.rfInstance !== undefined,
+          () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.rfInstance !== undefined,
           undefined,
           { timeout: 45000 }
         );
@@ -507,10 +583,10 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             const loadResult = await page.evaluate(
               async ({ file, sid }) => {
                 try {
-                  await (window as any).__DEV__.loadTopologyFile(file, sid);
+                  await (window as { __DEV__?: BrowserDevApi }).__DEV__.loadTopologyFile(file, sid);
                   return { success: true };
                 } catch (e: any) {
-                  return { success: false, error: e?.message || String(e) };
+                  return { success: false, error: e?.message ?? String(e) };
                 }
               },
               { file: resolvedFilePath, sid: sessionId }
@@ -523,8 +599,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             // Wait for the topology data to propagate and confirm the file is loaded
             await page.waitForFunction(
               (expectedFile) => {
-                const currentFile = (window as any).__DEV__?.getCurrentFile?.();
-                if (!currentFile || typeof currentFile !== "string") return false;
+                const currentFile = (window as { __DEV__?: BrowserDevApi }).__DEV__?.getCurrentFile?.();
+                if (typeof currentFile !== "string" || currentFile.length === 0) return false;
                 return currentFile.endsWith(expectedFile);
               },
               filename,
@@ -535,7 +611,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             if (filename !== "empty.clab.yml") {
               await page.waitForFunction(
                 (types) => {
-                  const dev = (window as any).__DEV__;
+                  const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
                   const rf = dev?.rfInstance;
                   if (!rf) return false;
                   const nodes = rf.getNodes?.() ?? [];
@@ -554,7 +630,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             // Wait for React Flow instance to be initialized
             await page.waitForFunction(
               () => {
-                const dev = (window as any).__DEV__;
+                const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
                 const rf = dev?.rfInstance;
                 return rf !== undefined && rf !== null;
               },
@@ -566,7 +642,9 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             break;
           } catch (error) {
             if (attempt === maxRetries) {
-              throw new Error(`Failed to load ${filename} after ${maxRetries} attempts: ${error}`);
+              throw new Error(
+                `Failed to load ${filename} after ${maxRetries} attempts: ${String(error)}`
+              );
             }
             // Wait before retrying
             await page.waitForTimeout(500);
@@ -578,10 +656,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       getCurrentFile: async () => {
-        const currentFile = await page.evaluate(() => {
-          return (window as any).__DEV__.getCurrentFile();
+        const currentFile = await page.evaluate<unknown>(() => {
+          return (window as { __DEV__?: BrowserDevApi }).__DEV__.getCurrentFile();
         });
-        return currentFile ? path.basename(currentFile) : null;
+        if (typeof currentFile !== "string" || currentFile.length === 0) return null;
+        return path.basename(currentFile);
       },
 
       getAnnotationsFromFile: async (filename: string) => {
@@ -658,7 +737,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Wait for React Flow instance to be exposed via __DEV__.rfInstance
         await page.waitForFunction(
           () => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             return dev?.rfInstance !== undefined;
           },
           undefined,
@@ -668,7 +747,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Wait for React Flow instance to be usable
         await page.waitForFunction(
           () => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             const rf = dev?.rfInstance;
             return rf !== undefined && rf !== null && typeof rf.getNodes === "function";
           },
@@ -677,15 +756,19 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         );
 
         // If a non-empty file is loaded, wait for topology nodes to exist
-        const currentFile = await page.evaluate(
-          () => (window as any).__DEV__?.getCurrentFile?.() ?? null
+        const currentFile = await page.evaluate<unknown>(
+          () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.getCurrentFile?.() ?? null
         );
         const currentFileName =
-          currentFile && typeof currentFile === "string" ? path.basename(currentFile) : null;
-        if (currentFileName && currentFileName !== "empty.clab.yml") {
+          typeof currentFile === "string" && currentFile.length > 0 ? path.basename(currentFile) : null;
+        if (
+          currentFileName != null &&
+          currentFileName.length > 0 &&
+          currentFileName !== "empty.clab.yml"
+        ) {
           await page.waitForFunction(
             (types) => {
-              const dev = (window as any).__DEV__;
+              const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
               const rf = dev?.rfInstance;
               if (!rf) return false;
               const nodes = rf.getNodes?.() ?? [];
@@ -697,9 +780,9 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         }
 
         // If topology nodes exist, wait for at least one to render in the DOM
-        const firstNodeId = await page.evaluate(
+        const firstNodeId = await page.evaluate<string | null>(
           (types) => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             const rf = dev?.rfInstance;
             if (!rf) return null;
             const nodes = rf.getNodes?.() ?? [];
@@ -711,11 +794,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE }
         );
 
-        if (firstNodeId) {
+        if (firstNodeId != null && firstNodeId.length > 0) {
           await page.waitForSelector(`[data-id="${firstNodeId}"]`, { timeout: 20000 });
           await page.waitForFunction(
             (nodeId) => {
-              const el = document.querySelector(`[data-id="${nodeId}"]`) as HTMLElement | null;
+              const el = document.querySelector(`[data-id="${nodeId}"]`);
               if (!el) return false;
               const rect = el.getBoundingClientRect();
               return rect.width > 0 && rect.height > 0;
@@ -726,16 +809,15 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         }
 
         // Check if nodes need layout (all at 0,0)
-        const needsLayout = await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+        const needsLayout = await page.evaluate<boolean>(() => {
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           const rf = dev?.rfInstance;
           if (!rf) return false;
           const nodes = rf.getNodes?.() ?? [];
           if (nodes.length <= 1) return false; // 1 or no nodes don't need layout
 
           // Check if all nodes are at the same position
-          const firstPos = nodes[0]?.position;
-          if (!firstPos) return false;
+          const firstPos = nodes[0].position;
           return nodes.every(
             (n: any) =>
               Math.abs(n.position.x - firstPos.x) < 1 && Math.abs(n.position.y - firstPos.y) < 1
@@ -743,9 +825,9 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         });
 
         // Run force layout if nodes are overlapping
-        if (needsLayout) {
+        if (needsLayout === true) {
           await page.evaluate(() => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             dev?.setLayout?.("force");
           });
           // Wait for layout animation
@@ -754,7 +836,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
         // Call fitView to ensure proper viewport
         await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           dev?.rfInstance?.fitView?.({ padding: 0.2, maxZoom: 1.2 });
         });
 
@@ -775,7 +857,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       getNodeCount: async () => {
         return await page.evaluate(
           (types) => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             const rf = dev?.rfInstance;
             if (!rf) return 0;
             const nodes = rf.getNodes?.() ?? [];
@@ -789,7 +871,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       getNodePosition: async (nodeId: string) => {
         return await page.evaluate((id) => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           const rf = dev?.rfInstance;
           if (!rf) return { x: 0, y: 0 };
           const nodes = rf.getNodes?.() ?? [];
@@ -810,7 +892,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Fallback to React Flow calculation (simplified - use default size)
         return await page.evaluate(
           ({ id, sel }) => {
-            const rf = (window as any).__DEV__?.rfInstance;
+            const rf = (window as { __DEV__?: BrowserDevApi }).__DEV__?.rfInstance;
             if (!rf) return null;
 
             const nodes = rf.getNodes?.() ?? [];
@@ -840,7 +922,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       setEditMode: async () => {
         await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           if (dev?.setModeState) {
             dev.setModeState("edit");
             return;
@@ -848,7 +930,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           dev?.setMode?.("edit");
         });
         await page.waitForFunction(
-          () => (window as any).__DEV__?.mode?.() === "edit",
+          () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.mode?.() === "edit",
           undefined,
           { timeout: 2000 }
         );
@@ -856,7 +938,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       setViewMode: async () => {
         await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           if (dev?.setModeState) {
             dev.setModeState("view");
             return;
@@ -864,7 +946,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           dev?.setMode?.("view");
         });
         await page.waitForFunction(
-          () => (window as any).__DEV__?.mode?.() === "view",
+          () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.mode?.() === "view",
           undefined,
           { timeout: 2000 }
         );
@@ -872,10 +954,10 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       unlock: async () => {
         await page.evaluate(() => {
-          (window as any).__DEV__.setLocked(false);
+          (window as { __DEV__?: BrowserDevApi }).__DEV__.setLocked(false);
         });
         await page.waitForFunction(
-          () => (window as any).__DEV__?.isLocked?.() === false,
+          () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.isLocked?.() === false,
           undefined,
           { timeout: 2000 }
         );
@@ -883,10 +965,10 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       lock: async () => {
         await page.evaluate(() => {
-          (window as any).__DEV__.setLocked(true);
+          (window as { __DEV__?: BrowserDevApi }).__DEV__.setLocked(true);
         });
         await page.waitForFunction(
-          () => (window as any).__DEV__?.isLocked?.() === true,
+          () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.isLocked?.() === true,
           undefined,
           { timeout: 2000 }
         );
@@ -894,14 +976,14 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       isLocked: async () => {
         return await page.evaluate(() => {
-          return (window as any).__DEV__.isLocked();
+          return (window as { __DEV__?: BrowserDevApi }).__DEV__.isLocked();
         });
       },
 
       getNodeIds: async () => {
         return await page.evaluate(
           (types) => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             const rf = dev?.rfInstance;
             if (!rf) return [];
             const nodes = rf.getNodes?.() ?? [];
@@ -917,7 +999,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Use React Flow selection for proper clipboard support
         // This sets node.selected = true which is what clipboard copy checks
         await page.evaluate((id) => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           // Use selectNodesForClipboard for React Flow selection
           if (dev?.selectNodesForClipboard) {
             dev.selectNodesForClipboard([id]);
@@ -932,12 +1014,12 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         await page.waitForTimeout(100);
 
         // Verify React Flow selection was set
-        const selectedIds = await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+        const selectedIds = await page.evaluate<string[]>(() => {
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           if (!dev?.rfInstance) return [];
           const nodes = dev.rfInstance.getNodes();
           return nodes
-            .filter((n: { selected?: boolean }) => n.selected)
+            .filter((n: { selected?: boolean }) => n.selected === true)
             .map((n: { id: string }) => n.id);
         });
 
@@ -950,7 +1032,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       getGroupCount: async () => {
         return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           const reactGroups = dev?.getReactGroups?.() ?? [];
           return reactGroups.length;
         });
@@ -958,7 +1040,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       getGroupIds: async () => {
         return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           const reactGroups = dev?.getReactGroups?.() ?? [];
           return reactGroups.map((g: any) => g.id);
         });
@@ -966,7 +1048,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       getEdgeIds: async () => {
         return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           const rf = dev?.rfInstance;
           if (!rf) return [];
           const edges = rf.getEdges?.() ?? [];
@@ -976,7 +1058,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       getEdgesData: async () => {
         return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           const rf = dev?.rfInstance;
           if (!rf) return [];
           const edges = rf.getEdges?.() ?? [];
@@ -993,7 +1075,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       findEdgeByEndpoints: async (source, target, sourceEndpoint, targetEndpoint) => {
         return await page.evaluate(
           ({ source, target, sourceEndpoint, targetEndpoint }) => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             const rf = dev?.rfInstance;
             if (!rf) return null;
             const edges = rf.getEdges?.() ?? [];
@@ -1029,7 +1111,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       getEdgeCount: async () => {
         return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           const rf = dev?.rfInstance;
           if (!rf) return 0;
           const edges = rf.getEdges?.() ?? [];
@@ -1040,7 +1122,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       selectEdge: async (edgeId: string) => {
         // Use programmatic selection via __DEV__.selectEdge and also set React Flow edge.selected
         await page.evaluate((id) => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           // Update context state
           if (dev?.selectEdge) {
             dev.selectEdge(id);
@@ -1062,7 +1144,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
         // Verify selection was set
         const selectedId = await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           return dev?.selectedEdge?.() ?? null;
         });
 
@@ -1073,15 +1155,16 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       getZoom: async () => {
         return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           const rf = dev?.rfInstance;
-          return rf?.getViewport?.()?.zoom ?? 1;
+          const viewport = rf?.getViewport?.();
+          return viewport?.zoom ?? 1;
         });
       },
 
       getPan: async () => {
         return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           const rf = dev?.rfInstance;
           const viewport = rf?.getViewport?.() ?? { x: 0, y: 0 };
           return { x: viewport.x, y: viewport.y };
@@ -1091,11 +1174,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       setZoom: async (zoom: number) => {
         await page.evaluate(
           ({ z, sel }) => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             const rf = dev?.rfInstance;
             if (rf?.setViewport) {
               const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-              const container = document.querySelector(sel) as HTMLElement | null;
+              const container = document.querySelector(sel);
               const rect = container?.getBoundingClientRect();
               const centerX = rect ? rect.width / 2 : 0;
               const centerY = rect ? rect.height / 2 : 0;
@@ -1116,7 +1199,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       setPan: async (x: number, y: number) => {
         await page.evaluate(
           ({ px, py }) => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             const rf = dev?.rfInstance;
             if (rf?.setViewport) {
               const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
@@ -1130,7 +1213,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       fit: async () => {
         await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           dev?.rfInstance?.fitView?.({ padding: 0.1, maxZoom: 1.2 });
         });
         await page.waitForTimeout(300);
@@ -1138,21 +1221,21 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       getSelectedNodeIds: async () => {
         return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           const rf = dev?.rfInstance;
           if (!rf) return [];
           const nodes = rf.getNodes?.() ?? [];
-          return nodes.filter((n: any) => n.selected).map((n: any) => n.id);
+          return nodes.filter((n) => n.selected === true).map((n) => n.id);
         });
       },
 
       getSelectedEdgeIds: async () => {
         return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           const rf = dev?.rfInstance;
           if (!rf) return [];
           const edges = rf.getEdges?.() ?? [];
-          return edges.filter((e: any) => e.selected).map((e: any) => e.id);
+          return edges.filter((e) => e.selected === true).map((e) => e.id);
         });
       },
 
@@ -1162,7 +1245,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         await page.waitForTimeout(100);
         // Also clear React Flow node.selected and edge.selected properties
         await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           dev?.clearNodeSelection?.();
           // Clear edge selection too
           const rf = dev?.rfInstance;
@@ -1186,7 +1269,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       undo: async () => {
         await page
           .waitForFunction(
-            () => (window as any).__DEV__?.undoRedo?.canUndo === true,
+            () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.undoRedo?.canUndo === true,
             undefined,
             { timeout: 2000 }
           )
@@ -1200,7 +1283,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       redo: async () => {
         await page
           .waitForFunction(
-            () => (window as any).__DEV__?.undoRedo?.canRedo === true,
+            () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.undoRedo?.canRedo === true,
             undefined,
             { timeout: 2000 }
           )
@@ -1215,14 +1298,14 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       canUndo: async () => {
         return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           return dev?.undoRedo?.canUndo ?? false;
         });
       },
 
       canRedo: async () => {
         return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           return dev?.undoRedo?.canRedo ?? false;
         });
       },
@@ -1234,14 +1317,14 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       ) => {
         // Wait for handleNodeCreatedCallback to be available (exposed via __DEV__)
         await page.waitForFunction(
-          () => (window as any).__DEV__?.handleNodeCreatedCallback !== undefined,
+          () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.handleNodeCreatedCallback !== undefined,
           undefined,
           { timeout: 10000 }
         );
 
         await page.evaluate(
           ({ nodeId, position, kind, nodeType }) => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             if (!dev?.handleNodeCreatedCallback) {
               throw new Error("handleNodeCreatedCallback not available");
             }
@@ -1279,7 +1362,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Wait for the node to appear in React Flow
         await page.waitForFunction(
           (id) => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             const rf = dev?.rfInstance;
             if (!rf) return false;
             const nodes = rf.getNodes?.() ?? [];
@@ -1301,14 +1384,14 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       ) => {
         // Wait for handleEdgeCreated to be available (exposed via __DEV__)
         await page.waitForFunction(
-          () => (window as any).__DEV__?.handleEdgeCreated !== undefined,
+          () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.handleEdgeCreated !== undefined,
           undefined,
           { timeout: 10000 }
         );
 
         // Check lock state and mode before proceeding (respects UI restrictions)
         const canCreate = await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           // Block if locked (isLocked is a function) or not in edit mode
           if (typeof dev?.isLocked === "function" && dev.isLocked() === true) return false;
           if (typeof dev?.mode === "function" && dev.mode() !== "edit") return false;
@@ -1323,7 +1406,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
         await page.evaluate(
           ({ sourceId, targetId, sourceEndpoint, targetEndpoint }) => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             if (!dev?.handleEdgeCreated) {
               throw new Error("handleEdgeCreated not available");
             }
@@ -1359,14 +1442,14 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       ): Promise<string | null> => {
         // Wait for createNetworkAtPosition to be available
         await page.waitForFunction(
-          () => (window as any).__DEV__?.createNetworkAtPosition !== undefined,
+          () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.createNetworkAtPosition !== undefined,
           undefined,
           { timeout: 10000 }
         );
 
         // Check lock state and mode before proceeding
         const canCreate = await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           if (typeof dev?.isLocked === "function" && dev.isLocked() === true) return false;
           if (typeof dev?.mode === "function" && dev.mode() !== "edit") return false;
           return true;
@@ -1377,9 +1460,9 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         }
 
         // Create the network node
-        const networkId = await page.evaluate(
+        const networkId = await page.evaluate<unknown>(
           ({ pos, type }) => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             if (!dev?.createNetworkAtPosition) {
               throw new Error("createNetworkAtPosition not available");
             }
@@ -1388,12 +1471,12 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           { pos: position, type: networkType }
         );
 
-        if (!networkId) return null;
+        if (typeof networkId !== "string" || networkId.length === 0) return null;
 
         // Wait for the network node to appear in React Flow
         await page.waitForFunction(
           (id) => {
-            const dev = (window as any).__DEV__;
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             const rf = dev?.rfInstance;
             if (!rf) return false;
             const nodes = rf.getNodes?.() ?? [];
@@ -1408,7 +1491,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       getNetworkNodeIds: async (): Promise<string[]> => {
         return await page.evaluate((cloudType) => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           const rf = dev?.rfInstance;
           if (!rf) return [];
           const nodes = rf.getNodes?.() ?? [];
@@ -1440,9 +1523,13 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       resetFiles: async () => {
         const response = await request.post(withSession("/api/reset"));
-        const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error || "Failed to reset files");
+        const result: unknown = await response.json();
+        if (!isRecord(result) || result.success !== true) {
+          const errorMessage =
+            isRecord(result) && typeof result.error === "string"
+              ? result.error
+              : "Failed to reset files";
+          throw new Error(errorMessage);
         }
         // Wait for session reset to settle
         await page.waitForTimeout(100);
@@ -1450,7 +1537,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       selectGroup: async (groupId: string) => {
         await page.evaluate((id) => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           if (dev?.stateManager?.groups?.selectGroup) {
             dev.stateManager.groups.selectGroup(id);
           } else if (dev?.groups?.selectGroup) {
@@ -1462,14 +1549,16 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       getGroupMembers: async (groupId: string) => {
         return await page.evaluate((id) => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           const annotations = dev?.stateManager?.getAnnotations?.();
-          if (!annotations?.nodeAnnotations) return [];
-          return annotations.nodeAnnotations
-            .filter(
-              (n: { id: string; group?: string }) =>
-                n.group === id || n.group?.startsWith(id.split("__")[0])
-            )
+          const nodeAnnotations = annotations?.nodeAnnotations;
+          if (!Array.isArray(nodeAnnotations)) return [];
+          const groupPrefix = id.split("__")[0];
+          return nodeAnnotations
+            .filter((n: { id: string; group?: string }) => {
+              if (n.group === id) return true;
+              return typeof n.group === "string" && n.group.startsWith(groupPrefix);
+            })
             .map((n: { id: string; group?: string }) => n.id);
         }, groupId);
       },
@@ -1502,15 +1591,19 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       createGroup: async () => {
         // Use direct API call instead of keyboard events for reliability
         const result = await page.evaluate(browserCreateGroup);
+        const selectedBefore = result.selectedBefore.join(", ");
+        const selectedAfter = (result.selectedAfter ?? []).join(", ");
         console.log(
-          `[DEBUG] createGroup: method=${result.method}, hasRf=${result.hasRf}, selected=${result.selectedBefore} -> ${result.selectedAfter}, mode=${result.mode}, isLocked=${result.isLocked}, stateManager: ${result.groupsBefore} -> ${result.groupsAfter}, react: ${result.reactGroupsBefore} -> ${result.reactGroupsAfter}`
+          `[DEBUG] createGroup: method=${result.method}, hasRf=${result.hasRf}, selected=${selectedBefore} -> ${selectedAfter}, mode=${result.mode}, isLocked=${result.isLocked}, stateManager: ${result.groupsBefore} -> ${result.groupsAfter}, react: ${result.reactGroupsBefore} -> ${result.reactGroupsAfter}`
         );
         // Wait for debounced save (300ms) plus processing time
         await page.waitForTimeout(1000);
         // Check again after wait - both React state and stateManager
         const debugInfo = await page.evaluate(browserGetGroupDebugInfo);
+        const reactGroupIds = debugInfo.reactGroupIds.join(", ");
+        const stateManagerGroupIds = debugInfo.stateManagerGroupIds.join(", ");
         console.log(
-          `[DEBUG] After 1000ms: React groups=${debugInfo.reactGroupCount} (direct: ${debugInfo.reactGroupsDirectCount}) (${debugInfo.reactGroupIds}), StateManager groups=${debugInfo.stateManagerGroupCount} (${debugInfo.stateManagerGroupIds})`
+          `[DEBUG] After 1000ms: React groups=${debugInfo.reactGroupCount} (direct: ${debugInfo.reactGroupsDirectCount}) (${reactGroupIds}), StateManager groups=${debugInfo.stateManagerGroupCount} (${stateManagerGroupIds})`
         );
       },
 
@@ -1547,7 +1640,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       deleteNode: async (nodeId: string) => {
         // Close any open editor panel first to ensure Delete key goes to the canvas
         const isContextPanelOpen = await page.evaluate(() => {
-          const el = document.querySelector('[data-testid="context-panel"]') as HTMLElement | null;
+          const el = document.querySelector('[data-testid="context-panel"]');
           if (!el) return false;
           return window.getComputedStyle(el).pointerEvents !== "none";
         });
@@ -1573,7 +1666,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
         // Select the node programmatically via __DEV__.selectNode (React Flow)
         await page.evaluate((id) => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           if (dev?.selectNode) {
             dev.selectNode(id);
           }
@@ -1584,7 +1677,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
         // Verify selection was set
         const selected = await page.evaluate((id) => {
-          const dev = (window as any).__DEV__;
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           return dev?.selectedNode?.() === id;
         }, nodeId);
 
@@ -1600,7 +1693,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       deleteEdge: async (edgeId: string) => {
         // Close any open editor panel first to ensure Delete key goes to the canvas
         const isContextPanelOpen = await page.evaluate(() => {
-          const el = document.querySelector('[data-testid="context-panel"]') as HTMLElement | null;
+          const el = document.querySelector('[data-testid="context-panel"]');
           if (!el) return false;
           return window.getComputedStyle(el).pointerEvents !== "none";
         });

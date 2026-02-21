@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { LinkEditorData, LinkEditorTabId } from "../../components/panels/link-editor/types";
 
 import { applyFormUpdates } from "./formState";
+import { discardFormChanges, hasFormChanges } from "./formChangeTracking";
 
 export interface UseLinkEditorFormReturn {
   activeTab: LinkEditorTabId;
@@ -24,8 +25,8 @@ export function useLinkEditorForm(
 ): UseLinkEditorFormReturn {
   const [activeTab, setActiveTab] = useState<LinkEditorTabId>("basic");
   const [formData, setFormData] = useState<LinkEditorData | null>(null);
-  const [initialData, setInitialData] = useState<string | null>(null);
-  const initialDataRef = useRef<string | null>(null);
+  const [initialData, setInitialData] = useState<LinkEditorData | null>(null);
+  const initialDataRef = useRef<LinkEditorData | null>(null);
 
   useEffect(() => {
     initialDataRef.current = initialData;
@@ -34,13 +35,15 @@ export function useLinkEditorForm(
   useEffect(() => {
     if (!linkData) return;
     setFormData((prev) => {
-      const isNewLink = !prev || prev.id !== linkData.id;
+      const isNewLink = prev === null || prev.id !== linkData.id;
       const hasPendingChanges =
-        prev && initialDataRef.current ? JSON.stringify(prev) !== initialDataRef.current : false;
+        prev !== null && initialDataRef.current !== null
+          ? JSON.stringify(prev) !== JSON.stringify(initialDataRef.current)
+          : false;
       if (isNewLink || !hasPendingChanges) {
-        const serialized = JSON.stringify(linkData);
-        initialDataRef.current = serialized;
-        setInitialData(serialized);
+        const nextInitialData = { ...linkData };
+        initialDataRef.current = nextInitialData;
+        setInitialData(nextInitialData);
         if (isNewLink) setActiveTab("basic");
         return { ...linkData };
       }
@@ -65,15 +68,15 @@ export function useLinkEditorForm(
         originalTargetEndpoint: formData.targetEndpoint
       };
       setFormData(updatedFormData);
-      setInitialData(JSON.stringify(updatedFormData));
+      setInitialData(updatedFormData);
     }
   }, [formData]);
 
   const discardChanges = useCallback(() => {
-    if (initialData) setFormData(JSON.parse(initialData) as LinkEditorData);
+    discardFormChanges(initialData, setFormData);
   }, [initialData]);
 
-  const hasChanges = formData && initialData ? JSON.stringify(formData) !== initialData : false;
+  const hasChanges = hasFormChanges(formData, initialData);
 
   return {
     activeTab,

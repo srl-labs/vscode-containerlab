@@ -13,7 +13,7 @@ async function getEmptyPanePoints(
 ): Promise<Array<{ x: number; y: number }>> {
   const canvas = topoViewerPage.getCanvas();
   const box = await canvas.boundingBox();
-  if (!box) throw new Error("Canvas bounding box unavailable");
+  if (box === null) throw new Error("Canvas bounding box unavailable");
 
   const points = await page.evaluate(
     ({ canvasBox, maxPoints }) => {
@@ -341,7 +341,7 @@ test.describe("Undo and Redo - File Persistence", () => {
   test("undo edge deletion restores link to YAML file", async ({ page, topoViewerPage }) => {
     // Get initial YAML
     const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-    const initialLinkCount = (initialYaml.match(/endpoints:/g) || []).length;
+    const initialLinkCount = (initialYaml.match(/endpoints:/g) ?? []).length;
     expect(initialLinkCount).toBeGreaterThan(0);
 
     // Get first edge and delete it
@@ -354,7 +354,7 @@ test.describe("Undo and Redo - File Persistence", () => {
 
     // Verify link count decreased in YAML
     let yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-    let linkCount = (yaml.match(/endpoints:/g) || []).length;
+    let linkCount = (yaml.match(/endpoints:/g) ?? []).length;
     expect(linkCount).toBe(initialLinkCount - 1);
 
     // Undo
@@ -363,7 +363,7 @@ test.describe("Undo and Redo - File Persistence", () => {
 
     // Verify link is restored in YAML
     yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-    linkCount = (yaml.match(/endpoints:/g) || []).length;
+    linkCount = (yaml.match(/endpoints:/g) ?? []).length;
     expect(linkCount).toBe(initialLinkCount);
   });
 });

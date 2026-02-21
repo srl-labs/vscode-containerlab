@@ -28,19 +28,29 @@ export function useAppHandlers({ selectionCallbacks, rfInstance }: UseAppHandler
   // Handle deselect all callback
   const handleDeselectAll = React.useCallback(() => {
     // Clear React Flow element selection (multi-select) if available
-    if (rfInstance?.getNodes && rfInstance?.setNodes) {
+    if (
+      rfInstance !== null &&
+      rfInstance !== undefined &&
+      rfInstance.getNodes !== undefined &&
+      rfInstance.setNodes !== undefined
+    ) {
       const nodes = rfInstance.getNodes();
-      if (nodes.some((node) => node.selected)) {
+      if (nodes.some((node) => node.selected === true)) {
         rfInstance.setNodes(
-          nodes.map((node) => (node.selected ? { ...node, selected: false } : node))
+          nodes.map((node) => (node.selected === true ? { ...node, selected: false } : node))
         );
       }
     }
-    if (rfInstance?.getEdges && rfInstance?.setEdges) {
+    if (
+      rfInstance !== null &&
+      rfInstance !== undefined &&
+      rfInstance.getEdges !== undefined &&
+      rfInstance.setEdges !== undefined
+    ) {
       const edges = rfInstance.getEdges();
-      if (edges.some((edge) => edge.selected)) {
+      if (edges.some((edge) => edge.selected === true)) {
         rfInstance.setEdges(
-          edges.map((edge) => (edge.selected ? { ...edge, selected: false } : edge))
+          edges.map((edge) => (edge.selected === true ? { ...edge, selected: false } : edge))
         );
       }
     }

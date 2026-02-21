@@ -4,8 +4,8 @@ import type { ClabContainerTreeNode } from "../treeView/common";
 
 import { execCommandInTerminal } from "./command";
 
-export function showLogs(node: ClabContainerTreeNode) {
-  if (!node) {
+export function showLogs(node?: ClabContainerTreeNode) {
+  if (node === undefined) {
     vscode.window.showErrorMessage("No container node selected.");
     return;
   }

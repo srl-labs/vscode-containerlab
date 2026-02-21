@@ -15,6 +15,17 @@ import { log } from "./logger";
 
 const CONFIG_SECTION = "containerlab.editor";
 
+function toRecord(value: unknown): Record<string, unknown> | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  const record: Record<string, unknown> = {};
+  for (const [key, entryValue] of Object.entries(value)) {
+    record[key] = entryValue;
+  }
+  return record;
+}
+
 /**
  * Get custom nodes from VS Code configuration.
  */
@@ -30,7 +41,10 @@ export async function loadSchemaData(extensionUri: vscode.Uri): Promise<SchemaDa
   try {
     const schemaUri = vscode.Uri.joinPath(extensionUri, "schema", "clab.schema.json");
     const schemaContent = await nodeFsAdapter.readFile(schemaUri.fsPath);
-    const schema = JSON.parse(schemaContent) as Record<string, unknown>;
+    const schema = toRecord(JSON.parse(schemaContent) as unknown);
+    if (schema === undefined) {
+      throw new Error("Invalid schema format");
+    }
     return parseSchemaData(schema);
   } catch (err) {
     log.error(`Error loading schema data: ${err}`);

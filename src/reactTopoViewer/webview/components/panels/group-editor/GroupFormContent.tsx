@@ -16,6 +16,10 @@ interface Props {
   ) => void;
 }
 
+function isBorderStyle(value: string): value is NonNullable<GroupStyleAnnotation["borderStyle"]> {
+  return value === "solid" || value === "dashed" || value === "dotted" || value === "double";
+}
+
 // Main component
 export const GroupFormContent: React.FC<Props> = ({ formData, updateField, updateStyle }) => {
   const style = formData.style;
@@ -111,7 +115,11 @@ export const GroupFormContent: React.FC<Props> = ({ formData, updateField, updat
             id="group-border-style"
             label="Style"
             value={style.borderStyle ?? "solid"}
-            onChange={(v) => updateStyle("borderStyle", v as GroupStyleAnnotation["borderStyle"])}
+            onChange={(v) => {
+              if (isBorderStyle(v)) {
+                updateStyle("borderStyle", v);
+              }
+            }}
             options={[
               { value: "solid", label: "Solid" },
               { value: "dashed", label: "Dashed" },

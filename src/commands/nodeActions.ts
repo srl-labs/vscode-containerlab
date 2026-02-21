@@ -5,9 +5,9 @@ import * as utils from "../utils";
 
 async function runNodeAction(
   action: utils.ContainerAction,
-  node: ClabContainerTreeNode
+  node?: ClabContainerTreeNode
 ): Promise<void> {
-  if (!node) {
+  if (node === undefined) {
     vscode.window.showErrorMessage("No container node selected.");
     return;
   }
@@ -21,18 +21,18 @@ async function runNodeAction(
   await utils.runContainerAction(containerId, action);
 }
 
-export async function startNode(node: ClabContainerTreeNode): Promise<void> {
+export async function startNode(node?: ClabContainerTreeNode): Promise<void> {
   await runNodeAction(utils.ContainerAction.Start, node);
 }
 
-export async function stopNode(node: ClabContainerTreeNode): Promise<void> {
+export async function stopNode(node?: ClabContainerTreeNode): Promise<void> {
   await runNodeAction(utils.ContainerAction.Stop, node);
 }
 
-export async function pauseNode(node: ClabContainerTreeNode): Promise<void> {
+export async function pauseNode(node?: ClabContainerTreeNode): Promise<void> {
   await runNodeAction(utils.ContainerAction.Pause, node);
 }
 
-export async function unpauseNode(node: ClabContainerTreeNode): Promise<void> {
+export async function unpauseNode(node?: ClabContainerTreeNode): Promise<void> {
   await runNodeAction(utils.ContainerAction.Unpause, node);
 }

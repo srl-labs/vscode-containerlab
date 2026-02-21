@@ -57,10 +57,10 @@ export function useLinkImpairmentForm(
         target: netemData.extraData?.clabTargetNetem
       };
 
-      const isBaselineUpdated =
-        prev && initialDataRef.current
-          ? JSON.stringify(currentBaseline) !== initialDataRef.current
-          : true;
+      const hasBaseline = prev !== null && initialDataRef.current !== null;
+      const isBaselineUpdated = hasBaseline
+        ? JSON.stringify(currentBaseline) !== initialDataRef.current
+        : true;
 
       if (isNewLink || isBaselineUpdated) {
         const formatted = formatNetemData(netemData);

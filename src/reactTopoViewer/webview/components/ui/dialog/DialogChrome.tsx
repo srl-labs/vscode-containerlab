@@ -11,7 +11,9 @@ interface DialogTitleWithCloseProps {
 }
 
 export const DialogTitleWithClose: React.FC<DialogTitleWithCloseProps> = ({ title, onClose }) => (
-  <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
+  <DialogTitle
+    sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
+  >
     {title}
     <IconButton size="small" onClick={onClose}>
       <CloseIcon fontSize="small" />

@@ -97,22 +97,32 @@ function getLabelPositionStyle(position: string | undefined): React.CSSPropertie
   }
 }
 
+function toGroupNodeData(data: NodeProps["data"]): GroupNodeData {
+  return {
+    ...data,
+    name: typeof data.name === "string" ? data.name : ""
+  };
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
 
 const GroupNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
-  const nodeData = data as GroupNodeData;
+  const nodeData = toGroupNodeData(data);
   const isLocked = useIsLocked();
   const annotationHandlers = useAnnotationHandlers();
   const canEditAnnotations = !isLocked;
-  const isSelected = selected ?? false;
+  const isSelected = selected;
   const showResizer = isSelected && canEditAnnotations;
 
   // Only save at end of resize to avoid creating undo entries for each pixel
   const handleResizeEnd = useCallback(
     (_event: unknown, params: ResizeParams) => {
-      annotationHandlers?.onUpdateGroupSize?.(id, params.width, params.height);
+      if (annotationHandlers === null) {
+        return;
+      }
+      annotationHandlers.onUpdateGroupSize?.(id, params.width, params.height);
     },
     [id, annotationHandlers]
   );
@@ -147,7 +157,7 @@ const GroupNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     color: labelColor
   };
 
-  const displayLabel = nodeData.label || nodeData.name;
+  const displayLabel = nodeData.label ?? nodeData.name;
 
   return (
     <div style={containerStyle} className="group-node" data-testid={`group-node-${id}`}>

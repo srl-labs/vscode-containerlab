@@ -6,11 +6,6 @@ import { ContainerAction, ImagePullPolicy } from "../consts";
 
 // Internal helper to pull the docker image using dockerode client
 async function pullDockerImage(image: string): Promise<boolean> {
-  if (!dockerClient) {
-    outputChannel.debug("pullDockerImage() failed: docker client unavailable.");
-    return false;
-  }
-
   return vscode.window.withProgress<boolean>(
     {
       location: vscode.ProgressLocation.Notification,
@@ -49,10 +44,6 @@ export async function checkAndPullDockerImage(
   image: string,
   imagePullPolicy: ImagePullPolicy
 ): Promise<boolean> {
-  if (!dockerClient) {
-    outputChannel.debug("pullDockerImage() failed: docker client unavailable.");
-    return false;
-  }
   outputChannel.debug(`Checking docker image '${image}'`);
 
   // Check if image exists locally
@@ -86,7 +77,7 @@ export async function checkAndPullDockerImage(
       default:
         break;
     }
-  } else if (imageExists && imagePullPolicy == ImagePullPolicy.Always) {
+  } else if (imagePullPolicy === ImagePullPolicy.Always) {
     outputChannel.debug(`Pull policy is 'always', Pulling available image '${image}'`);
     imageExists = await pullDockerImage(image);
   }
@@ -110,22 +101,12 @@ export async function runContainerAction(
   containerId: string,
   action: ContainerAction
 ): Promise<void> {
-  if (!dockerClient) {
-    outputChannel.debug("runContainerAction() failed: docker client unavailable.");
-    return;
-  }
-
   if (!containerId) {
     vscode.window.showErrorMessage(`Failed to ${action} container. Container ID nil.`);
     return;
   }
 
   const container = dockerClient.getContainer(containerId);
-  if (!container) {
-    vscode.window.showErrorMessage(`Unable to ${action} container: Failed to get '${containerId}'`);
-    return;
-  }
-
   const ctrName = await getContainerName(container);
 
   try {

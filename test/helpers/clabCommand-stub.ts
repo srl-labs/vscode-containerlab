@@ -9,7 +9,7 @@ export class ClabCommand {
   constructor(action: string, node: any, spinnerMessages?: any) {
     this.action = action;
     this.node = node;
-    this.spinnerMessages = spinnerMessages || {
+    this.spinnerMessages = spinnerMessages ?? {
       progressMsg: action === "deploy" ? "Deploying Lab... " : `${action}ing Lab... `,
       successMsg:
         action === "deploy" ? "Lab deployed successfully!" : `Lab ${action}ed successfully!`

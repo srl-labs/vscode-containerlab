@@ -13,12 +13,8 @@ import { ClabCommand } from "./clabCommand";
  * Executes: containerlab -t <labPath> save
  */
 export async function saveLab(node: ClabLabTreeNode) {
-  if (!node) {
-    vscode.window.showErrorMessage("No lab node selected.");
-    return;
-  }
-  const labPath = node.labPath && node.labPath.absolute;
-  if (!labPath) {
+  const labPath = node.labPath.absolute;
+  if (labPath.length === 0) {
     vscode.window.showErrorMessage("No labPath found for the lab.");
     return;
   }
@@ -34,18 +30,13 @@ export async function saveLab(node: ClabLabTreeNode) {
  * Executes: containerlab -t <labPath> save --node-filter <shortNodeName>
  */
 export async function saveNode(node: ClabContainerTreeNode) {
-  if (!node) {
-    vscode.window.showErrorMessage("No container node selected.");
-    return;
-  }
-
-  if (!node.labPath || !node.labPath.absolute) {
+  if (node.labPath.absolute.length === 0) {
     vscode.window.showErrorMessage("Error: Could not determine lab path for this node.");
     return;
   }
 
   // Use the short node name if available to support custom prefixes
-  const shortNodeName = node.name_short ?? node.name.replace(/^clab-[^-]+-/, "");
+  const shortNodeName = node.name_short;
 
   const tempLabNode = new ClabLabTreeNode(
     path.basename(node.labPath.absolute),

@@ -55,7 +55,7 @@ describe("deploy command", () => {
       options: any
     ) {
       const stubPath = getStubPath(request);
-      if (stubPath) {
+      if (stubPath !== null) {
         return stubPath;
       }
       return originalResolve.call(this, request, parent, isMain, options);

@@ -4,7 +4,6 @@ import * as YAML from "yaml";
 import { test, expect } from "../fixtures/topoviewer";
 
 // Test selectors - ContextPanel-based
-const SEL_CONTEXT_PANEL = '[data-testid="context-panel"]';
 const SEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
 const SEL_TOGGLE_BTN = '[data-testid="panel-toggle-btn"]';
 
@@ -312,7 +311,7 @@ test.describe("Node Editor Persistence", () => {
       .poll(
         async () => {
           const yaml = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-          const parsed = YAML.parse(yaml) as any;
+          const parsed = YAML.parse(yaml);
           return parsed?.topology?.nodes?.[nodeId]?.["restart-policy"] ?? null;
         },
         { timeout: 5000 }

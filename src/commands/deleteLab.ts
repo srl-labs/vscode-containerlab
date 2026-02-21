@@ -7,8 +7,8 @@ import type { ClabLabTreeNode } from "../treeView/common";
 import { favoriteLabs, extensionContext } from "../globals";
 
 export async function deleteLab(node: ClabLabTreeNode) {
-  const filePath = node?.labPath?.absolute;
-  if (!filePath) {
+  const filePath = node.labPath.absolute;
+  if (filePath.length === 0) {
     vscode.window.showErrorMessage("No lab file found.");
     return;
   }
@@ -25,9 +25,7 @@ export async function deleteLab(node: ClabLabTreeNode) {
   try {
     await fs.promises.unlink(filePath);
     favoriteLabs.delete(filePath);
-    if (extensionContext) {
-      await extensionContext.globalState.update("favoriteLabs", Array.from(favoriteLabs));
-    }
+    await extensionContext.globalState.update("favoriteLabs", Array.from(favoriteLabs));
     vscode.window.showInformationMessage(`Deleted lab file ${node.label}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

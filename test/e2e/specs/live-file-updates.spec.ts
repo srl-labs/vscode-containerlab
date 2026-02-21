@@ -15,7 +15,7 @@ const getNodeKindFromStore = async (page: Page, nodeId: string) => {
   return page.evaluate((id: string) => {
     const dev = (window as any).__DEV__;
     const rf = dev?.rfInstance;
-    if (!rf) return null;
+    if (rf === undefined || rf === null) return null;
     const nodes = rf.getNodes?.() ?? [];
     const node = nodes.find((n: any) => n.id === id);
     return node?.data?.extraData?.kind ?? node?.data?.kind ?? null;

@@ -25,18 +25,18 @@ export class ClabCommand extends cmd.Command {
   ) {
     const binaryPath = containerlabBinaryPath || "containerlab";
     let options: cmd.CmdOptions;
-    if (useTerminal) {
+    if (useTerminal === true) {
       options = {
         command: binaryPath,
         useSpinner: false,
-        terminalName: terminalName || "Containerlab",
+        terminalName: terminalName ?? "Containerlab",
         onOutputLine
       };
     } else {
       options = {
         command: binaryPath,
         useSpinner: true,
-        spinnerMsg: spinnerMsg || {
+        spinnerMsg: spinnerMsg ?? {
           progressMsg: `Running ${action}...`,
           successMsg: `${action} completed successfully`
         },

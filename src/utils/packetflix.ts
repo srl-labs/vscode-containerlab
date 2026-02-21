@@ -17,7 +17,7 @@ export async function genPacketflixURI(
   selectedNodes: c.ClabInterfaceTreeNode[],
   forVNC?: boolean
 ): Promise<[string, string] | undefined> {
-  if (!selectedNodes || selectedNodes.length === 0) {
+  if (selectedNodes.length === 0) {
     vscode.window.showErrorMessage("No interface to capture found.");
     return undefined;
   }
@@ -34,7 +34,7 @@ export async function genPacketflixURI(
   const node = selectedNodes[0];
   outputChannel.debug(`genPacketflixURI() single mode for node=${node.parentName}/${node.name}`);
 
-  const hostname = forVNC ? "127.0.0.1" : await getHostname();
+  const hostname = forVNC === true ? "127.0.0.1" : await getHostname();
   if (!hostname) {
     vscode.window.showErrorMessage(
       "No known hostname/IP address to connect to for packet capture."
@@ -160,7 +160,7 @@ export async function setSessionHostname(): Promise<boolean> {
   };
 
   const val = await vscode.window.showInputBox(opts);
-  if (!val) {
+  if (val === undefined || val.trim().length === 0) {
     return false;
   }
   sessionHostname = val.trim();
@@ -201,7 +201,7 @@ export async function getHostname(): Promise<string> {
 
   if (utils.isOrbstack()) {
     const v4 = resolveOrbstackIPv4();
-    if (v4) {
+    if (v4 !== undefined && v4.length > 0) {
       outputChannel.debug(`(Orbstack) Using IPv4 from networkInterfaces: ${v4}`);
       return v4;
     }
@@ -211,7 +211,7 @@ export async function getHostname(): Promise<string> {
   if (vscode.env.remoteName === "ssh-remote") {
     const sshConnection = process.env.SSH_CONNECTION;
     outputChannel.debug(`(SSH non-Orb) SSH_CONNECTION: ${sshConnection}`);
-    if (sshConnection) {
+    if (sshConnection !== undefined && sshConnection.length > 0) {
       const parts = sshConnection.split(" ");
       if (parts.length >= 3) {
         const remoteIp = parts[2];

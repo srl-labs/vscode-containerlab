@@ -125,7 +125,7 @@ export class IconService {
         const filePath = path.join(dirPath, entry.name);
         const dataUri = await this.loadIconAsDataUri(filePath);
 
-        if (dataUri) {
+        if (dataUri !== null && dataUri.length > 0) {
           const name = path.basename(entry.name, ext);
           icons.push({
             name,
@@ -279,7 +279,7 @@ export class IconService {
         }
       }
 
-      if (!sourceFile) {
+      if (sourceFile === null || sourceFile.length === 0) {
         log.warn(`Cannot copy icon "${iconName}": not found in global icons`);
         return false;
       }

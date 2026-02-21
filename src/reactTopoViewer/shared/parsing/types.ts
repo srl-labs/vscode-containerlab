@@ -380,7 +380,7 @@ export const CLIENT_KINDS = new Set(["linux", "alpine", "debian", "ubuntu", "cen
  * Detect the role of a node based on its kind.
  */
 export function detectRole(kind: string | undefined): NodeRole {
-  if (!kind) return "default";
+  if (kind === undefined || kind.length === 0) return "default";
   const k = kind.toLowerCase();
   if (ROUTER_KINDS.has(k)) return "router";
   if (CLIENT_KINDS.has(k)) return "client";

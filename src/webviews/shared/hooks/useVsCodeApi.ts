@@ -13,7 +13,7 @@ let vscodeApi: VsCodeApiLike | undefined;
 let fallbackState: unknown;
 
 function hasVsCodeApi(value: unknown): value is VsCodeApiLike {
-  if (!value || typeof value !== "object") {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
 
@@ -71,12 +71,10 @@ function fromWindow(): VsCodeApiLike | undefined {
 }
 
 export function getVSCodeApi(): VsCodeApiLike {
-  if (!vscodeApi) {
-    // Prefer an already-acquired API instance if present.
-    // Some webviews bootstrap window.vscode up-front, and a second
-    // acquireVsCodeApi() call can throw.
-    vscodeApi = fromWindow() ?? fromAcquire();
-  }
+  // Prefer an already-acquired API instance if present.
+  // Some webviews bootstrap window.vscode up-front, and a second
+  // acquireVsCodeApi() call can throw.
+  vscodeApi ??= fromWindow() ?? fromAcquire();
 
   if (!vscodeApi) {
     throw new Error("VS Code API is unavailable in this webview context.");

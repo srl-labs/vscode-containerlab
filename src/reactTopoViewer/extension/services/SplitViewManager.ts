@@ -61,7 +61,7 @@ export class SplitViewManager {
     panel?: vscode.WebviewPanel
   ): Promise<boolean> {
     try {
-      if (!yamlFilePath) {
+      if (yamlFilePath === undefined || yamlFilePath.length === 0) {
         vscode.window.showWarningMessage("No YAML file associated with this topology");
         return this.isSplitViewOpen;
       }

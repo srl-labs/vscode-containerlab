@@ -13,6 +13,7 @@ import { useNodeCreation, useNetworkCreation, type NetworkType } from "../canvas
 import { useNodeCreationHandlers, type NodeCreationState } from "../editor";
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
 import type { TopoNode } from "../../../shared/types/graph";
+import { getRecordUnknown } from "../../../shared/utilities/typeHelpers";
 import { getViewportCenter } from "../../utils/viewportUtils";
 
 /** Edge data structure for edge creation callback */
@@ -80,6 +81,22 @@ export interface GraphCreationReturn {
   handleAddNetworkFromPanel: (networkType?: string) => void;
 }
 
+function isNetworkType(value: unknown): value is NetworkType {
+  switch (value) {
+    case "host":
+    case "mgmt-net":
+    case "macvlan":
+    case "vxlan":
+    case "vxlan-stitch":
+    case "dummy":
+    case "bridge":
+    case "ovs-bridge":
+      return true;
+    default:
+      return false;
+  }
+}
+
 /**
  * Hook that composes node, edge, and network creation logic.
  *
@@ -111,10 +128,10 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     const nodes: Array<{ id: string; kind: NetworkType }> = [];
     for (const node of currentNodes) {
       if (node.type !== "network-node") continue;
-      const data = node.data as Record<string, unknown>;
-      const kind = data.kind || data.nodeType;
-      if (typeof kind === "string") {
-        nodes.push({ id: node.id, kind: kind as NetworkType });
+      const data = getRecordUnknown(node.data);
+      const kind = data?.kind ?? data?.nodeType;
+      if (isNetworkType(kind)) {
+        nodes.push({ id: node.id, kind });
       }
     }
     return nodes;
@@ -194,7 +211,8 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
       }
       // Get viewport center for network node placement
       const position = getViewportCenter(rfInstance);
-      createNetworkAtPosition(position, (networkType || "host") as NetworkType);
+      const resolvedNetworkType = isNetworkType(networkType) ? networkType : "host";
+      createNetworkAtPosition(position, resolvedNetworkType);
     },
     [rfInstance, state.isLocked, createNetworkAtPosition, onLockedAction]
   );

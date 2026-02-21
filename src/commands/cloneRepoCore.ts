@@ -8,15 +8,16 @@ import { outputChannel } from "../globals";
 import { runCommand } from "../utils/utils";
 
 export async function cloneRepoFromUrl(repoUrl?: string) {
-  if (!repoUrl) {
-    repoUrl = await vscode.window.showInputBox({
+  if (repoUrl === undefined || repoUrl.length === 0) {
+    const input = await vscode.window.showInputBox({
       title: "Git repository URL",
       placeHolder: "https://github.com/user/repo.git",
       prompt: "Enter the repository to clone"
     });
-    if (!repoUrl) {
+    if (input === undefined || input.length === 0) {
       return;
     }
+    repoUrl = input;
   }
 
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;

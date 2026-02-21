@@ -12,7 +12,7 @@ async function getNodeRole(page: Page, nodeId: string): Promise<string | undefin
   return page.evaluate((id) => {
     const dev = (window as any).__DEV__;
     const rf = dev?.rfInstance;
-    if (!rf) return undefined;
+    if (rf === undefined || rf === null) return undefined;
     const nodes = rf.getNodes?.() ?? [];
     const node = nodes.find((n: any) => n.id === id);
     const data = node?.data ?? {};

@@ -10,6 +10,10 @@ import * as YAML from "yaml";
 import type { FileSystemAdapter, SaveResult, IOLogger } from "./types";
 import { noopLogger } from "./types";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /**
  * Creates a YAML scalar with double quotes for endpoint values
  */
@@ -32,13 +36,11 @@ export function deepEqual(a: unknown, b: unknown): boolean {
     return a.every((item, i) => deepEqual(item, b[i]));
   }
 
-  if (typeof a === "object" && typeof b === "object") {
-    const aObj = a as Record<string, unknown>;
-    const bObj = b as Record<string, unknown>;
-    const aKeys = Object.keys(aObj).sort();
-    const bKeys = Object.keys(bObj).sort();
+  if (isRecord(a) && isRecord(b)) {
+    const aKeys = Object.keys(a).sort();
+    const bKeys = Object.keys(b).sort();
     if (aKeys.length !== bKeys.length) return false;
-    return aKeys.every((key, i) => key === bKeys[i] && deepEqual(aObj[key], bObj[key]));
+    return aKeys.every((key, i) => key === bKeys[i] && deepEqual(a[key], b[key]));
   }
 
   return false;

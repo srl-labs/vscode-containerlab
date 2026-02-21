@@ -25,6 +25,25 @@ export const SINGLE_ENDPOINT_TYPES = new Set<string>([
 export const VX_TYPES = new Set<string>(["vxlan", "vxlan-stitch"]);
 export const HOSTY_TYPES = new Set<string>([STR_HOST, STR_MGMT_NET, "macvlan"]);
 
+type CytoscapeNodeLike = {
+  length: number;
+  data: (key: string) => unknown;
+};
+
+type CytoscapeLike = {
+  getElementById: (id: string) => CytoscapeNodeLike;
+};
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value));
+}
+
+function isCytoscapeLike(value: unknown): value is CytoscapeLike {
+  const record = asRecord(value);
+  return typeof record.getElementById === "function";
+}
+
 /**
  * Determines if a node ID represents a special endpoint.
  */
@@ -49,13 +68,11 @@ export function isSpecialNodeOrBridge(nodeId: string, cy?: unknown): boolean {
     return true;
   }
 
-  if (cy) {
-    const cyInstance = cy as {
-      getElementById: (id: string) => { length: number; data: (key: string) => unknown };
-    };
-    const node = cyInstance.getElementById(nodeId);
+  if (cy !== undefined && isCytoscapeLike(cy)) {
+    const node = cy.getElementById(nodeId);
     if (node.length > 0) {
-      const kind = (node.data("extraData") as { kind?: string })?.kind;
+      const extraData = asRecord(node.data("extraData"));
+      const kind = typeof extraData.kind === "string" ? extraData.kind : undefined;
       return kind === "bridge" || kind === "ovs-bridge";
     }
   }
@@ -83,8 +100,5 @@ export function splitEndpointLike(endpoint: string | { node: string; interface?:
     if (parts.length === 2) return { node: parts[0], iface: parts[1] };
     return { node: endpoint, iface: "" };
   }
-  if (endpoint && typeof endpoint === "object") {
-    return { node: endpoint.node, iface: endpoint.interface ?? "" };
-  }
-  return { node: "", iface: "" };
+  return { node: endpoint.node, iface: endpoint.interface ?? "" };
 }

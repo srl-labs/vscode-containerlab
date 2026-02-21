@@ -93,7 +93,7 @@ function getTextPadding(
   if (isMediaOnly && hasFixedContentHeight) {
     return "0";
   }
-  if (backgroundColor) {
+  if (backgroundColor !== undefined && backgroundColor.length > 0) {
     return "4px 8px";
   }
   return "4px";
@@ -103,7 +103,7 @@ function getTextBorderRadius(
   roundedBackground: boolean,
   backgroundColor: string | undefined
 ): number {
-  if (!roundedBackground || !backgroundColor) {
+  if (!roundedBackground || backgroundColor === undefined || backgroundColor.length === 0) {
     return 0;
   }
   return 4;
@@ -123,12 +123,9 @@ function buildTextStyle(data: FreeTextNodeData, isMediaOnly: boolean): React.CSS
     textDecoration: styleOptions.textDecoration,
     textAlign: styleOptions.textAlign,
     fontFamily: styleOptions.fontFamily,
-    backgroundColor: styleOptions.backgroundColor || undefined,
+    backgroundColor: styleOptions.backgroundColor ?? undefined,
     padding,
-    borderRadius: getTextBorderRadius(
-      styleOptions.roundedBackground,
-      styleOptions.backgroundColor
-    ),
+    borderRadius: getTextBorderRadius(styleOptions.roundedBackground, styleOptions.backgroundColor),
     width: "100%",
     height: layoutStyle.height,
     outline: "none",
@@ -144,12 +141,60 @@ function handleWheelEvent(e: React.WheelEvent): void {
   }
 }
 
+function toFreeTextNodeData(data: NodeProps["data"]): FreeTextNodeData {
+  return {
+    ...data,
+    text: typeof data.text === "string" ? data.text : ""
+  };
+}
+
+function domNodeToReactNode(node: ChildNode, key: string): React.ReactNode | null {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent;
+  }
+  if (!(node instanceof Element)) {
+    return null;
+  }
+
+  const props: Record<string, unknown> = { key };
+  for (const attr of Array.from(node.attributes)) {
+    if (attr.name === "class") {
+      props.className = attr.value;
+    } else if (attr.name !== "style" && !attr.name.startsWith("on")) {
+      props[attr.name] = attr.value;
+    }
+  }
+
+  const children = Array.from(node.childNodes)
+    .map((child, index) => domNodeToReactNode(child, `${key}:${index}`))
+    .filter((child): child is React.ReactNode => child !== null);
+
+  return React.createElement(node.tagName.toLowerCase(), props, ...children);
+}
+
+function renderHtmlToReactNodes(html: string): React.ReactNode {
+  if (html.length === 0) {
+    return null;
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
+  const root = doc.body.firstElementChild;
+  if (!(root instanceof Element)) {
+    return null;
+  }
+
+  return Array.from(root.childNodes)
+    .map((child, index) => domNodeToReactNode(child, `root:${index}`))
+    .filter((child): child is React.ReactNode => child !== null);
+}
+
 /**
  * FreeTextNode component renders free text annotations on the canvas
  * with markdown support
  */
 const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
-  const nodeData = data as FreeTextNodeData;
+  const nodeData = toFreeTextNodeData(data);
   const isLocked = useIsLocked();
   const annotationHandlers = useAnnotationHandlers();
   const canEditAnnotations = !isLocked;
@@ -166,14 +211,14 @@ const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
 
   const handleResize = useCallback(
     (_event: unknown, params: ResizeParams) => {
-      annotationHandlers?.onUpdateFreeTextSize?.(id, params.width, params.height);
+      annotationHandlers?.onUpdateFreeTextSize(id, params.width, params.height);
     },
     [id, annotationHandlers]
   );
 
   const handleResizeEnd = useCallback(
     (_event: unknown, params: ResizeParams) => {
-      annotationHandlers?.onUpdateFreeTextSize?.(id, params.width, params.height);
+      annotationHandlers?.onUpdateFreeTextSize(id, params.width, params.height);
       // Persist once at resize end to avoid stale snapshot re-apply jitter.
       annotationHandlers?.onPersistAnnotations?.();
       setIsResizing(false);
@@ -192,11 +237,12 @@ const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     annotationHandlers?.onFreeTextRotationEnd?.(id);
   }, [id, annotationHandlers]);
 
-  const renderedHtml = useMemo(() => renderMarkdown(nodeData.text || ""), [nodeData.text]);
-  const isMediaOnly = useMemo(() => isStandaloneMarkdownImage(nodeData.text || ""), [nodeData.text]);
+  const renderedHtml = useMemo(() => renderMarkdown(nodeData.text), [nodeData.text]);
+  const renderedContent = useMemo(() => renderHtmlToReactNodes(renderedHtml), [renderedHtml]);
+  const isMediaOnly = useMemo(() => isStandaloneMarkdownImage(nodeData.text), [nodeData.text]);
   const hasFixedContentSize =
     typeof nodeData.height === "number" && Number.isFinite(nodeData.height);
-  const isSelected = selected ?? false;
+  const isSelected = selected;
   // Show selection border when selected OR when actively resizing/rotating
   const showSelectionBorder = isSelected || isResizing || isRotating;
   const wrapperStyle = useMemo(
@@ -223,7 +269,7 @@ const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
       {showHandles && annotationHandlers?.onUpdateFreeTextRotation && (
         <RotationHandle
           nodeId={id}
-          currentRotation={nodeData.rotation || 0}
+          currentRotation={nodeData.rotation ?? 0}
           onRotationChange={annotationHandlers.onUpdateFreeTextRotation}
           onRotationStart={handleRotationStart}
           onRotationEnd={handleRotationEnd}
@@ -234,9 +280,10 @@ const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
         className={`free-text-content free-text-markdown nowheel ${
           hasFixedContentSize ? "free-text-content--fixed" : "free-text-content--auto"
         } ${isMediaOnly ? "free-text-content--media" : ""}`}
-        dangerouslySetInnerHTML={{ __html: renderedHtml }}
         onWheel={handleWheelEvent}
-      />
+      >
+        {renderedContent}
+      </div>
     </div>
   );
 };

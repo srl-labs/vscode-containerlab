@@ -27,15 +27,34 @@ interface VncTimeoutMessage {
 
 type WiresharkVncIncomingMessage = VncProgressMessage | VncReadyMessage | VncTimeoutMessage;
 
+function parseInitialData(value: unknown): WiresharkVncInitialData {
+  const iframeUrlRaw: unknown =
+    typeof value === "object" && value !== null ? Reflect.get(value, "iframeUrl") : undefined;
+  const showVolumeTipRaw: unknown =
+    typeof value === "object" && value !== null ? Reflect.get(value, "showVolumeTip") : undefined;
+  return {
+    iframeUrl: typeof iframeUrlRaw === "string" ? iframeUrlRaw : "",
+    showVolumeTip: showVolumeTipRaw === true
+  };
+}
+
+function isIncomingMessage(value: unknown): value is WiresharkVncIncomingMessage {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const type: unknown = Reflect.get(value, "type");
+  return type === "vnc-progress" || type === "vnc-ready" || type === "vnc-timeout";
+}
+
 function appendCacheBuster(url: string): string {
   const separator = url.includes("?") ? "&" : "?";
   return `${url}${separator}t=${Date.now()}`;
 }
 
 function WiresharkVncApp(): React.JSX.Element {
-  const initialData = (window.__INITIAL_DATA__ ?? {}) as unknown as WiresharkVncInitialData;
-  const fallbackUrl = initialData.iframeUrl || "";
-  const showVolumeTip = Boolean(initialData.showVolumeTip);
+  const initialData: WiresharkVncInitialData = parseInitialData(window.__INITIAL_DATA__);
+  const fallbackUrl = initialData.iframeUrl;
+  const showVolumeTip = initialData.showVolumeTip;
 
   const postMessage = usePostMessage<WiresharkVncOutgoingMessage>();
 
@@ -49,7 +68,7 @@ function WiresharkVncApp(): React.JSX.Element {
 
   const loadVnc = React.useCallback(
     (url?: string, forceReload = false) => {
-      const nextUrl = (url || latestUrlRef.current || fallbackUrl).trim();
+      const nextUrl = ((url ?? latestUrlRef.current) || fallbackUrl).trim();
       if (!nextUrl) {
         return;
       }
@@ -64,9 +83,9 @@ function WiresharkVncApp(): React.JSX.Element {
   );
 
   React.useEffect(() => {
-    const listener = (event: MessageEvent<WiresharkVncIncomingMessage>) => {
+    const listener = (event: MessageEvent<unknown>) => {
       const message = event.data;
-      if (!message || typeof message !== "object" || !("type" in message)) {
+      if (!isIncomingMessage(message)) {
         return;
       }
 
@@ -111,7 +130,9 @@ function WiresharkVncApp(): React.JSX.Element {
 
   return (
     <MuiThemeProvider>
-      <Box sx={{ position: "relative", width: "100%", height: "100%", bgcolor: "background.default" }}>
+      <Box
+        sx={{ position: "relative", width: "100%", height: "100%", bgcolor: "background.default" }}
+      >
         <Box
           component="iframe"
           title="Wireshark VNC"

@@ -106,8 +106,8 @@ function resolveEndpointOffsetValue(offset: unknown): number {
 }
 
 export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onPreviewOffset }) => {
-  const sourceName = data.source ?? "Source";
-  const targetName = data.target ?? "Target";
+  const sourceName = data.source.length > 0 ? data.source : "Source";
+  const targetName = data.target.length > 0 ? data.target : "Target";
   const endpointOffsetValue = resolveEndpointOffsetValue(data.endpointLabelOffset);
 
   const handleOffsetChange = (_event: Event, value: number | number[]) => {

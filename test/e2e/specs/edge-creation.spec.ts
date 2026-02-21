@@ -85,7 +85,7 @@ test.describe("Edge Creation", () => {
     const selfLoopData = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
-      if (!rf) return null;
+      if (rf === undefined || rf === null) return null;
 
       const edges = rf.getEdges?.() ?? [];
       for (const edge of edges) {
@@ -158,7 +158,7 @@ test.describe("Edge Creation", () => {
     const edgeConnections = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
-      if (!rf) return [];
+      if (rf === undefined || rf === null) return [];
 
       const edges = rf.getEdges?.() ?? [];
       return edges.map((e: any) => ({
@@ -267,7 +267,10 @@ test.describe("Edge Creation - File Persistence", () => {
       };
     });
     expect(edgeData).not.toBeNull();
-    expect([edgeData!.source, edgeData!.target].sort()).toEqual(["node1", "node2"]);
+    expect([edgeData!.source, edgeData!.target].sort((a, b) => a.localeCompare(b))).toEqual([
+      "node1",
+      "node2"
+    ]);
   });
 
   test("multiple created edges persist to YAML correctly", async ({ page, topoViewerPage }) => {
@@ -292,7 +295,7 @@ test.describe("Edge Creation - File Persistence", () => {
     expect(yaml).toContain("router3:e1-1");
 
     // Count links in YAML
-    const endpointsCount = (yaml.match(/endpoints:/g) || []).length;
+    const endpointsCount = (yaml.match(/endpoints:/g) ?? []).length;
     expect(endpointsCount).toBe(3);
 
     // Verify YAML has proper structure
@@ -382,7 +385,7 @@ test.describe("Edge Creation - Undo/Redo", () => {
   test("undo edge creation removes edge from YAML file", async ({ page, topoViewerPage }) => {
     // Get initial YAML
     const initialYaml = await topoViewerPage.getYamlFromFile(SIMPLE_FILE);
-    const initialLinkCount = (initialYaml.match(/endpoints:/g) || []).length;
+    const initialLinkCount = (initialYaml.match(/endpoints:/g) ?? []).length;
 
     // Create a new edge
     await topoViewerPage.createLink("srl1", "srl2", "e1-20", "e1-20");
@@ -391,7 +394,7 @@ test.describe("Edge Creation - Undo/Redo", () => {
     // Verify edge was added to YAML
     let yaml = await topoViewerPage.getYamlFromFile(SIMPLE_FILE);
     expect(yaml).toContain("e1-20");
-    let linkCount = (yaml.match(/endpoints:/g) || []).length;
+    let linkCount = (yaml.match(/endpoints:/g) ?? []).length;
     expect(linkCount).toBe(initialLinkCount + 1);
 
     // Undo
@@ -401,7 +404,7 @@ test.describe("Edge Creation - Undo/Redo", () => {
     // Verify edge was removed from YAML
     yaml = await topoViewerPage.getYamlFromFile(SIMPLE_FILE);
     expect(yaml).not.toContain("e1-20");
-    linkCount = (yaml.match(/endpoints:/g) || []).length;
+    linkCount = (yaml.match(/endpoints:/g) ?? []).length;
     expect(linkCount).toBe(initialLinkCount);
 
     // Redo
@@ -411,7 +414,7 @@ test.describe("Edge Creation - Undo/Redo", () => {
     // Verify edge is back in YAML
     yaml = await topoViewerPage.getYamlFromFile(SIMPLE_FILE);
     expect(yaml).toContain("e1-20");
-    linkCount = (yaml.match(/endpoints:/g) || []).length;
+    linkCount = (yaml.match(/endpoints:/g) ?? []).length;
     expect(linkCount).toBe(initialLinkCount + 1);
   });
 });

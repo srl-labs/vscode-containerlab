@@ -285,11 +285,11 @@ function buildLineSvg(shape: FreeShapeAnnotation): string {
   if (length > 0) {
     const ux = dx / length;
     const uy = dy / length;
-    if (shape.lineStartArrow) {
+    if (shape.lineStartArrow === true) {
       lineStartX += ux * arrowSize * 0.7;
       lineStartY += uy * arrowSize * 0.7;
     }
-    if (shape.lineEndArrow) {
+    if (shape.lineEndArrow === true) {
       lineEndX -= ux * arrowSize * 0.7;
       lineEndY -= uy * arrowSize * 0.7;
     }
@@ -298,10 +298,10 @@ function buildLineSvg(shape: FreeShapeAnnotation): string {
   let svg = `<g class="annotation-shape" data-id="${escapeXml(shape.id)}">`;
   svg += `<line x1="${lineStartX}" y1="${lineStartY}" x2="${lineEndX}" y2="${lineEndY}" ${buildStrokeAttrs(style)}/>`;
 
-  if (shape.lineStartArrow) {
+  if (shape.lineStartArrow === true) {
     svg += `<polygon points="${makeArrowPoints(arrowSize, startX, startY, endX, endY)}" fill="${style.strokeColor}" />`;
   }
-  if (shape.lineEndArrow) {
+  if (shape.lineEndArrow === true) {
     svg += `<polygon points="${makeArrowPoints(arrowSize, endX, endY, startX, startY)}" fill="${style.strokeColor}" />`;
   }
 
@@ -353,7 +353,7 @@ function getTextStyle(text: FreeTextAnnotation): TextStyle {
     textAlign: text.textAlign ?? "left",
     fontFamily: text.fontFamily ?? "inherit", // Match FreeTextNode default
     backgroundColor: text.backgroundColor ?? "transparent",
-    borderRadius: text.roundedBackground ? 4 : 0,
+    borderRadius: text.roundedBackground === true ? 4 : 0,
     padding: 4 // Base padding; increases to 8px horizontal when backgroundColor set
   };
 }
@@ -485,12 +485,12 @@ export function addBackgroundRect(svgContent: string, color: string): string {
     width = 0,
     height = 0;
 
-  if (viewBox) {
+  if (viewBox !== null && viewBox.length > 0) {
     [x, y, width, height] = viewBox.split(" ").map(parseFloat);
   } else {
     // Fall back to width/height attributes
-    width = parseFloat(svgEl.getAttribute("width") || "0");
-    height = parseFloat(svgEl.getAttribute("height") || "0");
+    width = parseFloat(svgEl.getAttribute("width") ?? "0");
+    height = parseFloat(svgEl.getAttribute("height") ?? "0");
     if (width === 0 || height === 0) return svgContent;
   }
 
@@ -509,7 +509,9 @@ export function addBackgroundRect(svgContent: string, color: string): string {
 function parseAndImportElement(doc: Document, parser: DOMParser, svgStr: string): Element | null {
   const tempDoc = parser.parseFromString(`<svg xmlns="${SVG_NS}">${svgStr}</svg>`, SVG_MIME_TYPE);
   const element = tempDoc.documentElement.firstChild;
-  return element ? (doc.importNode(element, true) as Element) : null;
+  if (!(element instanceof Element)) return null;
+  const imported = doc.importNode(element, true);
+  return imported instanceof Element ? imported : null;
 }
 
 /**
@@ -521,7 +523,7 @@ function extractGraphTransform(svgEl: Element): string {
   const groups = svgEl.querySelectorAll("g[transform]");
   for (let i = 0; i < groups.length; i++) {
     const group = groups[i];
-    const transform = group.getAttribute("transform") || "";
+    const transform = group.getAttribute("transform") ?? "";
     // Look for the main group which has scale in its transform
     if (transform.includes("scale(")) {
       return transform;
@@ -530,7 +532,7 @@ function extractGraphTransform(svgEl: Element): string {
 
   // Fallback: find any group with a translate transform
   const firstGroup = svgEl.querySelector("g[transform]");
-  return firstGroup?.getAttribute("transform") || "";
+  return firstGroup?.getAttribute("transform") ?? "";
 }
 
 /**
@@ -655,7 +657,7 @@ function shiftGroupTransforms(svgEl: Element, shiftX: number, shiftY: number): v
   for (let i = 0; i < children.length; i++) {
     const child = children[i];
     if (child.tagName === "g") {
-      const existingTransform = child.getAttribute("transform") || "";
+      const existingTransform = child.getAttribute("transform") ?? "";
       const newTransform = existingTransform
         ? `translate(${shiftX}, ${shiftY}) ${existingTransform}`
         : `translate(${shiftX}, ${shiftY})`;
@@ -673,8 +675,8 @@ function shiftBackgroundRect(
 ): void {
   const bgRect = svgEl.querySelector("rect");
   if (bgRect && !bgRect.closest("g")) {
-    const rectX = parseFloat(bgRect.getAttribute("x") || "0");
-    const rectY = parseFloat(bgRect.getAttribute("y") || "0");
+    const rectX = parseFloat(bgRect.getAttribute("x") ?? "0");
+    const rectY = parseFloat(bgRect.getAttribute("y") ?? "0");
     bgRect.setAttribute("x", (rectX + shiftX).toString());
     bgRect.setAttribute("y", (rectY + shiftY).toString());
     bgRect.setAttribute("width", newWidth.toString());
@@ -687,8 +689,8 @@ function shiftBackgroundRect(
  * @param transform - The full transform string from the graph
  */
 function expandSvgBounds(svgEl: Element, annotationBounds: BoundingBox, transform: string): void {
-  const currentWidth = parseFloat(svgEl.getAttribute("width") || "0");
-  const currentHeight = parseFloat(svgEl.getAttribute("height") || "0");
+  const currentWidth = parseFloat(svgEl.getAttribute("width") ?? "0");
+  const currentHeight = parseFloat(svgEl.getAttribute("height") ?? "0");
 
   // Extract translate and scale from the transform
   const { tx, ty } = extractTranslateFromTransform(transform);

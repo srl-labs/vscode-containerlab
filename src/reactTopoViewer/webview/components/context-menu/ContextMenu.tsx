@@ -93,7 +93,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       }}
     >
       {items.map((item) => {
-        if (item.divider) {
+        if (item.divider === true) {
           return <Divider key={item.id} />;
         }
         if (item.children && item.children.length > 0) {
@@ -146,7 +146,7 @@ function submenuGutterSx(compact: boolean) {
 
 function useMenuItemClick(item: ContextMenuItem, onClose: () => void) {
   return useCallback(() => {
-    if (!item.disabled && item.onClick) {
+    if (item.disabled !== true && item.onClick !== undefined) {
       item.onClick();
       onClose();
     }
@@ -168,7 +168,7 @@ function handleSubmenuMouseEnter(params: {
 }
 
 function handleSubmenuItemClick(item: ContextMenuItem, onClose: () => void): void {
-  if (!item.disabled && item.onClick) {
+  if (item.disabled !== true && item.onClick !== undefined) {
     item.onClick();
     onClose();
   }
@@ -183,7 +183,7 @@ function handleSubmenuToggleClick(params: {
   setAnchorEl: React.Dispatch<React.SetStateAction<HTMLElement | null>>;
 }) {
   const { event, openSubmenuOnHover, disabled, hasClickHandler, cancelClose, setAnchorEl } = params;
-  if (openSubmenuOnHover || disabled || hasClickHandler) {
+  if (openSubmenuOnHover || disabled === true || hasClickHandler) {
     return;
   }
   event.preventDefault();
@@ -200,7 +200,7 @@ function renderSubmenuChild(params: {
   openToLeft: boolean;
 }): React.ReactElement {
   const { child, onClose, compact, openSubmenuOnHover, openToLeft } = params;
-  if (child.divider) {
+  if (child.divider === true) {
     return <Divider key={child.id} />;
   }
   if (child.children && child.children.length > 0) {
@@ -244,6 +244,45 @@ function submenuItemSx(compact: boolean, openToLeft: boolean) {
   };
 }
 
+function compactPrimarySlotProps(compact: boolean) {
+  if (!compact) {
+    return undefined;
+  }
+  return {
+    primary: {
+      noWrap: true,
+      sx: {
+        fontSize: 12.5,
+        lineHeight: 1.25
+      }
+    }
+  };
+}
+
+function renderMenuItemLabel(params: {
+  item: ContextMenuItem;
+  compact: boolean;
+  isDanger?: boolean;
+}): React.ReactElement {
+  const { item, compact, isDanger = false } = params;
+  const hasIcon = item.icon !== undefined && item.icon !== null;
+  return (
+    <>
+      {hasIcon && (
+        <ListItemIcon
+          sx={{
+            ...(compact ? { minWidth: 22 } : {}),
+            ...(isDanger ? { color: "error.main" } : {})
+          }}
+        >
+          {item.icon}
+        </ListItemIcon>
+      )}
+      <ListItemText slotProps={compactPrimarySlotProps(compact)}>{item.label}</ListItemText>
+    </>
+  );
+}
+
 const MenuItemButton: React.FC<MenuItemComponentProps> = ({
   item,
   onClose,
@@ -251,6 +290,7 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({
   openToLeft = false
 }) => {
   const handleClick = useMenuItemClick(item, onClose);
+  const isDanger = item.danger === true;
 
   return (
     <MenuItem
@@ -260,37 +300,11 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({
       data-testid={`context-menu-item-${item.id}`}
       sx={{
         ...(compact ? { minHeight: 28, py: 0.2, px: 0.85 } : {}),
-        ...(item.danger ? { color: "error.main" } : {})
+        ...(isDanger ? { color: "error.main" } : {})
       }}
     >
       {openToLeft && <Box sx={submenuGutterSx(compact)} />}
-      {item.icon && (
-        <ListItemIcon
-          sx={{
-            ...(compact ? { minWidth: 22 } : {}),
-            ...(item.danger ? { color: "error.main" } : {})
-          }}
-        >
-          {item.icon}
-        </ListItemIcon>
-      )}
-      <ListItemText
-        slotProps={
-          compact
-            ? {
-                primary: {
-                  noWrap: true,
-                  sx: {
-                    fontSize: 12.5,
-                    lineHeight: 1.25
-                  }
-                }
-              }
-            : undefined
-        }
-      >
-        {item.label}
-      </ListItemText>
+      {renderMenuItemLabel({ item, compact, isDanger })}
     </MenuItem>
   );
 };
@@ -389,24 +403,7 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
             <ChevronLeftIcon fontSize="small" />
           </Box>
         )}
-        {item.icon && <ListItemIcon sx={compact ? { minWidth: 22 } : undefined}>{item.icon}</ListItemIcon>}
-        <ListItemText
-          slotProps={
-            compact
-              ? {
-                  primary: {
-                    noWrap: true,
-                    sx: {
-                      fontSize: 12.5,
-                      lineHeight: 1.25
-                    }
-                  }
-                }
-              : undefined
-          }
-        >
-          {item.label}
-        </ListItemText>
+        {renderMenuItemLabel({ item, compact })}
         {!openToLeft && <ChevronRightIcon fontSize="small" sx={{ ml: compact ? 0.45 : 1 }} />}
       </MenuItem>
       <Menu
@@ -421,7 +418,6 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({
           vertical: "top",
           horizontal: transformHorizontal
         }}
-        autoFocus={false}
         hideBackdrop
         sx={{ pointerEvents: "none" }}
         slotProps={{

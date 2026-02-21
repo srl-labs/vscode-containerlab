@@ -136,7 +136,7 @@ const SECTION_BUILD_TIMEOUT_MS = 4000;
 const TREE_ITEM_COLLAPSIBLE_NONE = 0;
 
 function labelToText(label: string | vscode.TreeItemLabel | undefined): string {
-  if (!label) {
+  if (label === undefined) {
     return "";
   }
   return typeof label === "string" ? label : label.label;
@@ -165,7 +165,7 @@ function tooltipToText(tooltip: vscode.MarkdownString | string | undefined): str
 }
 
 function commandLabel(commandId: string, fallback?: string): string {
-  return fallback || COMMAND_LABELS[commandId] || commandId;
+  return (fallback ?? COMMAND_LABELS[commandId]) || commandId;
 }
 
 function isLabContext(contextValue: string | undefined): boolean {
@@ -201,7 +201,9 @@ function collectContainerIndicators(children: ExplorerNode[]): ExplorerNode["sta
   return indicators;
 }
 
-function aggregateStatusFromIndicators(indicators: ExplorerNode["statusIndicator"][]): ExplorerNode["statusIndicator"] {
+function aggregateStatusFromIndicators(
+  indicators: ExplorerNode["statusIndicator"][]
+): ExplorerNode["statusIndicator"] {
   if (indicators.length === 0) {
     return undefined;
   }
@@ -242,7 +244,10 @@ function getStatusIndicator(item: ExplorerTreeItemLike): ExplorerNode["statusInd
   if (context === "containerlabContainer") {
     const state = String(item.state ?? "").toLowerCase();
     const status = String(item.status ?? "").toLowerCase();
-    if (state === "running" && (status.includes("unhealthy") || status.includes("health: starting"))) {
+    if (
+      state === "running" &&
+      (status.includes("unhealthy") || status.includes("health: starting"))
+    ) {
       return "yellow";
     }
     if (state === "running") {
@@ -332,10 +337,10 @@ function getLabShareInfo(childrenItems: ExplorerTreeItemLike[]): LabShareInfo | 
     }
   }
 
-  if (sshxUrl) {
+  if (sshxUrl !== undefined && sshxUrl.length > 0) {
     return { kind: "sshx", url: sshxUrl };
   }
-  if (gottyUrl) {
+  if (gottyUrl !== undefined && gottyUrl.length > 0) {
     return { kind: "gotty", url: gottyUrl };
   }
   return undefined;
@@ -389,7 +394,15 @@ function appendLabActions(
 
   if (isDeployed) {
     pushAction(actions, seen, registry, "containerlab.lab.destroy", [item], undefined, true);
-    pushAction(actions, seen, registry, "containerlab.lab.destroy.cleanup", [item], undefined, true);
+    pushAction(
+      actions,
+      seen,
+      registry,
+      "containerlab.lab.destroy.cleanup",
+      [item],
+      undefined,
+      true
+    );
     pushAction(actions, seen, registry, "containerlab.lab.redeploy", [item]);
     pushAction(actions, seen, registry, "containerlab.lab.redeploy.cleanup", [item]);
     pushAction(actions, seen, registry, "containerlab.lab.save", [item]);
@@ -475,9 +488,13 @@ function appendLinkActions(
   item: ExplorerTreeItemLike
 ): void {
   const linkArg = getLinkArgument(item);
-  if (item.contextValue === "containerlabSSHXLink" && linkArg) {
+  if (item.contextValue === "containerlabSSHXLink" && linkArg !== undefined && linkArg.length > 0) {
     pushAction(actions, seen, registry, "containerlab.lab.sshx.copyLink", [linkArg]);
-  } else if (item.contextValue === "containerlabGottyLink" && linkArg) {
+  } else if (
+    item.contextValue === "containerlabGottyLink" &&
+    linkArg !== undefined &&
+    linkArg.length > 0
+  ) {
     pushAction(actions, seen, registry, "containerlab.lab.gotty.copyLink", [linkArg]);
   }
 }
@@ -489,7 +506,7 @@ function appendHelpFeedbackActions(
   item: ExplorerTreeItemLike
 ): void {
   const linkArg = getLinkArgument(item);
-  if (!linkArg) {
+  if (linkArg === undefined || linkArg.length === 0) {
     return;
   }
   pushAction(actions, seen, registry, "containerlab.openLink", [linkArg], "Open Link");
@@ -598,7 +615,9 @@ async function buildNode(
   const nodeActions = getNodeActions(sectionId, item, registry, options);
   if (shareInfo) {
     const copyCommandId =
-      shareInfo.kind === "sshx" ? "containerlab.lab.sshx.copyLink" : "containerlab.lab.gotty.copyLink";
+      shareInfo.kind === "sshx"
+        ? "containerlab.lab.sshx.copyLink"
+        : "containerlab.lab.gotty.copyLink";
     const hasCopyAction = nodeActions.some((action) => action.commandId === copyCommandId);
     if (!hasCopyAction) {
       nodeActions.push(
@@ -625,7 +644,7 @@ async function buildNode(
       : getStatusIndicator(item);
 
   return {
-    id: item.id || pathId,
+    id: item.id ?? pathId,
     label,
     description,
     tooltip,
@@ -647,7 +666,9 @@ async function buildSectionNodes(
 ): Promise<ExplorerNode[]> {
   const roots = await getProviderChildren(provider);
   return Promise.all(
-    roots.map((item, index) => buildNode(provider, item, sectionId, options, registry, `${sectionId}/${index}`))
+    roots.map((item, index) =>
+      buildNode(provider, item, sectionId, options, registry, `${sectionId}/${index}`)
+    )
   );
 }
 

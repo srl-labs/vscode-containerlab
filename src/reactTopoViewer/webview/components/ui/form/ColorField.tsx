@@ -72,8 +72,8 @@ export const ColorField: React.FC<ColorFieldProps> = ({
   );
 
   const handleCopy = useCallback(() => {
-    const clipboard = globalThis.navigator?.clipboard;
-    if (!clipboard?.writeText) {
+    const clipboard = globalThis.navigator.clipboard;
+    if (typeof clipboard.writeText !== "function") {
       return;
     }
     clipboard.writeText(normalizedValue).catch(() => undefined);
@@ -84,11 +84,11 @@ export const ColorField: React.FC<ColorFieldProps> = ({
   }, []);
 
   return (
-    <Box className={className} sx={{ opacity: disabled ? 0.4 : 1 }}>
+    <Box className={className} sx={{ opacity: disabled === true ? 0.4 : 1 }}>
       {/* Hidden native color input — uncontrolled, updated via ref */}
       <input
         ref={colorInputRef}
-        {...(id ? { id } : {})}
+        {...(id !== undefined && id.length > 0 ? { id } : {})}
         type="color"
         defaultValue={normalizedValue}
         onChange={handleColorChange}
@@ -116,13 +116,13 @@ export const ColorField: React.FC<ColorFieldProps> = ({
             startAdornment: (
               <InputAdornment position="start" sx={{ mr: 0.75 }}>
                 <Box
-                  onClick={disabled ? undefined : openPicker}
+                  onClick={disabled === true ? undefined : openPicker}
                   sx={{
                     width: SWATCH_SIZE,
                     height: SWATCH_SIZE,
                     borderRadius: 0.5,
                     backgroundColor: normalizedValue,
-                    cursor: disabled ? "default" : "pointer",
+                    cursor: disabled === true ? "default" : "pointer",
                     flexShrink: 0
                   }}
                 />

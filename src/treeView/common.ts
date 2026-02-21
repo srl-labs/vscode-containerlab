@@ -11,7 +11,7 @@ export interface LabPath {
 
 /** Strip CIDR mask from an IP address, returning empty string for "N/A". */
 function stripCidr(addr: string | undefined): string {
-  if (!addr || addr === "N/A") {
+  if (addr === undefined || addr.length === 0 || addr === "N/A") {
     return "";
   }
   return addr.split("/")[0];

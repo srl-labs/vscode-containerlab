@@ -73,7 +73,7 @@ function resolveNextTimestampSeconds(
   }
 
   const interval = resolveValidIntervalSeconds(stats);
-  if (!interval) {
+  if (interval === undefined) {
     return Math.max(nowSeconds, prev + MIN_TIMESTAMP_STEP_SECONDS);
   }
 
@@ -200,7 +200,10 @@ function resolveXAxisWindow(
   }
 
   const intervalSeconds = resolveWindowIntervalSeconds(history, stats);
-  const visiblePointSpan = Math.max(1, Math.min(history.timestamps.length - 1, MAX_GRAPH_POINTS - 1));
+  const visiblePointSpan = Math.max(
+    1,
+    Math.min(history.timestamps.length - 1, MAX_GRAPH_POINTS - 1)
+  );
   const windowSeconds = intervalSeconds * visiblePointSpan;
   return {
     xMin: new Date((lastTimestamp - windowSeconds) * 1000),
@@ -294,7 +297,11 @@ function buildYAxis(compact: boolean, scale: number, unitLabel: string) {
   ];
 }
 
-function resolveSeriesLabel(compact: boolean, showLegend: boolean, label: string): string | undefined {
+function resolveSeriesLabel(
+  compact: boolean,
+  showLegend: boolean,
+  label: string
+): string | undefined {
   return compact && !showLegend ? undefined : label;
 }
 
@@ -356,20 +363,12 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
   // Track last-seen stats to avoid double-push in Strict Mode
   const lastStatsRef = useRef<InterfaceStatsPayload | undefined>(undefined);
 
-  const {
-    xData,
-    rxBpsData,
-    txBpsData,
-    rxPpsData,
-    txPpsData,
-    unitLabel,
-    xMin,
-    xMax
-  } = useMemo(() => {
-    const history = getOrCreateHistory(endpointKey);
-    appendStatsSample(history, stats, lastStatsRef);
-    return buildChartData(history, stats);
-  }, [stats, endpointKey]);
+  const { xData, rxBpsData, txBpsData, rxPpsData, txPpsData, unitLabel, xMin, xMax } =
+    useMemo(() => {
+      const history = getOrCreateHistory(endpointKey);
+      appendStatsSample(history, stats, lastStatsRef);
+      return buildChartData(history, stats);
+    }, [stats, endpointKey]);
   const margin = resolveChartMargin(compact, showLegend, scale);
   const legendSlotProps = resolveLegendSlotProps(compact, showLegend, scale);
   const xAxis = buildXAxis(compact, xData, xMin, xMax);

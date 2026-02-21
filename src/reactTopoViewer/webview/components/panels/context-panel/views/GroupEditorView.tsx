@@ -55,7 +55,11 @@ export const GroupEditorView: React.FC<GroupEditorViewProps> = ({
   // Revert on unmount if there are uncommitted preview changes
   useEffect(() => {
     return () => {
-      if (hasPreviewRef.current && groupIdRef.current && initialStyleRef.current) {
+      if (
+        hasPreviewRef.current &&
+        groupIdRef.current !== null &&
+        initialStyleRef.current !== null
+      ) {
         previewRef.current?.(groupIdRef.current, initialStyleRef.current);
       }
     };
@@ -85,7 +89,7 @@ export const GroupEditorView: React.FC<GroupEditorViewProps> = ({
   // Wrap discard to also revert the canvas preview
   const discardWithRevert = useCallback(() => {
     discardChanges();
-    if (groupIdRef.current && initialStyleRef.current) {
+    if (groupIdRef.current !== null && initialStyleRef.current !== null) {
       previewRef.current?.(groupIdRef.current, initialStyleRef.current);
       hasPreviewRef.current = false;
     }

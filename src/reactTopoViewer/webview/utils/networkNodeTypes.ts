@@ -1,6 +1,8 @@
 /**
  * Shared helpers for network node classification.
  */
+import { getRecordUnknown } from "../../shared/utilities/typeHelpers";
+
 export const SPECIAL_NETWORK_TYPES = new Set([
   "host",
   "mgmt-net",
@@ -17,7 +19,7 @@ export function getNetworkType(data: Record<string, unknown>): string | undefine
   if (typeof kind === "string") return kind;
   const nodeType = data.nodeType;
   if (typeof nodeType === "string") return nodeType;
-  const extraData = data.extraData as Record<string, unknown> | undefined;
+  const extraData = getRecordUnknown(data.extraData);
   const extraKind = extraData?.kind;
   if (typeof extraKind === "string") return extraKind;
   return undefined;

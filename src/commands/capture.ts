@@ -14,6 +14,10 @@ import {
 
 export { getHostname, setSessionHostname };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 /**
  * Begin packet capture on an interface.
  */
@@ -21,15 +25,11 @@ export async function captureInterface(
   node: ClabInterfaceTreeNode,
   allSelectedNodes?: ClabInterfaceTreeNode[]
 ) {
-  if (!node) {
-    return vscode.window.showErrorMessage("No interface to capture found.");
-  }
-
   outputChannel.debug(
     `captureInterface() called for node=${node.parentName}, interface=${node.name}`
   );
   outputChannel.debug(
-    `remoteName = ${vscode.env.remoteName || "(none)"}; isOrbstack=${utils.isOrbstack()}`
+    `remoteName = ${vscode.env.remoteName ?? "(none)"}; isOrbstack=${utils.isOrbstack()}`
   );
 
   // Settings override
@@ -52,11 +52,6 @@ async function buildPacketflixUri(
   allSelectedNodes?: ClabInterfaceTreeNode[],
   forVNC?: boolean
 ): Promise<[string, string] | undefined> {
-  if (!node) {
-    vscode.window.showErrorMessage("No interface to capture found.");
-    return undefined;
-  }
-
   const selected = allSelectedNodes && allSelectedNodes.length > 0 ? allSelectedNodes : [node];
 
   if (selected.length > 1) {
@@ -66,7 +61,7 @@ async function buildPacketflixUri(
         "Edgeshark multi selection => multiple containers => launching individually"
       );
       for (const nd of selected) {
-        if (forVNC) {
+        if (forVNC === true) {
           await captureEdgesharkVNC(nd);
         } else {
           await captureInterfaceWithPacketflix(nd);
@@ -113,10 +108,6 @@ function isDarkModeEnabled(themeSetting?: string): boolean {
 
 async function getEdgesharkNetwork(): Promise<string> {
   try {
-    if (!dockerClient) {
-      outputChannel.debug("getEdgesharkNetwork() failed: docker client unavailable.");
-      return "";
-    }
     // List containers using edgeshark as name filter
     const containers = await dockerClient.listContainers({
       filters: { name: ["edgeshark"] }
@@ -130,7 +121,7 @@ async function getEdgesharkNetwork(): Promise<string> {
     const container = dockerClient.getContainer(containers[0].Id);
     const containerInfo = await container.inspect();
 
-    const networks = containerInfo.NetworkSettings.Networks || {};
+    const networks = containerInfo.NetworkSettings.Networks;
     const networkIds = Object.values(networks)
       .map((net) => (net as { NetworkID?: string }).NetworkID)
       .filter((id): id is string => Boolean(id));
@@ -140,9 +131,6 @@ async function getEdgesharkNetwork(): Promise<string> {
     }
 
     const networkId: string = networkIds[0];
-    if (!networkId) {
-      return "";
-    }
 
     // Get network name from network ID
     const network = dockerClient.getNetwork(networkId);
@@ -160,16 +148,11 @@ async function getEdgesharkNetwork(): Promise<string> {
 
 async function getVolumeMount(nodeName: string): Promise<string> {
   try {
-    if (!dockerClient) {
-      outputChannel.debug("getVolumeMount() failed: docker client unavailable.");
-      return "";
-    }
-
     const container = dockerClient.getContainer(nodeName);
     const containerInfo = await container.inspect();
-    const labDir = containerInfo.Config.Labels?.["clab-node-lab-dir"];
+    const labDir = containerInfo.Config.Labels["clab-node-lab-dir"];
 
-    if (labDir && labDir !== "<no value>") {
+    if (labDir.length > 0 && labDir !== "<no value>") {
       const pathParts = labDir.split("/");
       pathParts.pop();
       pathParts.pop();
@@ -195,7 +178,7 @@ function adjustPacketflixHost(uri: string, edgesharkNetwork: string): string {
 const VOLUME_MOUNT_REGEX = /-v\s+"?([^"]+)"?/;
 
 function buildVolumeBinds(volumeMount?: string): string[] {
-  if (!volumeMount) {
+  if (volumeMount == null || volumeMount.length === 0) {
     return [];
   }
   const match = VOLUME_MOUNT_REGEX.exec(volumeMount);
@@ -224,12 +207,6 @@ type WiresharkContainerOptions = {
 async function startWiresharkContainer(
   options: WiresharkContainerOptions
 ): Promise<string | undefined> {
-  if (!dockerClient) {
-    outputChannel.debug("captureEdgesharkVNC() failed: docker client unavailable.");
-    vscode.window.showErrorMessage("Unable to start capture: Docker client unavailable");
-    return undefined;
-  }
-
   try {
     await utils.checkAndPullDockerImage(options.dockerImage, options.dockerPullPolicy);
 
@@ -299,7 +276,7 @@ export async function captureEdgesharkVNC(
     ctrName,
     port
   });
-  if (!containerId) {
+  if (containerId == null || containerId.length === 0) {
     return;
   }
 
@@ -330,16 +307,6 @@ export async function captureEdgesharkVNC(
 
   panel.onDidDispose(async () => {
     try {
-      if (!dockerClient) {
-        outputChannel.debug(
-          "captureEdgesharkVNC() VNC webview dispose failed: docker client unavailable."
-        );
-        return;
-      }
-      if (!containerId) {
-        outputChannel.debug("captureEdgesharkVNC() VNC webview dispose failed: nil container ID.");
-        return;
-      }
       const container = dockerClient.getContainer(containerId);
       await container.stop();
       outputChannel.info(`Stopped Wireshark VNC container: ${containerId}`);
@@ -365,11 +332,11 @@ export async function captureEdgesharkVNC(
   const readinessMonitor = createVncReadinessMonitor(panel, localUri.toString(), iframeUrl);
 
   panel.webview.onDidReceiveMessage((message) => {
-    if (!message || typeof message !== "object") {
+    if (!isRecord(message)) {
       return;
     }
 
-    if ((message as { type?: string }).type === "retry-check") {
+    if (message.type === "retry-check") {
       readinessMonitor.start(true);
     }
   });
@@ -378,6 +345,10 @@ export async function captureEdgesharkVNC(
 }
 
 type VncMonitorToken = { cancelled: boolean };
+
+function isTokenCancelled(token: VncMonitorToken): boolean {
+  return token.cancelled;
+}
 
 function createVncReadinessMonitor(
   panel: vscode.WebviewPanel,
@@ -429,19 +400,19 @@ async function runVncReadinessLoop(
   const maxAttempts = 60;
   const delayMs = 1000;
 
-  if (isDisposed() || token.cancelled) {
+  if (isDisposed() || isTokenCancelled(token)) {
     return;
   }
 
   await utils.tryPostMessage(panel, { type: "vnc-progress", attempt: 0, maxAttempts });
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    if (isDisposed() || token.cancelled) {
+    if (isDisposed() || isTokenCancelled(token)) {
       return;
     }
 
     const ready = await utils.isHttpEndpointReady(localUrl);
-    if (isDisposed() || token.cancelled) {
+    if (isDisposed() || isTokenCancelled(token)) {
       return;
     }
 
@@ -454,7 +425,7 @@ async function runVncReadinessLoop(
     await utils.delay(delayMs);
   }
 
-  if (!isDisposed() && !token.cancelled) {
+  if (!isDisposed() && !isTokenCancelled(token)) {
     await utils.tryPostMessage(panel, { type: "vnc-timeout", url: iframeUrl });
   }
 }
@@ -464,10 +435,6 @@ export async function killAllWiresharkVNCCtrs() {
     .getConfiguration("containerlab")
     .get<string>("capture.wireshark.dockerImage", DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE);
   try {
-    if (!dockerClient) {
-      outputChannel.debug("killAllWiresharkVNCCtrs() failed: docker client unavailable.");
-    }
-
     const ctrNamePrefix = `${WIRESHARK_VNC_CTR_NAME_PREFIX}-${username}`;
 
     // List containers which have that name + use the configured image
