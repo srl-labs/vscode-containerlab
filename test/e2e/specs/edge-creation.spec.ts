@@ -1,4 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
+import { shiftClick } from "../helpers/react-flow-helpers";
 
 // Test file names for file-based tests
 const SIMPLE_FILE = "simple.clab.yml";
@@ -106,6 +107,41 @@ test.describe("Edge Creation", () => {
     expect(selfLoopData?.target).toBe("srl1");
     expect(selfLoopData?.sourceEndpoint).toBe("e1-6");
     expect(selfLoopData?.targetEndpoint).toBe("e1-7");
+  });
+
+  test("starts link creation with Shift+Click on node", async ({ page, topoViewerPage }) => {
+    const initialEdgeCount = await topoViewerPage.getEdgeCount();
+
+    const sourceBox = await topoViewerPage.getNodeBoundingBox("srl1");
+    const targetBox = await topoViewerPage.getNodeBoundingBox("srl2");
+    expect(sourceBox).not.toBeNull();
+    expect(targetBox).not.toBeNull();
+
+    await shiftClick(
+      page,
+      sourceBox!.x + sourceBox!.width / 2,
+      sourceBox!.y + sourceBox!.height / 2
+    );
+    await page.waitForTimeout(150);
+
+    await page.mouse.click(
+      targetBox!.x + targetBox!.width / 2,
+      targetBox!.y + targetBox!.height / 2
+    );
+
+    await page.waitForFunction(
+      (expectedCount) => {
+        const rf = (window as any).__DEV__?.rfInstance;
+        if (rf === undefined || rf === null) return false;
+        const edges = rf.getEdges?.() ?? [];
+        return edges.length === expectedCount;
+      },
+      initialEdgeCount + 1,
+      { timeout: 4000 }
+    );
+
+    const newEdgeCount = await topoViewerPage.getEdgeCount();
+    expect(newEdgeCount).toBe(initialEdgeCount + 1);
   });
 
   test("edge creation blocked when canvas is locked or in view mode", async ({
