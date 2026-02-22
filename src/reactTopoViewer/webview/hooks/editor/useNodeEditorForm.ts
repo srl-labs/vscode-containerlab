@@ -2,9 +2,10 @@
  * useNodeEditorForm - Form state management for the Node Editor
  * Extracted from NodeEditorView.tsx
  */
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 
 import type { NodeEditorData, NodeEditorTabId } from "../../components/panels/node-editor/types";
+import { convertEditorDataToNodeSaveData } from "../../../shared/utilities";
 
 import { applyFormUpdates } from "./formState";
 
@@ -46,6 +47,37 @@ export interface UseNodeEditorFormReturn {
   resetAfterApply: () => void;
   discardChanges: () => void;
   originalData: NodeEditorData | null;
+}
+
+function normalizeForDirtyCheck(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => normalizeForDirtyCheck(entry))
+      .filter((entry) => entry !== undefined && entry !== null);
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const entries = Object.entries(value)
+      .map(([key, entry]) => [key, normalizeForDirtyCheck(entry)] as const)
+      .filter(([, entry]) => entry !== undefined && entry !== null)
+      .sort(([a], [b]) => a.localeCompare(b));
+
+    if (entries.length === 0) return undefined;
+
+    const normalized: Record<string, unknown> = {};
+    for (const [key, entry] of entries) {
+      normalized[key] = entry;
+    }
+    return normalized;
+  }
+
+  return value;
+}
+
+function toDirtySnapshot(data: NodeEditorData): string {
+  const saveData = convertEditorDataToNodeSaveData(data);
+  const normalized = normalizeForDirtyCheck(saveData);
+  return JSON.stringify(normalized);
 }
 
 export function useNodeEditorForm(
@@ -98,10 +130,10 @@ export function useNodeEditorForm(
     if (lastAppliedData) setFormData({ ...lastAppliedData });
   }, [lastAppliedData]);
 
-  const hasChanges =
-    formData && lastAppliedData
-      ? JSON.stringify(formData) !== JSON.stringify(lastAppliedData)
-      : false;
+  const hasChanges = useMemo(() => {
+    if (!formData || !lastAppliedData) return false;
+    return toDirtySnapshot(formData) !== toDirtySnapshot(lastAppliedData);
+  }, [formData, lastAppliedData]);
 
   return {
     activeTab,

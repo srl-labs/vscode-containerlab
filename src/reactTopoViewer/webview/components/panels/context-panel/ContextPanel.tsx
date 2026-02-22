@@ -4,7 +4,6 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
-  EditOutlined as EditOutlinedIcon,
   ErrorOutline as ErrorOutlineIcon,
   Lock as LockIcon,
   SwapHoriz as SwapHorizIcon
@@ -296,7 +295,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   );
 
   const footer = footerRef.current;
-  const showFooter = panelView.hasFooter && footer !== null;
+  const showFooter = panelView.hasFooter && footer?.hasChanges === true;
 
   return (
     <>
@@ -372,27 +371,6 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
               <Divider />
             </React.Fragment>
           ))}
-
-        {panelView.hasFooter && footer?.hasChanges === true && !isReadOnly && (
-          <>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.5,
-                px: 2,
-                py: 0.5,
-                bgcolor: ACTION_HOVER
-              }}
-            >
-              <EditOutlinedIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
-              <Typography variant="caption" color="text.secondary">
-                Unsaved changes — click Apply to save
-              </Typography>
-            </Box>
-            <Divider />
-          </>
-        )}
 
         <Box
           sx={{
