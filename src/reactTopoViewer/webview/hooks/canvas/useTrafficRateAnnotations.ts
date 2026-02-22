@@ -85,9 +85,19 @@ export function useTrafficRateAnnotations(
         groupId: parentGroup?.id
       };
 
+      derived.addTrafficRateAnnotation(annotation);
+      persist();
       uiActions.setEditingTrafficRateAnnotation(annotation);
     },
-    [canEditAnnotations, onLockedAction, derived.groups, derived.trafficRateAnnotations, uiActions]
+    [
+      canEditAnnotations,
+      onLockedAction,
+      derived.addTrafficRateAnnotation,
+      derived.groups,
+      derived.trafficRateAnnotations,
+      uiActions,
+      persist
+    ]
   );
 
   const editTrafficRateAnnotation = useCallback(

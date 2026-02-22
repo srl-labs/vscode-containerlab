@@ -343,23 +343,32 @@ function useTrafficRateCommitHandlers(params: {
   initialSerializedRef: { current: string | null };
   hasPreviewRef: { current: boolean };
 }) {
+  const {
+    onSave,
+    discardChanges,
+    previewRef,
+    initialAnnotationRef,
+    initialSerializedRef,
+    hasPreviewRef
+  } = params;
+
   const saveWithCommit = useCallback(
     (next: TrafficRateAnnotation) => {
-      params.hasPreviewRef.current = false;
-      params.initialAnnotationRef.current = { ...next };
-      params.initialSerializedRef.current = JSON.stringify(next);
-      params.onSave(next);
+      hasPreviewRef.current = false;
+      initialAnnotationRef.current = { ...next };
+      initialSerializedRef.current = JSON.stringify(next);
+      onSave(next);
     },
-    [params]
+    [hasPreviewRef, initialAnnotationRef, initialSerializedRef, onSave]
   );
 
   const discardWithRevert = useCallback(() => {
-    params.discardChanges();
-    if (params.initialAnnotationRef.current) {
-      params.previewRef.current?.(params.initialAnnotationRef.current);
+    discardChanges();
+    if (initialAnnotationRef.current) {
+      previewRef.current?.(initialAnnotationRef.current);
     }
-    params.hasPreviewRef.current = false;
-  }, [params]);
+    hasPreviewRef.current = false;
+  }, [discardChanges, initialAnnotationRef, previewRef, hasPreviewRef]);
 
   return { saveWithCommit, discardWithRevert };
 }
