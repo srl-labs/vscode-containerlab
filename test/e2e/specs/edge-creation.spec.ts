@@ -132,7 +132,7 @@ test.describe("Edge Creation", () => {
     await page.waitForFunction(
       (expectedCount) => {
         const rf = (window as any).__DEV__?.rfInstance;
-        if (!rf) return false;
+        if (rf === undefined || rf === null) return false;
         const edges = rf.getEdges?.() ?? [];
         return edges.length === expectedCount;
       },

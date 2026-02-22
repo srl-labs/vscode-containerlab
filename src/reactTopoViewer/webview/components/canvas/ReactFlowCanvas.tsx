@@ -213,19 +213,35 @@ function openAnnotationEditor(
   return false;
 }
 
-function useWrappedNodeClick(
-  linkSourceNode: string | null,
-  startLinkCreation: (nodeId: string) => void,
-  completeLinkCreation: (nodeId: string) => void,
-  reactFlowInstanceRef: React.RefObject<ReactFlowInstance | null>,
-  onNodeClick: ReturnType<typeof useCanvasHandlers>["onNodeClick"],
-  mode: "view" | "edit",
-  isLocked: boolean,
-  handleDeleteNode: (nodeId: string) => void,
-  clearContextForAnnotationEdit: () => void,
-  onLockedAction?: () => void,
-  annotationHandlers?: AnnotationHandlers
-) {
+interface WrappedNodeClickConfig {
+  linkSourceNode: string | null;
+  startLinkCreation: (nodeId: string) => void;
+  completeLinkCreation: (nodeId: string) => void;
+  reactFlowInstanceRef: React.RefObject<ReactFlowInstance | null>;
+  onNodeClick: ReturnType<typeof useCanvasHandlers>["onNodeClick"];
+  mode: "view" | "edit";
+  isLocked: boolean;
+  handleDeleteNode: (nodeId: string) => void;
+  clearContextForAnnotationEdit: () => void;
+  onLockedAction?: () => void;
+  annotationHandlers?: AnnotationHandlers;
+}
+
+function useWrappedNodeClick(config: WrappedNodeClickConfig) {
+  const {
+    linkSourceNode,
+    startLinkCreation,
+    completeLinkCreation,
+    reactFlowInstanceRef,
+    onNodeClick,
+    mode,
+    isLocked,
+    handleDeleteNode,
+    clearContextForAnnotationEdit,
+    onLockedAction,
+    annotationHandlers
+  } = config;
+
   return useCallback(
     (event: React.MouseEvent, node: Node) => {
       if (handleAltDelete(event, node, mode, isLocked, handleDeleteNode, annotationHandlers))
@@ -1337,16 +1353,16 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     );
     useImperativeHandle(ref, () => refHandle, [refHandle]);
 
-    const wrappedOnNodeClick = useWrappedNodeClick(
+    const wrappedOnNodeClick = useWrappedNodeClick({
       linkSourceNode,
       startLinkCreation,
       completeLinkCreation,
-      handlers.reactFlowInstance,
-      handlers.onNodeClick,
+      reactFlowInstanceRef: handlers.reactFlowInstance,
+      onNodeClick: handlers.onNodeClick,
       mode,
       isLocked,
       handleDeleteNode,
-      () => {
+      clearContextForAnnotationEdit: () => {
         // Switch the context panel from node/link editors to annotation editors.
         // This is intentionally destructive to any in-progress node/link edits.
         editNode(null);
@@ -1359,7 +1375,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       },
       onLockedAction,
       annotationHandlers
-    );
+    });
     const wrappedOnEdgeClick = useWrappedEdgeClick(
       handlers.onEdgeClick,
       mode,
