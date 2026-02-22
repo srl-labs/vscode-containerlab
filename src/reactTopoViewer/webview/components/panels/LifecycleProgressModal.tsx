@@ -1,23 +1,28 @@
 import React from "react";
-import AutorenewIcon from "@mui/icons-material/Autorenew";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import LinearProgress from "@mui/material/LinearProgress";
-import Typography from "@mui/material/Typography";
+import {
+  Autorenew as AutorenewIcon,
+  CheckCircleOutline as CheckCircleOutlineIcon,
+  ErrorOutline as ErrorOutlineIcon
+} from "@mui/icons-material";
+import {
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  LinearProgress,
+  Typography
+} from "@mui/material";
 
 import type {
   LifecycleLogEntry,
   LifecycleStatus,
   ProcessingMode
 } from "../../stores/topoViewerStore";
+import { calculateElapsedSeconds, formatElapsedSeconds } from "../../utils/lifecycleTimer";
 
 interface LifecycleProgressModalProps {
   isOpen: boolean;
@@ -96,6 +101,40 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
   onCancel
 }) => {
   const logContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const wasProcessingRef = React.useRef(isProcessing);
+  const [startedAtMs, setStartedAtMs] = React.useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      setStartedAtMs(null);
+      setElapsedSeconds(0);
+      return;
+    }
+
+    if (!isProcessing || status !== "running") {
+      return;
+    }
+
+    const startedAt = Date.now();
+    setStartedAtMs(startedAt);
+    setElapsedSeconds(0);
+
+    const intervalId = window.setInterval(() => {
+      setElapsedSeconds(calculateElapsedSeconds(startedAt));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isOpen, isProcessing, status]);
+
+  React.useEffect(() => {
+    if (isOpen && wasProcessingRef.current && !isProcessing && startedAtMs !== null) {
+      setElapsedSeconds(calculateElapsedSeconds(startedAtMs));
+    }
+    wasProcessingRef.current = isProcessing;
+  }, [isOpen, isProcessing, startedAtMs]);
 
   React.useEffect(() => {
     if (!isOpen) {
@@ -111,6 +150,8 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
   const modeLabel = getModeLabel(mode);
   const statusLabel = getStatusLabel(status);
   const statusColor = getStatusColor(status);
+  const timerLabel = isProcessing ? "Elapsed" : "Duration";
+  const formattedDuration = formatElapsedSeconds(elapsedSeconds);
 
   return (
     <Dialog
@@ -151,6 +192,14 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
             {labName || "Containerlab topology"}
+          </Typography>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", mt: 0.25 }}
+            data-testid="lifecycle-timer"
+          >
+            {timerLabel}: {formattedDuration}
           </Typography>
         </Box>
       </DialogTitle>
