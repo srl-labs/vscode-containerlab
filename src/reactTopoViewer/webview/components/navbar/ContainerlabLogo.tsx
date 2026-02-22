@@ -15,6 +15,12 @@ interface ContainerlabLogoProps {
   isExploded?: boolean;
 }
 
+interface ParticleStyle extends React.CSSProperties {
+  "--particle-angle": string;
+  "--particle-delay": string;
+  "--particle-color": string;
+}
+
 /** Shared style for bubble circles */
 const bubbleStyle: React.CSSProperties = {
   fill: "none",
@@ -40,21 +46,16 @@ export const ContainerlabLogo: React.FC<ContainerlabLogoProps> = ({
 
   if (isExploded) {
     return (
-      <div className={`logo-explosion-container ${className || ""}`}>
+      <div className={`logo-explosion-container ${className ?? ""}`}>
         {/* Explosion particles */}
-        {Array.from({ length: 12 }).map((_, i) => (
-          <div
-            key={i}
-            className="logo-particle"
-            style={
-              {
-                "--particle-angle": `${i * 30}deg`,
-                "--particle-delay": `${i * 0.02}s`,
-                "--particle-color": i % 2 === 0 ? "#3CBEEF" : "#878787"
-              } as React.CSSProperties
-            }
-          />
-        ))}
+        {Array.from({ length: 12 }).map((_, i) => {
+          const particleStyle: ParticleStyle = {
+            "--particle-angle": `${i * 30}deg`,
+            "--particle-delay": `${i * 0.02}s`,
+            "--particle-color": i % 2 === 0 ? "#3CBEEF" : "#878787"
+          };
+          return <div key={i} className="logo-particle" style={particleStyle} />;
+        })}
         {/* Central flash */}
         <div className="logo-explosion-flash" />
       </div>
@@ -67,7 +68,7 @@ export const ContainerlabLogo: React.FC<ContainerlabLogoProps> = ({
       xmlns="http://www.w3.org/2000/svg"
       width={36}
       height={36}
-      className={`containerlab-logo-svg ${shakeClass} ${className || ""}`}
+      className={`containerlab-logo-svg ${shakeClass} ${className ?? ""}`}
       aria-label="Containerlab Logo"
     >
       {/* Liquid - animates on hover */}

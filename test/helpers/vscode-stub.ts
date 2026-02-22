@@ -2,7 +2,7 @@ export const window = {
   lastErrorMessage: "",
   lastInfoMessage: "",
   createOutputChannel(_name: string, options?: { log: boolean } | string) {
-    const isLogChannel = typeof options === "object" && options?.log;
+    const isLogChannel = typeof options === "object" && options.log;
     return {
       appendLine() {},
       show() {},

@@ -103,17 +103,17 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function resolveEdgeRenderOptions(
-  renderOptions?: EdgeSvgRenderOptions
-): ResolvedEdgeRenderOptions {
+function resolveEdgeRenderOptions(renderOptions?: EdgeSvgRenderOptions): ResolvedEdgeRenderOptions {
   const nodeIconSizeRaw = renderOptions?.nodeIconSize;
   const interfaceScaleRaw = renderOptions?.interfaceScale;
-  const nodeIconSize = Number.isFinite(nodeIconSizeRaw)
-    ? clamp(nodeIconSizeRaw as number, 12, 240)
-    : NODE_ICON_SIZE;
-  const interfaceScale = Number.isFinite(interfaceScaleRaw)
-    ? clamp(interfaceScaleRaw as number, 0.4, 4)
-    : 1;
+  const nodeIconSize =
+    typeof nodeIconSizeRaw === "number" && Number.isFinite(nodeIconSizeRaw)
+      ? clamp(nodeIconSizeRaw, 12, 240)
+      : NODE_ICON_SIZE;
+  const interfaceScale =
+    typeof interfaceScaleRaw === "number" && Number.isFinite(interfaceScaleRaw)
+      ? clamp(interfaceScaleRaw, 0.4, 4)
+      : 1;
   const interfaceLabelOverrides =
     renderOptions?.interfaceLabelOverrides &&
     typeof renderOptions.interfaceLabelOverrides === "object"
@@ -191,7 +191,7 @@ function trackNodeEndpoint(
   nodeId: string,
   endpoint: string | null
 ): void {
-  if (!endpoint) return;
+  if (endpoint === null) return;
   getOrCreateEndpointSet(endpointsByNode, nodeId).add(endpoint);
 }
 
@@ -203,7 +203,7 @@ function collectEdgeEndpointVectors(
   nodeIconSize: number,
   vectorsByNode: Map<string, Map<string, EndpointVector>>
 ): void {
-  if (!sourceEndpoint && !targetEndpoint) return;
+  if (sourceEndpoint === null && targetEndpoint === null) return;
   if (edge.source === edge.target) return;
 
   const sourceNode = nodeMap.get(edge.source);
@@ -215,10 +215,10 @@ function collectEdgeEndpointVectors(
   const forwardDx = targetCenter.x - sourceCenter.x;
   const forwardDy = targetCenter.y - sourceCenter.y;
 
-  if (sourceEndpoint) {
+  if (sourceEndpoint !== null) {
     addEndpointVector(vectorsByNode, edge.source, sourceEndpoint, forwardDx, forwardDy);
   }
-  if (targetEndpoint) {
+  if (targetEndpoint !== null) {
     addEndpointVector(vectorsByNode, edge.target, targetEndpoint, -forwardDx, -forwardDy);
   }
 }
@@ -524,7 +524,11 @@ function getAutoCompactInterfaceLabel(endpoint: string): string {
     return trimmed.slice(start + 1, end + 1);
   }
 
-  const token = trimmed.split(/[:/.-]/).filter((part) => part.length > 0).pop() ?? trimmed;
+  const token =
+    trimmed
+      .split(/[:/.-]/)
+      .filter((part) => part.length > 0)
+      .pop() ?? trimmed;
   return token.length <= 3 ? token : token.slice(-3);
 }
 
@@ -568,7 +572,9 @@ function getLabelOffsetForEndpoint(
   interfaceScale: number,
   interfaceLabelOverrides: Record<string, string>
 ): number {
-  if (!nodeProximateLabels || !endpoint) return EDGE_LABEL.offset;
+  if (!nodeProximateLabels || endpoint === undefined || endpoint.length === 0) {
+    return EDGE_LABEL.offset;
+  }
   const { radius } = getEndpointLabelMetrics(endpoint, interfaceScale, interfaceLabelOverrides);
   return radius + 1;
 }
@@ -690,19 +696,21 @@ function buildEdgeLabels(
   targetLabelPos: { x: number; y: number }
 ): string {
   if (!ctx.includeLabels) return "";
+  const sourceEndpoint = normalizeEndpoint(ctx.edgeData?.sourceEndpoint);
+  const targetEndpoint = normalizeEndpoint(ctx.edgeData?.targetEndpoint);
   let svg = "";
-  if (ctx.edgeData?.sourceEndpoint) {
+  if (sourceEndpoint !== null) {
     svg += buildEndpointLabelSvg(
-      ctx.edgeData.sourceEndpoint,
+      sourceEndpoint,
       sourceLabelPos.x,
       sourceLabelPos.y,
       ctx.interfaceScale,
       ctx.interfaceLabelOverrides
     );
   }
-  if (ctx.edgeData?.targetEndpoint) {
+  if (targetEndpoint !== null) {
     svg += buildEndpointLabelSvg(
-      ctx.edgeData.targetEndpoint,
+      targetEndpoint,
       targetLabelPos.x,
       targetLabelPos.y,
       ctx.interfaceScale,
@@ -743,12 +751,14 @@ function resolveRegularEdgeAnchors(
   const sourceEndpoint = normalizeEndpoint(ctx.edgeData?.sourceEndpoint);
   const targetEndpoint = normalizeEndpoint(ctx.edgeData?.targetEndpoint);
   return {
-    sourceAnchor: sourceEndpoint
-      ? ctx.interfaceAnchors?.get(sourceNode.id)?.get(sourceEndpoint)
-      : undefined,
-    targetAnchor: targetEndpoint
-      ? ctx.interfaceAnchors?.get(targetNode.id)?.get(targetEndpoint)
-      : undefined
+    sourceAnchor:
+      sourceEndpoint !== null
+        ? ctx.interfaceAnchors?.get(sourceNode.id)?.get(sourceEndpoint)
+        : undefined,
+    targetAnchor:
+      targetEndpoint !== null
+        ? ctx.interfaceAnchors?.get(targetNode.id)?.get(targetEndpoint)
+        : undefined
   };
 }
 
@@ -783,11 +793,7 @@ function renderRegularEdge(
 ): string {
   const sourceRect = getNodeRect(sourceNode, ctx.nodeIconSize);
   const targetRect = getNodeRect(targetNode, ctx.nodeIconSize);
-  const { sourceAnchor, targetAnchor } = resolveRegularEdgeAnchors(
-    ctx,
-    sourceNode,
-    targetNode
-  );
+  const { sourceAnchor, targetAnchor } = resolveRegularEdgeAnchors(ctx, sourceNode, targetNode);
   const points = resolveEdgePointsWithInterfaceAnchors(
     sourceRect,
     targetRect,

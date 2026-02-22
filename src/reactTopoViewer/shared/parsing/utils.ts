@@ -113,8 +113,8 @@ export function computeLongname(
   fullPrefix: string,
   nodeName: string
 ): string {
-  if (containerName) return containerName;
-  return fullPrefix ? `${fullPrefix}-${nodeName}` : nodeName;
+  if (containerName !== undefined && containerName.length > 0) return containerName;
+  return fullPrefix.length > 0 ? `${fullPrefix}-${nodeName}` : nodeName;
 }
 
 /**
@@ -141,7 +141,7 @@ export function createNodeAnnotationsMap(
  * @returns The lab name or 'topology' as fallback
  */
 export function getLabName(parsed: ClabTopology): string {
-  return parsed.name || "topology";
+  return parsed.name ?? "topology";
 }
 
 /**
@@ -151,5 +151,5 @@ export function getLabName(parsed: ClabTopology): string {
  * @returns Set of node IDs
  */
 export function getTopologyNodeIds(parsed: ClabTopology): Set<string> {
-  return new Set(Object.keys(parsed.topology?.nodes || {}));
+  return new Set(Object.keys(parsed.topology?.nodes ?? {}));
 }

@@ -43,7 +43,7 @@ function renderOptionLabel(
   icon: React.ReactNode | undefined,
   gap = 1
 ): React.ReactElement {
-  if (!icon) {
+  if (icon === undefined || icon === null) {
     return <span>{label}</span>;
   }
 
@@ -69,18 +69,21 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   required,
   clearable
 }) => {
-  const showClear = clearable && value && !disabled;
+  const hasLabel = label !== undefined && label.length > 0;
+  const hasPlaceholder = placeholder !== undefined && placeholder.length > 0;
+  const hasHelperText = helperText !== undefined && helperText.length > 0;
+  const showClear = clearable === true && value.length > 0 && disabled !== true;
 
   return (
     <FormControl fullWidth size="small" disabled={disabled} required={required}>
-      {label && <InputLabel id={`${id}-label`}>{label}</InputLabel>}
+      {hasLabel ? <InputLabel id={`${id}-label`}>{label}</InputLabel> : null}
       <Select
         id={id}
-        labelId={label ? `${id}-label` : undefined}
+        labelId={hasLabel ? `${id}-label` : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         label={label}
-        displayEmpty={!!placeholder && !label}
+        displayEmpty={hasPlaceholder && !hasLabel}
         renderValue={(selected): React.ReactElement => {
           const selectedValue = String(selected);
           const option = options.find((opt) => opt.value === selectedValue);
@@ -107,7 +110,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
           ) : undefined
         }
       >
-        {placeholder && !label && (
+        {hasPlaceholder && !hasLabel && (
           <MenuItem value="" disabled>
             <em>{placeholder}</em>
           </MenuItem>
@@ -118,7 +121,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
           </MenuItem>
         ))}
       </Select>
-      {helperText && <FormHelperText>{helperText}</FormHelperText>}
+      {hasHelperText ? <FormHelperText>{helperText}</FormHelperText> : null}
     </FormControl>
   );
 };

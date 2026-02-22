@@ -119,15 +119,19 @@ function joinImageVersion(base: string, version: string): string {
  * Hook to access docker images with base/version parsing
  */
 export function useDockerImages(): UseDockerImagesResult {
-  const [dockerImages, setDockerImages] = useState<string[]>(() => window.__DOCKER_IMAGES__ || []);
+  const [dockerImages, setDockerImages] = useState<string[]>(() => window.__DOCKER_IMAGES__ ?? []);
 
   useEffect(() => {
-    const handleUpdate = (event: CustomEvent<string[]>) => {
-      log.info(`[useDockerImages] Received update with ${event.detail.length} images`);
-      setDockerImages(event.detail);
+    const handleUpdate: EventListener = (event) => {
+      if (!(event instanceof CustomEvent) || !Array.isArray(event.detail)) {
+        return;
+      }
+      const images = event.detail.filter((item): item is string => typeof item === "string");
+      log.info(`[useDockerImages] Received update with ${images.length} images`);
+      setDockerImages(images);
     };
-    window.addEventListener("docker-images-updated", handleUpdate as EventListener);
-    return () => window.removeEventListener("docker-images-updated", handleUpdate as EventListener);
+    window.addEventListener("docker-images-updated", handleUpdate);
+    return () => window.removeEventListener("docker-images-updated", handleUpdate);
   }, []);
 
   const { baseImages, versionsByImage } = useMemo(
@@ -136,7 +140,7 @@ export function useDockerImages(): UseDockerImagesResult {
   );
 
   const getVersionsForImage = useCallback(
-    (baseImage: string): string[] => versionsByImage.get(baseImage) || ["latest"],
+    (baseImage: string): string[] => versionsByImage.get(baseImage) ?? ["latest"],
     [versionsByImage]
   );
 

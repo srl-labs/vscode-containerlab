@@ -5,6 +5,7 @@
 import { useEffect, useRef } from "react";
 
 import { extractUsedCustomIcons } from "../../../shared/types/icons";
+import { getRecordUnknown } from "../../../shared/utilities/typeHelpers";
 import { sendIconReconcile } from "../../messaging/extensionMessaging";
 import { useGraphStore } from "../../stores/graphStore";
 
@@ -13,11 +14,13 @@ interface IconUsageEntry {
   topoViewerRole: string | null;
 }
 
-function selectIconUsageEntries(state: { nodes: Array<{ id: string; data?: unknown }> }): IconUsageEntry[] {
+function selectIconUsageEntries(state: {
+  nodes: Array<{ id: string; data?: unknown }>;
+}): IconUsageEntry[] {
   const entries: IconUsageEntry[] = [];
   for (const node of state.nodes) {
-    const data = node.data as Record<string, unknown> | undefined;
-    const extraData = (data?.extraData as Record<string, unknown> | undefined) ?? {};
+    const data = getRecordUnknown(node.data);
+    const extraData = getRecordUnknown(data?.extraData) ?? {};
     const role = data?.role;
     const fallbackRole = extraData.topoViewerRole;
     let topoViewerRole: string | null = null;

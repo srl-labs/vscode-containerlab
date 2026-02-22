@@ -7,17 +7,22 @@ import type { ClabLabTreeNode } from "../treeView/common";
 
 import { execCommandInTerminal } from "./command";
 
-interface ClabTopologyYaml {
-  mgmt?: {
-    network?: string;
-  };
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function getMgmtNetwork(doc: unknown): string | undefined {
+  if (!isRecord(doc)) return undefined;
+  const mgmt = doc.mgmt;
+  if (!isRecord(mgmt)) return undefined;
+  return typeof mgmt.network === "string" ? mgmt.network : undefined;
 }
 
 function buildNetworkFromYaml(topoPath: string): string {
   try {
     const content = fs.readFileSync(topoPath, "utf8");
-    const doc = YAML.parse(content) as ClabTopologyYaml | null;
-    const net = doc?.mgmt?.network;
+    const doc: unknown = YAML.parse(content);
+    const net = getMgmtNetwork(doc);
     if (typeof net === "string" && net.trim().length > 0) {
       return net.trim();
     }
@@ -27,14 +32,14 @@ function buildNetworkFromYaml(topoPath: string): string {
   return "clab";
 }
 
-function runFcli(node: ClabLabTreeNode, cmd: string) {
+function runFcli(node: ClabLabTreeNode | undefined, cmd: string) {
   if (!node) {
     vscode.window.showErrorMessage("No lab node selected.");
     return;
   }
 
-  const topo = node.labPath?.absolute;
-  if (!topo) {
+  const topo = node.labPath.absolute;
+  if (topo.length === 0) {
     vscode.window.showErrorMessage("No topology path found.");
     return;
   }
@@ -64,7 +69,7 @@ export async function fcliCustom(node: ClabLabTreeNode) {
     title: "Custom fcli command",
     placeHolder: "Enter command, e.g. bgp-peers"
   });
-  if (!val || val.trim().length === 0) {
+  if (val === undefined || val.trim().length === 0) {
     return;
   }
   runFcli(node, val.trim());

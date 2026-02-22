@@ -73,7 +73,7 @@ const Toolbar: React.FC<{ formData: FreeTextAnnotation; updateField: Props["upda
   const isBold = formData.fontWeight === "bold";
   const isItalic = formData.fontStyle === "italic";
   const isUnderline = formData.textDecoration === "underline";
-  const align = formData.textAlign || "left";
+  const align = formData.textAlign ?? "left";
 
   return (
     <Box
@@ -142,7 +142,7 @@ const FontControls: React.FC<{
       select
       label="Font Family"
       size="small"
-      value={formData.fontFamily || "monospace"}
+      value={formData.fontFamily ?? "monospace"}
       onChange={(e) => updateField("fontFamily", e.target.value)}
       sx={{ flex: 7 }}
     >
@@ -156,7 +156,7 @@ const FontControls: React.FC<{
       label="Font Size"
       type="number"
       size="small"
-      value={formData.fontSize || 14}
+      value={formData.fontSize ?? 14}
       onChange={(e) => updateField("fontSize", parseInt(e.target.value) || 14)}
       slotProps={{
         htmlInput: { min: 1, max: 72, style: { textAlign: "center" } },
@@ -187,14 +187,14 @@ const StyleOptions: React.FC<{
         <Box sx={{ flex: 1 }}>
           <ColorField
             label="Text"
-            value={formData.fontColor || "#FFFFFF"}
+            value={formData.fontColor ?? "#FFFFFF"}
             onChange={(v) => updateField("fontColor", v)}
           />
         </Box>
         <Box sx={{ flex: 1 }}>
           <ColorField
             label="Fill"
-            value={isTransparent ? "#000000" : formData.backgroundColor || "#000000"}
+            value={isTransparent ? "#000000" : (formData.backgroundColor ?? "#000000")}
             onChange={(v) => updateField("backgroundColor", v)}
             disabled={isTransparent}
           />
@@ -203,7 +203,9 @@ const StyleOptions: React.FC<{
               <Checkbox
                 size="small"
                 checked={isTransparent}
-                onChange={() => updateField("backgroundColor", isTransparent ? "#000000" : "transparent")}
+                onChange={() =>
+                  updateField("backgroundColor", isTransparent ? "#000000" : "transparent")
+                }
               />
             }
             label="No fill"
@@ -215,7 +217,7 @@ const StyleOptions: React.FC<{
         label="Rotation"
         type="number"
         size="small"
-        value={formData.rotation || 0}
+        value={formData.rotation ?? 0}
         onChange={(e) => updateField("rotation", parseInt(e.target.value) || 0)}
         slotProps={{
           htmlInput: { min: -360, max: 360 },
@@ -235,10 +237,7 @@ const StyleOptions: React.FC<{
 };
 
 // Main component
-export const FreeTextFormContent: React.FC<Props> = ({
-  formData,
-  updateField
-}) => (
+export const FreeTextFormContent: React.FC<Props> = ({ formData, updateField }) => (
   <Box sx={{ display: "flex", flexDirection: "column" }}>
     <PanelSection title="Text" withTopDivider={false} bodySx={{ p: 2 }}>
       <Toolbar formData={formData} updateField={updateField} />
@@ -249,7 +248,6 @@ export const FreeTextFormContent: React.FC<Props> = ({
         value={formData.text}
         onChange={(e) => updateField("text", e.target.value)}
         placeholder="Enter your text... (Markdown and fenced code blocks supported)"
-        autoFocus
         sx={{ "& textarea": { resize: "vertical", overflow: "auto" } }}
       />
     </PanelSection>

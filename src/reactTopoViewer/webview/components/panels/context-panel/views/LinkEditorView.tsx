@@ -6,7 +6,7 @@ import type { TabConfig } from "../../../ui/editor/EditorPanel";
 import { useFooterControlsRef } from "../../../../hooks/ui";
 import { useLinkEditorForm } from "../../../../hooks/editor/useLinkEditorForm";
 import type { LinkEditorData, LinkEditorTabId, LinkTabProps } from "../../link-editor/types";
-import { validateLinkEditorData, ExtendedTab  } from "../../link-editor/ExtendedTab";
+import { validateLinkEditorData, ExtendedTab } from "../../link-editor/ExtendedTab";
 import { BasicTab } from "../../link-editor/BasicTab";
 
 export interface LinkEditorBannerRef {
@@ -42,6 +42,10 @@ const ALL_TABS: Array<TabConfig<LinkTabProps>> = [
 const BASIC_ONLY_TABS: Array<TabConfig<LinkTabProps>> = [
   { id: "basic", label: "Basic", component: BasicTab }
 ];
+
+function isLinkEditorTabId(value: string): value is LinkEditorTabId {
+  return value === "basic" || value === "extended";
+}
 
 export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
   linkData,
@@ -135,7 +139,7 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
 
   if (!formData) return null;
 
-  const isVethLink = !formData.sourceIsNetwork && !formData.targetIsNetwork;
+  const isVethLink = formData.sourceIsNetwork !== true && formData.targetIsNetwork !== true;
   const tabs = isVethLink ? ALL_TABS : BASIC_ONLY_TABS;
   const effectiveActiveTab = !isVethLink && activeTab === "extended" ? "basic" : activeTab;
 
@@ -149,7 +153,11 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
     <EditorPanel
       tabs={tabs}
       activeTab={effectiveActiveTab}
-      onTabChange={(id) => setActiveTab(id as LinkEditorTabId)}
+      onTabChange={(id) => {
+        if (isLinkEditorTabId(id)) {
+          setActiveTab(id);
+        }
+      }}
       tabProps={tabProps}
       readOnly={readOnly}
     />

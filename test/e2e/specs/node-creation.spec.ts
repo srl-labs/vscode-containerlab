@@ -16,7 +16,7 @@ async function getEmptyPanePoints(
 ): Promise<Array<{ x: number; y: number }>> {
   const canvas = topoViewerPage.getCanvas();
   const box = await canvas.boundingBox();
-  if (!box) throw new Error("Canvas bounding box unavailable");
+  if (box === null) throw new Error("Canvas bounding box unavailable");
 
   const points = await page.evaluate(
     ({ canvasBox, maxPoints }) => {

@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 import type { NetworkEditorData } from "../../components/panels/network-editor/types";
+import { discardFormChanges, hasFormChanges } from "./formChangeTracking";
 
 export interface UseNetworkEditorFormReturn {
   formData: NetworkEditorData | null;
@@ -19,12 +20,13 @@ export function useNetworkEditorForm(
   readOnly = false
 ): UseNetworkEditorFormReturn {
   const [formData, setFormData] = useState<NetworkEditorData | null>(null);
-  const [initialData, setInitialData] = useState<string | null>(null);
+  const [initialData, setInitialData] = useState<NetworkEditorData | null>(null);
 
   useEffect(() => {
     if (nodeData) {
-      setFormData({ ...nodeData });
-      setInitialData(JSON.stringify(nodeData));
+      const nextData = { ...nodeData };
+      setFormData(nextData);
+      setInitialData(nextData);
     }
   }, [nodeData]);
 
@@ -37,14 +39,14 @@ export function useNetworkEditorForm(
   );
 
   const resetInitialData = useCallback(() => {
-    if (formData) setInitialData(JSON.stringify(formData));
+    if (formData) setInitialData({ ...formData });
   }, [formData]);
 
   const discardChanges = useCallback(() => {
-    if (initialData) setFormData(JSON.parse(initialData) as NetworkEditorData);
+    discardFormChanges(initialData, setFormData);
   }, [initialData]);
 
-  const hasChanges = formData && initialData ? JSON.stringify(formData) !== initialData : false;
+  const hasChanges = hasFormChanges(formData, initialData);
 
   return { formData, handleChange, hasChanges, resetInitialData, discardChanges };
 }

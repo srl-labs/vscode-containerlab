@@ -15,7 +15,11 @@ import { useIsLocked } from "../../../stores/topoViewerStore";
 import type { NodeData, LinkData } from "../../../hooks/ui";
 import { useContextPanelContent } from "../../../hooks/ui/useContextPanelContent";
 
-import type { ContextPanelEditorState, EditorFooterRef, EditorBannerRef } from "./views/editorTypes";
+import type {
+  ContextPanelEditorState,
+  EditorFooterRef,
+  EditorBannerRef
+} from "./views/editorTypes";
 import { PaletteView } from "./views";
 
 const MIN_WIDTH = 500;
@@ -160,7 +164,11 @@ const ToggleHandle: React.FC<{
       }}
     >
       <Tooltip title={toggleTitle} placement={sideConfig.tooltipPlacement}>
-        <Box onClick={handleToggle} data-testid="panel-toggle-btn" sx={{ ...handleStyle, height: 48 }}>
+        <Box
+          onClick={handleToggle}
+          data-testid="panel-toggle-btn"
+          sx={{ ...handleStyle, height: 48 }}
+        >
           <ActiveIcon sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
         </Box>
       </Tooltip>
@@ -288,7 +296,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   );
 
   const footer = footerRef.current;
-  const showFooter = panelView.hasFooter && footer;
+  const showFooter = panelView.hasFooter && footer !== null;
 
   return (
     <>
@@ -365,7 +373,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             </React.Fragment>
           ))}
 
-        {panelView.hasFooter && footer?.hasChanges && !isReadOnly && (
+        {panelView.hasFooter && footer?.hasChanges === true && !isReadOnly && (
           <>
             <Box
               sx={{
@@ -395,15 +403,11 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           {content}
         </Box>
 
-        {showFooter && !isReadOnly && (
+        {showFooter === true && !isReadOnly && (
           <>
             <Divider />
             <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, p: 1.5 }}>
-              <Button
-                size="small"
-                onClick={footer.handleApply}
-                data-testid="panel-apply-btn"
-              >
+              <Button size="small" onClick={footer.handleApply} data-testid="panel-apply-btn">
                 Apply
               </Button>
             </Box>

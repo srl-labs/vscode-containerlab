@@ -26,6 +26,10 @@ const NETEM_FIELD_FORMAT: Record<keyof NetemState, FormatCheck> = {
   corruption: { format: PERCENTAGE_RE, error: ERR_PERCENTAGE }
 };
 
+function isNetemKey(value: string): value is keyof NetemState {
+  return Object.prototype.hasOwnProperty.call(NETEM_FIELD_FORMAT, value);
+}
+
 /**
  * Validate netem state.
  * @param netemState to validate
@@ -35,16 +39,19 @@ export function validateLinkImpairmentState(netemState: NetemState): string[] {
   const errors: string[] = [];
 
   // Format check
-  Object.keys(netemState).forEach((k) => {
-    const key = k as keyof NetemState;
-    if (!NETEM_FIELD_FORMAT[key].format.test(netemState[key]!)) {
+  Object.entries(netemState).forEach(([key, value]) => {
+    if (!isNetemKey(key)) {
+      return;
+    }
+    const normalizedValue = typeof value === "string" ? value : "";
+    if (!NETEM_FIELD_FORMAT[key].format.test(normalizedValue)) {
       errors.push(`(${key}) - ${NETEM_FIELD_FORMAT[key].error}`);
     }
   });
 
   // Cross-field validations
-  const delayVal = parseFloat(netemState.delay || "") || 0;
-  const jitterVal = parseFloat(netemState.jitter || "") || 0;
+  const delayVal = parseFloat(netemState.delay ?? "") || 0;
+  const jitterVal = parseFloat(netemState.jitter ?? "") || 0;
   if (jitterVal > 0 && delayVal === 0) {
     errors.push("cannot set jitter when delay is 0");
   }
@@ -69,13 +76,13 @@ export function formatNetemData(data: LinkImpairmentData): LinkImpairmentData {
   const formattedData: LinkImpairmentData = { ...data };
   if (formattedData.extraData?.clabSourceNetem) {
     formattedData.extraData.clabSourceNetem = stripNetemDataUnit(
-      formattedData.extraData?.clabSourceNetem
+      formattedData.extraData.clabSourceNetem
     );
     formattedData.sourceNetem = formattedData.extraData.clabSourceNetem;
   }
   if (formattedData.extraData?.clabTargetNetem) {
     formattedData.extraData.clabTargetNetem = stripNetemDataUnit(
-      formattedData.extraData?.clabTargetNetem
+      formattedData.extraData.clabTargetNetem
     );
     formattedData.targetNetem = formattedData.extraData.clabTargetNetem;
   }

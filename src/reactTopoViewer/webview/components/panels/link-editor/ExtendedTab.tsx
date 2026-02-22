@@ -16,12 +16,12 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
   const targetName = data.target || "Target";
 
   const handleAddVar = () => {
-    const vars = data.vars || {};
+    const vars = data.vars ?? {};
     onChange({ vars: { ...vars, "": "" } });
   };
 
   const handleAddLabel = () => {
-    const labels = data.labels || {};
+    const labels = data.labels ?? {};
     onChange({ labels: { ...labels, "": "" } });
   };
 
@@ -82,7 +82,7 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
         <InputField
           id="link-mtu"
           label="MTU"
-          value={data.mtu?.toString() || ""}
+          value={data.mtu?.toString() ?? ""}
           onChange={(value) => onChange({ mtu: value ? parseInt(value, 10) : undefined })}
           placeholder="e.g., 1500"
           type="number"
@@ -91,7 +91,7 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
 
       <PanelAddSection title="Variables" onAdd={handleAddVar}>
         <KeyValueList
-          items={data.vars || {}}
+          items={data.vars ?? {}}
           onChange={(vars) => onChange({ vars })}
           keyPlaceholder="Variable name"
           valuePlaceholder="Value"
@@ -101,7 +101,7 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
 
       <PanelAddSection title="Labels" onAdd={handleAddLabel}>
         <KeyValueList
-          items={data.labels || {}}
+          items={data.labels ?? {}}
           onChange={(labels) => onChange({ labels })}
           keyPlaceholder="Label key"
           valuePlaceholder="Label value"
@@ -125,7 +125,7 @@ const NonVethInfo: React.FC = () => (
 );
 
 export const ExtendedTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
-  const isVethLink = !data.type || data.type === "veth";
+  const isVethLink = data.type === undefined || data.type === "veth";
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -141,11 +141,11 @@ export const ExtendedTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
 };
 
 function addRequiredNodeErrors(data: LinkEditorData, errors: string[]): void {
-  if (!data.source) {
+  if (data.source.length === 0) {
     errors.push("Source node is required");
   }
 
-  if (!data.target) {
+  if (data.target.length === 0) {
     errors.push("Target node is required");
   }
 }
@@ -155,12 +155,14 @@ function addInterfaceRequirementErrors(
   errors: string[],
   isSelfLoop: boolean
 ): void {
-  const needsSourceInterface = !data.sourceEndpoint && !data.sourceIsNetwork && !isSelfLoop;
+  const needsSourceInterface =
+    data.sourceEndpoint.length === 0 && data.sourceIsNetwork !== true && !isSelfLoop;
   if (needsSourceInterface) {
     errors.push(`${data.source || "Source"} interface is required`);
   }
 
-  const needsTargetInterface = !data.targetEndpoint && !data.targetIsNetwork && !isSelfLoop;
+  const needsTargetInterface =
+    data.targetEndpoint.length === 0 && data.targetIsNetwork !== true && !isSelfLoop;
   if (needsTargetInterface) {
     errors.push(`${data.target || "Target"} interface is required`);
   }
@@ -168,7 +170,7 @@ function addInterfaceRequirementErrors(
 
 function hasSelfLoopEndpointConflict(data: LinkEditorData, isSelfLoop: boolean): boolean {
   if (!isSelfLoop) return false;
-  if (!data.sourceEndpoint || !data.targetEndpoint) return false;
+  if (data.sourceEndpoint.length === 0 || data.targetEndpoint.length === 0) return false;
   return data.sourceEndpoint === data.targetEndpoint;
 }
 
@@ -177,7 +179,7 @@ function hasSelfLoopEndpointConflict(data: LinkEditorData, isSelfLoop: boolean):
  */
 export function validateLinkEditorData(data: LinkEditorData): string[] {
   const errors: string[] = [];
-  const isSelfLoop = !!data.source && data.source === data.target;
+  const isSelfLoop = data.source === data.target;
 
   addRequiredNodeErrors(data, errors);
   addInterfaceRequirementErrors(data, errors, isSelfLoop);

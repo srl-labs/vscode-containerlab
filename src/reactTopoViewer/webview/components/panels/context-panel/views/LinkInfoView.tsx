@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 
 import type { LinkData } from "../../../../hooks/ui";
 import type { InterfaceStatsPayload } from "../../../../../shared/types/topology";
+import { getString } from "../../../../../shared/utilities/typeHelpers";
 import { TrafficChart } from "../../TrafficChart";
 import type { TabDefinition } from "../../../ui/editor";
 import { TabNavigation } from "../../../ui/editor/TabNavigation";
@@ -40,24 +41,32 @@ export interface LinkInfoViewProps {
 
 type EndpointTab = "a" | "b";
 
-function getEndpoints(linkData: LinkInfoData): { a: EndpointData; b: EndpointData } {
-  const extraData = linkData.extraData || {};
+function toEndpointTab(id: string): EndpointTab {
+  return id === "b" ? "b" : "a";
+}
 
-  const a: EndpointData = linkData.endpointA || {
+function getEndpoints(linkData: LinkInfoData): { a: EndpointData; b: EndpointData } {
+  const extraData = linkData.extraData ?? {};
+  const sourceMac = getString(extraData.clabSourceMacAddress) ?? "";
+  const sourceType = getString(extraData.clabSourceType) ?? "";
+  const targetMac = getString(extraData.clabTargetMacAddress) ?? "";
+  const targetType = getString(extraData.clabTargetType) ?? "";
+
+  const a: EndpointData = linkData.endpointA ?? {
     node: linkData.source,
-    interface: linkData.sourceEndpoint || "",
-    mac: (extraData.clabSourceMacAddress as string) || "",
-    mtu: extraData.clabSourceMtu || "",
-    type: (extraData.clabSourceType as string) || "",
+    interface: linkData.sourceEndpoint ?? "",
+    mac: sourceMac,
+    mtu: extraData.clabSourceMtu ?? "",
+    type: sourceType,
     stats: extraData.clabSourceStats
   };
 
-  const b: EndpointData = linkData.endpointB || {
+  const b: EndpointData = linkData.endpointB ?? {
     node: linkData.target,
-    interface: linkData.targetEndpoint || "",
-    mac: (extraData.clabTargetMacAddress as string) || "",
-    mtu: extraData.clabTargetMtu || "",
-    type: (extraData.clabTargetType as string) || "",
+    interface: linkData.targetEndpoint ?? "",
+    mac: targetMac,
+    mtu: extraData.clabTargetMtu ?? "",
+    type: targetType,
     stats: extraData.clabTargetStats
   };
 
@@ -74,8 +83,8 @@ export const LinkInfoView: React.FC<LinkInfoViewProps> = ({ linkData }) => {
   const endpointKey = `${activeTab}:${currentEndpoint.node}:${currentEndpoint.interface}`;
 
   const endpointTabs: TabDefinition[] = [
-    { id: "a", label: `${linkData.source}:${linkData.sourceEndpoint || "eth"}` },
-    { id: "b", label: `${linkData.target}:${linkData.targetEndpoint || "eth"}` }
+    { id: "a", label: `${linkData.source}:${linkData.sourceEndpoint ?? "eth"}` },
+    { id: "b", label: `${linkData.target}:${linkData.targetEndpoint ?? "eth"}` }
   ];
 
   return (
@@ -83,24 +92,24 @@ export const LinkInfoView: React.FC<LinkInfoViewProps> = ({ linkData }) => {
       <TabNavigation
         tabs={endpointTabs}
         activeTab={activeTab}
-        onTabChange={(id) => setActiveTab(id as EndpointTab)}
+        onTabChange={(id) => setActiveTab(toEndpointTab(id))}
       />
 
       <Box sx={{ flex: 1, overflow: "auto" }}>
         <PanelSectionHeader title="Endpoint" withTopDivider={true} />
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-            <ReadOnlyCopyField label="Node" value={currentEndpoint.node || ""} />
-            <ReadOnlyCopyField label="Interface" value={currentEndpoint.interface || ""} />
+            <ReadOnlyCopyField label="Node" value={currentEndpoint.node ?? ""} />
+            <ReadOnlyCopyField label="Interface" value={currentEndpoint.interface ?? ""} />
           </Box>
-          <ReadOnlyCopyField label="Type" value={currentEndpoint.type || ""} />
+          <ReadOnlyCopyField label="Type" value={currentEndpoint.type ?? ""} />
         </Box>
 
         <PanelSectionHeader title="Layer 2" withTopDivider={true} />
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-            <ReadOnlyCopyField label="MAC" value={currentEndpoint.mac || ""} mono />
-            <ReadOnlyCopyField label="MTU" value={String(currentEndpoint.mtu || "")} />
+            <ReadOnlyCopyField label="MAC" value={currentEndpoint.mac ?? ""} mono />
+            <ReadOnlyCopyField label="MTU" value={String(currentEndpoint.mtu ?? "")} />
           </Box>
         </Box>
 

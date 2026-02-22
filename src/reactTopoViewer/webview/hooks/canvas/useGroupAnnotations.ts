@@ -26,6 +26,29 @@ interface UseGroupAnnotationsParams {
   uiActions: Pick<AnnotationUIActions, "setEditingGroup" | "removeFromGroupSelection">;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isGroupNodeData(value: unknown): value is GroupNodeData {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.name === "string" &&
+    typeof value.level === "string" &&
+    typeof value.width === "number" &&
+    typeof value.height === "number"
+  );
+}
+
+function isGroupNode(node: Node): node is Node<GroupNodeData> {
+  return node.type === GROUP_NODE_TYPE && isGroupNodeData(node.data);
+}
+
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
+
 export interface GroupAnnotationActions {
   editGroup: (id: string) => void;
   saveGroup: (data: GroupEditorData) => void;
@@ -42,9 +65,7 @@ function buildGroupsSnapshot(
 ): GroupStyleAnnotation[] {
   if (derived.groups.length > 0) return derived.groups;
 
-  return graphNodes
-    .filter((node) => node.type === GROUP_NODE_TYPE)
-    .map((node) => nodeToGroup(node as Node<GroupNodeData>));
+  return graphNodes.filter(isGroupNode).map((node) => nodeToGroup(node));
 }
 
 function getGroupDeletionContext(
@@ -114,7 +135,7 @@ function reassignGroupMembers(
       continue;
     }
 
-    if (parentId) {
+    if (parentId !== null && parentId.length > 0) {
       derived.addNodeToGroup(memberId, parentId);
     } else {
       derived.removeNodeFromGroup(memberId);
@@ -144,7 +165,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       uiActions.setEditingGroup({
         id: group.id,
         name: group.name,
-        level: group.level ?? "1",
+        level: group.level,
         style: {
           backgroundColor: group.backgroundColor,
           backgroundOpacity: group.backgroundOpacity,
@@ -156,8 +177,8 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
           labelPosition: group.labelPosition
         },
         position: group.position,
-        width: group.width ?? 200,
-        height: group.height ?? 150
+        width: group.width,
+        height: group.height
       });
     },
     [derived.groups, uiActions]
@@ -193,11 +214,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       const graphNodes = useGraphStore.getState().nodes;
       const groupsSnapshot = buildGroupsSnapshot(derived, graphNodes);
       const { parentId, memberIds, childGroups, textIds, shapeIds, trafficRateIds } =
-        getGroupDeletionContext(
-        derived,
-        groupsSnapshot,
-        id
-      );
+        getGroupDeletionContext(derived, groupsSnapshot, id);
 
       derived.deleteGroup(id);
       uiActions.removeFromGroupSelection(id);
@@ -223,7 +240,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
     const padding = 40;
 
     const rfNodes = rfInstance?.getNodes() ?? [];
-    const selectedNodes = rfNodes.filter((n) => n.selected && n.type !== "group");
+    const selectedNodes = rfNodes.filter((n) => n.selected === true && n.type !== "group");
 
     const { position, width, height, members } =
       selectedNodes.length > 0
@@ -273,7 +290,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       const padding = 40;
 
       const rfNodes = rfInstance?.getNodes() ?? [];
-      const selectedNodes = rfNodes.filter((n) => n.selected && n.type !== "group");
+      const selectedNodes = rfNodes.filter((n) => n.selected === true && n.type !== "group");
 
       const bounds =
         selectedNodes.length > 0
@@ -321,7 +338,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
 
   const addGroup = useCallback(
     (group: GroupStyleAnnotation) => {
-      const memberIds = Array.isArray(group.members) ? (group.members as string[]) : [];
+      const memberIds = toStringArray(group.members);
       derived.addGroup(group);
       if (memberIds.length > 0) {
         for (const memberId of memberIds) {

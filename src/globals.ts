@@ -6,6 +6,7 @@
  */
 import * as vscode from "vscode";
 import type Docker from "dockerode";
+import { getRecordUnknown } from "./reactTopoViewer/shared/utilities/typeHelpers";
 
 /**
  * Minimal interfaces for providers to avoid circular imports.
@@ -42,11 +43,15 @@ export let helpFeedbackProvider: unknown;
 export let sshxSessions: Map<string, string> = new Map();
 export let gottySessions: Map<string, string> = new Map();
 
-export const extensionVersion = (
-  vscode.extensions.getExtension("srl-labs.vscode-containerlab")?.packageJSON as
-    | { version?: string }
-    | undefined
-)?.version;
+function resolveExtensionVersion(): string | undefined {
+  const pkg =
+    getRecordUnknown(vscode.extensions.getExtension("srl-labs.vscode-containerlab")?.packageJSON) ??
+    {};
+  const version = pkg.version;
+  return typeof version === "string" ? version : undefined;
+}
+
+export const extensionVersion = resolveExtensionVersion();
 
 export let containerlabBinaryPath: string = "containerlab";
 export let dockerClient: Docker;

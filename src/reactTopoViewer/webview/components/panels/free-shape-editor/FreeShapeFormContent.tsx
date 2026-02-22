@@ -32,6 +32,20 @@ interface BorderSectionProps extends SectionProps {
   isRectangle: boolean;
 }
 
+function toShapeType(value: string): FreeShapeAnnotation["shapeType"] {
+  if (value === "rectangle" || value === "circle" || value === "line") {
+    return value;
+  }
+  return "rectangle";
+}
+
+function toBorderStyle(value: string): FreeShapeAnnotation["borderStyle"] {
+  if (value === "solid" || value === "dashed" || value === "dotted") {
+    return value;
+  }
+  return DEFAULT_BORDER_STYLE;
+}
+
 const ShapeSection: React.FC<SectionProps> = ({ formData, updateField, isLine }) => {
   return (
     <PanelSection title="Shape" withTopDivider={false}>
@@ -40,7 +54,7 @@ const ShapeSection: React.FC<SectionProps> = ({ formData, updateField, isLine })
           id="shape-type"
           label="Shape Type"
           value={formData.shapeType}
-          onChange={(v) => updateField("shapeType", v as FreeShapeAnnotation["shapeType"])}
+          onChange={(v) => updateField("shapeType", toShapeType(v))}
           options={[
             { value: "rectangle", label: "Rectangle" },
             { value: "circle", label: "Circle" },
@@ -92,7 +106,10 @@ const FillSection: React.FC<SectionProps> = ({ formData, updateField, isLine }) 
   const opacity = formData.fillOpacity ?? DEFAULT_FILL_OPACITY;
 
   return (
-    <PanelSection title="Fill" bodySx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, p: 2 }}>
+    <PanelSection
+      title="Fill"
+      bodySx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, p: 2 }}
+    >
       <>
         <ColorField
           label="Fill Color"
@@ -161,7 +178,7 @@ const BorderSection: React.FC<BorderSectionProps> = ({
             id="shape-border-style"
             label="Style"
             value={formData.borderStyle ?? DEFAULT_BORDER_STYLE}
-            onChange={(v) => updateField("borderStyle", v as FreeShapeAnnotation["borderStyle"])}
+            onChange={(v) => updateField("borderStyle", toBorderStyle(v))}
             options={[
               { value: "solid", label: "Solid" },
               { value: "dashed", label: "Dashed" },
@@ -177,7 +194,7 @@ const BorderSection: React.FC<BorderSectionProps> = ({
 const ArrowSection: React.FC<SectionProps> = ({ formData, updateField, isLine }) => {
   if (!isLine) return null;
 
-  const hasArrows = Boolean(formData.lineStartArrow || formData.lineEndArrow);
+  const hasArrows = Boolean(formData.lineStartArrow ?? formData.lineEndArrow);
 
   return (
     <PanelSection title="Arrows">
@@ -185,13 +202,13 @@ const ArrowSection: React.FC<SectionProps> = ({ formData, updateField, isLine })
         <Box sx={{ display: "flex", gap: 1 }}>
           <Toggle
             active={formData.lineStartArrow ?? false}
-            onClick={() => updateField("lineStartArrow", !formData.lineStartArrow)}
+            onClick={() => updateField("lineStartArrow", formData.lineStartArrow !== true)}
           >
             Start Arrow
           </Toggle>
           <Toggle
             active={formData.lineEndArrow ?? false}
-            onClick={() => updateField("lineEndArrow", !formData.lineEndArrow)}
+            onClick={() => updateField("lineEndArrow", formData.lineEndArrow !== true)}
           >
             End Arrow
           </Toggle>

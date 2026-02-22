@@ -95,6 +95,28 @@ const MAX_GEO_SLOT_SCAN = 4096;
 let maplibreWorkerBlobUrl: string | null = null;
 let maplibreWorkerBlobSourceKey: string | null = null;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toGeoCoordinates(value: unknown): GeoCoordinates | null {
+  if (!isRecord(value)) return null;
+  const lat = value.lat;
+  const lng = value.lng;
+  if (typeof lat !== "number" || !Number.isFinite(lat)) return null;
+  if (typeof lng !== "number" || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
+function toXYPosition(value: unknown): XYPosition | null {
+  if (!isRecord(value)) return null;
+  const x = value.x;
+  const y = value.y;
+  if (typeof x !== "number" || !Number.isFinite(x)) return null;
+  if (typeof y !== "number" || !Number.isFinite(y)) return null;
+  return { x, y };
+}
+
 function decodeBase64ToString(base64: string): string {
   if (typeof window === "undefined" || typeof window.atob !== "function") {
     throw new Error("Base64 decoding is unavailable in this environment");
@@ -109,11 +131,15 @@ function getOrCreateWorkerBlobUrl(sourceKey: string, workerSource: string): stri
     return null;
   }
 
-  if (maplibreWorkerBlobUrl && maplibreWorkerBlobSourceKey === sourceKey) {
+  if (
+    maplibreWorkerBlobUrl != null &&
+    maplibreWorkerBlobUrl.length > 0 &&
+    maplibreWorkerBlobSourceKey === sourceKey
+  ) {
     return maplibreWorkerBlobUrl;
   }
 
-  if (maplibreWorkerBlobUrl) {
+  if (maplibreWorkerBlobUrl != null && maplibreWorkerBlobUrl.length > 0) {
     URL.revokeObjectURL(maplibreWorkerBlobUrl);
     maplibreWorkerBlobUrl = null;
     maplibreWorkerBlobSourceKey = null;
@@ -132,7 +158,7 @@ function resolveMapLibreWorkerUrl(): string | null {
   }
 
   const workerSourceBase64 = window.maplibreWorkerSourceBase64;
-  if (workerSourceBase64) {
+  if (workerSourceBase64 != null && workerSourceBase64.length > 0) {
     try {
       const sourceKey = `inline:${workerSourceBase64.length}:${workerSourceBase64.slice(0, 32)}`;
       const workerSource = decodeBase64ToString(workerSourceBase64);
@@ -147,7 +173,7 @@ function resolveMapLibreWorkerUrl(): string | null {
   }
 
   const configuredWorkerUrl = window.maplibreWorkerUrl;
-  if (!configuredWorkerUrl) {
+  if (configuredWorkerUrl == null || configuredWorkerUrl.length === 0) {
     return null;
   }
 
@@ -175,11 +201,11 @@ const DEFAULT_SIZE_BY_TYPE: Record<string, { width: number; height: number }> = 
 };
 
 function getNodeSize(node: Node): { width: number; height: number } {
-  const data = (node.data ?? {}) as Record<string, unknown>;
+  const data = node.data;
   const width = node.width ?? (typeof data.width === "number" ? data.width : undefined);
   const height = node.height ?? (typeof data.height === "number" ? data.height : undefined);
 
-  if (width && height) {
+  if (width != null && width > 0 && height != null && height > 0) {
     return { width, height };
   }
 
@@ -191,22 +217,16 @@ function getNodeSize(node: Node): { width: number; height: number } {
 }
 
 function extractGeoCoordinates(node: Node): GeoCoordinates | null {
-  const data = (node.data ?? {}) as Record<string, unknown>;
-  const geo = (data.geoCoordinates ??
-    (data.extraData as Record<string, unknown> | undefined)?.geoCoordinates) as
-    | GeoCoordinates
-    | undefined;
-  if (!geo) return null;
-  if (!Number.isFinite(geo.lat) || !Number.isFinite(geo.lng)) return null;
-  return geo;
+  const data = node.data;
+  const topLevelGeo = toGeoCoordinates(data.geoCoordinates);
+  if (topLevelGeo) return topLevelGeo;
+  const extraData = isRecord(data.extraData) ? data.extraData : null;
+  return toGeoCoordinates(extraData?.geoCoordinates);
 }
 
 function extractEndGeoCoordinates(node: Node): GeoCoordinates | null {
-  const data = (node.data ?? {}) as Record<string, unknown>;
-  const geo = data.endGeoCoordinates as GeoCoordinates | undefined;
-  if (!geo) return null;
-  if (!Number.isFinite(geo.lat) || !Number.isFinite(geo.lng)) return null;
-  return geo;
+  const data = node.data;
+  return toGeoCoordinates(data.endGeoCoordinates);
 }
 
 function positionEquals(a: XYPosition, b: XYPosition): boolean {
@@ -261,7 +281,9 @@ function buildGeoBounds(nodes: Node[]): LngLatBounds | null {
     const start = extractGeoCoordinates(node);
     const end = extractEndGeoCoordinates(node);
     if (!start && !end) continue;
-    const coords = [start, end].filter(Boolean) as GeoCoordinates[];
+    const coords: GeoCoordinates[] = [];
+    if (start) coords.push(start);
+    if (end) coords.push(end);
     for (const geo of coords) {
       if (!bounds) {
         bounds = new maplibregl.LngLatBounds([geo.lng, geo.lat], [geo.lng, geo.lat]);
@@ -298,9 +320,10 @@ function geoCoordinatesForSlot(slot: number): GeoCoordinates {
   });
 }
 
-function assignAutoGeoCoordinates(
-  nodes: Node[]
-): { nodes: Node[]; assignments: Array<{ id: string; geoCoordinates: GeoCoordinates }> } {
+function assignAutoGeoCoordinates(nodes: Node[]): {
+  nodes: Node[];
+  assignments: Array<{ id: string; geoCoordinates: GeoCoordinates }>;
+} {
   const occupied = new Set<string>();
   for (const node of nodes) {
     const geo = extractGeoCoordinates(node);
@@ -333,7 +356,7 @@ function assignAutoGeoCoordinates(
     }
 
     assignments.push({ id: node.id, geoCoordinates: geo });
-    const data = (node.data ?? {}) as Record<string, unknown>;
+    const data = node.data;
     return { ...node, data: { ...data, geoCoordinates: geo } };
   });
 
@@ -342,25 +365,29 @@ function assignAutoGeoCoordinates(
 
 function syncNodesToMap(map: MapLibreMap, nodes: Node[]): { nodes: Node[]; changed: boolean } {
   let changed = false;
-  const nextNodes = nodes.map((node) => {
-    const data = (node.data ?? {}) as Record<string, unknown>;
+  const nextNodes: Node[] = [];
+  for (const node of nodes) {
+    const data = node.data;
     if (node.type === FREE_SHAPE_NODE_TYPE && data.shapeType === "line") {
       const startGeo = extractGeoCoordinates(node);
       const endGeo = extractEndGeoCoordinates(node);
-      if (!startGeo || !endGeo) return node;
+      if (!startGeo || !endGeo) {
+        nextNodes.push(node);
+        continue;
+      }
       const start = map.project([startGeo.lng, startGeo.lat]);
       const end = map.project([endGeo.lng, endGeo.lat]);
       const boundsInfo = computeLineBounds({ x: start.x, y: start.y }, { x: end.x, y: end.y });
       if (
-        node.position &&
         positionEquals(node.position, boundsInfo.nodePosition) &&
         node.width === boundsInfo.width &&
         node.height === boundsInfo.height
       ) {
-        return node;
+        nextNodes.push(node);
+        continue;
       }
       changed = true;
-      return {
+      nextNodes.push({
         ...node,
         position: boundsInfo.nodePosition,
         width: boundsInfo.width,
@@ -372,16 +399,23 @@ function syncNodesToMap(map: MapLibreMap, nodes: Node[]): { nodes: Node[]; chang
           relativeEndPosition: boundsInfo.relativeEndPosition,
           lineStartInNode: boundsInfo.lineStartInNode
         }
-      };
+      });
+      continue;
     }
 
     const geo = extractGeoCoordinates(node);
-    if (!geo) return node;
+    if (!geo) {
+      nextNodes.push(node);
+      continue;
+    }
     const position = projectGeoToPosition(map, node, geo);
-    if (node.position && positionEquals(node.position, position)) return node;
+    if (positionEquals(node.position, position)) {
+      nextNodes.push(node);
+      continue;
+    }
     changed = true;
-    return { ...node, position };
-  });
+    nextNodes.push({ ...node, position });
+  }
 
   return { nodes: changed ? nextNodes : nodes, changed };
 }
@@ -490,7 +524,9 @@ function syncNodesAndResetViewport(
   }
 }
 
-function clearPendingInteractionTimeout(interactionEndTimeoutRef: { current: number | null }): void {
+function clearPendingInteractionTimeout(interactionEndTimeoutRef: {
+  current: number | null;
+}): void {
   if (interactionEndTimeoutRef.current === null) return;
   window.clearTimeout(interactionEndTimeoutRef.current);
   interactionEndTimeoutRef.current = null;
@@ -564,7 +600,7 @@ export function useGeoMapLayout({
     try {
       if (!workerConfiguredRef.current) {
         const workerUrl = resolveMapLibreWorkerUrl();
-        if (workerUrl) {
+        if (workerUrl != null && workerUrl.length > 0) {
           maplibregl.setWorkerUrl(workerUrl);
         }
         workerConfiguredRef.current = true;
@@ -663,7 +699,7 @@ export function useGeoMapLayout({
     if (!isGeoLayout || wasGeoRef.current) return;
     wasGeoRef.current = true;
     originalPositionsRef.current = new Map(
-      nodesRef.current.map((node) => [node.id, { ...(node.position ?? { x: 0, y: 0 }) }])
+      nodesRef.current.map((node) => [node.id, { ...node.position }])
     );
     const rf = reactFlowInstanceRef.current;
     if (rf) {
@@ -748,7 +784,7 @@ export function useGeoMapLayout({
     const map = mapRef.current;
     if (!map) return;
     if (initialAssignmentRef.current) return;
-    if (nodes.some((node) => node.dragging)) return;
+    if (nodes.some((node) => node.dragging === true)) return;
 
     const geoSyncSignature = buildGeoSyncSignature(nodes);
     if (geoSyncSignature === geoSyncSignatureRef.current) return;
@@ -773,14 +809,12 @@ export function useGeoMapLayout({
 
     const syncDuringRender = () => {
       const currentMap = mapRef.current;
-      if (!isGeoLayout || !currentMap || !isInteractingRef.current) return;
+      if (!currentMap || !isInteractingRef.current) return;
       const base = interactionBaseRef.current;
       if (!base) return;
       const rf = reactFlowInstanceRef.current;
       if (!rf) return;
-      if (!viewportElementRef.current) {
-        viewportElementRef.current = resolveViewportElement(canvasContainerRef.current);
-      }
+      viewportElementRef.current ??= resolveViewportElement(canvasContainerRef.current);
       applyGeoViewportTransform(currentMap, rf, base, viewportElementRef.current);
       viewportTransformOverrideActiveRef.current = Boolean(viewportElementRef.current);
     };
@@ -798,9 +832,7 @@ export function useGeoMapLayout({
           interactionBaseRef.current = null;
         }
       }
-      if (!viewportElementRef.current) {
-        viewportElementRef.current = resolveViewportElement(canvasContainerRef.current);
-      }
+      viewportElementRef.current ??= resolveViewportElement(canvasContainerRef.current);
       isInteractingRef.current = true;
       setIsInteracting(true);
     };
@@ -882,13 +914,13 @@ export function useGeoMapLayout({
     ): { geoCoordinates?: GeoCoordinates; endGeoCoordinates?: GeoCoordinates } | null => {
       const map = mapRef.current;
       if (!map) return null;
-      const data = (node.data ?? {}) as Record<string, unknown>;
+      const data = node.data;
       if (node.type === FREE_SHAPE_NODE_TYPE && data.shapeType === "line") {
-        const lineStart = (data.lineStartInNode as XYPosition | undefined) ?? {
+        const lineStart = toXYPosition(data.lineStartInNode) ?? {
           x: LINE_PADDING,
           y: LINE_PADDING
         };
-        const relativeEnd = (data.relativeEndPosition as XYPosition | undefined) ?? { x: 0, y: 0 };
+        const relativeEnd = toXYPosition(data.relativeEndPosition) ?? { x: 0, y: 0 };
         const startX = node.position.x + lineStart.x;
         const startY = node.position.y + lineStart.y;
         const endX = startX + relativeEnd.x;

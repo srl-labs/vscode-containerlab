@@ -131,6 +131,67 @@ const ANNOTATION_TYPES = new Set<string>([
   TRAFFIC_RATE_NODE_TYPE
 ]);
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function readNonEmptyString(value: unknown): string | undefined {
+  const next = readString(value);
+  if (next == null || next.length === 0) return undefined;
+  return next;
+}
+
+function readPosition(value: unknown): { x: number; y: number } | null {
+  if (!isRecord(value)) return null;
+  const { x, y } = value;
+  if (typeof x !== "number" || typeof y !== "number") return null;
+  return { x, y };
+}
+
+function isSerializedNode(value: unknown): value is SerializedNode {
+  if (!isRecord(value)) return false;
+  if (typeof value.id !== "string") return false;
+  if (!isRecord(value.data)) return false;
+  if (readPosition(value.position) == null) return false;
+  if (readPosition(value.relativePosition) == null) return false;
+  return true;
+}
+
+function isSerializedEdge(value: unknown): value is SerializedEdge {
+  if (!isRecord(value)) return false;
+  if (typeof value.id !== "string") return false;
+  if (typeof value.source !== "string") return false;
+  if (typeof value.target !== "string") return false;
+  return isRecord(value.data);
+}
+
+function isClipboardData(value: unknown): value is ClipboardData {
+  if (!isRecord(value)) return false;
+  if (typeof value.version !== "string") return false;
+  if (readPosition(value.origin) == null) return false;
+  if (!Array.isArray(value.nodes) || !value.nodes.every(isSerializedNode)) return false;
+  if (!Array.isArray(value.edges) || !value.edges.every(isSerializedEdge)) return false;
+  if (typeof value.timestamp !== "number") return false;
+  return true;
+}
+
+function resolveNodeType(type: string | undefined): TopoNode["type"] {
+  switch (type) {
+    case "network-node":
+    case GROUP_NODE_TYPE:
+    case FREE_TEXT_NODE_TYPE:
+    case FREE_SHAPE_NODE_TYPE:
+    case TRAFFIC_RATE_NODE_TYPE:
+      return type;
+    default:
+      return "topology-node";
+  }
+}
+
 // ============================================================================
 // Paste helper functions (extracted for complexity reduction)
 // ============================================================================
@@ -139,15 +200,15 @@ const ANNOTATION_TYPES = new Set<string>([
 async function readClipboardData(): Promise<ClipboardData | null> {
   try {
     const text = await window.navigator.clipboard.readText();
-    const clipboardData = JSON.parse(text) as ClipboardData;
+    const clipboardData: unknown = JSON.parse(text);
 
-    if (!clipboardData.version || !clipboardData.nodes) {
+    if (!isClipboardData(clipboardData)) {
       log.warn("[Clipboard] Invalid clipboard data format");
       return null;
     }
     return clipboardData;
   } catch (err) {
-    log.warn(`[Clipboard] Failed to read clipboard: ${err}`);
+    log.warn(`[Clipboard] Failed to read clipboard: ${String(err)}`);
     return null;
   }
 }
@@ -227,7 +288,8 @@ function buildIdMapping(
 
   for (const node of clipboardNodes) {
     const isAnnotation = ANNOTATION_TYPES.has(node.type ?? "");
-    const idBase = isAnnotation ? node.id : (node.data.name as string) || node.id;
+    const nodeName = readNonEmptyString(node.data.name);
+    const idBase = isAnnotation ? node.id : (nodeName ?? node.id);
     log.info(
       `[Clipboard] Generating ID for idBase="${idBase}", node.id="${node.id}", isAnnotation=${String(isAnnotation)}`
     );
@@ -249,9 +311,10 @@ function createPastedNode(
   newPosition: { x: number; y: number },
   newGroupId: string | undefined
 ): TopoNode {
-  return {
+  const role = readNonEmptyString(node.data.role) ?? "node";
+  const pastedNode: TopoNode = {
     id: newId,
-    type: (node.type ?? "topology-node") as "topology-node",
+    type: "topology-node",
     position: newPosition,
     ...(node.width !== undefined && { width: node.width }),
     ...(node.height !== undefined && { height: node.height }),
@@ -261,10 +324,12 @@ function createPastedNode(
       id: newId,
       name: newId,
       label: newId,
-      role: (node.data.role as string) || "node",
+      role,
       groupId: newGroupId
     } as TopologyNodeData
   };
+  Reflect.set(pastedNode, "type", resolveNodeType(node.type));
+  return pastedNode;
 }
 
 function mapYamlNodeId(value: unknown, idMapping: Map<string, string>): string | undefined {
@@ -276,20 +341,20 @@ function remapEdgeExtraData(
   data: Record<string, unknown>,
   idMapping: Map<string, string>
 ): Record<string, unknown> {
-  const extra = data.extraData as Record<string, unknown> | undefined;
-  if (!extra || typeof extra !== "object") return data;
+  const extra = isRecord(data.extraData) ? data.extraData : undefined;
+  if (!extra) return data;
 
   const cleaned = { ...extra };
   const yamlSource = mapYamlNodeId(cleaned.yamlSourceNodeId, idMapping);
   const yamlTarget = mapYamlNodeId(cleaned.yamlTargetNodeId, idMapping);
 
-  if (yamlSource) {
+  if (yamlSource != null && yamlSource.length > 0) {
     cleaned.yamlSourceNodeId = yamlSource;
   } else {
     delete cleaned.yamlSourceNodeId;
   }
 
-  if (yamlTarget) {
+  if (yamlTarget != null && yamlTarget.length > 0) {
     cleaned.yamlTargetNodeId = yamlTarget;
   } else {
     delete cleaned.yamlTargetNodeId;
@@ -312,10 +377,10 @@ function createPastedEdge(
   newTarget: string,
   idMapping: Map<string, string>
 ): TopoEdge {
-  const sourceEndpoint = (edge.data.sourceEndpoint as string) || "eth1";
-  const targetEndpoint = (edge.data.targetEndpoint as string) || "eth1";
+  const sourceEndpoint = readNonEmptyString(edge.data.sourceEndpoint) ?? "eth1";
+  const targetEndpoint = readNonEmptyString(edge.data.targetEndpoint) ?? "eth1";
   const newId = `${newSource}:${sourceEndpoint}--${newTarget}:${targetEndpoint}`;
-  const data = remapEdgeExtraData({ ...edge.data } as Record<string, unknown>, idMapping);
+  const data = remapEdgeExtraData({ ...edge.data }, idMapping);
 
   return {
     id: newId,
@@ -381,8 +446,11 @@ function pasteNodes(clipboardNodes: SerializedNode[], ctx: PasteContext): void {
       y: ctx.pastePosition.y + node.relativePosition.y + ctx.offset
     };
 
-    const originalGroupId = node.data.groupId as string | undefined;
-    const newGroupId = originalGroupId ? ctx.idMapping.get(originalGroupId) : undefined;
+    const originalGroupId = readNonEmptyString(node.data.groupId);
+    const newGroupId =
+      originalGroupId != null && originalGroupId.length > 0
+        ? ctx.idMapping.get(originalGroupId)
+        : undefined;
     const newNode = createPastedNode(node, newId, newPosition, newGroupId);
     ctx.pastedNodes.push(newNode);
 
@@ -394,7 +462,7 @@ function pasteNodes(clipboardNodes: SerializedNode[], ctx: PasteContext): void {
 
     // Update membership for topology nodes (not annotations)
     const isAnnotation = ANNOTATION_TYPES.has(node.type ?? "");
-    if (newGroupId && !isAnnotation && ctx.addNodeToGroup) {
+    if (newGroupId != null && newGroupId.length > 0 && !isAnnotation && ctx.addNodeToGroup) {
       ctx.addNodeToGroup(newId, newGroupId);
     }
   }
@@ -406,20 +474,28 @@ function pasteEdges(clipboardEdges: SerializedEdge[], ctx: PasteContext): number
   for (const edge of clipboardEdges) {
     const newSource = ctx.idMapping.get(edge.source);
     const newTarget = ctx.idMapping.get(edge.target);
-    if (!newSource || !newTarget) continue;
+    if (
+      newSource == null ||
+      newSource.length === 0 ||
+      newTarget == null ||
+      newTarget.length === 0
+    ) {
+      continue;
+    }
 
     const newEdge = createPastedEdge(edge, newSource, newTarget, ctx.idMapping);
     ctx.pastedEdgeIds.push(newEdge.id);
     ctx.pastedEdges.push(newEdge);
 
     if (ctx.onEdgeCreated) {
-      const edgeData = newEdge.data as PasteEdgeData;
+      const sourceEndpoint = readNonEmptyString(newEdge.data?.sourceEndpoint) ?? "eth1";
+      const targetEndpoint = readNonEmptyString(newEdge.data?.targetEndpoint) ?? "eth1";
       ctx.onEdgeCreated(newSource, newTarget, {
         id: newEdge.id,
         source: newSource,
         target: newTarget,
-        sourceEndpoint: edgeData.sourceEndpoint,
-        targetEndpoint: edgeData.targetEndpoint
+        sourceEndpoint,
+        targetEndpoint
       });
     } else {
       ctx.addEdge(newEdge);
@@ -559,7 +635,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
     const allNodes = instance.getNodes();
     // Filter selected nodes, excluding group nodes (they are annotation overlays, not topology elements)
     const selectedNodes = allNodes.filter(
-      (n: { selected?: boolean; type?: string }) => n.selected && n.type !== "group"
+      (n: { selected?: boolean; type?: string }) => n.selected === true && n.type !== "group"
     );
 
     if (selectedNodes.length === 0) {
@@ -592,11 +668,11 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
         height?: number;
         zIndex?: number;
       }) => {
-        const nodeData = node.data as Record<string, unknown>;
+        const nodeData = isRecord(node.data) ? node.data : {};
         // For topology nodes, groupId is stored in membershipMap, not in node.data
         // Look it up if available and not already present in data
-        let groupId = nodeData.groupId as string | undefined;
-        if (!groupId && getNodeMembership) {
+        let groupId = readNonEmptyString(nodeData.groupId);
+        if (groupId == null && getNodeMembership) {
           groupId = getNodeMembership(node.id) ?? undefined;
         }
         return {
@@ -621,7 +697,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        data: { ...((edge.data as Record<string, unknown>) ?? {}) }
+        data: { ...(isRecord(edge.data) ? edge.data : {}) }
       })
     );
 
@@ -681,8 +757,8 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
   const hasClipboardData = useCallback(async (): Promise<boolean> => {
     try {
       const text = await window.navigator.clipboard.readText();
-      const data = JSON.parse(text) as ClipboardData;
-      return Boolean(data.version && data.nodes);
+      const data: unknown = JSON.parse(text);
+      return isClipboardData(data);
     } catch {
       return false;
     }

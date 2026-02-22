@@ -56,7 +56,7 @@ export function normalizeLabPath(labPath: string, singleFolderBase?: string): st
 
   let candidatePaths: string[] = [];
   if (!path.isAbsolute(labPath)) {
-    if (singleFolderBase) {
+    if (singleFolderBase !== undefined && singleFolderBase.length > 0) {
       candidatePaths.push(path.resolve(singleFolderBase, labPath));
     }
     candidatePaths.push(path.resolve(process.cwd(), labPath));
@@ -169,7 +169,7 @@ export async function getFreePort(): Promise<number> {
     server.on("listening", () => {
       const address = server.address();
       server.close();
-      if (typeof address === "object" && address?.port) {
+      if (address !== null && typeof address === "object" && typeof address.port === "number") {
         resolve(address.port);
       } else {
         reject(new Error("Could not get free port"));
@@ -225,7 +225,8 @@ export async function runCommand(
   try {
     return await runAndLog(command, description, outputChannel, returnOutput, includeStderr);
   } catch (err) {
-    throw new Error(`Command failed: ${command}\n${(err as Error).message}`);
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Command failed: ${command}\n${message}`);
   }
 }
 
@@ -252,7 +253,7 @@ export async function checkAndUpdateClabIfNeeded(
       true,
       true
     );
-    const versionOutput = (versionOutputRaw || "").trim();
+    const versionOutput = (typeof versionOutputRaw === "string" ? versionOutputRaw : "").trim();
     if (!versionOutput) {
       throw new Error("No output from containerlab version check command.");
     }

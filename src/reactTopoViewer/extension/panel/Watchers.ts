@@ -199,7 +199,7 @@ export class WatcherManager {
       log.info(`[ReactTopoViewer] YAML ${trigger} detected, refreshing topology`);
 
       const snapshot = await loadSnapshot();
-      if (snapshot) {
+      if (snapshot !== undefined && snapshot !== null) {
         postSnapshot(snapshot);
       }
       this.lastYamlContent = currentContent;
@@ -262,7 +262,7 @@ export class WatcherManager {
       log.info(`[ReactTopoViewer] Annotations ${trigger} detected, refreshing topology`);
 
       const snapshot = await loadSnapshot();
-      if (snapshot) {
+      if (snapshot !== undefined && snapshot !== null) {
         postSnapshot(snapshot);
       }
 

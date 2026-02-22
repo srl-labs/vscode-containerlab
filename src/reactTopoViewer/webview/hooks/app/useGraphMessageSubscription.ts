@@ -66,12 +66,64 @@ type ExtensionMessage =
 // Helper Functions
 // ============================================================================
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? value : {};
+}
+
+function toStringValue(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function toNetemState(value: unknown): NetemState | undefined {
+  if (!isRecord(value)) return undefined;
+  const state: NetemState = {};
+  if (typeof value.delay === "string") state.delay = value.delay;
+  if (typeof value.jitter === "string") state.jitter = value.jitter;
+  if (typeof value.loss === "string") state.loss = value.loss;
+  if (typeof value.rate === "string") state.rate = value.rate;
+  if (typeof value.corruption === "string") state.corruption = value.corruption;
+  return Object.keys(state).length > 0 ? state : undefined;
+}
+
+function toPendingNetemOverride(value: unknown): PendingNetemOverride | undefined {
+  if (!isRecord(value)) return undefined;
+  const appliedAt = value.appliedAt;
+  if (typeof appliedAt !== "number" || !Number.isFinite(appliedAt)) return undefined;
+  return {
+    source: toNetemState(value.source),
+    target: toNetemState(value.target),
+    appliedAt
+  };
+}
+
+function isTopologySnapshotMessage(
+  message: ExtensionMessage
+): message is { type: "topology-host:snapshot"; snapshot: TopologySnapshot } {
+  return (
+    message.type === "topology-host:snapshot" &&
+    "snapshot" in message &&
+    message.snapshot !== undefined
+  );
+}
+
+function isEdgeStatsMessage(message: ExtensionMessage): message is EdgeStatsUpdateMessage {
+  return message.type === "edge-stats-update";
+}
+
+function isNodeDataMessage(message: ExtensionMessage): message is NodeDataUpdateMessage {
+  return message.type === "node-data-updated";
+}
+
 function buildEdgeWithExtraData(
   edge: Edge,
   extraData: Record<string, unknown>,
   classes?: string
 ): Edge {
-  const currentData = (edge.data ?? {}) as Record<string, unknown>;
+  const currentData = edge.data ?? {};
   const currentStatus = currentData.linkStatus;
   const nextStatus = resolveLinkStatusFromClasses(classes, currentStatus);
 
@@ -121,8 +173,8 @@ function matchesPendingNetem(
   updateExtraData: Record<string, unknown>,
   pending: PendingNetemOverride
 ): boolean {
-  const incomingSource = updateExtraData.clabSourceNetem as NetemState | undefined;
-  const incomingTarget = updateExtraData.clabTargetNetem as NetemState | undefined;
+  const incomingSource = toNetemState(updateExtraData.clabSourceNetem);
+  const incomingTarget = toNetemState(updateExtraData.clabTargetNetem);
   return (
     areNetemEquivalent(incomingSource, pending.source) &&
     areNetemEquivalent(incomingTarget, pending.target)
@@ -145,7 +197,11 @@ function mergeExtraDataWithPending(
   }
 
   if (!matchesPendingNetem(updateExtraData, pending)) {
-    const { clabSourceNetem, clabTargetNetem, ...rest } = updateExtraData;
+    const {
+      clabSourceNetem: _clabSourceNetem,
+      clabTargetNetem: _clabTargetNetem,
+      ...rest
+    } = updateExtraData;
     return mergeExtraData(oldExtraData, rest);
   }
 
@@ -161,12 +217,10 @@ function applyEdgeStatsToEdge(
 ): Edge {
   const update = updateMap.get(edge.id);
   if (!update) return edge;
-  const oldExtraData = ((edge.data as Record<string, unknown>)?.extraData ?? {}) as Record<
-    string,
-    unknown
-  >;
-  const updateExtraData = update.extraData ?? {};
-  const pending = oldExtraData[PENDING_NETEM_KEY] as PendingNetemOverride | undefined;
+  const edgeData = toRecord(edge.data);
+  const oldExtraData = toRecord(edgeData.extraData);
+  const updateExtraData = update.extraData;
+  const pending = toPendingNetemOverride(oldExtraData[PENDING_NETEM_KEY]);
   const mergedExtraData = pending
     ? mergeExtraDataWithPending(oldExtraData, updateExtraData, pending)
     : mergeExtraData(oldExtraData, updateExtraData);
@@ -213,10 +267,10 @@ function buildNodeRuntimeLookup(updates: NodeRuntimeUpdateEntry[]): {
   const byShortName = new Map<string, NodeRuntimeUpdateEntry>();
 
   for (const update of updates) {
-    const longName = update.containerLongName?.trim();
-    const shortName = update.containerShortName?.trim();
-    if (longName) byLongName.set(longName, update);
-    if (shortName) byShortName.set(shortName, update);
+    const longName = update.containerLongName.trim();
+    const shortName = update.containerShortName.trim();
+    if (longName.length > 0) byLongName.set(longName, update);
+    if (shortName.length > 0) byShortName.set(shortName, update);
   }
 
   return { byLongName, byShortName };
@@ -233,12 +287,12 @@ function resolveNodeRuntimeUpdate(
     (value): value is string => typeof value === "string" && value.trim().length > 0
   );
 
-  if (longNameCandidate) {
+  if (longNameCandidate != null && longNameCandidate.length > 0) {
     const byLong = byLongName.get(longNameCandidate);
     if (byLong) return byLong;
   }
 
-  return byShortName.get(nodeId) ?? byShortName.get((nodeData.label as string) ?? "");
+  return byShortName.get(nodeId) ?? byShortName.get(toStringValue(nodeData.label));
 }
 
 function hasNodeRuntimeDataChanged(
@@ -246,17 +300,17 @@ function hasNodeRuntimeDataChanged(
   extraData: Record<string, unknown>,
   update: NodeRuntimeUpdateEntry
 ): boolean {
-  const nextState = update.state ?? "";
+  const nextState = update.state;
   const nextStatus = update.status ?? "";
   const nextIpv4 = update.mgmtIpv4Address ?? "";
   const nextIpv6 = update.mgmtIpv6Address ?? "";
 
   return (
-    ((nodeData.state as string | undefined) ?? "") !== nextState ||
-    ((extraData.state as string | undefined) ?? "") !== nextState ||
-    ((extraData.status as string | undefined) ?? "") !== nextStatus ||
-    ((nodeData.mgmtIpv4Address as string | undefined) ?? "") !== nextIpv4 ||
-    ((nodeData.mgmtIpv6Address as string | undefined) ?? "") !== nextIpv6
+    toStringValue(nodeData.state) !== nextState ||
+    toStringValue(extraData.state) !== nextState ||
+    toStringValue(extraData.status) !== nextStatus ||
+    toStringValue(nodeData.mgmtIpv4Address) !== nextIpv4 ||
+    toStringValue(nodeData.mgmtIpv6Address) !== nextIpv6
   );
 }
 
@@ -269,8 +323,8 @@ function applyNodeRuntimeUpdate(
     return node;
   }
 
-  const nodeData = (node.data ?? {}) as Record<string, unknown>;
-  const extraData = (nodeData.extraData ?? {}) as Record<string, unknown>;
+  const nodeData = node.data;
+  const extraData = toRecord(nodeData.extraData);
   const matchedUpdate = resolveNodeRuntimeUpdate(
     node.id,
     nodeData,
@@ -286,7 +340,7 @@ function applyNodeRuntimeUpdate(
     return node;
   }
 
-  const nextState = matchedUpdate.state ?? "";
+  const nextState = matchedUpdate.state;
   const nextStatus = matchedUpdate.status ?? "";
   const nextIpv4 = matchedUpdate.mgmtIpv4Address ?? "";
   const nextIpv6 = matchedUpdate.mgmtIpv6Address ?? "";
@@ -320,19 +374,20 @@ function applyNodeRuntimeUpdate(
 export function useGraphMessageSubscription(): void {
   useEffect(() => {
     const handleMessage = (event: TypedMessageEvent) => {
-      const message = event.data as ExtensionMessage | undefined;
-      if (!message?.type) return;
+      const data = event.data;
+      if (data == null) return;
+      const message: ExtensionMessage = data;
 
-      switch (message.type) {
-        case "topology-host:snapshot":
-          handleSnapshotMessage(message as { snapshot?: TopologySnapshot });
-          break;
-        case "edge-stats-update":
-          handleEdgeStatsUpdateMessage(message as EdgeStatsUpdateMessage);
-          break;
-        case "node-data-updated":
-          handleNodeDataUpdateMessage(message as NodeDataUpdateMessage);
-          break;
+      if (isTopologySnapshotMessage(message)) {
+        handleSnapshotMessage(message);
+        return;
+      }
+      if (isEdgeStatsMessage(message)) {
+        handleEdgeStatsUpdateMessage(message);
+        return;
+      }
+      if (isNodeDataMessage(message)) {
+        handleNodeDataUpdateMessage(message);
       }
     };
 

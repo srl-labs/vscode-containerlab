@@ -31,13 +31,13 @@ export function useGenericFormState<T extends { id: string }>(
   const { getIsNew, transformData } = options;
 
   const [formData, setFormData] = useState<T | null>(null);
-  const [initialData, setInitialData] = useState<string | null>(null);
+  const [initialData, setInitialData] = useState<T | null>(null);
 
   useEffect(() => {
     if (data) {
       const transformed = transformData ? transformData(data) : { ...data };
       setFormData(transformed);
-      setInitialData(JSON.stringify(data));
+      setInitialData(transformed);
     }
   }, [data, transformData]);
 
@@ -46,18 +46,23 @@ export function useGenericFormState<T extends { id: string }>(
   }, []);
 
   const resetInitialData = useCallback(() => {
-    if (formData) setInitialData(JSON.stringify(formData));
-  }, [formData]);
+    if (formData) {
+      const transformed = transformData ? transformData(formData) : { ...formData };
+      setInitialData(transformed);
+    }
+  }, [formData, transformData]);
 
   const discardChanges = useCallback(() => {
-    if (initialData) {
-      const restored = JSON.parse(initialData) as T;
-      const transformed = transformData ? transformData(restored) : { ...restored };
+    if (initialData !== null) {
+      const transformed = transformData ? transformData(initialData) : { ...initialData };
       setFormData(transformed);
     }
   }, [initialData, transformData]);
 
-  const hasChanges = formData && initialData ? JSON.stringify(formData) !== initialData : false;
+  const hasChanges =
+    formData !== null && initialData !== null
+      ? JSON.stringify(formData) !== JSON.stringify(initialData)
+      : false;
   const isNew = getIsNew ? getIsNew(data) : false;
 
   return {

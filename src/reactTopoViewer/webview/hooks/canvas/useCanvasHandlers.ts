@@ -137,15 +137,38 @@ interface LineDragSnapshot {
   endPosition: XYPosition;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function isLineShapeNode(node: Node): node is Node<FreeShapeNodeData> {
   if (node.type !== FREE_SHAPE_NODE_TYPE) return false;
-  const data = node.data as FreeShapeNodeData | undefined;
-  return data?.shapeType === "line";
+  if (!isRecord(node.data)) return false;
+  return node.data.shapeType === "line";
+}
+
+function isTopoNode(node: Node): node is TopoNode {
+  return (
+    node.type === "topology-node" ||
+    node.type === "network-node" ||
+    node.type === "group-node" ||
+    node.type === "free-text-node" ||
+    node.type === "free-shape-node" ||
+    node.type === "traffic-rate-node"
+  );
+}
+
+function isTopoEdge(edge: Edge): edge is TopoEdge {
+  return (
+    typeof edge.id === "string" &&
+    typeof edge.source === "string" &&
+    typeof edge.target === "string"
+  );
 }
 
 function getLineEndpoints(node: Node): { start: XYPosition; end: XYPosition } | null {
   if (!isLineShapeNode(node)) return null;
-  const data = node.data as FreeShapeNodeData;
+  const data = node.data;
   const start = data.startPosition ?? node.position;
   const end = data.endPosition ?? {
     x: start.x + DEFAULT_LINE_LENGTH,
@@ -184,7 +207,7 @@ function collectLineDragNodes(
       .filter(isLineShapeNode);
   }
 
-  const selectedLines = nodes.filter((node) => node.selected && isLineShapeNode(node));
+  const selectedLines = nodes.filter((node) => node.selected === true && isLineShapeNode(node));
   if (selectedLines.length > 0) return selectedLines;
   return isLineShapeNode(draggedNode) ? [draggedNode] : [];
 }
@@ -252,7 +275,7 @@ function buildSelectedNodeChanges(
   const changes: NodeChange[] = [];
   for (const node of nodes) {
     if (node.id === draggedNodeId) continue;
-    if (!node.selected) continue;
+    if (node.selected !== true) continue;
     if (excludeIds.has(node.id)) continue;
     const position = delta
       ? { x: node.position.x + delta.x, y: node.position.y + delta.y }
@@ -273,9 +296,9 @@ function cleanupGroupRefs(
   groupMemberIdSetsRef: React.RefObject<Map<string, Set<string>>>,
   groupLastPositionRef: React.RefObject<Map<string, XYPosition>>
 ): void {
-  groupMembersRef.current?.delete(nodeId);
-  groupMemberIdSetsRef.current?.delete(nodeId);
-  groupLastPositionRef.current?.delete(nodeId);
+  groupMembersRef.current.delete(nodeId);
+  groupMemberIdSetsRef.current.delete(nodeId);
+  groupLastPositionRef.current.delete(nodeId);
 }
 
 function updateNodeWithGeoData(
@@ -300,7 +323,7 @@ function applyGeoUpdateToNodeList(
 ): Node[] {
   return nodes.map((n) => {
     if (n.id !== nodeId) return n;
-    const data = (n.data ?? {}) as Record<string, unknown>;
+    const data = isRecord(n.data) ? n.data : {};
     return {
       ...n,
       data: {
@@ -340,8 +363,8 @@ function handleGeoDragStop(
   setNodes: React.Dispatch<React.SetStateAction<Node[]>> | undefined,
   geoLayout: CanvasHandlersConfig["geoLayout"]
 ): boolean {
-  const isGeoEdit = geoLayout?.isGeoLayout && geoLayout.isEditable;
-  if (!isGeoEdit || !geoLayout?.getGeoUpdateForNode) return false;
+  const isGeoEdit = geoLayout?.isGeoLayout === true && geoLayout.isEditable === true;
+  if (!isGeoEdit || geoLayout.getGeoUpdateForNode === undefined) return false;
 
   const draggedPosition = node.position;
   log.info(
@@ -601,7 +624,15 @@ function useNodeDragHandlers(
       applyLineDragSnapshots(lineDragStartRef.current);
       persistPositionChanges(changes);
     },
-    [isLockedRef, nodes, onNodesChangeBase, groupMemberHandlers, geoLayout, setNodes, flushPendingGroupMove]
+    [
+      isLockedRef,
+      nodes,
+      onNodesChangeBase,
+      groupMemberHandlers,
+      geoLayout,
+      setNodes,
+      flushPendingGroupMove
+    ]
   );
 
   return { onNodeDragStart, onNodeDrag, onNodeDragStop };
@@ -692,7 +723,7 @@ function useNodeClickHandlers(
       closeContextMenu();
       if (isAnnotationNodeType(node.type)) return;
       // In edit mode, open editor directly (read-only when locked)
-      if (modeRef.current === "edit" && EDITABLE_NODE_TYPES.includes(node.type || "")) {
+      if (modeRef.current === "edit" && EDITABLE_NODE_TYPES.includes(node.type ?? "")) {
         if (node.type === NODE_TYPE_NETWORK) {
           editNetwork(node.id);
         } else {
@@ -811,9 +842,11 @@ function useConnectionHandler(
         `[ReactFlowCanvas] Creating edge via drag-connect: ${connection.source} -> ${connection.target}`
       );
       const { nodes, edges } = useGraphStore.getState();
+      const topoNodes = nodes.filter(isTopoNode);
+      const topoEdges = edges.filter(isTopoEdge);
       const { sourceEndpoint, targetEndpoint } = allocateEndpointsForLink(
-        nodes as TopoNode[],
-        edges as TopoEdge[],
+        topoNodes,
+        topoEdges,
         connection.source,
         connection.target
       );
@@ -855,7 +888,7 @@ function useSelectionChangeHandler(
   return useCallback(
     ({ nodes, edges }) => {
       // Filter to only topology/network nodes (ignore annotation nodes for context selection)
-      const selectableNodes = nodes.filter((n) => SELECTABLE_NODE_TYPES.includes(n.type || ""));
+      const selectableNodes = nodes.filter((n) => SELECTABLE_NODE_TYPES.includes(n.type ?? ""));
 
       // If exactly one selectable node is selected, sync to context
       if (selectableNodes.length === 1 && edges.length === 0) {
@@ -925,7 +958,7 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
       reactFlowInstance.current = instance;
       log.info("[ReactFlowCanvas] React Flow initialized");
       // Don't auto-fitView in geo layout mode - map controls the viewport
-      if (!geoLayout?.isGeoLayout) {
+      if (geoLayout?.isGeoLayout !== true) {
         void instance.fitView({ padding: 0.2, duration: 0 });
       }
     },
@@ -993,7 +1026,7 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
   const baseOnSelectionChange = useSelectionChangeHandler(selectNode, selectEdge);
   const onSelectionChange: OnSelectionChangeFunc = useCallback(
     (params) => {
-      if (shouldSuppressSelectionSync?.()) return;
+      if (shouldSuppressSelectionSync?.() === true) return;
       baseOnSelectionChange(params);
     },
     [baseOnSelectionChange, shouldSuppressSelectionSync]

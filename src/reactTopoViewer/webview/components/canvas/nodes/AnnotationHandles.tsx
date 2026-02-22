@@ -112,7 +112,7 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
     centerY: number;
     startRotation: number;
   } | null>(null);
-  const handleRef = useRef<HTMLDivElement>(null);
+  const handleRef = useRef<HTMLButtonElement>(null);
 
   // Get callback to sync node internals - only called after rotation completes
   const syncNodeInternals = useRotationInternalsSync(nodeId);
@@ -194,6 +194,15 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
     [currentRotation, onRotationStart]
   );
 
+  const handleClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+  }, []);
+
   return (
     <>
       {/* Connecting line */}
@@ -212,18 +221,17 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
         }}
       />
       {/* Rotation handle */}
-      <div
+      <button
+        type="button"
+        aria-label="Rotate annotation"
         ref={handleRef}
         onMouseDown={handleMouseDown}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-        }}
+        onClick={handleClick}
+        onPointerDown={handlePointerDown}
         className="nodrag nopan nowheel"
         style={{
+          appearance: "none",
+          padding: 0,
           position: "absolute",
           top: `-${ROTATION_HANDLE_OFFSET}px`,
           left: "50%",
@@ -352,9 +360,7 @@ export const LineResizeHandle: React.FC<LineResizeHandleProps> = ({
 
         // Throttle updates using requestAnimationFrame
         pendingPosition = { x: Math.round(nextX), y: Math.round(nextY) };
-        if (rafId === null) {
-          rafId = window.requestAnimationFrame(processPendingUpdate);
-        }
+        rafId ??= window.requestAnimationFrame(processPendingUpdate);
       };
 
       const handleMouseUp = () => {
@@ -386,10 +392,14 @@ export const LineResizeHandle: React.FC<LineResizeHandleProps> = ({
     mode === "end" ? lineStartOffset.y + (endPosition.y - startPosition.y) : lineStartOffset.y;
 
   return (
-    <div
+    <button
+      type="button"
+      aria-label={mode === "end" ? "Resize line end handle" : "Resize line start handle"}
       onMouseDown={handleMouseDown}
       className="nodrag nopan nowheel"
       style={{
+        appearance: "none",
+        padding: 0,
         position: "absolute",
         left: `${handleX}px`,
         top: `${handleY}px`,

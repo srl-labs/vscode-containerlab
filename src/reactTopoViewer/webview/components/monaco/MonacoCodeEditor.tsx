@@ -40,19 +40,21 @@ function ensureMonacoConfiguredOnce(): void {
   if (monacoConfigured) return;
 
   // Worker wiring for VS Code webview build (dev mode sets MonacoEnvironment already).
-  const globalObj = globalThis as unknown as {
-    MonacoEnvironment?: { getWorker?: (workerId: string, label: string) => Worker };
-  };
-  if (!globalObj.MonacoEnvironment?.getWorker) {
+  const existingEnvironment = Reflect.get(globalThis, "MonacoEnvironment");
+  const hasWorker =
+    isObj(existingEnvironment) &&
+    "getWorker" in existingEnvironment &&
+    typeof existingEnvironment.getWorker === "function";
+  if (!hasWorker) {
     const editorUrl = window.monacoEditorWorkerUrl;
     const jsonUrl = window.monacoJsonWorkerUrl;
-    if (editorUrl && jsonUrl) {
-      globalObj.MonacoEnvironment = {
+    if (editorUrl !== undefined && editorUrl !== "" && jsonUrl !== undefined && jsonUrl !== "") {
+      Reflect.set(globalThis, "MonacoEnvironment", {
         getWorker: (_workerId: string, label: string) => {
           const url = label === "json" ? jsonUrl : editorUrl;
           return new Worker(url);
         }
-      };
+      });
     }
   }
 
@@ -67,7 +69,7 @@ function ensureMonacoConfiguredOnce(): void {
   }
 
   // Avoid JSON diagnostics that require extra config and can be noisy for annotations.
-  monaco.json?.jsonDefaults?.setDiagnosticsOptions({ validate: false });
+  monaco.json.jsonDefaults.setDiagnosticsOptions({ validate: false });
 
   monacoConfigured = true;
 }
@@ -79,8 +81,8 @@ const DEV_MONACO_COLORS = {
 } as const;
 
 function isDevMock(): boolean {
-  const vsc = (window as unknown as Record<string, unknown>).vscode;
-  return Boolean(vsc && (vsc as Record<string, unknown>).__isDevMock__);
+  const vsc = Reflect.get(window, "vscode");
+  return isObj(vsc) && Reflect.get(vsc, "__isDevMock__") === true;
 }
 
 function applyVscodeThemeToMonaco(): void {
@@ -162,19 +164,22 @@ function formatAjvError(error: {
   message?: string;
   params?: Record<string, unknown>;
 }): string {
-  if (error.keyword === "enum" && error.params?.["allowedValues"]) {
-    const vals = error.params["allowedValues"] as string[];
-    const list = vals.map((v) => `"${v}"`).join(", ");
+  const allowedValues = error.params?.["allowedValues"];
+  if (error.keyword === "enum" && Array.isArray(allowedValues)) {
+    const list = allowedValues.map((value) => `"${String(value)}"`).join(", ");
     return `Value is not accepted. Valid values: ${list}`;
   }
-  if (error.keyword === "additionalProperties" && error.params?.["additionalProperty"]) {
-    return `Unknown property "${error.params["additionalProperty"]}"`;
+  const additionalProperty = error.params?.["additionalProperty"];
+  if (error.keyword === "additionalProperties" && typeof additionalProperty === "string") {
+    return `Unknown property "${additionalProperty}"`;
   }
-  if (error.keyword === "required" && error.params?.["missingProperty"]) {
-    return `Missing required property "${error.params["missingProperty"]}"`;
+  const missingProperty = error.params?.["missingProperty"];
+  if (error.keyword === "required" && typeof missingProperty === "string") {
+    return `Missing required property "${missingProperty}"`;
   }
-  if (error.keyword === "type" && error.params?.["type"]) {
-    return `Must be ${error.params["type"]}`;
+  const expectedType = error.params?.["type"];
+  if (error.keyword === "type" && typeof expectedType === "string") {
+    return `Must be ${expectedType}`;
   }
   return error.message ?? "Schema validation error";
 }
@@ -216,7 +221,7 @@ function validateYaml(text: string, schema: object): monaco.editor.IMarkerData[]
 
   const markers: monaco.editor.IMarkerData[] = [];
   for (const err of doc.errors) {
-    const [s0, s1] = err.pos ?? [0, 0];
+    const [s0, s1] = err.pos;
     const start = offsetToLineCol(text, s0);
     const end = offsetToLineCol(text, s1);
     markers.push({
@@ -233,10 +238,11 @@ function validateYaml(text: string, schema: object): monaco.editor.IMarkerData[]
 
   // 2. Schema validation
   const jsonData: unknown = doc.toJSON();
-  if (!jsonData) return markers;
+  if (jsonData === undefined) return markers;
 
   const validate = getValidator(schema);
-  if (validate(jsonData) || !validate.errors) return markers;
+  const isValid = validate(jsonData);
+  if (isValid === true || validate.errors === null || validate.errors === undefined) return markers;
 
   // Filter out structural/combinator wrapper errors — keep only leaf-level
   // errors that carry actionable information (enum, type, required, etc.).
@@ -276,16 +282,17 @@ function resolveRef(ref: string, root: SchemaObj): SchemaObj | null {
   const parts = ref.slice(2).split("/");
   let cur: unknown = root;
   for (const p of parts) {
-    if (cur == null || typeof cur !== "object") return null;
-    cur = (cur as SchemaObj)[p];
+    if (!isObj(cur)) return null;
+    cur = cur[p];
   }
-  return typeof cur === "object" && cur !== null ? (cur as SchemaObj) : null;
+  return isObj(cur) ? cur : null;
 }
 
 /** Dereference a single `$ref`, returning the resolved schema or the input. */
 function deref(schema: SchemaObj, root: SchemaObj): SchemaObj {
-  if (schema["$ref"]) {
-    const resolved = resolveRef(schema["$ref"] as string, root);
+  const ref = schema["$ref"];
+  if (typeof ref === "string" && ref !== "") {
+    const resolved = resolveRef(ref, root);
     if (resolved) return deref(resolved, root);
   }
   return schema;
@@ -304,11 +311,12 @@ function deref(schema: SchemaObj, root: SchemaObj): SchemaObj {
  */
 /** Search patternProperties for a matching key. */
 function searchPatternProps(schema: SchemaObj, key: string, root: SchemaObj): SchemaObj | null {
-  const pp = schema["patternProperties"] as SchemaObj | undefined;
-  if (!pp) return null;
+  const ppValue = schema["patternProperties"];
+  if (!isObj(ppValue)) return null;
+  const pp = ppValue;
   for (const pat of Object.keys(pp)) {
     try {
-      if (new RegExp(pat).test(key) && isObj(pp[pat])) return deref(pp[pat] as SchemaObj, root);
+      if (new RegExp(pat).test(key) && isObj(pp[pat])) return deref(pp[pat], root);
     } catch {
       /* invalid regex in schema – skip */
     }
@@ -328,7 +336,7 @@ function searchCombinators(
     if (!Array.isArray(arr)) continue;
     for (const item of arr) {
       if (!isObj(item)) continue;
-      const found = lookupProperty(item as SchemaObj, key, root, yamlSiblings);
+      const found = lookupProperty(item, key, root, yamlSiblings);
       if (found) return found;
     }
   }
@@ -344,16 +352,17 @@ function lookupProperty(
   const schema = deref(rawSchema, root);
 
   // 1. Direct properties
-  const props = schema["properties"] as SchemaObj | undefined;
-  if (props && isObj(props[key])) return deref(props[key] as SchemaObj, root);
+  const propsValue = schema["properties"];
+  if (isObj(propsValue) && isObj(propsValue[key])) return deref(propsValue[key], root);
 
   // 2. Pattern properties
   const fromPattern = searchPatternProps(schema, key, root);
   if (fromPattern) return fromPattern;
 
   // 3. allOf items
-  if (Array.isArray(schema["allOf"])) {
-    const result = searchAllOf(schema["allOf"] as unknown[], key, root, yamlSiblings);
+  const allOf = schema["allOf"];
+  if (Array.isArray(allOf)) {
+    const result = searchAllOf(allOf, key, root, yamlSiblings);
     if (result) return result;
   }
 
@@ -374,9 +383,10 @@ function searchAllOfItem(
 ): { result: SchemaObj; fromCondition: boolean } | null {
   const fromCond = searchIfThenElse(sub, key, root, yamlSiblings);
   if (fromCond) return { result: fromCond, fromCondition: true };
-  const direct = sub["properties"] as SchemaObj | undefined;
-  if (direct && isObj(direct[key]))
-    return { result: deref(direct[key] as SchemaObj, root), fromCondition: false };
+  const direct = sub["properties"];
+  if (isObj(direct) && isObj(direct[key])) {
+    return { result: deref(direct[key], root), fromCondition: false };
+  }
   return null;
 }
 
@@ -390,10 +400,10 @@ function searchAllOf(
   let fallback: SchemaObj | null = null;
   for (const item of items) {
     if (!isObj(item)) continue;
-    const hit = searchAllOfItem(deref(item as SchemaObj, root), key, root, yamlSiblings);
+    const hit = searchAllOfItem(deref(item, root), key, root, yamlSiblings);
     if (!hit) continue;
     if (hit.fromCondition && yamlSiblings) return hit.result;
-    if (!fallback) fallback = hit.result;
+    fallback ??= hit.result;
   }
   return fallback;
 }
@@ -405,12 +415,18 @@ function searchIfThenElse(
   root: SchemaObj,
   yamlSiblings?: SchemaObj | null
 ): SchemaObj | null {
-  const ifBlock = schema["if"] as SchemaObj | undefined;
-  const thenBlock = schema["then"] as SchemaObj | undefined;
-  const elseBlock = schema["else"] as SchemaObj | undefined;
-  if (!ifBlock || !thenBlock) return null;
+  const ifBlockValue = schema["if"];
+  const thenBlockValue = schema["then"];
+  const elseBlockValue = schema["else"];
+  if (!isObj(ifBlockValue) || !isObj(thenBlockValue)) return null;
+  const ifBlock = ifBlockValue;
+  const thenBlock = thenBlockValue;
+  const elseBlock = isObj(elseBlockValue) ? elseBlockValue : undefined;
 
-  const conditionMatches = yamlSiblings ? matchesIfCondition(ifBlock, yamlSiblings) : null;
+  const conditionMatches =
+    yamlSiblings !== undefined && yamlSiblings !== null
+      ? matchesIfCondition(ifBlock, yamlSiblings)
+      : null;
 
   if (conditionMatches === true) {
     const found = lookupInDirect(thenBlock, key, root);
@@ -431,31 +447,37 @@ function searchIfThenElse(
 /** Lookup directly in properties only (no recursion into allOf). */
 function lookupInDirect(rawSchema: SchemaObj, key: string, root: SchemaObj): SchemaObj | null {
   const schema = deref(rawSchema, root);
-  const props = schema["properties"] as SchemaObj | undefined;
-  if (props && isObj(props[key])) return deref(props[key] as SchemaObj, root);
+  const props = schema["properties"];
+  if (isObj(props) && isObj(props[key])) return deref(props[key], root);
   return null;
 }
 
 /** Check a single if-property constraint against a YAML value. */
 function checkConstraint(constraint: SchemaObj, yamlValue: unknown): boolean {
-  const strValue = String(yamlValue ?? "");
-  if (constraint["pattern"] && !new RegExp(constraint["pattern"] as string).test(strValue))
-    return false;
-  if (Array.isArray(constraint["enum"]) && !(constraint["enum"] as unknown[]).includes(yamlValue))
-    return false;
+  const pattern = constraint["pattern"];
+  if (typeof pattern === "string") {
+    if (typeof yamlValue !== "string") return false;
+    if (!new RegExp(pattern).test(yamlValue)) return false;
+  }
+  const enumValues = constraint["enum"];
+  if (Array.isArray(enumValues) && !enumValues.includes(yamlValue)) return false;
   return true;
 }
 
 /** Evaluate an `if` block against YAML sibling values. */
 function matchesIfCondition(ifBlock: SchemaObj, yamlSiblings: SchemaObj): boolean {
-  const requiredKeys = ifBlock["required"] as string[] | undefined;
-  const ifProps = ifBlock["properties"] as SchemaObj | undefined;
-  if (!ifProps) return false;
+  const requiredRaw = ifBlock["required"];
+  const requiredKeys = Array.isArray(requiredRaw)
+    ? requiredRaw.filter((entry): entry is string => typeof entry === "string")
+    : [];
+  const ifProps = ifBlock["properties"];
+  if (!isObj(ifProps)) return false;
 
   for (const propKey of Object.keys(ifProps)) {
-    const constraint = ifProps[propKey] as SchemaObj | undefined;
-    if (!constraint) continue;
-    if (!yamlSiblings[propKey] && requiredKeys?.includes(propKey)) return false;
+    const constraint = ifProps[propKey];
+    if (!isObj(constraint)) continue;
+    const hasValue = Object.prototype.hasOwnProperty.call(yamlSiblings, propKey);
+    if (!hasValue && requiredKeys.includes(propKey)) return false;
     if (!checkConstraint(constraint, yamlSiblings[propKey])) return false;
   }
   return true;
@@ -463,6 +485,14 @@ function matchesIfCondition(ifBlock: SchemaObj, yamlSiblings: SchemaObj): boolea
 
 function isObj(v: unknown): v is SchemaObj {
   return typeof v === "object" && v !== null;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value !== "";
+}
+
+function isDisposable(value: unknown): value is monaco.IDisposable {
+  return isObj(value) && "dispose" in value && typeof value.dispose === "function";
 }
 
 /**
@@ -481,20 +511,25 @@ function getSchemaHoverInfo(
   for (let i = 0; i < pathSegments.length; i++) {
     const segment = pathSegments[i];
     // yamlSiblings = the object that *contains* the key we're looking up
-    const yamlSiblings = isObj(currentData) ? (currentData as SchemaObj) : null;
+    const yamlSiblings = isObj(currentData) ? currentData : null;
     const next = lookupProperty(currentSchema, segment, schema, yamlSiblings);
     if (!next) return null;
     currentSchema = next;
     // Advance into the YAML data for the next level
-    currentData = isObj(currentData) ? (currentData as SchemaObj)[segment] : undefined;
+    currentData = isObj(currentData) ? currentData[segment] : undefined;
   }
 
-  const desc = currentSchema["description"] as string | undefined;
-  const mdDesc = currentSchema["markdownDescription"] as string | undefined;
-  const enumVals = Array.isArray(currentSchema["enum"])
-    ? (currentSchema["enum"] as string[]).map(String)
+  const desc =
+    typeof currentSchema["description"] === "string" ? currentSchema["description"] : undefined;
+  const mdDesc =
+    typeof currentSchema["markdownDescription"] === "string"
+      ? currentSchema["markdownDescription"]
+      : undefined;
+  const enumValuesRaw = currentSchema["enum"];
+  const enumVals = Array.isArray(enumValuesRaw)
+    ? enumValuesRaw.map((value) => String(value))
     : undefined;
-  if (!desc && !mdDesc) return null;
+  if (desc === undefined && mdDesc === undefined) return null;
   return { description: desc, markdownDescription: mdDesc, enumValues: enumVals };
 }
 
@@ -537,58 +572,61 @@ let activeSchema: SchemaObj | null = null;
 const HOVER_DISPOSABLE_KEY = "__monacoYamlHoverDisposable__";
 
 function ensureHoverProvider(): void {
-  const win = window as unknown as Record<string, unknown>;
-  const existing = win[HOVER_DISPOSABLE_KEY] as monaco.IDisposable | undefined;
-  if (existing) existing.dispose();
+  const existing: unknown = Reflect.get(window, HOVER_DISPOSABLE_KEY);
+  if (isDisposable(existing)) existing.dispose();
 
-  win[HOVER_DISPOSABLE_KEY] = monaco.languages.registerHoverProvider("yaml", {
-    provideHover(model, position) {
-      if (!activeSchema) return null;
-      const text = model.getValue();
-      const path = getYamlPathAtLine(text, position.lineNumber);
-      if (!path || path.length === 0) return null;
+  Reflect.set(
+    window,
+    HOVER_DISPOSABLE_KEY,
+    monaco.languages.registerHoverProvider("yaml", {
+      provideHover(model, position) {
+        if (!activeSchema) return null;
+        const text = model.getValue();
+        const path = getYamlPathAtLine(text, position.lineNumber);
+        if (!path || path.length === 0) return null;
 
-      // Parse YAML for context-aware schema resolution (e.g. kind → type enum)
-      let yamlData: unknown;
-      try {
-        yamlData = YAML.parse(text);
-      } catch {
-        yamlData = undefined;
+        // Parse YAML for context-aware schema resolution (e.g. kind → type enum)
+        let yamlData: unknown;
+        try {
+          yamlData = YAML.parse(text);
+        } catch {
+          yamlData = undefined;
+        }
+
+        const info = getSchemaHoverInfo(path, activeSchema, yamlData);
+        if (!info) return null;
+
+        const parts: string[] = [];
+        if (isNonEmptyString(info.markdownDescription)) {
+          parts.push(info.markdownDescription);
+        } else if (isNonEmptyString(info.description)) {
+          parts.push(info.description);
+        }
+        if (info.enumValues !== undefined && info.enumValues.length > 0) {
+          const enumList = info.enumValues.map((v) => "`" + v + "`").join(", ");
+          parts.push("\nAllowed values: " + enumList);
+        }
+
+        const word = model.getWordAtPosition(position);
+        return {
+          range: word
+            ? new monaco.Range(
+                position.lineNumber,
+                word.startColumn,
+                position.lineNumber,
+                word.endColumn
+              )
+            : new monaco.Range(
+                position.lineNumber,
+                1,
+                position.lineNumber,
+                model.getLineMaxColumn(position.lineNumber)
+              ),
+          contents: [{ value: parts.join("\n") }]
+        };
       }
-
-      const info = getSchemaHoverInfo(path, activeSchema, yamlData);
-      if (!info) return null;
-
-      const parts: string[] = [];
-      if (info.markdownDescription) {
-        parts.push(info.markdownDescription);
-      } else if (info.description) {
-        parts.push(info.description);
-      }
-      if (info.enumValues && info.enumValues.length > 0) {
-        const enumList = info.enumValues.map((v) => "`" + v + "`").join(", ");
-        parts.push("\nAllowed values: " + enumList);
-      }
-
-      const word = model.getWordAtPosition(position);
-      return {
-        range: word
-          ? new monaco.Range(
-              position.lineNumber,
-              word.startColumn,
-              position.lineNumber,
-              word.endColumn
-            )
-          : new monaco.Range(
-              position.lineNumber,
-              1,
-              position.lineNumber,
-              model.getLineMaxColumn(position.lineNumber)
-            ),
-        contents: [{ value: parts.join("\n") }]
-      };
-    }
-  });
+    })
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -612,7 +650,7 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const modelRef = useRef<monaco.editor.ITextModel | null>(null);
   const applyingExternalRef = useRef(false);
-  const lastExternalAppliedRef = useRef<string>(value ?? "");
+  const lastExternalAppliedRef = useRef<string>(value);
   const validationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const getEditorFontFamily = () => {
@@ -650,7 +688,7 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
   }, []);
 
   // Keep hover provider's active schema in sync
-  activeSchema = (jsonSchema as Record<string, unknown>) ?? null;
+  activeSchema = isObj(jsonSchema) ? jsonSchema : null;
 
   // Debounced schema validation — sets Monaco markers on the model
   const jsonSchemaRef = useRef(jsonSchema);
@@ -662,7 +700,7 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
       const model = modelRef.current;
       const schema = jsonSchemaRef.current;
       if (!model) return;
-      if (!schema || language !== "yaml") {
+      if (schema === undefined || language !== "yaml") {
         monaco.editor.setModelMarkers(model, MARKER_OWNER, []);
         return;
       }
@@ -679,8 +717,8 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
     ensureHoverProvider();
     applyVscodeThemeToMonaco();
 
-    modelRef.current = monaco.editor.createModel(value ?? "", language);
-    lastExternalAppliedRef.current = value ?? "";
+    modelRef.current = monaco.editor.createModel(value, language);
+    lastExternalAppliedRef.current = value;
 
     editorRef.current = monaco.editor.create(container, {
       model: modelRef.current,
@@ -703,7 +741,7 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
     const disposable = editor.onDidChangeModelContent(() => {
       if (applyingExternalRef.current) return;
       const next = editor.getValue();
-      if (onChange) onChange(next);
+      if (onChange !== undefined) onChange(next);
       scheduleValidation();
     });
 
@@ -746,7 +784,7 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
     }
 
     const current = model.getValue();
-    const next = value ?? "";
+    const next = value;
     if (current === next) return;
 
     applyingExternalRef.current = true;

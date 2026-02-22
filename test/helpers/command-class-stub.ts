@@ -11,8 +11,8 @@ export class Command {
   constructor(options: CmdOptions) {
     this.options = {
       command: options.command,
-      useSpinner: options.useSpinner || false,
-      terminalName: options.terminalName || "term",
+      useSpinner: options.useSpinner ?? false,
+      terminalName: options.terminalName ?? "term",
       spinnerMsg: options.spinnerMsg
     };
     instances.push(this);

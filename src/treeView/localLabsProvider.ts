@@ -14,6 +14,10 @@ const CLAB_GLOB_PATTERN = "{**/*.clab.yml,**/*.clab.yaml}";
 const IGNORE_GLOB_PATTERN = "**/node_modules/**";
 const SCAN_TIMEOUT_MS = 120_000;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
   c.ClabLabTreeNode | c.ClabFolderTreeNode | undefined
 > {
@@ -70,7 +74,6 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
         this.refresh();
       }
     });
-
   }
 
   private performScan(): Promise<void> {
@@ -92,15 +95,11 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
           ])
         ).filter((u) => !u.scheme || u.scheme === "file");
         this.cachedUris = new Map(uris.map((u) => [u.fsPath, u]));
-        outputChannel.debug(
-          `[LocalTreeDataProvider] Scan found ${this.cachedUris.size} lab files`
-        );
+        outputChannel.debug(`[LocalTreeDataProvider] Scan found ${this.cachedUris.size} lab files`);
         this.refresh();
       } catch (err: unknown) {
         outputChannel.error(`[LocalTreeDataProvider] File scan failed: ${err}`);
-        if (!this.cachedUris) {
-          this.cachedUris = new Map();
-        }
+        this.cachedUris ??= new Map();
       } finally {
         this.scanPromise = undefined;
       }
@@ -157,12 +156,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
 
     uris.forEach((uri) =>
-      this.addLab(
-        labs,
-        labPaths,
-        uri.fsPath,
-        favoriteLabs?.has(utils.normalizeLabPath(uri.fsPath)) ?? false
-      )
+      this.addLab(labs, labPaths, uri.fsPath, favoriteLabs.has(utils.normalizeLabPath(uri.fsPath)))
     );
     this.includeFavoriteLabs(uris, labs, labPaths);
     this.applyTreeFilter(labs, workspaceRoot);
@@ -227,7 +221,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
     labs: Record<string, c.ClabLabTreeNode>,
     labPaths: Set<string>
   ): void {
-    favoriteLabs?.forEach((p) => {
+    favoriteLabs.forEach((p) => {
       const norm = utils.normalizeLabPath(p);
       if (!uris.find((u) => utils.normalizeLabPath(u.fsPath) === norm)) {
         this.addLab(labs, labPaths, p, true);
@@ -285,8 +279,8 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
     if (!a.favorite && b.favorite) {
       return 1;
     }
-    const aPath = a.labPath?.absolute ?? "";
-    const bPath = b.labPath?.absolute ?? "";
+    const aPath = a.labPath.absolute;
+    const bPath = b.labPath.absolute;
     return aPath.localeCompare(bPath);
   }
 
@@ -300,22 +294,20 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
     if (Array.isArray(data)) {
       // Old format: flat array of containers (for backward compatibility)
       data.forEach((container: unknown) => {
-        if (container && typeof container === "object" && "Labels" in container) {
-          const labels = container.Labels;
-          if (labels && typeof labels === "object" && "clab-topo-file" in labels) {
-            const p = labels["clab-topo-file"];
-            if (typeof p === "string") {
-              labPaths.add(p);
-            }
-          }
+        if (!isRecord(container) || !isRecord(container.Labels)) {
+          return;
+        }
+        const p = container.Labels["clab-topo-file"];
+        if (typeof p === "string" && p.length > 0) {
+          labPaths.add(p);
         }
       });
-    } else if (data && typeof data === "object") {
+    } else if (data !== undefined && typeof data === "object") {
       // New format: object with lab names as keys
       Object.values(data).forEach((containers: c.ClabDetailedJSON[]) => {
         if (Array.isArray(containers) && containers.length > 0) {
-          const p = containers[0]?.Labels?.["clab-topo-file"];
-          if (p) {
+          const p = containers[0].Labels["clab-topo-file"];
+          if (typeof p === "string" && p.length > 0) {
             labPaths.add(p);
           }
         }

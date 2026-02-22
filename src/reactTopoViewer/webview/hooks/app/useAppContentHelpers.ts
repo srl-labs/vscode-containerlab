@@ -4,6 +4,7 @@
 import React from "react";
 
 import type { TopoEdge, TopoNode } from "../../../shared/types/graph";
+import { getRecordUnknown } from "../../../shared/utilities/typeHelpers";
 import { convertToEditorData, convertToNetworkEditorData } from "../../../shared/utilities";
 import type { AnnotationHandlers } from "../../components/canvas/types";
 import {
@@ -25,18 +26,30 @@ interface SelectionStateSlice {
 }
 
 type EdgeRawData = { id: string; source: string; target: string } & Record<string, unknown>;
+type NodeRawData = { id: string } & Record<string, unknown>;
 
 /** Extract edge raw data by ID */
 function getEdgeRawData(edgeId: string | null, edges: TopoEdge[]): EdgeRawData | null {
-  if (!edgeId) return null;
+  if (edgeId === null || edgeId.length === 0) return null;
   const edge = edges.find((e) => e.id === edgeId);
   if (!edge) return null;
   return {
     id: edge.id,
     source: edge.source,
     target: edge.target,
-    ...(edge.data as Record<string, unknown>)
+    ...getRecordUnknown(edge.data)
   };
+}
+
+function getNodeRawData(nodeId: string | null, nodes: TopoNode[]): NodeRawData | null {
+  if (nodeId === null || nodeId.length === 0) return null;
+  const node = nodes.find((n) => n.id === nodeId);
+  if (!node) return null;
+  const data = getRecordUnknown(node.data);
+  if (data === undefined) {
+    return { id: node.id };
+  }
+  return { id: node.id, ...data };
 }
 
 function getAnnotationHandlerSnapshot(annotations: AnnotationContextValue) {
@@ -77,7 +90,7 @@ export function useCustomNodeErrorToast(
   clearCustomNodeError: () => void
 ): void {
   React.useEffect(() => {
-    if (!customNodeError) return;
+    if (customNodeError === null || customNodeError === undefined) return;
     const errorMsg = typeof customNodeError === "string" ? customNodeError : "Unknown error";
     addToast(`Failed to save custom node: ${errorMsg}`, "error", 5000);
     clearCustomNodeError();
@@ -111,12 +124,10 @@ export function useSelectionData(
   edges: TopoEdge[],
   edgeAnnotationLookup: EdgeAnnotationLookup
 ) {
-  const selectedNodeData = React.useMemo(() => {
-    if (!state.selectedNode) return null;
-    const node = nodes.find((n) => n.id === state.selectedNode);
-    if (!node) return null;
-    return { id: node.id, ...(node.data as Record<string, unknown>) };
-  }, [state.selectedNode, nodes]);
+  const selectedNodeData = React.useMemo(
+    () => getNodeRawData(state.selectedNode, nodes),
+    [state.selectedNode, nodes]
+  );
 
   const selectedLinkData = React.useMemo(
     () => getEdgeRawData(state.selectedEdge, edges),
@@ -128,19 +139,15 @@ export function useSelectionData(
     [state.editingImpairment, edges]
   );
 
-  const editingNodeRawData = React.useMemo(() => {
-    if (!state.editingNode) return null;
-    const node = nodes.find((n) => n.id === state.editingNode);
-    if (!node) return null;
-    return { id: node.id, ...(node.data as Record<string, unknown>) };
-  }, [state.editingNode, nodes]);
+  const editingNodeRawData = React.useMemo(
+    () => getNodeRawData(state.editingNode, nodes),
+    [state.editingNode, nodes]
+  );
 
-  const editingNetworkRawData = React.useMemo(() => {
-    if (!state.editingNetwork) return null;
-    const node = nodes.find((n) => n.id === state.editingNetwork);
-    if (!node) return null;
-    return { id: node.id, ...(node.data as Record<string, unknown>) };
-  }, [state.editingNetwork, nodes]);
+  const editingNetworkRawData = React.useMemo(
+    () => getNodeRawData(state.editingNetwork, nodes),
+    [state.editingNetwork, nodes]
+  );
 
   const editingLinkRawData = React.useMemo(
     () => getEdgeRawData(state.editingEdge, edges),
@@ -152,9 +159,7 @@ export function useSelectionData(
     [editingNodeRawData]
   );
   const editingNodeInheritedProps = React.useMemo(() => {
-    const extra = (editingNodeRawData as Record<string, unknown> | null)?.extraData as
-      | Record<string, unknown>
-      | undefined;
+    const extra = getRecordUnknown(editingNodeRawData?.["extraData"]);
     const inherited = extra?.inherited;
     return Array.isArray(inherited)
       ? inherited.filter((p): p is string => typeof p === "string")

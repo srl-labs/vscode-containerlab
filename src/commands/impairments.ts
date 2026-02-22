@@ -55,13 +55,13 @@ export async function setImpairment(
 }
 
 async function promptImpairment(
-  node: ClabInterfaceTreeNode,
+  node: ClabInterfaceTreeNode | undefined,
   impairment: string,
   title: string,
   placeHolder: string,
   validator: (_input: string) => string | undefined
 ): Promise<void> {
-  if (!node || !(node instanceof ClabInterfaceTreeNode)) {
+  if (!(node instanceof ClabInterfaceTreeNode)) {
     vscode.window.showErrorMessage(`No interface selected to set ${impairment} for.`);
     return;
   }
@@ -74,7 +74,11 @@ async function promptImpairment(
   void setImpairment(node, netemData);
 }
 
-export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<void> {
+export async function setLinkDelay(node?: ClabInterfaceTreeNode): Promise<void> {
+  if (node === undefined) {
+    vscode.window.showErrorMessage("No interface selected to set delay for.");
+    return;
+  }
   await promptImpairment(
     node,
     "delay",
@@ -92,7 +96,11 @@ export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<void> {
   );
 }
 
-export async function setLinkJitter(node: ClabInterfaceTreeNode): Promise<void> {
+export async function setLinkJitter(node?: ClabInterfaceTreeNode): Promise<void> {
+  if (node === undefined) {
+    vscode.window.showErrorMessage("No interface selected to set jitter for.");
+    return;
+  }
   await promptImpairment(
     node,
     "jitter",
@@ -110,7 +118,11 @@ export async function setLinkJitter(node: ClabInterfaceTreeNode): Promise<void> 
   );
 }
 
-export async function setLinkLoss(node: ClabInterfaceTreeNode): Promise<void> {
+export async function setLinkLoss(node?: ClabInterfaceTreeNode): Promise<void> {
+  if (node === undefined) {
+    vscode.window.showErrorMessage("No interface selected to set loss for.");
+    return;
+  }
   await promptImpairment(
     node,
     "loss",
@@ -129,7 +141,11 @@ export async function setLinkLoss(node: ClabInterfaceTreeNode): Promise<void> {
   );
 }
 
-export async function setLinkRate(node: ClabInterfaceTreeNode): Promise<void> {
+export async function setLinkRate(node?: ClabInterfaceTreeNode): Promise<void> {
+  if (node === undefined) {
+    vscode.window.showErrorMessage("No interface selected to set rate for.");
+    return;
+  }
   await promptImpairment(
     node,
     "rate",
@@ -148,7 +164,11 @@ export async function setLinkRate(node: ClabInterfaceTreeNode): Promise<void> {
   );
 }
 
-export async function setLinkCorruption(node: ClabInterfaceTreeNode): Promise<void> {
+export async function setLinkCorruption(node?: ClabInterfaceTreeNode): Promise<void> {
+  if (node === undefined) {
+    vscode.window.showErrorMessage("No interface selected to set corruption for.");
+    return;
+  }
   await promptImpairment(
     node,
     "corruption",

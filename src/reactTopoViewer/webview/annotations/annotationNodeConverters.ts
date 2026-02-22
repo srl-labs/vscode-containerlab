@@ -99,6 +99,10 @@ function normalizeTrafficRateTextMetric(
   return undefined;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function toOptionalString(value: unknown): string | undefined {
   return isNonEmptyString(value) ? value : undefined;
 }
@@ -106,18 +110,29 @@ function toOptionalString(value: unknown): string | undefined {
 function toOptionalTrafficRateBorderStyle(
   value: unknown
 ): TrafficRateAnnotation["borderStyle"] | undefined {
-  return isNonEmptyString(value) ? (value as TrafficRateAnnotation["borderStyle"]) : undefined;
+  if (value === "solid" || value === "dashed" || value === "dotted" || value === "double") {
+    return value;
+  }
+  return undefined;
 }
 
-function setFiniteNumberIfPresent<T extends object, K extends keyof T>(
-  target: T,
-  key: K,
+function setFiniteNumberIfPresent(
+  target: Record<string, unknown>,
+  key: string,
   value: unknown
 ): void {
   const parsed = toFiniteNumber(value);
   if (parsed !== undefined) {
-    target[key] = parsed as T[K];
+    target[key] = parsed;
   }
+}
+
+function toLatLng(value: unknown): { lat: number; lng: number } | undefined {
+  if (!isRecord(value)) return undefined;
+  const lat = toFiniteNumber(value.lat);
+  const lng = toFiniteNumber(value.lng);
+  if (lat === undefined || lng === undefined) return undefined;
+  return { lat, lng };
 }
 
 function resolveTrafficRateDimensions(
@@ -306,8 +321,10 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
     typeof annotation.zIndex === "number" ? annotation.zIndex : DEFAULT_SHAPE_Z_INDEX;
 
   if (isLine) {
-    const { nodePosition, width, height, relativeEndPosition, lineStartInNode } =
-      computeLineBounds(annotation, startPosition);
+    const { nodePosition, width, height, relativeEndPosition, lineStartInNode } = computeLineBounds(
+      annotation,
+      startPosition
+    );
 
     return {
       id: annotation.id,
@@ -425,7 +442,7 @@ export function groupToNode(group: GroupStyleAnnotation): Node<GroupNodeData> {
   const resolvedPosition = normalizePosition(group.position);
   const resolvedWidth = toFiniteNumber(group.width) ?? DEFAULT_GROUP_WIDTH;
   const resolvedHeight = toFiniteNumber(group.height) ?? DEFAULT_GROUP_HEIGHT;
-  const legacyColor = (group as Record<string, unknown>).color;
+  const legacyColor = group.color;
   const resolvedLabelColor =
     (isNonEmptyString(group.labelColor) ? group.labelColor : undefined) ??
     (isNonEmptyString(legacyColor) ? legacyColor : undefined);
@@ -473,7 +490,7 @@ export function groupToNode(group: GroupStyleAnnotation): Node<GroupNodeData> {
  */
 export function nodeToFreeText(node: Node<FreeTextNodeData>): FreeTextAnnotation {
   const data = node.data;
-  return {
+  const annotation: FreeTextAnnotation = {
     id: node.id,
     text: data.text,
     position: node.position,
@@ -488,11 +505,15 @@ export function nodeToFreeText(node: Node<FreeTextNodeData>): FreeTextAnnotation
     rotation: data.rotation,
     width: node.width ?? data.width,
     height: node.height ?? data.height,
-    roundedBackground: data.roundedBackground,
-    groupId: data.groupId as string | undefined,
-    geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined,
-    zIndex: data.zIndex as number | undefined
+    roundedBackground: data.roundedBackground
   };
+  const groupId = toOptionalString(data.groupId);
+  if (groupId !== undefined) annotation.groupId = groupId;
+  const geoCoordinates = toLatLng(data.geoCoordinates);
+  if (geoCoordinates !== undefined) annotation.geoCoordinates = geoCoordinates;
+  const zIndex = toFiniteNumber(data.zIndex);
+  if (zIndex !== undefined) annotation.zIndex = zIndex;
+  return annotation;
 }
 
 /**
@@ -505,7 +526,7 @@ export function nodeToFreeShape(node: Node<FreeShapeNodeData>): FreeShapeAnnotat
 
   if (isLine) {
     // For lines, startPosition in data is the actual annotation position
-    return {
+    const annotation: FreeShapeAnnotation = {
       id: node.id,
       shapeType: "line",
       position: data.startPosition ?? node.position,
@@ -519,15 +540,19 @@ export function nodeToFreeShape(node: Node<FreeShapeNodeData>): FreeShapeAnnotat
       lineStartArrow: data.lineStartArrow,
       lineEndArrow: data.lineEndArrow,
       lineArrowSize: data.lineArrowSize,
-      groupId: data.groupId as string | undefined,
-      geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined,
-      endGeoCoordinates: data.endGeoCoordinates as { lat: number; lng: number } | undefined,
       zIndex
     };
+    const groupId = toOptionalString(data.groupId);
+    if (groupId !== undefined) annotation.groupId = groupId;
+    const geoCoordinates = toLatLng(data.geoCoordinates);
+    if (geoCoordinates !== undefined) annotation.geoCoordinates = geoCoordinates;
+    const endGeoCoordinates = toLatLng(data.endGeoCoordinates);
+    if (endGeoCoordinates !== undefined) annotation.endGeoCoordinates = endGeoCoordinates;
+    return annotation;
   }
 
   // Non-line shapes
-  return {
+  const annotation: FreeShapeAnnotation = {
     id: node.id,
     shapeType: data.shapeType,
     position: node.position,
@@ -540,10 +565,13 @@ export function nodeToFreeShape(node: Node<FreeShapeNodeData>): FreeShapeAnnotat
     borderStyle: data.borderStyle,
     rotation: data.rotation,
     cornerRadius: data.cornerRadius,
-    groupId: data.groupId as string | undefined,
-    geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined,
     zIndex
   };
+  const groupId = toOptionalString(data.groupId);
+  if (groupId !== undefined) annotation.groupId = groupId;
+  const geoCoordinates = toLatLng(data.geoCoordinates);
+  if (geoCoordinates !== undefined) annotation.geoCoordinates = geoCoordinates;
+  return annotation;
 }
 
 /**
@@ -574,10 +602,10 @@ export function nodeToGroup(node: Node<GroupNodeData>): GroupStyleAnnotation {
   return {
     id: node.id,
     name: data.name,
-    level: data.level ?? "",
+    level: data.level,
     position: node.position,
-    width: node.width ?? data.width ?? 200,
-    height: node.height ?? data.height ?? 150,
+    width: node.width ?? data.width,
+    height: node.height ?? data.height,
     backgroundColor: data.backgroundColor,
     backgroundOpacity: data.backgroundOpacity,
     borderColor: data.borderColor,
@@ -589,8 +617,24 @@ export function nodeToGroup(node: Node<GroupNodeData>): GroupStyleAnnotation {
     parentId,
     groupId,
     zIndex,
-    geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined
+    geoCoordinates: toLatLng(data.geoCoordinates)
   };
+}
+
+function isFreeTextNode(node: Node): node is Node<FreeTextNodeData> {
+  return node.type === FREE_TEXT_NODE_TYPE;
+}
+
+function isFreeShapeNode(node: Node): node is Node<FreeShapeNodeData> {
+  return node.type === FREE_SHAPE_NODE_TYPE;
+}
+
+function isTrafficRateNode(node: Node): node is Node<TrafficRateNodeData> {
+  return node.type === TRAFFIC_RATE_NODE_TYPE;
+}
+
+function isGroupNode(node: Node): node is Node<GroupNodeData> {
+  return node.type === GROUP_NODE_TYPE;
 }
 
 // ============================================================================
@@ -646,19 +690,20 @@ export function nodesToAnnotations(nodes: Node[]): {
   const groups: GroupStyleAnnotation[] = [];
 
   for (const node of nodes) {
-    switch (node.type) {
-      case FREE_TEXT_NODE_TYPE:
-        freeTextAnnotations.push(nodeToFreeText(node as Node<FreeTextNodeData>));
-        break;
-      case FREE_SHAPE_NODE_TYPE:
-        freeShapeAnnotations.push(nodeToFreeShape(node as Node<FreeShapeNodeData>));
-        break;
-      case TRAFFIC_RATE_NODE_TYPE:
-        trafficRateAnnotations.push(nodeToTrafficRate(node as Node<TrafficRateNodeData>));
-        break;
-      case GROUP_NODE_TYPE:
-        groups.push(nodeToGroup(node as Node<GroupNodeData>));
-        break;
+    if (isFreeTextNode(node)) {
+      freeTextAnnotations.push(nodeToFreeText(node));
+      continue;
+    }
+    if (isFreeShapeNode(node)) {
+      freeShapeAnnotations.push(nodeToFreeShape(node));
+      continue;
+    }
+    if (isTrafficRateNode(node)) {
+      trafficRateAnnotations.push(nodeToTrafficRate(node));
+      continue;
+    }
+    if (isGroupNode(node)) {
+      groups.push(nodeToGroup(node));
     }
   }
 

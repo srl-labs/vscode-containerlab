@@ -53,7 +53,7 @@ function parsePrefixSettings(
   if (settings.prefix === "") {
     return { prefixType: "no-prefix", customPrefix: "" };
   }
-  if (settings.prefix && settings.prefix !== "clab") {
+  if (settings.prefix !== null && settings.prefix !== "clab") {
     return { prefixType: "custom", customPrefix: settings.prefix };
   }
   return { prefixType: "default", customPrefix: "" };
@@ -63,16 +63,17 @@ function parseIpv4Settings(
   mgmt?: LabSettings["mgmt"]
 ): Pick<MgmtSettingsState, "ipv4Type" | "ipv4Subnet" | "ipv4Gateway" | "ipv4Range"> {
   const result = { ipv4Type: "default" as IpType, ipv4Subnet: "", ipv4Gateway: "", ipv4Range: "" };
-  if (!mgmt?.["ipv4-subnet"]) return result;
+  const ipv4Subnet = mgmt?.["ipv4-subnet"];
+  if (ipv4Subnet === undefined || ipv4Subnet === "") return result;
 
-  if (mgmt["ipv4-subnet"] === "auto") {
+  if (ipv4Subnet === "auto") {
     return { ...result, ipv4Type: "auto" };
   }
   return {
     ipv4Type: "custom",
-    ipv4Subnet: mgmt["ipv4-subnet"],
-    ipv4Gateway: mgmt["ipv4-gw"] || "",
-    ipv4Range: mgmt["ipv4-range"] || ""
+    ipv4Subnet,
+    ipv4Gateway: mgmt?.["ipv4-gw"] ?? "",
+    ipv4Range: mgmt?.["ipv4-range"] ?? ""
   };
 }
 
@@ -80,15 +81,16 @@ function parseIpv6Settings(
   mgmt?: LabSettings["mgmt"]
 ): Pick<MgmtSettingsState, "ipv6Type" | "ipv6Subnet" | "ipv6Gateway"> {
   const result = { ipv6Type: "default" as IpType, ipv6Subnet: "", ipv6Gateway: "" };
-  if (!mgmt?.["ipv6-subnet"]) return result;
+  const ipv6Subnet = mgmt?.["ipv6-subnet"];
+  if (ipv6Subnet === undefined || ipv6Subnet === "") return result;
 
-  if (mgmt["ipv6-subnet"] === "auto") {
+  if (ipv6Subnet === "auto") {
     return { ...result, ipv6Type: "auto" };
   }
   return {
     ipv6Type: "custom",
-    ipv6Subnet: mgmt["ipv6-subnet"],
-    ipv6Gateway: mgmt["ipv6-gw"] || ""
+    ipv6Subnet,
+    ipv6Gateway: mgmt?.["ipv6-gw"] ?? ""
   };
 }
 
@@ -208,7 +210,7 @@ function buildInitialMgmt(settings?: LabSettings): MgmtSettingsState {
     ipv6Type: ipv6.ipv6Type,
     ipv6Subnet: ipv6.ipv6Subnet,
     ipv6Gateway: ipv6.ipv6Gateway,
-    mtu: mgmt?.mtu ? String(mgmt.mtu) : "",
+    mtu: mgmt?.mtu !== undefined ? String(mgmt.mtu) : "",
     bridge: mgmt?.bridge ?? "",
     externalAccess: mgmt?.["external-access"] !== false,
     driverOptions: parseDriverOptions(mgmt ?? undefined)

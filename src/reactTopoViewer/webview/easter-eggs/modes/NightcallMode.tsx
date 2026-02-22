@@ -40,7 +40,10 @@ const CHORD_COLORS: Record<string, RGBColor> = {
  * Get color for current chord
  */
 function getChordColor(chord: string): RGBColor {
-  return CHORD_COLORS[chord] || COLORS.purple;
+  if (Object.prototype.hasOwnProperty.call(CHORD_COLORS, chord)) {
+    return CHORD_COLORS[chord];
+  }
+  return COLORS.purple;
 }
 
 /**

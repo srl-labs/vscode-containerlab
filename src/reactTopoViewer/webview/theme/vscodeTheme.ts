@@ -41,8 +41,14 @@ export const vscodePalette = {
     disabled: "var(--vscode-disabledForeground)"
   },
   primary: buildPaletteColor(BUTTON_BACKGROUND, "var(--vscode-button-foreground)"),
-  secondary: buildPaletteColor(BUTTON_SECONDARY_BACKGROUND, "var(--vscode-button-secondaryForeground)"),
-  error: buildPaletteColor(EDITOR_ERROR_FOREGROUND, "var(--vscode-inputValidation-errorForeground)"),
+  secondary: buildPaletteColor(
+    BUTTON_SECONDARY_BACKGROUND,
+    "var(--vscode-button-secondaryForeground)"
+  ),
+  error: buildPaletteColor(
+    EDITOR_ERROR_FOREGROUND,
+    "var(--vscode-inputValidation-errorForeground)"
+  ),
   warning: buildPaletteColor(
     EDITOR_WARNING_FOREGROUND,
     "var(--vscode-inputValidation-warningForeground)"

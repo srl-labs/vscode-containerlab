@@ -37,7 +37,7 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
 
   // Get custom nodes from VS Code configuration
   const customNodes = getCustomNodesFromConfig();
-  const defaultNode = customNodes.find((n) => n.setDefault)?.name || "";
+  const defaultNode = customNodes.find((n) => n.setDefault === true)?.name ?? "";
 
   // Load schema data for kind/type dropdowns
   const schemaData = await loadSchemaData(extensionUri);

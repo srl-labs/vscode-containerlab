@@ -66,7 +66,9 @@ export const KeyValueList: React.FC<KeyValueListProps> = ({
           disabled={disabled}
         />
       ))}
-      {!hideAddButton && <AddItemButton onAdd={handleAdd} label={addLabel} disabled={disabled} />}
+      {hideAddButton !== true && (
+        <AddItemButton onAdd={handleAdd} label={addLabel} disabled={disabled} />
+      )}
     </Box>
   );
 };

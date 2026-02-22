@@ -7,6 +7,10 @@ import { isSpecialEndpointId } from "../../shared/utilities/LinkTypes";
 
 type LinkExtraData = NonNullable<LinkSaveData["extraData"]>;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 /** Parse MTU from raw value (can be string or number) */
 function parseMtu(raw: unknown): number | undefined {
   if (raw === undefined || raw === "") return undefined;
@@ -16,7 +20,8 @@ function parseMtu(raw: unknown): number | undefined {
 
 /** Get string value from object with fallback */
 function getStr(obj: Record<string, unknown>, key: string, fallback = ""): string {
-  return (obj[key] as string) || fallback;
+  const value = obj[key];
+  return typeof value === "string" ? value : fallback;
 }
 
 /** Get MAC address from extended data or legacy endpoint object */
@@ -27,10 +32,12 @@ function getEndpointValue(
   endpointKey: string,
   endpointField: string
 ): string {
-  const extVal = extraData[extKey] as string | undefined;
-  if (extVal) return extVal;
-  const endpoint = rawData[endpointKey] as Record<string, unknown> | undefined;
-  return (endpoint?.[endpointField] as string) || "";
+  const extVal = extraData[extKey];
+  if (typeof extVal === "string" && extVal.length > 0) return extVal;
+  const endpoint = rawData[endpointKey];
+  if (!isRecord(endpoint)) return "";
+  const endpointValue = endpoint[endpointField];
+  return typeof endpointValue === "string" ? endpointValue : "";
 }
 
 /** Get MAC address from extended data or legacy endpoint object */
@@ -61,11 +68,17 @@ function getMap(
   rawData: Record<string, unknown>,
   rawKey: string
 ): Record<string, string> {
-  return (
-    (extraData[extKey] as Record<string, string>) ||
-    (rawData[rawKey] as Record<string, string>) ||
-    {}
-  );
+  const parse = (value: unknown): Record<string, string> | undefined => {
+    if (!isRecord(value)) return undefined;
+    const output: Record<string, string> = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (typeof v === "string") {
+        output[k] = v;
+      }
+    }
+    return Object.keys(output).length > 0 ? output : undefined;
+  };
+  return parse(extraData[extKey]) ?? parse(rawData[rawKey]) ?? {};
 }
 
 function assignExtraString(
@@ -73,7 +86,7 @@ function assignExtraString(
   key: keyof LinkExtraData,
   value: string | undefined
 ): void {
-  if (!value) return;
+  if (value === undefined || value.length === 0) return;
   extraData[key] = value;
 }
 
@@ -98,7 +111,7 @@ export function convertToLinkEditorData(
   const target = getStr(rawData, "target");
   const sourceEndpoint = getStr(rawData, "sourceEndpoint");
   const targetEndpoint = getStr(rawData, "targetEndpoint");
-  const extraData = (rawData.extraData as Record<string, unknown>) || {};
+  const extraData = isRecord(rawData.extraData) ? rawData.extraData : {};
   const yamlSource =
     typeof extraData.yamlSourceNodeId === "string" && extraData.yamlSourceNodeId.length > 0
       ? extraData.yamlSourceNodeId
@@ -144,7 +157,7 @@ export function convertEditorDataToLinkSaveData(data: LinkEditorData): LinkSaveD
   // Build extraData with extended properties
   const extraData: LinkExtraData = {};
 
-  if (data.type && data.type !== "veth") {
+  if (data.type !== undefined && data.type.length > 0 && data.type !== "veth") {
     extraData.extType = data.type;
   }
   if (data.mtu !== undefined && data.mtu !== "") {

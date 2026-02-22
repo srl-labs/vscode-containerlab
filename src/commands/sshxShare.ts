@@ -17,20 +17,21 @@ function parseLink(output: string): string | undefined {
 }
 
 async function sshxStart(action: "attach" | "reattach", node: ClabLabTreeNode) {
-  if (!node || !node.name) {
+  if (node.name === undefined || node.name.length === 0) {
     vscode.window.showErrorMessage(`No lab selected for SSHX ${action}.`);
     return;
   }
   try {
-    const out = (await runCommand(
+    const outRaw = await runCommand(
       `${containerlabBinaryPath} tools sshx ${action} -l ${node.name}`,
       `SSHX ${action}`,
       outputChannel,
       true,
       true
-    )) as string;
-    const link = parseLink(out || "");
-    if (link) {
+    );
+    const out = typeof outRaw === "string" ? outRaw : "";
+    const link = parseLink(out);
+    if (link !== undefined && link.length > 0) {
       sshxSessions.set(node.name, link);
       await vscode.env.clipboard.writeText(link);
       const choice = await vscode.window.showInformationMessage(
@@ -58,7 +59,7 @@ export async function sshxAttach(node: ClabLabTreeNode) {
 }
 
 export async function sshxDetach(node: ClabLabTreeNode) {
-  if (!node || !node.name) {
+  if (node.name === undefined || node.name.length === 0) {
     vscode.window.showErrorMessage("No lab selected for SSHX detach.");
     return;
   }

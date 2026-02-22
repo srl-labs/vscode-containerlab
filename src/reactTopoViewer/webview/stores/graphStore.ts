@@ -9,8 +9,6 @@ import { shallow } from "zustand/shallow";
 import { applyNodeChanges, applyEdgeChanges } from "@xyflow/react";
 import type { Node, Edge, NodeChange, EdgeChange } from "@xyflow/react";
 
-import type { TopoNode, TopoEdge } from "../../shared/types/graph";
-
 // ============================================================================
 // Types
 // ============================================================================
@@ -31,7 +29,7 @@ export interface GraphActions {
   onEdgesChange: (changes: EdgeChange[]) => void;
 
   // Node mutations
-  addNode: (node: TopoNode) => void;
+  addNode: (node: Node) => void;
   removeNode: (nodeId: string) => void;
   removeNodeAndEdges: (nodeId: string) => void;
   updateNode: (nodeId: string, updates: Partial<Node>) => void;
@@ -43,7 +41,7 @@ export interface GraphActions {
   updateNodeData: (nodeId: string, data: Partial<Record<string, unknown>>) => void;
 
   // Edge mutations
-  addEdge: (edge: TopoEdge) => void;
+  addEdge: (edge: Edge) => void;
   removeEdge: (edgeId: string) => void;
   updateEdge: (edgeId: string, updates: Partial<Edge>) => void;
   updateEdgeData: (edgeId: string, data: Partial<Record<string, unknown>>) => void;
@@ -94,7 +92,7 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
   addNode: (node) => {
     set((state) => {
       if (state.nodes.some((n) => n.id === node.id)) return state;
-      return { nodes: [...state.nodes, node as Node] };
+      return { nodes: [...state.nodes, node] };
     });
   },
 
@@ -165,7 +163,7 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
     set((state) => ({
       nodes: state.nodes.map((node) => {
         if (node.id !== nodeId) return node;
-        const currentData = node.data as Record<string, unknown>;
+        const currentData = node.data;
         const updatedData: Record<string, unknown> = {
           ...currentData,
           extraData
@@ -203,7 +201,7 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
   addEdge: (edge) => {
     set((state) => {
       if (state.edges.some((e) => e.id === edge.id)) return state;
-      return { edges: [...state.edges, edge as Edge] };
+      return { edges: [...state.edges, edge] };
     });
   },
 
@@ -217,9 +215,7 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
     set((state) => ({
       edges: state.edges.map((edge) => {
         if (edge.id !== edgeId) return edge;
-        const mergedData = updates.data
-          ? { ...edge.data, ...(updates.data as Record<string, unknown>) }
-          : edge.data;
+        const mergedData = updates.data ? { ...edge.data, ...updates.data } : edge.data;
         return { ...edge, ...updates, data: mergedData };
       })
     }));

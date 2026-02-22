@@ -115,7 +115,7 @@ test.describe("Node Deletion", () => {
     const connectedEdgeCount = await page.evaluate((nodeId) => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
-      if (!rf) return 0;
+      if (rf === undefined || rf === null) return 0;
       const edges = rf.getEdges?.() ?? [];
       return edges.filter((e: any) => e.source === nodeId || e.target === nodeId).length;
     }, nodeIds[0]);
@@ -169,7 +169,7 @@ test.describe("Node Deletion - File Persistence", () => {
     expect(initialYaml).toContain("leaf1:");
 
     // Count links referencing leaf1
-    const leaf1LinksInitial = (initialYaml.match(/"leaf1:/g) || []).length;
+    const leaf1LinksInitial = (initialYaml.match(/"leaf1:/g) ?? []).length;
     expect(leaf1LinksInitial).toBeGreaterThan(0);
 
     // Delete leaf1
@@ -186,7 +186,7 @@ test.describe("Node Deletion - File Persistence", () => {
     expect(updatedYaml).not.toContain("leaf1:");
 
     // Links referencing leaf1 should also be gone
-    const leaf1LinksUpdated = (updatedYaml.match(/"leaf1:/g) || []).length;
+    const leaf1LinksUpdated = (updatedYaml.match(/"leaf1:/g) ?? []).length;
     expect(leaf1LinksUpdated).toBe(0);
   });
 

@@ -21,12 +21,16 @@ const STARTUP_CONFIG_MODE_OPTIONS = [
   { value: "suppress", label: "Suppress startup config" }
 ];
 
+function isStartupConfigMode(value: string): value is StartupConfigMode {
+  return value === "default" || value === "enforce" || value === "suppress";
+}
+
 function getStartupConfigMode(data: {
   enforceStartupConfig?: boolean;
   suppressStartupConfig?: boolean;
 }): StartupConfigMode {
-  if (data.enforceStartupConfig) return "enforce";
-  if (data.suppressStartupConfig) return "suppress";
+  if (data.enforceStartupConfig === true) return "enforce";
+  if (data.suppressStartupConfig === true) return "suppress";
   return "default";
 }
 
@@ -41,19 +45,19 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
   };
 
   const handleAddBind = () => {
-    onChange({ binds: [...(data.binds || []), ""] });
+    onChange({ binds: [...(data.binds ?? []), ""] });
   };
 
   const handleAddEnvVar = () => {
-    onChange({ env: { ...(data.env || {}), "": "" } });
+    onChange({ env: { ...data.env, "": "" } });
   };
 
   const handleAddEnvFile = () => {
-    onChange({ envFiles: [...(data.envFiles || []), ""] });
+    onChange({ envFiles: [...(data.envFiles ?? []), ""] });
   };
 
   const handleAddLabel = () => {
-    onChange({ labels: { ...(data.labels || {}), "": "" } });
+    onChange({ labels: { ...data.labels, "": "" } });
   };
 
   return (
@@ -62,7 +66,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
         <InputField
           id="node-startup-config"
           label="Startup configuration Path"
-          value={data.startupConfig || ""}
+          value={data.startupConfig ?? ""}
           onChange={(value) => onChange({ startupConfig: value })}
           placeholder="Path to startup configuration file"
         />
@@ -70,7 +74,11 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
           id="node-startup-config-mode"
           label="Startup configuration mode"
           value={mode}
-          onChange={(value) => handleModeChange(value as StartupConfigMode)}
+          onChange={(value) => {
+            if (isStartupConfigMode(value)) {
+              handleModeChange(value);
+            }
+          }}
           options={STARTUP_CONFIG_MODE_OPTIONS}
         />
       </PanelSection>
@@ -79,7 +87,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
         <InputField
           id="node-license"
           label="License File"
-          value={data.license || ""}
+          value={data.license ?? ""}
           onChange={(value) => onChange({ license: value })}
           placeholder="Path to license file"
         />
@@ -87,7 +95,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       <PanelAddSection title="Bind Mounts" onAdd={handleAddBind}>
         <DynamicList
-          items={data.binds || []}
+          items={data.binds ?? []}
           onChange={(items) => onChange({ binds: items })}
           placeholder="host:container[:options]"
           hideAddButton
@@ -96,7 +104,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       <PanelAddSection title="Environment Variables" onAdd={handleAddEnvVar}>
         <KeyValueList
-          items={data.env || {}}
+          items={data.env ?? {}}
           onChange={(items) => onChange({ env: items })}
           keyPlaceholder="Variable"
           valuePlaceholder="Value"
@@ -106,7 +114,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       <PanelAddSection title="Environment Files" onAdd={handleAddEnvFile}>
         <DynamicList
-          items={data.envFiles || []}
+          items={data.envFiles ?? []}
           onChange={(items) => onChange({ envFiles: items })}
           placeholder="Path to env file"
           hideAddButton
@@ -115,7 +123,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       <PanelAddSection title="Labels" onAdd={handleAddLabel}>
         <KeyValueList
-          items={data.labels || {}}
+          items={data.labels ?? {}}
           onChange={(items) => onChange({ labels: items })}
           keyPlaceholder="Label"
           valuePlaceholder="Value"

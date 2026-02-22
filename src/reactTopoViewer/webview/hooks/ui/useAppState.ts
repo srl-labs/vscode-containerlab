@@ -69,7 +69,7 @@ function clampLineWidth(width: number): number {
 function getStoredGridLineWidth(): number {
   try {
     const raw = window.localStorage.getItem(GRID_LINE_WIDTH_STORAGE_KEY);
-    if (raw) {
+    if (raw !== null && raw.length > 0) {
       return clampLineWidth(parseFloat(raw));
     }
   } catch {

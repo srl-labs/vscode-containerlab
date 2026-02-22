@@ -8,8 +8,10 @@ export function buildEdgeId(
   targetEndpoint?: string,
   timestamp?: number
 ): string {
-  const src = sourceEndpoint ? `${source}:${sourceEndpoint}` : source;
-  const dst = targetEndpoint ? `${target}:${targetEndpoint}` : target;
+  const hasSourceEndpoint = sourceEndpoint !== undefined && sourceEndpoint.length > 0;
+  const hasTargetEndpoint = targetEndpoint !== undefined && targetEndpoint.length > 0;
+  const src = hasSourceEndpoint ? `${source}:${sourceEndpoint}` : source;
+  const dst = hasTargetEndpoint ? `${target}:${targetEndpoint}` : target;
   const time = timestamp ?? Date.now();
   return `${src}--${dst}-${time}`;
 }

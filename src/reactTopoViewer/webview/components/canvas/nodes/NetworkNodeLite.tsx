@@ -4,33 +4,15 @@
 import React, { memo } from "react";
 import type { NodeProps } from "@xyflow/react";
 
-import type { NetworkNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 
 import { ICON_SIZE, LiteNodeShell } from "./NodeLiteBase";
 import { getNodeDirectionRotation } from "./nodeStyles";
-
-function getNodeTypeColor(nodeType: string): string {
-  switch (nodeType) {
-    case "host":
-      return "#6B7280";
-    case "mgmt-net":
-      return "#3B82F6";
-    case "macvlan":
-      return "#10B981";
-    case "vxlan":
-      return "#8B5CF6";
-    case "bridge":
-    case "ovs-bridge":
-      return "#F59E0B";
-    default:
-      return "#6B7280";
-  }
-}
+import { getNetworkNodeTypeColor, toNetworkNodeData } from "./networkNodeShared";
 
 const NetworkNodeLiteComponent: React.FC<NodeProps> = ({ data, selected }) => {
-  const nodeData = data as NetworkNodeData;
-  const color = getNodeTypeColor(nodeData.nodeType);
+  const nodeData = toNetworkNodeData(data);
+  const color = getNetworkNodeTypeColor(nodeData.nodeType);
   const rotation = getNodeDirectionRotation(nodeData.direction);
 
   const iconStyle: React.CSSProperties = {

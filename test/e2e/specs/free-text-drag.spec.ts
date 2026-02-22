@@ -273,7 +273,6 @@ test.describe("Free Text Dragging", () => {
   });
 
   test("legacy gif markdown free text is migrated with explicit height on load", async ({
-    page,
     topoViewerPage
   }) => {
     await topoViewerPage.resetFiles();

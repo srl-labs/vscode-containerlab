@@ -11,11 +11,14 @@ export function toFiniteNumber(value: unknown): number | undefined {
   return undefined;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 export function toPosition(value: unknown): { x: number; y: number } | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const rec = value as Record<string, unknown>;
-  const x = toFiniteNumber(rec.x);
-  const y = toFiniteNumber(rec.y);
+  if (!isRecord(value)) return undefined;
+  const x = toFiniteNumber(value.x);
+  const y = toFiniteNumber(value.y);
   if (x === undefined || y === undefined) return undefined;
   return { x, y };
 }

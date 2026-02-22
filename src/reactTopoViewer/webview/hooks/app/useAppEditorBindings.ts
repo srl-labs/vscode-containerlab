@@ -3,11 +3,7 @@
  */
 import type { LinkEditorData } from "../../../shared/types/editors";
 import type { TopoViewerActions, TopoViewerState } from "../../stores/topoViewerStore";
-import {
-  useNodeEditorHandlers,
-  useLinkEditorHandlers,
-  useNetworkEditorHandlers
-} from "../editor";
+import { useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers } from "../editor";
 
 import type { useSelectionData } from "./useAppContentHelpers";
 
@@ -15,11 +11,7 @@ interface AppEditorBindingsParams {
   state: Pick<TopoViewerState, "edgeAnnotations">;
   actions: Pick<
     TopoViewerActions,
-    | "editNode"
-    | "editEdge"
-    | "editNetwork"
-    | "setEdgeAnnotations"
-    | "refreshEditorData"
+    "editNode" | "editEdge" | "editNetwork" | "setEdgeAnnotations" | "refreshEditorData"
   >;
   selectionData: ReturnType<typeof useSelectionData>;
   renameNodeInGraph: (oldId: string, newId: string, name?: string) => void;
@@ -35,13 +27,7 @@ export function useAppEditorBindings({
   handleUpdateNodeData,
   handleUpdateEdgeData
 }: AppEditorBindingsParams) {
-  const {
-    editNode,
-    editEdge,
-    editNetwork,
-    setEdgeAnnotations,
-    refreshEditorData
-  } = actions;
+  const { editNode, editEdge, editNetwork, setEdgeAnnotations, refreshEditorData } = actions;
 
   const nodeEditorHandlers = useNodeEditorHandlers(
     editNode,

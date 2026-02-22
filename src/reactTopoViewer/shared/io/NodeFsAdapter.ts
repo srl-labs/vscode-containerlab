@@ -10,6 +10,10 @@ import * as path from "path";
 
 import type { FileSystemAdapter } from "./types";
 
+function isErrnoException(value: unknown): value is NodeJS.ErrnoException {
+  return value instanceof Error && "code" in value;
+}
+
 /**
  * File system adapter using Node.js fs.promises
  */
@@ -27,8 +31,7 @@ export class NodeFsAdapter implements FileSystemAdapter {
       await fs.promises.unlink(filePath);
     } catch (err) {
       // Ignore ENOENT (file doesn't exist)
-      const errWithCode = err as { code?: string };
-      if (errWithCode.code !== "ENOENT") {
+      if (!isErrnoException(err) || err.code !== "ENOENT") {
         throw err;
       }
     }

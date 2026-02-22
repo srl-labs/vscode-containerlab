@@ -13,7 +13,11 @@ import DialogTitle from "@mui/material/DialogTitle";
 import LinearProgress from "@mui/material/LinearProgress";
 import Typography from "@mui/material/Typography";
 
-import type { LifecycleLogEntry, LifecycleStatus, ProcessingMode } from "../../stores/topoViewerStore";
+import type {
+  LifecycleLogEntry,
+  LifecycleStatus,
+  ProcessingMode
+} from "../../stores/topoViewerStore";
 
 interface LifecycleProgressModalProps {
   isOpen: boolean;
@@ -54,10 +58,7 @@ function getStatusColor(status: LifecycleStatus): "primary" | "success" | "error
   return "primary";
 }
 
-function renderStatusIcon(
-  status: LifecycleStatus,
-  isProcessing: boolean
-): React.ReactElement {
+function renderStatusIcon(status: LifecycleStatus, isProcessing: boolean): React.ReactElement {
   if (isProcessing) {
     return <CircularProgress size={20} thickness={5} />;
   }
@@ -70,10 +71,7 @@ function renderStatusIcon(
   return <AutorenewIcon color="primary" sx={{ fontSize: 20 }} />;
 }
 
-function renderStatusChipIcon(
-  status: LifecycleStatus,
-  isProcessing: boolean
-): React.ReactElement {
+function renderStatusChipIcon(status: LifecycleStatus, isProcessing: boolean): React.ReactElement {
   if (isProcessing) {
     return <AutorenewIcon fontSize="small" />;
   }
@@ -158,7 +156,7 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
       </DialogTitle>
       {isProcessing && <LinearProgress />}
       <DialogContent dividers sx={{ pt: 2 }}>
-        {statusMessage && (
+        {statusMessage !== undefined && statusMessage !== null && statusMessage.length > 0 && (
           <Typography variant="body2" color="text.secondary" sx={{ display: "block", mb: 1 }}>
             {statusMessage}
           </Typography>

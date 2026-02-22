@@ -1,10 +1,9 @@
 /**
  * NetworkNode - Custom React Flow node for network endpoint nodes
  */
-import React, { useMemo, memo, useState } from "react";
+import React, { useMemo, memo, useState, useCallback } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 
-import type { NetworkNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 import { generateEncodedSVG } from "../../../icons/SvgGenerator";
 import {
@@ -14,27 +13,7 @@ import {
 } from "../../../stores/canvasStore";
 
 import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE, getNodeDirectionRotation } from "./nodeStyles";
-
-/**
- * Get icon color based on node type
- */
-function getNodeTypeColor(nodeType: string): string {
-  switch (nodeType) {
-    case "host":
-      return "#6B7280"; // Gray
-    case "mgmt-net":
-      return "#3B82F6"; // Blue
-    case "macvlan":
-      return "#10B981"; // Green
-    case "vxlan":
-      return "#8B5CF6"; // Purple
-    case "bridge":
-    case "ovs-bridge":
-      return "#F59E0B"; // Amber
-    default:
-      return "#6B7280"; // Gray
-  }
-}
+import { getNetworkNodeTypeColor, toNetworkNodeData } from "./networkNodeShared";
 
 const ICON_SIZE = 40;
 
@@ -49,13 +28,19 @@ const HANDLE_POSITIONS = [
  * NetworkNode component renders network endpoint nodes (host, mgmt-net, etc.)
  */
 const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
-  const nodeData = data as NetworkNodeData;
+  const nodeData = toNetworkNodeData(data);
   const { label, nodeType, labelPosition, direction, labelBackgroundColor } = nodeData;
   const { linkSourceNode } = useLinkCreationContext();
   const { suppressLabels } = useNodeRenderConfig();
   const easterEggGlow = useEasterEggGlow();
   const [isHovered, setIsHovered] = useState(false);
   const directionRotation = useMemo(() => getNodeDirectionRotation(direction), [direction]);
+  const handleMouseEnter = useCallback(() => {
+    setIsHovered(true);
+  }, []);
+  const handleMouseLeave = useCallback(() => {
+    setIsHovered(false);
+  }, []);
 
   // Check if this node is a valid link target (in link creation mode and not the source node)
   // Network nodes do not support loop/self-referencing links
@@ -64,7 +49,7 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
 
   // Generate the SVG icon URL (cloud icon for all network nodes)
   const svgUrl = useMemo(() => {
-    const color = getNodeTypeColor(nodeType);
+    const color = getNetworkNodeTypeColor(nodeType);
     return generateEncodedSVG("cloud", color);
   }, [nodeType]);
 
@@ -143,8 +128,8 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     <div
       style={containerStyle}
       className="network-node"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Hidden handles for edge connections - not interactive */}
       {HANDLE_POSITIONS.map(({ position, id }) => (

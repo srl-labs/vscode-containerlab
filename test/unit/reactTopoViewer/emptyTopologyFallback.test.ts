@@ -17,6 +17,19 @@ describe("TopologyParser empty YAML handling", () => {
     expect(result.topology.nodes).to.deep.equal([]);
     expect(result.topology.edges).to.deep.equal([]);
   });
+
+  it("skips null node entries during in-progress YAML edits", () => {
+    const result = TopologyParser.parseToReactFlow(`name: t
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+    partial:
+`);
+    const nodeIds = result.topology.nodes.map((node) => node.id);
+    expect(nodeIds).to.include("srl1");
+    expect(nodeIds).to.not.include("partial");
+  });
 });
 
 describe("TopologyHostCore empty YAML fallback lab name", () => {

@@ -21,7 +21,7 @@ const LAYOUTABLE_NODE_TYPES = ["topology-node", "network-node"];
  * Check if a node should be included in layout
  */
 function isLayoutableNode(node: Node): boolean {
-  return LAYOUTABLE_NODE_TYPES.includes(node.type || "");
+  return LAYOUTABLE_NODE_TYPES.includes(node.type ?? "");
 }
 
 function applyPositionMap(nodes: Node[], positions: Map<string, { x: number; y: number }>): Node[] {
@@ -75,9 +75,7 @@ interface SimLink extends SimulationLinkDatum<SimNode> {
 export function hasPresetPositions(nodes: Node[]): boolean {
   const layoutNodes = nodes.filter(isLayoutableNode);
   if (layoutNodes.length === 0) return false;
-  return layoutNodes.some(
-    (node) => node.position && (node.position.x !== 0 || node.position.y !== 0)
-  );
+  return layoutNodes.some((node) => node.position.x !== 0 || node.position.y !== 0);
 }
 
 /**

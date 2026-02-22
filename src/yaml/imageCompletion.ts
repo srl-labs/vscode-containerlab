@@ -26,7 +26,7 @@ function hasPreviousLineEndingWithImage(
   for (let l = fromLine - 1; l >= 0 && l >= fromLine - 10; l--) {
     const text = document.lineAt(l).text.split("#")[0].trimEnd();
     if (text.toLowerCase().endsWith("image:")) {
-      const prevIndent = (/^[- \t]*/.exec(text) || [""])[0].length;
+      const prevIndent = (/^[- \t]*/.exec(text) ?? [""])[0].length;
       return currIndent > prevIndent;
     }
   }
@@ -65,7 +65,7 @@ function getAncestorPath(document: vscode.TextDocument, lineIndex: number): stri
       continue;
     }
     const key = extractKeyFromLine(trimmed);
-    if (key) {
+    if (key !== undefined && key.length > 0) {
       path.unshift(key);
       currentIndent = indent;
     } else {
@@ -216,7 +216,7 @@ function registerAutoTrigger(context: vscode.ExtensionContext): void {
     }
 
     const lastChange = event.contentChanges[event.contentChanges.length - 1];
-    if (!lastChange || lastChange.text.length === 0) {
+    if (lastChange.text.length === 0) {
       return;
     }
 
@@ -225,9 +225,9 @@ function registerAutoTrigger(context: vscode.ExtensionContext): void {
     const lineText = event.document.lineAt(position.line).text;
     const currentFilter = getInlineImageFilter(event.document, position);
     const images = utils.getDockerImages();
-    const isExactMatch =
-      images.length > 0 &&
-      images.some((img) => img.toLowerCase() === currentFilter && lineText.trimEnd().endsWith(img));
+    const isExactMatch = images.some(
+      (img) => img.toLowerCase() === currentFilter && lineText.trimEnd().endsWith(img)
+    );
 
     const shouldTrigger = !isExactMatch && (/\S/.test(lastChar) || inserted.includes("\n"));
     if (!shouldTrigger) {

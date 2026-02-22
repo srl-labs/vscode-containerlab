@@ -15,12 +15,12 @@ export const LIFECYCLE_COMMANDS = {
 
 export const MSG_CANCEL_LAB_LIFECYCLE = "cancelLabLifecycle" as const;
 
-const LIFECYCLE_COMMANDS_SET = new Set(Object.values(LIFECYCLE_COMMANDS));
+const LIFECYCLE_COMMANDS_SET: ReadonlySet<string> = new Set(Object.values(LIFECYCLE_COMMANDS));
 
 export type LifecycleCommand = (typeof LIFECYCLE_COMMANDS)[keyof typeof LIFECYCLE_COMMANDS];
 
 export function isLifecycleCommand(command: string): command is LifecycleCommand {
-  return LIFECYCLE_COMMANDS_SET.has(command as LifecycleCommand);
+  return LIFECYCLE_COMMANDS_SET.has(command);
 }
 
 /** Node commands */
@@ -30,12 +30,12 @@ export const NODE_COMMANDS = {
   NODE_VIEW_LOG: "clab-node-view-logs"
 } as const;
 
-const NODE_COMMANDS_SET = new Set(Object.values(NODE_COMMANDS));
+const NODE_COMMANDS_SET: ReadonlySet<string> = new Set(Object.values(NODE_COMMANDS));
 
 export type NodeCommand = (typeof NODE_COMMANDS)[keyof typeof NODE_COMMANDS];
 
 export function isNodeCommand(command: string): command is NodeCommand {
-  return NODE_COMMANDS_SET.has(command as NodeCommand);
+  return NODE_COMMANDS_SET.has(command);
 }
 
 /** Interface commands */
@@ -44,12 +44,12 @@ export const INTERFACE_COMMANDS = {
   LINK_IMPAIRMENT: "clab-link-impairment"
 } as const;
 
-const INTERFACE_COMMANDS_SET = new Set(Object.values(INTERFACE_COMMANDS));
+const INTERFACE_COMMANDS_SET: ReadonlySet<string> = new Set(Object.values(INTERFACE_COMMANDS));
 
 export type InterfaceCommand = (typeof INTERFACE_COMMANDS)[keyof typeof INTERFACE_COMMANDS];
 
 export function isInterfaceCommand(command: string): command is InterfaceCommand {
-  return INTERFACE_COMMANDS_SET.has(command as InterfaceCommand);
+  return INTERFACE_COMMANDS_SET.has(command);
 }
 
 /** Custom node commands */
@@ -59,12 +59,12 @@ export const CUSTOM_NODE_COMMANDS = {
   SET_DEFAULT_CUSTOM_NODE: "set-default-custom-node"
 } as const;
 
-const CUSTOM_NODE_COMMANDS_SET = new Set(Object.values(CUSTOM_NODE_COMMANDS));
+const CUSTOM_NODE_COMMANDS_SET: ReadonlySet<string> = new Set(Object.values(CUSTOM_NODE_COMMANDS));
 
 export type CustomNodeCommand = (typeof CUSTOM_NODE_COMMANDS)[keyof typeof CUSTOM_NODE_COMMANDS];
 
 export function isCustomNodeCommand(command: string): command is CustomNodeCommand {
-  return CUSTOM_NODE_COMMANDS_SET.has(command as CustomNodeCommand);
+  return CUSTOM_NODE_COMMANDS_SET.has(command);
 }
 
 /** Icon commands */
@@ -75,12 +75,12 @@ export const ICON_COMMANDS = {
   ICON_RECONCILE: "icon-reconcile"
 } as const;
 
-const ICON_COMMANDS_SET = new Set(Object.values(ICON_COMMANDS));
+const ICON_COMMANDS_SET: ReadonlySet<string> = new Set(Object.values(ICON_COMMANDS));
 
 export type IconCommand = (typeof ICON_COMMANDS)[keyof typeof ICON_COMMANDS];
 
 export function isIconCommand(command: string): command is IconCommand {
-  return ICON_COMMANDS_SET.has(command as IconCommand);
+  return ICON_COMMANDS_SET.has(command);
 }
 
 /** Export commands */
@@ -88,12 +88,12 @@ export const EXPORT_COMMANDS = {
   EXPORT_SVG_GRAFANA_BUNDLE: "export-svg-grafana-bundle"
 } as const;
 
-const EXPORT_COMMANDS_SET = new Set(Object.values(EXPORT_COMMANDS));
+const EXPORT_COMMANDS_SET: ReadonlySet<string> = new Set(Object.values(EXPORT_COMMANDS));
 
 export type ExportCommand = (typeof EXPORT_COMMANDS)[keyof typeof EXPORT_COMMANDS];
 
 export function isExportCommand(command: string): command is ExportCommand {
-  return EXPORT_COMMANDS_SET.has(command as ExportCommand);
+  return EXPORT_COMMANDS_SET.has(command);
 }
 
 export const MSG_TOGGLE_SPLIT_VIEW = "topo-toggle-split-view" as const;

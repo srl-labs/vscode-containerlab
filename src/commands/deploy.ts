@@ -18,7 +18,7 @@ export async function deploySpecificFile() {
     { title: "Deploy from" }
   );
 
-  if (!mode) {
+  if (mode === undefined) {
     return;
   }
 
@@ -33,19 +33,20 @@ export async function deploySpecificFile() {
     };
 
     const uri = await vscode.window.showOpenDialog(opts);
-    if (!uri || !uri.length) {
+    if (uri === undefined || uri.length === 0) {
       return;
     }
     labRef = uri[0].fsPath;
   } else if (mode === "Enter Git/HTTP URL") {
-    labRef = await vscode.window.showInputBox({
+    const input = await vscode.window.showInputBox({
       title: "Git/HTTP URL",
       placeHolder: "https://github.com/user/repo or https://example.com/lab.yml",
       prompt: "Provide a repository or file URL"
     });
-    if (!labRef) {
+    if (input === undefined || input.length === 0) {
       return;
     }
+    labRef = input;
   } else {
     // Dynamic import to avoid circular dependency
     const { deployPopularLab } = await import("./deployPopular");

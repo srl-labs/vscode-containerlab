@@ -38,7 +38,11 @@ import {
 import type { CustomNodeTemplate } from "../../../../shared/types/editors";
 import { ROLE_SVG_MAP, DEFAULT_ICON_COLOR } from "../../../../shared/types/graph";
 import { generateEncodedSVG, type NodeType } from "../../../icons/SvgGenerator";
-import { useCustomIcons, useCustomNodes, useTopoViewerStore } from "../../../stores/topoViewerStore";
+import {
+  useCustomIcons,
+  useCustomNodes,
+  useTopoViewerStore
+} from "../../../stores/topoViewerStore";
 import { buildCustomIconMap } from "../../../utils/iconUtils";
 import type { TabDefinition } from "../../ui/editor";
 import { TabNavigation } from "../../ui/editor/TabNavigation";
@@ -81,19 +85,45 @@ const NETWORK_TYPE_DEFINITIONS: readonly NetworkTypeDefinition[] = [
   { type: "ovs-bridge", label: "OVS Bridge", icon: <HubIcon fontSize="small" /> }
 ];
 
+const VALID_NODE_TYPES: Record<NodeType, true> = {
+  pe: true,
+  dcgw: true,
+  leaf: true,
+  switch: true,
+  spine: true,
+  "super-spine": true,
+  server: true,
+  pon: true,
+  controller: true,
+  rgw: true,
+  ue: true,
+  cloud: true,
+  client: true,
+  bridge: true
+};
+
+function isNodeType(value: string): value is NodeType {
+  return Object.prototype.hasOwnProperty.call(VALID_NODE_TYPES, value);
+}
+
 function getRoleSvgType(role: string): NodeType {
-  const mapped = ROLE_SVG_MAP[role];
-  if (mapped) return mapped as NodeType;
+  if (Object.prototype.hasOwnProperty.call(ROLE_SVG_MAP, role)) {
+    const mapped = ROLE_SVG_MAP[role];
+    if (isNodeType(mapped)) return mapped;
+  }
   return "pe";
 }
 
-function getTemplateIconUrl(template: CustomNodeTemplate, customIconMap: Map<string, string>): string {
-  const role = template.icon || "pe";
+function getTemplateIconUrl(
+  template: CustomNodeTemplate,
+  customIconMap: Map<string, string>
+): string {
+  const role = template.icon ?? "pe";
   const customDataUri = customIconMap.get(role);
-  if (customDataUri) {
+  if (customDataUri !== undefined && customDataUri.length > 0) {
     return customDataUri;
   }
-  const color = template.iconColor || DEFAULT_ICON_COLOR;
+  const color = template.iconColor ?? DEFAULT_ICON_COLOR;
   const svgType = getRoleSvgType(role);
   return generateEncodedSVG(svgType, color);
 }
@@ -111,7 +141,7 @@ const SourceEditorTab: React.FC<{
   onChange: (next: string) => void;
 }> = ({ readOnly, error, language, value, jsonSchema, onChange }) => (
   <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-    {error && (
+    {error !== null && error.length > 0 && (
       <Typography variant="caption" color="error" sx={{ px: 2, py: 0.5 }}>
         {error}
       </Typography>
@@ -163,7 +193,9 @@ const SectionHeader: React.FC<{ title: string; action?: React.ReactNode }> = ({
 }) => (
   <>
     <Divider />
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}>
+    <Box
+      sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}
+    >
       <Typography variant="subtitle2">{title}</Typography>
       {action}
     </Box>
@@ -193,6 +225,7 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
   onDelete,
   onSetDefault
 }) => {
+  const isDefaultNode = isDefault === true;
   const onDragStart = useCallback(
     (event: React.DragEvent) => {
       event.dataTransfer.setData(
@@ -230,16 +263,16 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
         </Typography>
       </Box>
       <Box sx={{ display: "flex", gap: 0.25 }}>
-        <Tooltip title={isDefault ? "Default node" : "Set as default"}>
+        <Tooltip title={isDefaultNode ? "Default node" : "Set as default"}>
           <IconButton
             size="small"
             onClick={(e) => {
               e.stopPropagation();
-              if (!isDefault) onSetDefault?.(template.name);
+              if (!isDefaultNode) onSetDefault?.(template.name);
             }}
-            sx={{ color: isDefault ? "warning.main" : TEXT_SECONDARY }}
+            sx={{ color: isDefaultNode ? "warning.main" : TEXT_SECONDARY }}
           >
-            {isDefault ? <StarIcon fontSize="small" /> : <StarOutlineIcon fontSize="small" />}
+            {isDefaultNode ? <StarIcon fontSize="small" /> : <StarOutlineIcon fontSize="small" />}
           </IconButton>
         </Tooltip>
         <Tooltip title="Edit">
@@ -326,7 +359,12 @@ const DraggableNetwork: React.FC<{ network: NetworkTypeDefinition }> = ({ networ
   />
 );
 
-const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({ label, kind, icon, payload }) => (
+const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({
+  label,
+  kind,
+  icon,
+  payload
+}) => (
   <PaletteSimpleDraggable
     dragPayload={{ type: "annotation", ...payload }}
     icon={icon}
@@ -384,8 +422,13 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   const [userTab, setUserTab] = useState("nodes");
 
   useEffect(() => {
-    if (requestedTab?.tabId && visibleTabs.some((t) => t.id === requestedTab.tabId)) {
-      setUserTab(requestedTab.tabId);
+    const requestedTabId = requestedTab?.tabId;
+    if (
+      requestedTabId !== undefined &&
+      requestedTabId.length > 0 &&
+      visibleTabs.some((t) => t.id === requestedTabId)
+    ) {
+      setUserTab(requestedTabId);
     }
   }, [requestedTab, visibleTabs]);
 
@@ -448,12 +491,14 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   const filteredNodes = useMemo(() => {
     if (!filter) return customNodes;
     const search = filter.toLowerCase();
-    return customNodes.filter(
-      (node) =>
+    return customNodes.filter((node) => {
+      const nodeIcon = typeof node.icon === "string" ? node.icon : undefined;
+      return (
         node.name.toLowerCase().includes(search) ||
         node.kind.toLowerCase().includes(search) ||
-        (node.icon && node.icon.toLowerCase().includes(search))
-    );
+        (nodeIcon !== undefined && nodeIcon.toLowerCase().includes(search))
+      );
+    });
   }, [customNodes, filter]);
   const customIconMap = useMemo(() => buildCustomIconMap(customIcons), [customIcons]);
 
@@ -470,8 +515,8 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   }, [onEditCustomNode]);
 
   const drawerTitle = useMemo(() => {
-    if (activeTab === "info") return infoTabTitle || "Properties";
-    if (activeTab === "edit") return editTabTitle || "Editor";
+    if (activeTab === "info") return infoTabTitle ?? "Properties";
+    if (activeTab === "edit") return editTabTitle ?? "Editor";
     if (activeTab === "nodes" || activeTab === "annotations") return "Palette";
     if (activeTab === "yaml") return yamlFileName || "Topology";
     if (activeTab === "json") return annotationsFileName || "Annotations";
@@ -598,7 +643,13 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
                 title="Node Templates"
                 action={
                   !filter ? (
-                    <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddNewNode} sx={{ py: 0 }}>
+                    <Button
+                      variant="text"
+                      size="small"
+                      startIcon={<AddIcon />}
+                      onClick={handleAddNewNode}
+                      sx={{ py: 0 }}
+                    >
                       Add
                     </Button>
                   ) : undefined

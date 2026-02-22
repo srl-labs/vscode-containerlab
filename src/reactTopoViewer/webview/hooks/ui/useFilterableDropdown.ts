@@ -29,16 +29,18 @@ function findBestMatch(
 ): FilterableDropdownOption | null {
   if (!text.trim()) return null;
   const lower = text.toLowerCase();
-
+  const exactMatch = options.find(
+    (o) => o.value.toLowerCase() === lower || o.label.toLowerCase() === lower
+  );
+  if (exactMatch) return exactMatch;
+  const startsWithMatch = options.find(
+    (o) => o.value.toLowerCase().startsWith(lower) || o.label.toLowerCase().startsWith(lower)
+  );
+  if (startsWithMatch) return startsWithMatch;
   return (
-    options.find((o) => o.value.toLowerCase() === lower || o.label.toLowerCase() === lower) ||
-    options.find(
-      (o) => o.value.toLowerCase().startsWith(lower) || o.label.toLowerCase().startsWith(lower)
-    ) ||
     options.find(
       (o) => o.value.toLowerCase().includes(lower) || o.label.toLowerCase().includes(lower)
-    ) ||
-    null
+    ) ?? null
   );
 }
 
@@ -160,8 +162,8 @@ function useSelectionHandlers(
 
   const handleSelectByIndex = useCallback(
     (index: number) => {
-      const option = filteredOptions[index];
-      if (option) handleSelect(option);
+      if (index < 0 || index >= filteredOptions.length) return;
+      handleSelect(filteredOptions[index]);
     },
     [filteredOptions, handleSelect]
   );
@@ -244,20 +246,21 @@ export function useFilterableDropdown({
     setIsFiltering(false);
   }, [commitValue, setIsOpen, setIsFiltering]);
 
-  useClickOutside(containerRef as React.RefObject<HTMLElement>, handleClickOutside, true);
+  useClickOutside(containerRef, handleClickOutside, true);
 
   useEffect(() => {
     if (highlightedIndex >= 0 && menuRef.current) {
-      const item = menuRef.current.querySelectorAll("[data-dropdown-item]")[
-        highlightedIndex
-      ] as HTMLElement;
-      item?.scrollIntoView({ block: "nearest" });
+      const item = menuRef.current
+        .querySelectorAll<HTMLElement>("[data-dropdown-item]")
+        .item(highlightedIndex);
+      item.scrollIntoView({ block: "nearest" });
     }
   }, [highlightedIndex]);
 
   const handleBlur = useCallback(() => {
     setTimeout(() => {
-      if (!containerRef.current?.contains(document.activeElement)) {
+      const container = containerRef.current;
+      if (container === null || !container.contains(document.activeElement)) {
         commitValue();
         setIsOpen(false);
         setIsFiltering(false);

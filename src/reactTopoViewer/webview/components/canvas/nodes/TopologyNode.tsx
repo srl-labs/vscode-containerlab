@@ -31,9 +31,42 @@ import {
 /**
  * Map role to SVG node type (for built-in icons only)
  */
+const NODE_TYPE_SET: ReadonlySet<string> = new Set([
+  "pe",
+  "dcgw",
+  "leaf",
+  "switch",
+  "spine",
+  "super-spine",
+  "server",
+  "pon",
+  "controller",
+  "rgw",
+  "ue",
+  "cloud",
+  "client",
+  "bridge"
+]);
+
+function isNodeType(value: string): value is NodeType {
+  return NODE_TYPE_SET.has(value);
+}
+
+const FALLBACK_NODE_DATA: TopologyNodeData = {
+  label: "",
+  role: "default"
+};
+
+function isTopologyNodeData(value: unknown): value is TopologyNodeData {
+  if (typeof value !== "object" || value === null) return false;
+  const label: unknown = Reflect.get(value, "label");
+  const role: unknown = Reflect.get(value, "role");
+  return typeof label === "string" && typeof role === "string";
+}
+
 function getRoleSvgType(role: string): NodeType {
   const mapped = ROLE_SVG_MAP[role];
-  if (mapped) return mapped as NodeType;
+  if (isNodeType(mapped)) return mapped;
   return "pe"; // Default to PE router icon
 }
 
@@ -118,7 +151,7 @@ const SELECTED_OUTLINE = `2px solid ${SELECTION_COLOR}`;
  * TopologyNode component renders network device nodes with SVG icons
  */
 const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
-  const nodeData = data as TopologyNodeData;
+  const nodeData = isTopologyNodeData(data) ? data : FALLBACK_NODE_DATA;
   const {
     label,
     role,
@@ -146,12 +179,12 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const iconUrl = useMemo(() => {
     // Check if role matches a custom icon
     const customDataUri = customIconMap.get(role);
-    if (customDataUri) {
+    if (customDataUri !== undefined && customDataUri.length > 0) {
       return customDataUri;
     }
     // Fall back to built-in SVG icons
     const svgType = getRoleSvgType(role);
-    const color = iconColor || DEFAULT_ICON_COLOR;
+    const color = iconColor ?? DEFAULT_ICON_COLOR;
     return generateEncodedSVG(svgType, color);
   }, [role, iconColor, customIconMap]);
 
@@ -160,7 +193,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
     const style: React.CSSProperties = {
       ...ICON_STYLE_BASE,
       backgroundImage: `url(${iconUrl})`,
-      borderRadius: iconCornerRadius ? `${iconCornerRadius}px` : 4,
+      borderRadius: typeof iconCornerRadius === "number" ? `${iconCornerRadius}px` : 4,
       transform: directionRotation !== 0 ? `rotate(${directionRotation}deg)` : undefined,
       // Use outline for selection - doesn't affect layout
       outline: selected ? SELECTED_OUTLINE : "none",

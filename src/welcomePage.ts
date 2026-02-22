@@ -54,7 +54,7 @@ export class WelcomePage {
           this.createExampleTopology();
           break;
         case "dontShowAgain":
-          this.saveWelcomePageSetting(!message.value);
+          this.saveWelcomePageSetting(message.value !== true);
           break;
         case "getRepos":
           void this.fetchGitHubRepos();
@@ -86,7 +86,9 @@ export class WelcomePage {
     const workspaceFolders = vscode.workspace.workspaceFolders;
 
     if (!workspaceFolders) {
-      void vscode.window.showErrorMessage("No workspace folder is open. Please open a folder first.");
+      void vscode.window.showErrorMessage(
+        "No workspace folder is open. Please open a folder first."
+      );
       return;
     }
 

@@ -5,7 +5,6 @@
 import React, { memo, useMemo, useCallback } from "react";
 import { EdgeLabelRenderer, useStore, type EdgeProps } from "@xyflow/react";
 
-import type { TopologyEdgeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 import { useEdgeInfo, useEdgeRenderConfig } from "../../../stores/canvasStore";
 import { useEdges } from "../../../stores/graphStore";
@@ -43,6 +42,32 @@ interface NodeGeometry {
   height: number;
 }
 
+interface EdgeDataLike {
+  sourceEndpoint?: string;
+  targetEndpoint?: string;
+  linkStatus?: string;
+  endpointLabelOffsetEnabled?: boolean;
+  endpointLabelOffset?: number;
+}
+
+function toEdgeData(value: unknown): EdgeDataLike {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const record = Object.fromEntries(Object.entries(value));
+  return {
+    sourceEndpoint: typeof record.sourceEndpoint === "string" ? record.sourceEndpoint : undefined,
+    targetEndpoint: typeof record.targetEndpoint === "string" ? record.targetEndpoint : undefined,
+    linkStatus: typeof record.linkStatus === "string" ? record.linkStatus : undefined,
+    endpointLabelOffsetEnabled:
+      typeof record.endpointLabelOffsetEnabled === "boolean"
+        ? record.endpointLabelOffsetEnabled
+        : undefined,
+    endpointLabelOffset:
+      typeof record.endpointLabelOffset === "number" ? record.endpointLabelOffset : undefined
+  };
+}
+
 function areNodeGeometriesEqual(left: NodeGeometry | null, right: NodeGeometry | null): boolean {
   if (left === right) return true;
   if (!left || !right) return false;
@@ -63,8 +88,8 @@ function useNodeGeometry(nodeId: string): NodeGeometry | null {
         const position = node.internals.positionAbsolute;
         return {
           position: { x: position.x, y: position.y },
-          width: node.measured?.width ?? NODE_ICON_SIZE,
-          height: node.measured?.height ?? NODE_ICON_SIZE
+          width: node.measured.width ?? NODE_ICON_SIZE,
+          height: node.measured.height ?? NODE_ICON_SIZE
         };
       },
       [nodeId]
@@ -332,7 +357,7 @@ function getStrokeStyle(linkStatus: string | undefined, selected: boolean) {
   };
 }
 
-function getEdgeLabelOffset(edgeData: TopologyEdgeData | undefined): number {
+function getEdgeLabelOffset(edgeData: EdgeDataLike | undefined): number {
   const rawOffset =
     typeof edgeData?.endpointLabelOffset === "number"
       ? edgeData.endpointLabelOffset
@@ -355,15 +380,17 @@ function shouldRenderEdgeLabels(
  * Supports bezier curves for parallel edges between the same node pair
  */
 const TopologyEdgeComponent: React.FC<EdgeProps> = ({ id, source, target, data, selected }) => {
-  const edgeData = data as TopologyEdgeData | undefined;
+  const edgeData = useMemo(() => toEdgeData(data), [data]);
   const labelOffset = getEdgeLabelOffset(edgeData);
   const geometry = useEdgeGeometry(id, source, target, labelOffset);
   const { labelMode, suppressLabels, suppressHitArea } = useEdgeRenderConfig();
 
   if (!geometry) return null;
-  const shouldRenderLabels = shouldRenderEdgeLabels(labelMode, suppressLabels, !!selected);
+  const shouldRenderLabels = shouldRenderEdgeLabels(labelMode, suppressLabels, selected === true);
 
-  const stroke = getStrokeStyle(edgeData?.linkStatus, selected ?? false);
+  const stroke = getStrokeStyle(edgeData.linkStatus, selected === true);
+  const sourceEndpoint = edgeData.sourceEndpoint;
+  const targetEndpoint = edgeData.targetEndpoint;
 
   return (
     <>
@@ -391,16 +418,16 @@ const TopologyEdgeComponent: React.FC<EdgeProps> = ({ id, source, target, data, 
       />
       {shouldRenderLabels && (
         <EdgeLabelRenderer>
-          {edgeData?.sourceEndpoint && (
+          {sourceEndpoint !== undefined && sourceEndpoint.length > 0 && (
             <EndpointLabel
-              text={edgeData.sourceEndpoint}
+              text={sourceEndpoint}
               x={geometry.sourceLabelPos.x}
               y={geometry.sourceLabelPos.y}
             />
           )}
-          {edgeData?.targetEndpoint && (
+          {targetEndpoint !== undefined && targetEndpoint.length > 0 && (
             <EndpointLabel
-              text={edgeData.targetEndpoint}
+              text={targetEndpoint}
               x={geometry.targetLabelPos.x}
               y={geometry.targetLabelPos.y}
             />

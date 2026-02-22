@@ -9,7 +9,7 @@ import type { NodeEditorData, NodeEditorTabId } from "../../components/panels/no
 import { applyFormUpdates } from "./formState";
 
 /** Maps YAML kebab-case keys to camelCase NodeEditorData keys */
-export const YAML_TO_EDITOR_MAP: Record<string, keyof NodeEditorData> = {
+export const YAML_TO_EDITOR_MAP: Partial<Record<string, keyof NodeEditorData>> = {
   "startup-config": "startupConfig",
   "enforce-startup-config": "enforceStartupConfig",
   "suppress-startup-config": "suppressStartupConfig",
@@ -31,9 +31,9 @@ export function hasFieldChanged(
   formData: NodeEditorData,
   initialData: NodeEditorData
 ): boolean {
-  const editorKey = YAML_TO_EDITOR_MAP[yamlKey] || yamlKey;
-  const currentVal = formData[editorKey as keyof NodeEditorData];
-  const initialVal = initialData[editorKey as keyof NodeEditorData];
+  const editorKey = YAML_TO_EDITOR_MAP[yamlKey] ?? yamlKey;
+  const currentVal: unknown = Reflect.get(formData, editorKey);
+  const initialVal: unknown = Reflect.get(initialData, editorKey);
   return JSON.stringify(currentVal) !== JSON.stringify(initialVal);
 }
 
@@ -74,7 +74,7 @@ export function useNodeEditorForm(
       }
       setFormData({ ...nodeData });
       setLastAppliedData({ ...nodeData });
-    } else if (!nodeData && loadedNodeId) {
+    } else if (nodeData === null && loadedNodeId !== null) {
       setLoadedNodeId(null);
       skipNextSyncRef.current = false;
     }

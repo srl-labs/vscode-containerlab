@@ -47,7 +47,7 @@ export interface PanelVisibility {
    * Note: this is also used directly as an `onClick` handler, so it may receive a mouse event;
    * non-string inputs are treated as a manual open.
    */
-  handleOpenContextPanel: (reason?: "manual" | "auto" | unknown) => void;
+  handleOpenContextPanel: (reason?: "manual" | "auto" | MouseEvent) => void;
   handleCloseContextPanel: () => void;
   handleToggleContextPanel: () => void;
   handleTogglePanelSide: () => void;

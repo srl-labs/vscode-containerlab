@@ -25,10 +25,10 @@ export function formatMessage(msg: unknown): string {
  */
 export function getCallerFileLine(skipFrames = 0): string {
   const obj: { stack?: string } = {};
-  Error.captureStackTrace?.(obj, getCallerFileLine);
+  Error.captureStackTrace(obj, getCallerFileLine);
 
   const stack = obj.stack;
-  if (!stack) return "unknown:0";
+  if (stack === undefined || stack.length === 0) return "unknown:0";
 
   const lines = stack.split("\n");
   const baseIndex = 3 + skipFrames;
@@ -36,7 +36,7 @@ export function getCallerFileLine(skipFrames = 0): string {
 
   const reParen = /\(([^():]+):(\d+):\d+\)/;
   const reAt = /at ([^():]+):(\d+):\d+/;
-  const match = reParen.exec(callSite) || reAt.exec(callSite);
+  const match = reParen.exec(callSite) ?? reAt.exec(callSite);
   if (!match) return "unknown:0";
 
   const filePath = match[1];

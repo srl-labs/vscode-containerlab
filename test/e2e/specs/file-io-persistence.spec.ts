@@ -244,7 +244,9 @@ test.describe.serial("File I/O Persistence", () => {
       expect(annotations.freeShapeAnnotations?.length).toBeGreaterThan(0);
 
       // Should have node annotations with group membership
-      const nodesWithGroups = annotations.nodeAnnotations?.filter((n) => n.group);
+      const nodesWithGroups = annotations.nodeAnnotations?.filter(
+        (n) => n.group !== undefined && n.group.length > 0
+      );
       expect(nodesWithGroups?.length).toBeGreaterThan(0);
     });
 
@@ -275,9 +277,9 @@ test.describe.serial("File I/O Persistence", () => {
 
       // Get initial annotations
       const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(DATACENTER_FILE);
-      const initialGroupCount = initialAnnotations.groupStyleAnnotations?.length || 0;
-      const initialTextCount = initialAnnotations.freeTextAnnotations?.length || 0;
-      const initialShapeCount = initialAnnotations.freeShapeAnnotations?.length || 0;
+      const initialGroupCount = initialAnnotations.groupStyleAnnotations?.length ?? 0;
+      const initialTextCount = initialAnnotations.freeTextAnnotations?.length ?? 0;
+      const initialShapeCount = initialAnnotations.freeShapeAnnotations?.length ?? 0;
 
       // Move a node
       const box = await topoViewerPage.getNodeBoundingBox("spine1");

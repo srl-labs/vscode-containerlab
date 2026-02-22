@@ -25,7 +25,7 @@ export const Section: React.FC<SectionProps> = ({
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
         <Typography variant="overline">{title}</Typography>
-        {inherited && <InheritanceBadge />}
+        {inherited === true && <InheritanceBadge />}
       </Box>
       {children}
     </Box>

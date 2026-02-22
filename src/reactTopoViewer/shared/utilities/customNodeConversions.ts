@@ -5,9 +5,7 @@
 import type {
   NodeEditorData,
   CustomTemplateEditorData,
-  CustomNodeTemplate,
-  HealthCheckConfig,
-  SrosComponent
+  CustomNodeTemplate
 } from "../types/editors";
 
 /**
@@ -85,16 +83,20 @@ function buildCommonTemplateFields(data: NodeEditorData) {
  * Convert CustomTemplateEditorData to NodeEditorData for the node editor panel.
  * Includes all configurable fields so they appear in the editor.
  */
-export function convertCustomTemplateToEditorData(
-  template: CustomTemplateEditorData
-): NodeEditorData {
-  return {
-    id: template.id,
-    name: "", // Not used for custom templates
-    isCustomTemplate: true,
-    customName: template.customName,
-    kind: template.kind,
+function buildTemplateEditorFields(
+  template: CustomTemplateEditorData | CustomNodeTemplate
+): Partial<NodeEditorData> {
+  const fromEditorData =
+    "isDefaultCustomNode" in template && typeof template.isDefaultCustomNode === "boolean"
+      ? template.isDefaultCustomNode
+      : undefined;
+  const fromTemplateData =
+    "setDefault" in template && typeof template.setDefault === "boolean"
+      ? template.setDefault
+      : undefined;
+  const isDefaultCustomNode = fromEditorData ?? fromTemplateData;
 
+  return {
     // Basic tab fields
     type: template.type,
     image: template.image,
@@ -105,7 +107,7 @@ export function convertCustomTemplateToEditorData(
     // Custom template specific
     baseName: template.baseName,
     interfacePattern: template.interfacePattern,
-    isDefaultCustomNode: template.isDefaultCustomNode,
+    isDefaultCustomNode,
 
     // Configuration tab fields
     license: template.license,
@@ -156,6 +158,19 @@ export function convertCustomTemplateToEditorData(
   };
 }
 
+export function convertCustomTemplateToEditorData(
+  template: CustomTemplateEditorData
+): NodeEditorData {
+  return {
+    id: template.id,
+    name: "", // Not used for custom templates
+    isCustomTemplate: true,
+    customName: template.customName,
+    kind: template.kind,
+    ...buildTemplateEditorFields(template)
+  };
+}
+
 /**
  * Convert NodeEditorData back to SaveCustomNodeData format for extension.
  * Includes all configurable node properties so custom templates can have
@@ -167,9 +182,9 @@ export function convertEditorDataToSaveData(
 ): SaveCustomNodeData {
   return {
     // Required fields
-    name: data.customName || "",
+    name: data.customName ?? "",
     oldName: originalName,
-    kind: data.kind || "",
+    kind: data.kind ?? "",
 
     setDefault: data.isDefaultCustomNode,
     ...buildCommonTemplateFields(data)
@@ -185,10 +200,10 @@ export function convertEditorDataToTemplateData(
   originalTemplate: CustomTemplateEditorData | null
 ): CustomTemplateEditorData {
   return {
-    id: originalTemplate?.id || data.id,
+    id: originalTemplate?.id ?? data.id,
     isCustomTemplate: true,
-    customName: data.customName || "",
-    kind: data.kind || "",
+    customName: data.customName ?? "",
+    kind: data.kind ?? "",
     originalName: originalTemplate?.originalName,
     isDefaultCustomNode: data.isDefaultCustomNode,
     ...buildCommonTemplateFields(data)
@@ -202,74 +217,13 @@ export function convertEditorDataToTemplateData(
 export function convertTemplateToEditorData(
   template: CustomNodeTemplate
 ): CustomTemplateEditorData {
-  // Use type assertion for accessing extended properties
-  const t = template as Record<string, unknown>;
-
   return {
     id: "edit-custom-node",
+    ...buildTemplateEditorFields(template),
     isCustomTemplate: true,
     customName: template.name,
     kind: template.kind,
-    originalName: template.name,
-
-    // Basic tab fields
-    type: template.type,
-    image: template.image,
-    icon: template.icon,
-    iconColor: t.iconColor as string | undefined,
-    iconCornerRadius: t.iconCornerRadius as number | undefined,
-
-    // Custom template specific
-    baseName: template.baseName,
-    interfacePattern: template.interfacePattern,
-    isDefaultCustomNode: template.setDefault,
-
-    // Configuration tab fields
-    license: t.license as string | undefined,
-    startupConfig: t.startupConfig as string | undefined,
-    enforceStartupConfig: t.enforceStartupConfig as boolean | undefined,
-    suppressStartupConfig: t.suppressStartupConfig as boolean | undefined,
-    binds: t.binds as string[] | undefined,
-    env: t.env as Record<string, string> | undefined,
-    envFiles: t.envFiles as string[] | undefined,
-    labels: t.labels as Record<string, string> | undefined,
-
-    // Runtime tab fields
-    user: t.user as string | undefined,
-    entrypoint: t.entrypoint as string | undefined,
-    cmd: t.cmd as string | undefined,
-    exec: t.exec as string[] | undefined,
-    restartPolicy: t.restartPolicy as string | undefined,
-    autoRemove: t.autoRemove as boolean | undefined,
-    startupDelay: t.startupDelay as number | undefined,
-
-    // Network tab fields
-    mgmtIpv4: t.mgmtIpv4 as string | undefined,
-    mgmtIpv6: t.mgmtIpv6 as string | undefined,
-    networkMode: t.networkMode as string | undefined,
-    ports: t.ports as string[] | undefined,
-    dnsServers: t.dnsServers as string[] | undefined,
-    aliases: t.aliases as string[] | undefined,
-
-    // Advanced tab fields
-    cpu: t.cpu as number | undefined,
-    cpuSet: t.cpuSet as string | undefined,
-    memory: t.memory as string | undefined,
-    shmSize: t.shmSize as string | undefined,
-    capAdd: t.capAdd as string[] | undefined,
-    sysctls: t.sysctls as Record<string, string> | undefined,
-    devices: t.devices as string[] | undefined,
-    certIssue: t.certIssue as boolean | undefined,
-    certKeySize: t.certKeySize as string | undefined,
-    certValidity: t.certValidity as string | undefined,
-    sans: t.sans as string[] | undefined,
-    healthCheck: t.healthCheck as HealthCheckConfig | undefined,
-    imagePullPolicy: t.imagePullPolicy as string | undefined,
-    runtime: t.runtime as string | undefined,
-
-    // Components tab fields (SROS)
-    isDistributed: t.isDistributed as boolean | undefined,
-    components: t.components as SrosComponent[] | undefined
+    originalName: template.name
   };
 }
 

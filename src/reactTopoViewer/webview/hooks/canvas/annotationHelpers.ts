@@ -66,7 +66,7 @@ export function handleTopologyNodeDrop(
 ): void {
   if (currentGroupId === targetGroupId) return;
 
-  if (targetGroupId) {
+  if (targetGroupId !== null && targetGroupId.length > 0) {
     addToGroup(nodeId, targetGroupId);
   } else {
     removeFromGroup(nodeId);

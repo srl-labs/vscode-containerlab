@@ -3,10 +3,7 @@ import { randomBytes } from "crypto";
 import * as vscode from "vscode";
 
 import { hideNonOwnedLabsState } from "../../globals";
-import {
-  EXPLORER_SECTION_LABELS,
-  EXPLORER_SECTION_ORDER
-} from "../shared/explorer/types";
+import { EXPLORER_SECTION_LABELS, EXPLORER_SECTION_ORDER } from "../shared/explorer/types";
 import type {
   ExplorerIncomingMessage,
   ExplorerInvokeActionMessage,
@@ -16,7 +13,11 @@ import type {
   ExplorerSnapshotMessage,
   ExplorerUiState
 } from "../shared/explorer/types";
-import type { HelpFeedbackProvider, LocalLabTreeDataProvider, RunningLabTreeDataProvider } from "../../treeView";
+import type {
+  HelpFeedbackProvider,
+  LocalLabTreeDataProvider,
+  RunningLabTreeDataProvider
+} from "../../treeView";
 
 import { buildExplorerSnapshot } from "./explorerSnapshotAdapter";
 import type {
@@ -104,7 +105,11 @@ export class ContainerlabExplorerViewProvider
   }
 
   private registerDataListeners(): void {
-    const allProviders = [this.providers.runningProvider, this.providers.localProvider, this.providers.helpProvider];
+    const allProviders = [
+      this.providers.runningProvider,
+      this.providers.localProvider,
+      this.providers.helpProvider
+    ];
     for (const provider of allProviders) {
       const disposable = provider.onDidChangeTreeData(() => {
         this.scheduleSnapshot();
@@ -153,7 +158,11 @@ export class ContainerlabExplorerViewProvider
     );
 
     this.visibilityEmitter.fire(webviewView.visible);
-    void vscode.commands.executeCommand("setContext", "containerlabExplorerVisible", webviewView.visible);
+    void vscode.commands.executeCommand(
+      "setContext",
+      "containerlabExplorerVisible",
+      webviewView.visible
+    );
   }
 
   public async setFilter(filterText: string): Promise<void> {
@@ -187,10 +196,6 @@ export class ContainerlabExplorerViewProvider
   }
 
   private async handleMessage(message: ExplorerOutgoingMessage): Promise<void> {
-    if (!message || typeof message.command !== "string") {
-      return;
-    }
-
     if (message.command === "ready") {
       this.isReady = true;
       this.postFilterState();
@@ -223,7 +228,7 @@ export class ContainerlabExplorerViewProvider
     }
 
     try {
-      await vscode.commands.executeCommand(binding.commandId, ...(binding.args || []));
+      await vscode.commands.executeCommand(binding.commandId, ...binding.args);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.postError(`Failed to execute command: ${errorMessage}`);

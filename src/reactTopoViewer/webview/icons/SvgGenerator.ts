@@ -554,7 +554,7 @@ function buildSvgString(nodeType: NodeType, fillColor: string): string {
 export function generateEncodedSVG(nodeType: NodeType, fillColor: string): string {
   const cacheKey = `${nodeType}:${fillColor}`;
   const cached = svgCache.get(cacheKey);
-  if (cached) return cached;
+  if (cached !== undefined) return cached;
 
   const svgString = buildSvgString(nodeType, fillColor);
   const encoded = "data:image/svg+xml;utf8," + encodeURIComponent(svgString);

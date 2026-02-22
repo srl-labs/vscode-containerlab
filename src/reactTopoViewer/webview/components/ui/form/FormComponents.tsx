@@ -20,22 +20,28 @@ export const Toggle: React.FC<{
   onClick: () => void;
   children: React.ReactNode;
   sx?: SxProps<Theme>;
-}> = ({ active, onClick, children, sx }) => (
-  <Button
-    variant={active ? "contained" : "outlined"}
-    size="small"
-    onClick={onClick}
-    sx={{
-      fontWeight: (theme) => theme.typography.fontWeightMedium,
-      minWidth: 0,
-      px: 1.5,
-      py: 0.5,
-      ...(sx as object)
-    }}
-  >
-    {children}
-  </Button>
-);
+}> = ({ active, onClick, children, sx }) => {
+  const baseSx = {
+    fontWeight: (theme: Theme) => theme.typography.fontWeightMedium,
+    minWidth: 0,
+    px: 1.5,
+    py: 0.5
+  };
+  const mergedSx =
+    sx !== undefined && !Array.isArray(sx) && typeof sx !== "function"
+      ? Object.assign({}, baseSx, sx)
+      : baseSx;
+  return (
+    <Button
+      variant={active ? "contained" : "outlined"}
+      size="small"
+      onClick={onClick}
+      sx={mergedSx}
+    >
+      {children}
+    </Button>
+  );
+};
 
 /**
  * Number input with label and optional unit
@@ -60,17 +66,18 @@ export const NumberInput: React.FC<{
       onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
       slotProps={{
         htmlInput: { min, max, step, style: { textAlign: "center" } },
-        input: unit
-          ? {
-              endAdornment: (
-                <InputAdornment position="end">
-                  <Typography variant="caption" color="text.secondary">
-                    {unit}
-                  </Typography>
-                </InputAdornment>
-              )
-            }
-          : undefined
+        input:
+          unit !== undefined && unit.length > 0
+            ? {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Typography variant="caption" color="text.secondary">
+                      {unit}
+                    </Typography>
+                  </InputAdornment>
+                )
+              }
+            : undefined
       }}
       sx={{ "& .MuiInputBase-input": { py: 0.75, px: 1 } }}
     />
@@ -151,13 +158,7 @@ export const RangeSlider: React.FC<{
       </Typography>
     </Box>
     <Box sx={{ display: "flex", alignItems: "center", height: 30, px: 0.5 }}>
-      <Slider
-        size="small"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(_e, v) => onChange(v as number)}
-      />
+      <Slider size="small" min={min} max={max} value={value} onChange={(_e, v) => onChange(v)} />
     </Box>
   </Box>
 );

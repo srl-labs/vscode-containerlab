@@ -20,17 +20,23 @@ const schema = JSON.parse(fs.readFileSync(schemaPath, "utf-8"));
 const ajv = new Ajv({ strict: false, allErrors: true });
 const validateSchema = ajv.compile(schema);
 
+function unknownErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return String(error);
+}
+
 function validateYamlAgainstSchema(yamlContent: string): { valid: boolean; errors: string[] } {
   try {
     const parsed = YAML.parse(yamlContent);
     const valid = validateSchema(parsed);
     if (!valid) {
-      const errors = validateSchema.errors?.map((e) => `${e.instancePath}: ${e.message}`) || [];
+      const errors = validateSchema.errors?.map((e) => `${e.instancePath}: ${e.message}`) ?? [];
       return { valid: false, errors };
     }
     return { valid: true, errors: [] };
-  } catch (e) {
-    return { valid: false, errors: [`YAML parse error: ${e}`] };
+  } catch (error: unknown) {
+    return { valid: false, errors: [`YAML parse error: ${unknownErrorMessage(error)}`] };
   }
 }
 
@@ -78,17 +84,17 @@ async function createNetworksAndLinks(page: Page, topoViewerPage: any) {
 
     const networkId = await topoViewerPage.createNetwork(position, networkType);
     expect(networkId).not.toBeNull();
-    createdNetworkIds.push(networkId!);
+    createdNetworkIds.push(networkId);
 
     const isBridge = (BRIDGE_TYPES as readonly string[]).includes(networkType);
     if (isBridge) {
-      createdBridgeIds.push(networkId!);
+      createdBridgeIds.push(networkId);
       // Bridges require interfaces on both ends.
-      await topoViewerPage.createLink(networkId!, targetNode, `eth${interfaceCounter}`, `e1-${interfaceCounter}`);
+      await topoViewerPage.createLink(networkId, targetNode, `eth${interfaceCounter}`, `e1-${interfaceCounter}`);
     } else {
       createdLinkBased.push({ id: networkId!, type: networkType });
       // Link-based networks: real node interface to network eth0.
-      await topoViewerPage.createLink(targetNode, networkId!, `e1-${interfaceCounter}`, "eth0");
+      await topoViewerPage.createLink(targetNode, networkId, `e1-${interfaceCounter}`, "eth0");
     }
 
     interfaceCounter++;
@@ -233,15 +239,32 @@ interface EndpointObj {
   interface?: unknown;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isEndpointObj(value: unknown): value is EndpointObj {
+  return isRecord(value);
+}
+
+function getTopologyLinks(parsed: unknown): Array<Record<string, unknown>> {
+  if (!isRecord(parsed)) return [];
+  const topology = parsed.topology;
+  if (!isRecord(topology)) return [];
+  const links = topology.links;
+  if (!Array.isArray(links)) return [];
+  return links.filter((link): link is Record<string, unknown> => isRecord(link));
+}
+
 function endpointObjToString(epObj: EndpointObj): string | null {
   if (typeof epObj.node !== "string") return null;
   const iface = typeof epObj.interface === "string" ? epObj.interface : "";
-  return iface ? `${epObj.node}:${iface}` : epObj.node;
+  return iface.length > 0 ? `${epObj.node}:${iface}` : epObj.node;
 }
 
 function processEndpoint(ep: unknown): string | null {
   if (typeof ep === "string") return ep;
-  if (ep && typeof ep === "object") return endpointObjToString(ep as EndpointObj);
+  if (isEndpointObj(ep)) return endpointObjToString(ep);
   return null;
 }
 
@@ -252,21 +275,20 @@ function processEndpointsArray(endpointsField: unknown): string[] {
 
 function processSingularEndpoint(endpointField: unknown): string | null {
   if (typeof endpointField === "string") return endpointField;
-  if (endpointField && typeof endpointField === "object" && !Array.isArray(endpointField)) {
-    return endpointObjToString(endpointField as EndpointObj);
+  if (isEndpointObj(endpointField)) {
+    return endpointObjToString(endpointField);
   }
   return null;
 }
 
 function collectLinkEndpointStrings(parsed: unknown): string[] {
-  const topo = (parsed as { topology?: { links?: Array<Record<string, unknown>> } })?.topology;
-  const links = topo?.links ?? [];
+  const links = getTopologyLinks(parsed);
   const endpoints: string[] = [];
 
   for (const link of links) {
-    endpoints.push(...processEndpointsArray((link as { endpoints?: unknown }).endpoints));
-    const singular = processSingularEndpoint((link as { endpoint?: unknown }).endpoint);
-    if (singular) endpoints.push(singular);
+    endpoints.push(...processEndpointsArray(link.endpoints));
+    const singular = processSingularEndpoint(link.endpoint);
+    if (singular !== null) endpoints.push(singular);
   }
 
   return endpoints;
@@ -278,8 +300,7 @@ function linkTypeFromLink(link: Record<string, unknown>): string | undefined {
 }
 
 function findLinkByType(parsed: unknown, linkType: string): Record<string, unknown> | undefined {
-  const topo = (parsed as { topology?: { links?: Array<Record<string, unknown>> } })?.topology;
-  const links = topo?.links ?? [];
+  const links = getTopologyLinks(parsed);
   return links.find((link) => linkTypeFromLink(link) === linkType);
 }
 
@@ -290,15 +311,14 @@ function endpointMatchesNetworkId(endpoint: string, networkId: string): boolean 
 function linkReferencesNetwork(link: Record<string, unknown>, networkId: string, networkType: string): boolean {
   const type = linkTypeFromLink(link);
   if (type === networkType) return true;
-  const endpoints = processEndpointsArray((link as { endpoints?: unknown }).endpoints);
-  const singular = processSingularEndpoint((link as { endpoint?: unknown }).endpoint);
-  if (singular) endpoints.push(singular);
+  const endpoints = processEndpointsArray(link.endpoints);
+  const singular = processSingularEndpoint(link.endpoint);
+  if (singular !== null) endpoints.push(singular);
   return endpoints.some((ep) => endpointMatchesNetworkId(ep, networkId));
 }
 
 function networkLinkExists(parsed: unknown, networkId: string, networkType: string): boolean {
-  const topo = (parsed as { topology?: { links?: Array<Record<string, unknown>> } })?.topology;
-  const links = topo?.links ?? [];
+  const links = getTopologyLinks(parsed);
   return links.some((link) => linkReferencesNetwork(link, networkId, networkType));
 }
 
@@ -652,7 +672,7 @@ test.describe("Network Node Modification", () => {
     await expect
       .poll(async () => {
         const parsed = YAML.parse(await topoViewerPage.getYamlFromFile(EMPTY_FILE));
-        const link = findLinkByType(parsed, "vxlan") as Record<string, unknown> | undefined;
+        const link = findLinkByType(parsed, "vxlan");
         return {
           remote: link?.remote,
           vni: link?.vni,
@@ -693,7 +713,7 @@ test.describe("Network Node Modification", () => {
       .poll(async () => {
         const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
         const parsed = YAML.parse(yaml);
-        const link = findLinkByType(parsed, "host") as Record<string, unknown> | undefined;
+        const link = findLinkByType(parsed, "host");
         return link?.["host-interface"] === "eth1";
       }, { timeout: 15000 })
       .toBe(true);
@@ -775,13 +795,13 @@ test.describe("Bridge Rename Persistence", () => {
         .poll(async () => {
           const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
           const parsed = YAML.parse(yaml);
-          return Object.keys((parsed as any)?.topology?.nodes ?? {});
+          return Object.keys((parsed)?.topology?.nodes ?? {});
         }, { timeout: 5000 })
         .toContain(newBridgeId);
 
       const yamlAfterRename = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
       const parsedAfterRename = YAML.parse(yamlAfterRename);
-      const nodeIdsAfterRename = Object.keys((parsedAfterRename as any)?.topology?.nodes ?? {});
+      const nodeIdsAfterRename = Object.keys((parsedAfterRename)?.topology?.nodes ?? {});
       expect(nodeIdsAfterRename).toContain(newBridgeId);
       expect(nodeIdsAfterRename).not.toContain(bridgeId);
 
@@ -799,7 +819,7 @@ test.describe("Bridge Rename Persistence", () => {
         .poll(async () => {
           const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
           const parsed = YAML.parse(yaml);
-          return Object.keys((parsed as any)?.topology?.nodes ?? {}).includes(newBridgeId);
+          return Object.keys((parsed)?.topology?.nodes ?? {}).includes(newBridgeId);
         }, { timeout: 5000 })
         .toBe(false);
 
