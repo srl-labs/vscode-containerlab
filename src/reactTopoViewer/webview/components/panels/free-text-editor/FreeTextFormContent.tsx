@@ -14,14 +14,12 @@ import {
   Divider,
   FormControlLabel,
   IconButton as MuiIconButton,
-  InputAdornment,
   MenuItem,
-  TextField,
-  Typography
+  TextField
 } from "@mui/material";
 
 import type { FreeTextAnnotation } from "../../../../shared/types/topology";
-import { ColorField, PanelSection } from "../../ui/form";
+import { ColorField, InputField, PanelSection } from "../../ui/form";
 
 // Helper functions to avoid duplicate calculations
 const isBackgroundTransparent = (bg: string | undefined): boolean => bg === "transparent";
@@ -152,26 +150,18 @@ const FontControls: React.FC<{
         </MenuItem>
       ))}
     </TextField>
-    <TextField
-      label="Font Size"
-      type="number"
-      size="small"
-      value={formData.fontSize ?? 14}
-      onChange={(e) => updateField("fontSize", parseInt(e.target.value) || 14)}
-      slotProps={{
-        htmlInput: { min: 1, max: 72, style: { textAlign: "center" } },
-        input: {
-          endAdornment: (
-            <InputAdornment position="end">
-              <Typography variant="caption" color="text.secondary">
-                px
-              </Typography>
-            </InputAdornment>
-          )
-        }
-      }}
-      sx={{ flex: 3 }}
-    />
+    <Box sx={{ flex: 3 }}>
+      <InputField
+        id="text-font-size"
+        label="Font Size"
+        type="number"
+        value={String(formData.fontSize ?? 14)}
+        onChange={(v) => updateField("fontSize", parseInt(v) || 14)}
+        min={1}
+        max={72}
+        suffix="px"
+      />
+    </Box>
   </Box>
 );
 
@@ -213,24 +203,15 @@ const StyleOptions: React.FC<{
           />
         </Box>
       </Box>
-      <TextField
+      <InputField
+        id="text-rotation"
         label="Rotation"
         type="number"
-        size="small"
-        value={formData.rotation ?? 0}
-        onChange={(e) => updateField("rotation", parseInt(e.target.value) || 0)}
-        slotProps={{
-          htmlInput: { min: -360, max: 360 },
-          input: {
-            endAdornment: (
-              <InputAdornment position="end">
-                <Typography variant="caption" color="text.secondary">
-                  deg
-                </Typography>
-              </InputAdornment>
-            )
-          }
-        }}
+        value={String(formData.rotation ?? 0)}
+        onChange={(v) => updateField("rotation", parseInt(v) || 0)}
+        min={-360}
+        max={360}
+        suffix="deg"
       />
     </Box>
   );
