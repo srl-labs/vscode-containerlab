@@ -55,29 +55,55 @@ interface KeyboardShortcutsOptions {
   onCreateGroup?: () => void;
 }
 
-/**
- * Check if target is an input field
- */
-function isInputElement(target: EventTarget | null): boolean {
-  if (!(target instanceof Element)) return false;
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return true;
-  if (target instanceof HTMLElement && target.isContentEditable) return true;
+const EDITABLE_SELECTOR = [
+  "input",
+  "textarea",
+  "[contenteditable='']",
+  "[contenteditable='true']",
+  "[contenteditable='plaintext-only']",
+  "[role='textbox']",
+  ".monaco-editor",
+  ".monaco-inputbox",
+  ".monaco-findInput"
+].join(",");
 
-  return Boolean(
-    target.closest(
-      [
-        "input",
-        "textarea",
-        "[contenteditable='']",
-        "[contenteditable='true']",
-        "[contenteditable='plaintext-only']",
-        "[role='textbox']",
-        ".monaco-editor",
-        ".monaco-inputbox",
-        ".monaco-findInput"
-      ].join(",")
-    )
-  );
+function isEditableElement(element: Element | null): boolean {
+  if (element == null) return false;
+  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) return true;
+  if (element instanceof HTMLElement && element.isContentEditable) return true;
+  return element.matches(EDITABLE_SELECTOR) || Boolean(element.closest(EDITABLE_SELECTOR));
+}
+
+function hasMonacoFocus(): boolean {
+  const activeElement = document.activeElement;
+  if (!(activeElement instanceof Element)) return false;
+  if (activeElement.classList.contains("inputarea")) return true;
+  if (isEditableElement(activeElement)) return true;
+  return Boolean(activeElement.closest(".monaco-editor, .monaco-inputbox, .monaco-findInput"));
+}
+
+/**
+ * Check if keyboard focus is currently in an editable/input context.
+ */
+function isInputElement(event: KeyboardEvent): boolean {
+  if (hasMonacoFocus()) return true;
+
+  if (event.target instanceof Element && isEditableElement(event.target)) {
+    return true;
+  }
+
+  const path = event.composedPath();
+  for (const entry of path) {
+    if (entry instanceof Element && isEditableElement(entry)) {
+      return true;
+    }
+  }
+
+  if (document.activeElement instanceof Element && isEditableElement(document.activeElement)) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -547,7 +573,8 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (isInputElement(event.target)) return;
+      if (event.defaultPrevented) return;
+      if (isInputElement(event)) return;
 
       // Undo/Redo must be checked before other shortcuts
       if (handleUndo(event, mode, canUndo, onUndo)) return;

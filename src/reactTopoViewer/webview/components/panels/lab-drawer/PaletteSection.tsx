@@ -463,7 +463,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   const [annotationsDraft, setAnnotationsDraft] = useState<string>(annotationsContent);
   const [yamlDirty, setYamlDirty] = useState(false);
   const [annotationsDirty, setAnnotationsDirty] = useState(false);
-  const isSourceReadOnly = isLocked || isViewMode;
+  const isSourceReadOnly = isLocked;
 
   // Sync drafts with host unless user has local edits
   useEffect(() => {
