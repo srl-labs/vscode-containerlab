@@ -105,12 +105,15 @@ async function openGroupContextMenu(page: Page, groupId: string) {
 }
 
 async function applyAndBack(page: Page) {
-  // In dev mode, a floating dev toggle can intercept pointer clicks on footer buttons.
-  // Keyboard activation avoids that flake without weakening assertions.
   const apply = page.locator(SEL_PANEL_APPLY_BTN);
-  await apply.focus();
-  await page.keyboard.press("Enter");
-  await page.waitForTimeout(300);
+  const hasUnsavedChanges = await apply.isVisible().catch(() => false);
+  if (hasUnsavedChanges) {
+    // In dev mode, a floating dev toggle can intercept pointer clicks on footer buttons.
+    // Keyboard activation avoids that flake without weakening assertions.
+    await apply.focus();
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(300);
+  }
 
   // Return to palette by toggling panel closed/open.
   const toggle = page.locator(SEL_PANEL_TOGGLE_BTN);
@@ -420,7 +423,13 @@ test.describe("Group Operations - Membership promotions", () => {
     const panel = page.locator(SEL_CONTEXT_PANEL);
     const nameInput = panel.getByPlaceholder("e.g., rack1");
     await expect(nameInput).toBeVisible({ timeout: 5000 });
-    await nameInput.fill(firstGroup!.name);
+    const currentName = await nameInput.inputValue();
+    if (currentName !== firstGroup!.name) {
+      await nameInput.fill(firstGroup!.name);
+      await expect(page.locator(SEL_PANEL_APPLY_BTN)).toBeVisible({ timeout: 3000 });
+    } else {
+      await expect(page.locator(SEL_PANEL_APPLY_BTN)).toHaveCount(0);
+    }
     await applyAndBack(page);
 
     await expect

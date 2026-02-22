@@ -124,11 +124,21 @@ test.describe("Link Editor Panel", () => {
     await expect(editItem).toHaveAttribute("aria-disabled", "true");
   });
 
-  test("Apply button exists in link editor panel", async ({ page, topoViewerPage }) => {
+  test("Apply button appears after editing in link editor panel", async ({
+    page,
+    topoViewerPage
+  }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
     await openLinkEditor(page, edgeIds[0]);
 
+    // Apply is hidden until there are unsaved changes.
     const applyBtn = page.locator(SEL_PANEL_APPLY_BTN);
+    await expect(applyBtn).toHaveCount(0);
+
+    const sourceInterface = page.locator("#link-source-interface");
+    await sourceInterface.fill("e1-2");
+    await sourceInterface.blur();
+
     await expect(applyBtn).toBeVisible();
     await expect(applyBtn).toHaveText("Apply");
   });

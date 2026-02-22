@@ -158,11 +158,22 @@ test.describe("Node Editor Panel", () => {
     await expect(page.locator("#node-name")).toBeDisabled();
   });
 
-  test("Apply button exists in node editor panel", async ({ page, topoViewerPage }) => {
+  test("Apply button appears after editing in node editor panel", async ({
+    page,
+    topoViewerPage
+  }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     await clickNode(page, nodeIds[0]);
 
+    // Apply is hidden until there are unsaved changes.
     const applyBtn = page.locator(SEL_PANEL_APPLY_BTN);
+    await expect(applyBtn).toHaveCount(0);
+
+    const nameInput = page.locator("#node-name");
+    const currentName = await nameInput.inputValue();
+    await nameInput.fill(`${currentName}-edited`);
+    await nameInput.blur();
+
     await expect(applyBtn).toBeVisible();
     await expect(applyBtn).toHaveText("Apply");
   });

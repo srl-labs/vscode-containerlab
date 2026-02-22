@@ -165,29 +165,64 @@ test.describe("Node Editor Persistence", () => {
     await openNodeEditor(page, nodeId);
     await navigateToTab(page, TAB.BASIC);
 
-    await selectMuiOption(page, "node-label-position", "Top");
-    await selectMuiOption(page, "node-direction", "Rotate text 90deg");
-    await setCheckbox(page, "node-label-bg-transparent", true);
+    const labelPosition = page.locator("#node-label-position");
+    const direction = page.locator("#node-direction");
+    const transparent = page.locator("#node-label-bg-transparent");
 
+    const currentLabelPositionText = await labelPosition.innerText();
+    const currentDirectionText = await direction.innerText();
+    const currentTransparent = await transparent.isChecked();
+
+    const targetLabelPosition = currentLabelPositionText.includes("Top") ? "Bottom" : "Top";
+    const targetDirection = currentDirectionText.includes("Rotate text 90deg")
+      ? "Horizontal"
+      : "Rotate text 90deg";
+    const targetTransparent = !currentTransparent;
+
+    await selectMuiOption(page, "node-label-position", targetLabelPosition);
+    await selectMuiOption(page, "node-direction", targetDirection);
+    await setCheckbox(page, "node-label-bg-transparent", targetTransparent);
+
+    // Apply is shown only when the editor is dirty. Label defaults can already match
+    // across runs, so force a guaranteed non-label edit as the dirty trigger.
+    const kindField = page.locator("#node-kind");
+    const currentKind = await kindField.inputValue();
+    await fillField(page, "node-kind", `${currentKind}-dirty`);
+
+    await expect(page.locator(SEL_APPLY_BTN)).toBeVisible({ timeout: 3000 });
     await page.locator(SEL_APPLY_BTN).click();
+
+    const expectedDirection = targetDirection === "Horizontal" ? "right" : "down";
     await expect
       .poll(
         async () => {
           const annotations = await topoViewerPage.getAnnotationsFromFile(TEST_TOPOLOGY);
           const nodeAnnotation = annotations.nodeAnnotations?.find((entry) => entry.id === nodeId);
-          return `${nodeAnnotation?.labelPosition ?? ""}|${nodeAnnotation?.direction ?? ""}|${nodeAnnotation?.labelBackgroundColor ?? ""}`;
+          return {
+            labelPosition: nodeAnnotation?.labelPosition ?? "",
+            direction: nodeAnnotation?.direction ?? "",
+            transparent: (nodeAnnotation?.labelBackgroundColor ?? "").toLowerCase() === "transparent"
+          };
         },
         { timeout: 5000 }
       )
-      .toBe("top|down|transparent");
+      .toEqual({
+        labelPosition: targetLabelPosition.toLowerCase(),
+        direction: expectedDirection,
+        transparent: targetTransparent
+      });
 
     await returnToPalette(page);
     await openNodeEditor(page, nodeId);
     await navigateToTab(page, TAB.BASIC);
 
-    await expect(page.locator("#node-label-position")).toContainText("Top");
-    await expect(page.locator("#node-direction")).toContainText("Rotate text 90deg");
-    await expect(page.locator("#node-label-bg-transparent")).toBeChecked();
+    await expect(labelPosition).toContainText(targetLabelPosition);
+    await expect(direction).toContainText(targetDirection);
+    if (targetTransparent) {
+      await expect(transparent).toBeChecked();
+    } else {
+      await expect(transparent).not.toBeChecked();
+    }
   });
 
   test("startup-config field persists to YAML", async ({ page, topoViewerPage }) => {
