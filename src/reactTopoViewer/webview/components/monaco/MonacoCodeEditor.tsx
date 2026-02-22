@@ -724,8 +724,7 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
       model: modelRef.current,
       readOnly,
       automaticLayout: true,
-      // Use the native context menu so standard right-click paste works in webviews.
-      contextmenu: false,
+      contextmenu: true,
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
       fontFamily: getEditorFontFamily(),
@@ -802,11 +801,5 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
     lastExternalAppliedRef.current = next;
   }, [value]);
 
-  return (
-    <div
-      ref={containerRef}
-      style={{ width: "100%", height: "100%" }}
-      onContextMenuCapture={(event) => event.stopPropagation()}
-    />
-  );
+  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 };
