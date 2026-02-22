@@ -56,12 +56,16 @@ export interface ContextPanelEditorState {
   editingTextAnnotation: FreeTextAnnotation | null;
   textAnnotationHandlers: {
     onSave: (annotation: FreeTextAnnotation) => void;
+    onPreview?: (annotation: FreeTextAnnotation) => boolean;
+    onPreviewDelete?: (id: string) => void;
     onClose: () => void;
     onDelete: (id: string) => void;
   };
   editingShapeAnnotation: FreeShapeAnnotation | null;
   shapeAnnotationHandlers: {
     onSave: (annotation: FreeShapeAnnotation) => void;
+    onPreview?: (annotation: FreeShapeAnnotation) => boolean;
+    onPreviewDelete?: (id: string) => void;
     onClose: () => void;
     onDelete: (id: string) => void;
   };
