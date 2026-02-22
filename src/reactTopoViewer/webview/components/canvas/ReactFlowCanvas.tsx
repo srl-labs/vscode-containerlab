@@ -135,6 +135,53 @@ function handleLinkCreationClick(
   return true;
 }
 
+function isLinkCreationNode(node: Node): boolean {
+  return node.type === "topology-node" || node.type === "network-node";
+}
+
+function hasOtherSelectedTopologyNodes(
+  reactFlowInstanceRef: React.RefObject<ReactFlowInstance | null>,
+  nodeId: string
+): boolean {
+  const instance = reactFlowInstanceRef.current;
+  if (!instance) return false;
+  return instance
+    .getNodes()
+    .some(
+      (candidate) =>
+        candidate.selected === true &&
+        candidate.id !== nodeId &&
+        (candidate.type === "topology-node" || candidate.type === "network-node")
+    );
+}
+
+function handleShiftStartLinkClick(
+  event: React.MouseEvent,
+  node: Node,
+  linkSourceNode: string | null,
+  startLinkCreation: (nodeId: string) => void,
+  mode: "view" | "edit",
+  isLocked: boolean,
+  hasOtherSelectedNodes: boolean,
+  onLockedAction?: () => void
+): boolean {
+  if (!event.shiftKey) return false;
+  if (linkSourceNode != null && linkSourceNode.length > 0) return false;
+  if (mode !== "edit") return false;
+  if (!isLinkCreationNode(node)) return false;
+  // Preserve multi-select flows: if additional nodes are already selected,
+  // treat Shift+Click as selection expansion, not link creation.
+  if (hasOtherSelectedNodes) return false;
+
+  event.stopPropagation();
+  if (isLocked) {
+    onLockedAction?.();
+    return true;
+  }
+  startLinkCreation(node.id);
+  return true;
+}
+
 function openAnnotationEditor(
   node: Node,
   clearContextForAnnotationEdit: () => void,
@@ -168,12 +215,15 @@ function openAnnotationEditor(
 
 function useWrappedNodeClick(
   linkSourceNode: string | null,
+  startLinkCreation: (nodeId: string) => void,
   completeLinkCreation: (nodeId: string) => void,
+  reactFlowInstanceRef: React.RefObject<ReactFlowInstance | null>,
   onNodeClick: ReturnType<typeof useCanvasHandlers>["onNodeClick"],
   mode: "view" | "edit",
   isLocked: boolean,
   handleDeleteNode: (nodeId: string) => void,
   clearContextForAnnotationEdit: () => void,
+  onLockedAction?: () => void,
   annotationHandlers?: AnnotationHandlers
 ) {
   return useCallback(
@@ -181,6 +231,21 @@ function useWrappedNodeClick(
       if (handleAltDelete(event, node, mode, isLocked, handleDeleteNode, annotationHandlers))
         return;
       if (handleLinkCreationClick(event, node, linkSourceNode, completeLinkCreation)) return;
+      const hasOtherSelectedNodes = hasOtherSelectedTopologyNodes(reactFlowInstanceRef, node.id);
+      if (
+        handleShiftStartLinkClick(
+          event,
+          node,
+          linkSourceNode,
+          startLinkCreation,
+          mode,
+          isLocked,
+          hasOtherSelectedNodes,
+          onLockedAction
+        )
+      ) {
+        return;
+      }
       const didOpenAnnotationEditor = openAnnotationEditor(
         node,
         clearContextForAnnotationEdit,
@@ -191,12 +256,15 @@ function useWrappedNodeClick(
     },
     [
       linkSourceNode,
+      startLinkCreation,
       completeLinkCreation,
+      reactFlowInstanceRef,
       onNodeClick,
       mode,
       isLocked,
       handleDeleteNode,
       clearContextForAnnotationEdit,
+      onLockedAction,
       annotationHandlers
     ]
   );
@@ -1271,7 +1339,9 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     const wrappedOnNodeClick = useWrappedNodeClick(
       linkSourceNode,
+      startLinkCreation,
       completeLinkCreation,
+      handlers.reactFlowInstance,
       handlers.onNodeClick,
       mode,
       isLocked,
@@ -1287,6 +1357,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         selectNode(null);
         selectEdge(null);
       },
+      onLockedAction,
       annotationHandlers
     );
     const wrappedOnEdgeClick = useWrappedEdgeClick(
