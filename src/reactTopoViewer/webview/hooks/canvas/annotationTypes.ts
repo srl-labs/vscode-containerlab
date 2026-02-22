@@ -58,6 +58,8 @@ export interface AnnotationActions {
   editTextAnnotation: (id: string) => void;
   closeTextEditor: () => void;
   saveTextAnnotation: (annotation: FreeTextAnnotation) => void;
+  previewTextAnnotation: (annotation: FreeTextAnnotation) => void;
+  removePreviewTextAnnotation: (id: string) => void;
   deleteTextAnnotation: (id: string) => void;
   deleteSelectedTextAnnotations: () => void;
   updateTextRotation: (id: string, rotation: number) => void;
@@ -79,6 +81,8 @@ export interface AnnotationActions {
   editShapeAnnotation: (id: string) => void;
   closeShapeEditor: () => void;
   saveShapeAnnotation: (annotation: FreeShapeAnnotation) => void;
+  previewShapeAnnotation: (annotation: FreeShapeAnnotation) => void;
+  removePreviewShapeAnnotation: (id: string) => void;
   deleteShapeAnnotation: (id: string) => void;
   deleteSelectedShapeAnnotations: () => void;
   updateShapeRotation: (id: string, rotation: number) => void;

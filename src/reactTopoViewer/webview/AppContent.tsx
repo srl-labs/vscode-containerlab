@@ -727,6 +727,21 @@ export const AppContent: React.FC<AppContentProps> = ({
       saveTextAnnotation: (...args: Parameters<AnnotationContextValue["saveTextAnnotation"]>) => {
         annotationRuntimeRef.current?.saveTextAnnotation(...args);
       },
+      updateTextAnnotation: (
+        ...args: Parameters<AnnotationContextValue["updateTextAnnotation"]>
+      ) => {
+        annotationRuntimeRef.current?.updateTextAnnotation(...args);
+      },
+      previewTextAnnotation: (
+        ...args: Parameters<AnnotationContextValue["previewTextAnnotation"]>
+      ) => {
+        annotationRuntimeRef.current?.previewTextAnnotation(...args);
+      },
+      removePreviewTextAnnotation: (
+        ...args: Parameters<AnnotationContextValue["removePreviewTextAnnotation"]>
+      ) => {
+        annotationRuntimeRef.current?.removePreviewTextAnnotation(...args);
+      },
       deleteTextAnnotation: (
         ...args: Parameters<AnnotationContextValue["deleteTextAnnotation"]>
       ) => {
@@ -734,6 +749,21 @@ export const AppContent: React.FC<AppContentProps> = ({
       },
       saveShapeAnnotation: (...args: Parameters<AnnotationContextValue["saveShapeAnnotation"]>) => {
         annotationRuntimeRef.current?.saveShapeAnnotation(...args);
+      },
+      updateShapeAnnotation: (
+        ...args: Parameters<AnnotationContextValue["updateShapeAnnotation"]>
+      ) => {
+        annotationRuntimeRef.current?.updateShapeAnnotation(...args);
+      },
+      previewShapeAnnotation: (
+        ...args: Parameters<AnnotationContextValue["previewShapeAnnotation"]>
+      ) => {
+        annotationRuntimeRef.current?.previewShapeAnnotation(...args);
+      },
+      removePreviewShapeAnnotation: (
+        ...args: Parameters<AnnotationContextValue["removePreviewShapeAnnotation"]>
+      ) => {
+        annotationRuntimeRef.current?.removePreviewShapeAnnotation(...args);
       },
       deleteShapeAnnotation: (
         ...args: Parameters<AnnotationContextValue["deleteShapeAnnotation"]>
@@ -1452,12 +1482,38 @@ export const AppContent: React.FC<AppContentProps> = ({
               editingTextAnnotation: annotationUiState.editingTextAnnotation,
               textAnnotationHandlers: {
                 onSave: annotationActions.saveTextAnnotation,
+                onPreview: (annotation) => {
+                  const exists =
+                    annotationRuntimeRef.current?.textAnnotations.some(
+                      (entry) => entry.id === annotation.id
+                    ) ?? false;
+                  if (exists) {
+                    annotationActions.updateTextAnnotation(annotation.id, annotation);
+                    return true;
+                  }
+                  annotationActions.previewTextAnnotation(annotation);
+                  return false;
+                },
+                onPreviewDelete: annotationActions.removePreviewTextAnnotation,
                 onClose: annotationUiActions.closeTextEditor,
                 onDelete: annotationActions.deleteTextAnnotation
               },
               editingShapeAnnotation: annotationUiState.editingShapeAnnotation,
               shapeAnnotationHandlers: {
                 onSave: annotationActions.saveShapeAnnotation,
+                onPreview: (annotation) => {
+                  const exists =
+                    annotationRuntimeRef.current?.shapeAnnotations.some(
+                      (entry) => entry.id === annotation.id
+                    ) ?? false;
+                  if (exists) {
+                    annotationActions.updateShapeAnnotation(annotation.id, annotation);
+                    return true;
+                  }
+                  annotationActions.previewShapeAnnotation(annotation);
+                  return false;
+                },
+                onPreviewDelete: annotationActions.removePreviewShapeAnnotation,
                 onClose: annotationUiActions.closeShapeEditor,
                 onDelete: annotationActions.deleteShapeAnnotation
               },

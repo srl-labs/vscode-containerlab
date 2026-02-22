@@ -387,6 +387,17 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       editTextAnnotation: textActions.editTextAnnotation,
       closeTextEditor: uiActions.closeTextEditor,
       saveTextAnnotation: textActions.saveTextAnnotation,
+      previewTextAnnotation: (annotation) => {
+        const exists = derived.textAnnotations.some((entry) => entry.id === annotation.id);
+        if (exists) {
+          derived.updateTextAnnotation(annotation.id, annotation);
+          return;
+        }
+        derived.addTextAnnotation(annotation);
+      },
+      removePreviewTextAnnotation: (id) => {
+        derived.deleteTextAnnotation(id);
+      },
       deleteTextAnnotation: textActions.deleteTextAnnotation,
       deleteSelectedTextAnnotations: textActions.deleteSelectedTextAnnotations,
       updateTextRotation: (id: string, rotation: number) => {
@@ -419,6 +430,17 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       editShapeAnnotation: shapeActions.editShapeAnnotation,
       closeShapeEditor: uiActions.closeShapeEditor,
       saveShapeAnnotation: shapeActions.saveShapeAnnotation,
+      previewShapeAnnotation: (annotation) => {
+        const exists = derived.shapeAnnotations.some((entry) => entry.id === annotation.id);
+        if (exists) {
+          derived.updateShapeAnnotation(annotation.id, annotation);
+          return;
+        }
+        derived.addShapeAnnotation(annotation);
+      },
+      removePreviewShapeAnnotation: (id) => {
+        derived.deleteShapeAnnotation(id);
+      },
       deleteShapeAnnotation: shapeActions.deleteShapeAnnotation,
       deleteSelectedShapeAnnotations: shapeActions.deleteSelectedShapeAnnotations,
       updateShapeRotation: (id, rotation) => {

@@ -1,15 +1,20 @@
 // Text annotation editor for the ContextPanel.
-import React, { useCallback } from "react";
+import React from "react";
 import Box from "@mui/material/Box";
 
 import type { FreeTextAnnotation } from "../../../../../shared/types/topology";
 import { useGenericFormState, useEditorHandlersWithFooterRef } from "../../../../hooks/editor";
 import { FIELDSET_RESET_STYLE } from "../ContextPanelScrollArea";
 import { FreeTextFormContent } from "../../free-text-editor/FreeTextFormContent";
+import { useAnnotationPreviewCommit } from "./useAnnotationPreviewCommit";
 
 export interface FreeTextEditorViewProps {
   annotation: FreeTextAnnotation | null;
   onSave: (annotation: FreeTextAnnotation) => void;
+  /** Live-preview changes on the canvas (visual only, no persist) */
+  onPreview?: (annotation: FreeTextAnnotation) => boolean;
+  /** Remove preview-only annotation (used when discarding a new annotation). */
+  onPreviewDelete?: (id: string) => void;
   onClose: () => void;
   onDelete?: (id: string) => void;
   /** Disable editing, but keep scrolling available */
@@ -28,9 +33,15 @@ function canSave(data: FreeTextAnnotation): boolean {
   return data.text.trim().length > 0;
 }
 
+function cloneAnnotation(annotation: FreeTextAnnotation): FreeTextAnnotation {
+  return { ...annotation };
+}
+
 export const FreeTextEditorView: React.FC<FreeTextEditorViewProps> = ({
   annotation,
   onSave,
+  onPreview,
+  onPreviewDelete,
   onClose,
   onDelete,
   readOnly = false,
@@ -41,18 +52,27 @@ export const FreeTextEditorView: React.FC<FreeTextEditorViewProps> = ({
       getIsNew: (a) => a?.text === ""
     });
 
-  const validateSave = useCallback((data: FreeTextAnnotation) => canSave(data), []);
+  const { saveWithCommit, discardWithRevert } = useAnnotationPreviewCommit({
+    annotation,
+    formData,
+    readOnly,
+    onPreview,
+    onPreviewDelete,
+    onSave,
+    discardChanges,
+    snapshot: cloneAnnotation
+  });
 
   const canSaveNow = formData ? canSave(formData) : false;
   useEditorHandlersWithFooterRef({
     formData,
-    onSave,
+    onSave: saveWithCommit,
     onClose,
     onDelete,
     resetInitialData,
-    discardChanges,
+    discardChanges: discardWithRevert,
     onFooterRef,
-    canSave: validateSave,
+    canSave,
     hasChangesForFooter: hasChanges && canSaveNow
   });
 

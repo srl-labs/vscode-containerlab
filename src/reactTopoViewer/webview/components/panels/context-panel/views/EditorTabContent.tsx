@@ -112,6 +112,8 @@ export const EditorTabContent: React.FC<EditorTabContentProps> = ({
         <FreeTextEditorView
           annotation={editingTextAnnotation}
           onSave={textAnnotationHandlers.onSave}
+          onPreview={textAnnotationHandlers.onPreview}
+          onPreviewDelete={textAnnotationHandlers.onPreviewDelete}
           onClose={textAnnotationHandlers.onClose}
           onDelete={textAnnotationHandlers.onDelete}
           onFooterRef={onFooterRef}
@@ -123,6 +125,8 @@ export const EditorTabContent: React.FC<EditorTabContentProps> = ({
         <FreeShapeEditorView
           annotation={editingShapeAnnotation}
           onSave={shapeAnnotationHandlers.onSave}
+          onPreview={shapeAnnotationHandlers.onPreview}
+          onPreviewDelete={shapeAnnotationHandlers.onPreviewDelete}
           onClose={shapeAnnotationHandlers.onClose}
           onDelete={shapeAnnotationHandlers.onDelete}
           onFooterRef={onFooterRef}

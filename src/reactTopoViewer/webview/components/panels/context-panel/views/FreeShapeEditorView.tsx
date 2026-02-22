@@ -7,10 +7,15 @@ import { useGenericFormState, useEditorHandlersWithFooterRef } from "../../../..
 import { normalizeShapeAnnotationColors } from "../../../../utils/color";
 import { FIELDSET_RESET_STYLE } from "../ContextPanelScrollArea";
 import { FreeShapeFormContent } from "../../free-shape-editor/FreeShapeFormContent";
+import { useAnnotationPreviewCommit } from "./useAnnotationPreviewCommit";
 
 export interface FreeShapeEditorViewProps {
   annotation: FreeShapeAnnotation | null;
   onSave: (annotation: FreeShapeAnnotation) => void;
+  /** Live-preview changes on the canvas (visual only, no persist) */
+  onPreview?: (annotation: FreeShapeAnnotation) => boolean;
+  /** Remove preview-only annotation (used when discarding a new annotation). */
+  onPreviewDelete?: (id: string) => void;
   onClose: () => void;
   onDelete?: (id: string) => void;
   /** Disable editing, but keep scrolling available */
@@ -28,6 +33,8 @@ export interface FreeShapeEditorFooterRef {
 export const FreeShapeEditorView: React.FC<FreeShapeEditorViewProps> = ({
   annotation,
   onSave,
+  onPreview,
+  onPreviewDelete,
   onClose,
   onDelete,
   readOnly = false,
@@ -38,13 +45,24 @@ export const FreeShapeEditorView: React.FC<FreeShapeEditorViewProps> = ({
       transformData: normalizeShapeAnnotationColors
     });
 
+  const { saveWithCommit, discardWithRevert } = useAnnotationPreviewCommit({
+    annotation,
+    formData,
+    readOnly,
+    onPreview,
+    onPreviewDelete,
+    onSave,
+    discardChanges,
+    snapshot: normalizeShapeAnnotationColors
+  });
+
   useEditorHandlersWithFooterRef({
     formData,
-    onSave,
+    onSave: saveWithCommit,
     onClose,
     onDelete,
     resetInitialData,
-    discardChanges,
+    discardChanges: discardWithRevert,
     onFooterRef,
     hasChangesForFooter: hasChanges
   });
