@@ -396,6 +396,11 @@ export function addNodeElements(
   let nodeIndex = 0;
 
   for (const [nodeName, nodeObj] of Object.entries(topology.nodes)) {
+    if (!isRecord(nodeObj)) {
+      opts.logger?.warn(`Node '${nodeName}' is not an object. Skipping.`);
+      continue;
+    }
+
     // Check nodeAnnotations first, then fallback to networkNodeAnnotations for bridges
     // (backwards compatibility - bridges were previously saved to networkNodeAnnotations)
     const nodeAnn = nodeAnnotationLookup.get(nodeName);

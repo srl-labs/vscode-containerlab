@@ -46,10 +46,12 @@ export function initSpecialNodes(nodes?: Record<string, ClabNode>): Map<string, 
   const specialNodes = new Map<string, SpecialNodeInfo>();
   if (!nodes) return specialNodes;
   for (const [nodeName, nodeData] of Object.entries(nodes)) {
-    if (nodeData.kind === NODE_KIND_BRIDGE || nodeData.kind === NODE_KIND_OVS_BRIDGE) {
+    if (!isRecord(nodeData)) continue;
+    const kind = typeof nodeData.kind === "string" ? nodeData.kind : undefined;
+    if (kind === NODE_KIND_BRIDGE || kind === NODE_KIND_OVS_BRIDGE) {
       specialNodes.set(nodeName, {
         id: nodeName,
-        type: nodeData.kind === NODE_KIND_BRIDGE ? NODE_KIND_BRIDGE : NODE_KIND_OVS_BRIDGE,
+        type: kind === NODE_KIND_BRIDGE ? NODE_KIND_BRIDGE : NODE_KIND_OVS_BRIDGE,
         label: nodeName
       });
     }

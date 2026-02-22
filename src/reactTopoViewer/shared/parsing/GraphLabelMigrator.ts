@@ -37,7 +37,11 @@ export function nodeHasGraphLabels(labels: Record<string, unknown> | undefined):
 export function topologyHasGraphLabels(parsed: ClabTopology): boolean {
   const nodes = parsed.topology?.nodes;
   if (nodes === undefined) return false;
-  return Object.values(nodes).some((node) => nodeHasGraphLabels(getRecordUnknown(node.labels)));
+  return Object.values(nodes).some((node) => {
+    const nodeRecord = getRecordUnknown(node);
+    if (nodeRecord === undefined) return false;
+    return nodeHasGraphLabels(getRecordUnknown(nodeRecord.labels));
+  });
 }
 
 function getNonEmptyLabel(labels: Record<string, unknown>, key: string): string | undefined {
@@ -143,7 +147,9 @@ export function detectGraphLabelMigrations(
     // Skip if node already has an annotation
     if (existingAnnotations.has(nodeName)) continue;
     // Skip if node has no graph-* labels
-    const labels = getRecordUnknown(nodeObj.labels);
+    const nodeRecord = getRecordUnknown(nodeObj);
+    if (nodeRecord === undefined) continue;
+    const labels = getRecordUnknown(nodeRecord.labels);
     if (labels === undefined) continue;
     if (!nodeHasGraphLabels(labels)) continue;
 
