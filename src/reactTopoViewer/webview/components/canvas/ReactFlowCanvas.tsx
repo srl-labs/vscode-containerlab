@@ -16,8 +16,8 @@ import {
   ReactFlow,
   ReactFlowProvider,
   SelectionMode,
-  getNodesBounds,
   getViewportForBounds,
+  useReactFlow,
   useNodesInitialized,
   useStore,
   type Edge,
@@ -850,7 +850,7 @@ function getGeoInteractingState(isGeoLayout: boolean, isInteracting: boolean): b
 }
 
 function shouldOnlyRenderVisibleElements(isLowDetail: boolean, isGeoLayout: boolean): boolean {
-  return !isLowDetail && !isGeoLayout;
+  return isLowDetail && !isGeoLayout;
 }
 
 function renderGeoMapLayer(
@@ -1059,6 +1059,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const lastFitViewRequestRef = useRef(0);
     const [isReactFlowReady, setIsReactFlowReady] = useState(false);
     const areNodesInitialized = useNodesInitialized({ includeHiddenNodes: false });
+    const { getNodesBounds } = useReactFlow<Node, Edge>();
     const suppressSelectionSyncUntilRef = useRef(0);
 
     const topoState = useMemo(() => ({ mode, isLocked }), [mode, isLocked]);
@@ -1166,7 +1167,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         const adjustedX = occlusion.side === "left" ? viewport.x + occlusion.width : viewport.x;
         await instance.setViewport({ x: adjustedX, y: viewport.y, zoom: viewport.zoom }, options);
       },
-      [allNodes, isContextPanelOpen]
+      [allNodes, getNodesBounds, isContextPanelOpen]
     );
 
     useEffect(() => {
@@ -1187,6 +1188,18 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       const requestedFitId = fitViewRequestId;
       let completedPasses = 0;
       const requiredPasses = 2;
+      let retryCount = 0;
+      const MAX_FIT_RETRIES = 120;
+
+      const scheduleRetry = () => {
+        if (cancelled) return;
+        retryCount += 1;
+        if (retryCount > MAX_FIT_RETRIES) {
+          lastFitViewRequestRef.current = requestedFitId;
+          return;
+        }
+        window.requestAnimationFrame(tryFit);
+      };
 
       const tryFit = () => {
         if (cancelled) return;
@@ -1194,13 +1207,13 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
         if (isGeoLayout) {
           if (!geoLayout.isReady) {
-            window.requestAnimationFrame(tryFit);
+            scheduleRetry();
             return;
           }
           geoLayout.fitToViewport({ duration: 0 });
           completedPasses += 1;
           if (completedPasses < requiredPasses) {
-            window.requestAnimationFrame(tryFit);
+            scheduleRetry();
             return;
           }
           lastFitViewRequestRef.current = requestedFitId;
@@ -1211,7 +1224,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         const canvasRect = canvasContainer?.getBoundingClientRect();
         const hasCanvasArea = Boolean(canvasRect && canvasRect.width > 1 && canvasRect.height > 1);
         if (!hasCanvasArea) {
-          window.requestAnimationFrame(tryFit);
+          scheduleRetry();
           return;
         }
 
@@ -1221,14 +1234,14 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
             if (requestedFitId <= lastFitViewRequestRef.current) return;
             completedPasses += 1;
             if (completedPasses < requiredPasses) {
-              window.requestAnimationFrame(tryFit);
+              scheduleRetry();
               return;
             }
             lastFitViewRequestRef.current = requestedFitId;
           })
           .catch(() => {
             if (cancelled) return;
-            window.requestAnimationFrame(tryFit);
+            scheduleRetry();
           });
       };
 

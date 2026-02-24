@@ -30,6 +30,24 @@ topology:
     expect(nodeIds).to.include("srl1");
     expect(nodeIds).to.not.include("partial");
   });
+
+  it("parses shorthand null nodes when defaults are defined", () => {
+    const result = TopologyParser.parseToReactFlow(`name: t
+topology:
+  defaults:
+    kind: linux
+    image: ghcr.io/srl-labs/network-multitool:latest
+  nodes:
+    n1:
+    n2:
+  links:
+    - endpoints: ["n1:eth1", "n2:eth1"]
+`);
+    const nodeIds = result.topology.nodes.map((node) => node.id);
+    expect(nodeIds).to.include("n1");
+    expect(nodeIds).to.include("n2");
+    expect(result.topology.nodes).to.have.length(2);
+  });
 });
 
 describe("TopologyHostCore empty YAML fallback lab name", () => {
