@@ -295,6 +295,23 @@ function shouldSkipAliasBridgeNode(
   );
 }
 
+function normalizeNodeObject(
+  nodeName: string,
+  nodeObj: unknown,
+  hasDefaults: boolean,
+  logger: ParserLogger | undefined
+): ClabNode | undefined {
+  if (isRecord(nodeObj)) {
+    return nodeObj;
+  }
+  const isShorthandNode = (nodeObj === null || nodeObj === undefined) && hasDefaults;
+  if (isShorthandNode) {
+    return {};
+  }
+  logger?.warn(`Node '${nodeName}' is not an object. Skipping.`);
+  return undefined;
+}
+
 /**
  * Builds a single node element.
  */
@@ -388,6 +405,7 @@ export function addNodeElements(
   const migrations: InterfacePatternMigration[] = [];
   const topology = parsed.topology;
   if (!topology?.nodes) return migrations;
+  const hasDefaults = isRecord(topology.defaults) && Object.keys(topology.defaults).length > 0;
 
   const nodeAnnotations = opts.annotations?.nodeAnnotations;
   const networkNodeAnnotations = opts.annotations?.networkNodeAnnotations;
@@ -395,9 +413,9 @@ export function addNodeElements(
   const interfacePatternMapping = buildInterfacePatternMapping();
   let nodeIndex = 0;
 
-  for (const [nodeName, nodeObj] of Object.entries(topology.nodes)) {
-    if (!isRecord(nodeObj)) {
-      opts.logger?.warn(`Node '${nodeName}' is not an object. Skipping.`);
+  for (const [nodeName, nodeObj] of Object.entries(topology.nodes as Record<string, unknown>)) {
+    const normalizedNodeObj = normalizeNodeObject(nodeName, nodeObj, hasDefaults, opts.logger);
+    if (normalizedNodeObj === undefined) {
       continue;
     }
 
@@ -406,13 +424,13 @@ export function addNodeElements(
     const nodeAnn = nodeAnnotationLookup.get(nodeName);
     // If this bridge node is configured as an alias (yamlNodeId points elsewhere),
     // skip rendering the base YAML node to avoid duplicate visuals.
-    if (shouldSkipAliasBridgeNode(nodeName, nodeAnn, nodeObj)) {
+    if (shouldSkipAliasBridgeNode(nodeName, nodeAnn, normalizedNodeObj)) {
       continue;
     }
     const { element, migrationPattern } = buildNodeElement({
       parsed,
       nodeName,
-      nodeObj,
+      nodeObj: normalizedNodeObj,
       opts,
       fullPrefix,
       labName,
