@@ -925,22 +925,28 @@ function toDurationSeconds(unit: string): number {
   if (normalized.endsWith("s")) {
     normalized = normalized.slice(0, -1);
   }
-  if (normalized === "mins") {
-    normalized = "min";
-  }
-  if (normalized === "hrs") {
-    normalized = "hour";
-  }
   switch (normalized) {
     case "second":
+    case "sec":
       return 1;
     case "minute":
     case "min":
       return 60;
     case "hour":
+    case "hr":
       return 3600;
     case "day":
       return 86400;
+    case "week":
+    case "wk":
+      return 7 * 86400;
+    case "month":
+    case "mo":
+      // Docker status uses humanized durations; treat month/year as coarse units.
+      return 30 * 86400;
+    case "year":
+    case "yr":
+      return 365 * 86400;
     default:
       return 0;
   }
@@ -1369,6 +1375,13 @@ export function resetForTests(): void {
   interfaceVersions.clear();
   nodeSnapshots.clear();
   scheduleDataChanged();
+}
+
+export function estimateStartedAtFromStatusForTests(
+  status: string | undefined,
+  eventTimestamp?: number
+): number | undefined {
+  return estimateStartedAtFromStatus(status, eventTimestamp);
 }
 
 export function onDataChanged(listener: DataListener): () => void {
