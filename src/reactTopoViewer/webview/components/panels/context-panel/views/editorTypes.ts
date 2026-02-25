@@ -24,6 +24,9 @@ export interface EditorBannerRef {
 export interface ContextPanelEditorState {
   editingNodeData: NodeEditorData | null;
   editingNodeInheritedProps: string[];
+  selectedNodeVisualData: NodeEditorData | null;
+  selectedNodeVisualInheritedProps: string[];
+  enableSelectedNodeVisualEditor: boolean;
   nodeEditorHandlers: {
     handleClose: () => void;
     handleSave: (data: NodeEditorData) => void;

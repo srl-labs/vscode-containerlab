@@ -125,15 +125,59 @@ test.describe("Node Editor Panel", () => {
     await expect(page.getByPlaceholder("Search nodes...")).toBeVisible();
   });
 
-  test("node editor panel does not open in view mode", async ({ page, topoViewerPage }) => {
+  test("unlocked view mode keeps Info and adds visual-only Edit tab", async ({
+    page,
+    topoViewerPage
+  }) => {
     await topoViewerPage.setViewMode();
+    await topoViewerPage.unlock();
 
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 
     await clickNode(page, nodeIds[0]);
 
-    // In view mode, selection shows Node Properties rather than an editor.
+    // Info remains available and is the default tab in view mode.
+    const panelTitle = page.getByText("Node Properties", { exact: true });
+    await expect(panelTitle).toBeVisible();
+    await expect(page.locator('[data-testid="panel-tab-info"]')).toHaveAttribute(
+      ATTR_ARIA_SELECTED,
+      ARIA_SELECTED_TRUE
+    );
+    await expect(page.locator('[data-testid="panel-tab-edit"]')).toBeVisible();
+
+    // Visual edit tab is available for node icon / label-direction only.
+    await page.locator('[data-testid="panel-tab-edit"]').click();
+    await expect(page.getByText(TITLE_NODE_EDITOR, { exact: true })).toBeVisible();
+    await expect(page.locator('[data-testid="panel-tab-basic"]')).toBeVisible();
+    await expect(page.locator('[data-testid="panel-tab-config"]')).not.toBeVisible();
+    await expect(page.locator('[data-testid="panel-tab-runtime"]')).not.toBeVisible();
+    await expect(page.locator('[data-testid="panel-tab-network"]')).not.toBeVisible();
+    await expect(page.locator('[data-testid="panel-tab-advanced"]')).not.toBeVisible();
+
+    await expect(page.locator("#node-icon")).toBeVisible();
+    await expect(page.locator("#node-label-position")).toBeVisible();
+    await expect(page.locator("#node-direction")).toBeVisible();
+    await expect(page.locator("#node-name")).not.toBeVisible();
+    await expect(page.locator("#node-kind")).not.toBeVisible();
+
+    // Changing label-position must enable Apply in visual-only editor.
+    const applyBtn = page.locator(SEL_PANEL_APPLY_BTN);
+    await expect(applyBtn).toHaveCount(0);
+    await page.locator("#node-label-position").click();
+    await page.locator('li[role="option"][aria-selected="false"]').first().click();
+    await expect(applyBtn).toBeVisible();
+  });
+
+  test("locked view mode keeps node properties read-only", async ({ page, topoViewerPage }) => {
+    await topoViewerPage.setViewMode();
+    await topoViewerPage.lock();
+
+    const nodeIds = await topoViewerPage.getNodeIds();
+    expect(nodeIds.length).toBeGreaterThan(0);
+
+    await clickNode(page, nodeIds[0]);
+
     const panelTitle = page.getByText("Node Properties", { exact: true });
     await expect(panelTitle).toBeVisible();
   });

@@ -1,13 +1,11 @@
 /**
- * usePanelTabVisibility - Centralizes mode-based tab visibility rules
+ * usePanelTabVisibility - Centralizes mode-based tab visibility rules.
  *
- * Hard rules:
- * - Info tab: ONLY visible in view mode, when a node or link is selected
- * - Edit tab: ONLY visible in edit mode, when an editor is active
- *
- * This prevents:
- * - Info tab from appearing in edit mode
- * - Edit tab from appearing in view mode
+ * Rules:
+ * - Info tab: visible in view mode for selected node/link.
+ * - Edit tab: visible when an editor is active in any mode.
+ * - Extra view-mode behavior: for unlocked selected nodes, also show Edit tab
+ *   so icon/label/direction can be adjusted while running.
  */
 import { useTopoViewerState } from "../../stores";
 import { useAnnotationUIStore } from "../../stores/annotationUIStore";
@@ -50,9 +48,21 @@ export function usePanelTabVisibility(): PanelTabVisibility {
     annotationUI.editingTrafficRateAnnotation,
     annotationUI.editingGroup
   ].some((value) => value !== null);
-  const showEditTab = hasEditor;
 
-  const editTabTitle = showEditTab ? panelView.title : undefined;
+  // In unlocked view mode, selected topology nodes can open a visual-only editor tab.
+  const canEditSelectedNodeInViewMode =
+    isViewMode &&
+    state.isLocked === false &&
+    panelView.kind === "nodeInfo" &&
+    state.selectedNode !== null;
+  const showEditTab = hasEditor || canEditSelectedNodeInViewMode;
+
+  let editTabTitle: string | undefined;
+  if (hasEditor) {
+    editTabTitle = panelView.title;
+  } else if (canEditSelectedNodeInViewMode) {
+    editTabTitle = "Node Editor";
+  }
 
   return { showInfoTab, showEditTab, infoTabTitle, editTabTitle };
 }

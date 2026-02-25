@@ -90,6 +90,13 @@ export function useNodeEditorForm(
   const [originalData, setOriginalData] = useState<NodeEditorData | null>(null);
   const [loadedNodeId, setLoadedNodeId] = useState<string | null>(null);
   const skipNextSyncRef = useRef(false);
+  const formDataRef = useRef<NodeEditorData | null>(null);
+  const lastAppliedDataRef = useRef<NodeEditorData | null>(null);
+
+  useEffect(() => {
+    formDataRef.current = formData;
+    lastAppliedDataRef.current = lastAppliedData;
+  }, [formData, lastAppliedData]);
 
   useEffect(() => {
     if (nodeData && nodeData.id !== loadedNodeId) {
@@ -102,6 +109,23 @@ export function useNodeEditorForm(
     } else if (nodeData && nodeData.id === loadedNodeId) {
       if (skipNextSyncRef.current) {
         skipNextSyncRef.current = false;
+        return;
+      }
+      const currentFormData = formDataRef.current;
+      const currentLastAppliedData = lastAppliedDataRef.current;
+      const hasLocalChanges =
+        currentFormData !== null &&
+        currentLastAppliedData !== null &&
+        toDirtySnapshot(currentFormData) !== toDirtySnapshot(currentLastAppliedData);
+      if (hasLocalChanges) {
+        return;
+      }
+      const nextSnapshot = toDirtySnapshot(nodeData);
+      const formSnapshot = currentFormData ? toDirtySnapshot(currentFormData) : null;
+      const appliedSnapshot = currentLastAppliedData
+        ? toDirtySnapshot(currentLastAppliedData)
+        : null;
+      if (formSnapshot === nextSnapshot && appliedSnapshot === nextSnapshot) {
         return;
       }
       setFormData({ ...nodeData });

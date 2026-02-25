@@ -434,12 +434,12 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
 
   // Auto-switch when edit/info tab appears (one-time, not forced)
   useEffect(() => {
-    if (showEditTab) setUserTab("edit");
-  }, [showEditTab]);
+    if (showEditTab && !(isViewMode && showInfoTab)) setUserTab("edit");
+  }, [showEditTab, isViewMode, showInfoTab]);
 
   useEffect(() => {
-    if (showInfoTab && !showEditTab) setUserTab("info");
-  }, [showInfoTab, showEditTab]);
+    if (showInfoTab && (isViewMode || !showEditTab)) setUserTab("info");
+  }, [showInfoTab, showEditTab, isViewMode]);
 
   // Fall back to "nodes" when current tab is no longer visible
   useEffect(() => {

@@ -295,6 +295,93 @@ function shouldDumpCssVars(): boolean {
   return normalized === "1" || normalized === "true" || normalized === "on";
 }
 
+function shouldCollectDevMockTrafficStats(
+  isDevMock: boolean,
+  interactionMode: "view" | "edit"
+): boolean {
+  return isDevMock && interactionMode === "view";
+}
+
+function shouldShowBulkLinkModal(isRequested: boolean, isProcessing: boolean): boolean {
+  return isRequested && !isProcessing;
+}
+
+interface DevExplorerPaneState {
+  layoutRef: React.RefObject<HTMLDivElement | null>;
+  devExplorerWidth: number;
+  isDevExplorerDragging: boolean;
+  handleDevExplorerResizeStart: (event: React.MouseEvent<HTMLDivElement>) => void;
+}
+
+function useDevExplorerPane(showDevExplorer: boolean): DevExplorerPaneState {
+  const layoutRef = React.useRef<HTMLDivElement | null>(null);
+  const [devExplorerWidth, setDevExplorerWidth] = React.useState(DEV_EXPLORER_DEFAULT_WIDTH);
+  const [isDevExplorerDragging, setIsDevExplorerDragging] = React.useState(false);
+  const isDevExplorerDraggingRef = React.useRef(false);
+
+  const handleDevExplorerResizeStart = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!showDevExplorer) {
+        return;
+      }
+
+      event.preventDefault();
+      isDevExplorerDraggingRef.current = true;
+      setIsDevExplorerDragging(true);
+
+      const onMouseMove = (moveEvent: MouseEvent) => {
+        if (!isDevExplorerDraggingRef.current) {
+          return;
+        }
+
+        const layoutLeft = layoutRef.current?.getBoundingClientRect().left ?? 0;
+        const nextWidth = moveEvent.clientX - layoutLeft;
+        const clampedWidth = Math.min(
+          getDevExplorerMaxWidth(),
+          Math.max(DEV_EXPLORER_MIN_WIDTH, nextWidth)
+        );
+        setDevExplorerWidth(clampedWidth);
+      };
+
+      const onMouseUp = () => {
+        isDevExplorerDraggingRef.current = false;
+        setIsDevExplorerDragging(false);
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [showDevExplorer]
+  );
+
+  React.useEffect(() => {
+    if (!showDevExplorer) {
+      return;
+    }
+
+    const handleWindowResize = () => {
+      setDevExplorerWidth((currentWidth) =>
+        Math.min(getDevExplorerMaxWidth(), Math.max(DEV_EXPLORER_MIN_WIDTH, currentWidth))
+      );
+    };
+
+    handleWindowResize();
+    window.addEventListener("resize", handleWindowResize);
+    return () => {
+      window.removeEventListener("resize", handleWindowResize);
+    };
+  }, [showDevExplorer]);
+
+  return {
+    layoutRef,
+    devExplorerWidth,
+    isDevExplorerDragging,
+    handleDevExplorerResizeStart
+  };
+}
+
 interface ContextSelectionState {
   selectedNode: unknown;
   selectedEdge: unknown;
@@ -578,65 +665,9 @@ export const AppContent: React.FC<AppContentProps> = ({
     () => isDevMock && !isDevExplorerDisabledByUrl(),
     [isDevMock]
   );
-  useDevMockTrafficStats(isDevMock && interactionMode === "view");
-  const layoutRef = React.useRef<HTMLDivElement | null>(null);
-  const [devExplorerWidth, setDevExplorerWidth] = React.useState(DEV_EXPLORER_DEFAULT_WIDTH);
-  const [isDevExplorerDragging, setIsDevExplorerDragging] = React.useState(false);
-  const isDevExplorerDraggingRef = React.useRef(false);
-
-  const handleDevExplorerResizeStart = React.useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      if (!showDevExplorer) {
-        return;
-      }
-
-      event.preventDefault();
-      isDevExplorerDraggingRef.current = true;
-      setIsDevExplorerDragging(true);
-
-      const onMouseMove = (moveEvent: MouseEvent) => {
-        if (!isDevExplorerDraggingRef.current) {
-          return;
-        }
-        const layoutLeft = layoutRef.current?.getBoundingClientRect().left ?? 0;
-        const nextWidth = moveEvent.clientX - layoutLeft;
-        const clampedWidth = Math.min(
-          getDevExplorerMaxWidth(),
-          Math.max(DEV_EXPLORER_MIN_WIDTH, nextWidth)
-        );
-        setDevExplorerWidth(clampedWidth);
-      };
-
-      const onMouseUp = () => {
-        isDevExplorerDraggingRef.current = false;
-        setIsDevExplorerDragging(false);
-        document.removeEventListener("mousemove", onMouseMove);
-        document.removeEventListener("mouseup", onMouseUp);
-      };
-
-      document.addEventListener("mousemove", onMouseMove);
-      document.addEventListener("mouseup", onMouseUp);
-    },
-    [showDevExplorer]
-  );
-
-  React.useEffect(() => {
-    if (!showDevExplorer) {
-      return;
-    }
-
-    const handleWindowResize = () => {
-      setDevExplorerWidth((currentWidth) =>
-        Math.min(getDevExplorerMaxWidth(), Math.max(DEV_EXPLORER_MIN_WIDTH, currentWidth))
-      );
-    };
-
-    handleWindowResize();
-    window.addEventListener("resize", handleWindowResize);
-    return () => {
-      window.removeEventListener("resize", handleWindowResize);
-    };
-  }, [showDevExplorer]);
+  useDevMockTrafficStats(shouldCollectDevMockTrafficStats(isDevMock, interactionMode));
+  const { layoutRef, devExplorerWidth, isDevExplorerDragging, handleDevExplorerResizeStart } =
+    useDevExplorerPane(showDevExplorer);
 
   React.useEffect(() => {
     if (!shouldDumpCssVars()) return;
@@ -907,6 +938,14 @@ export const AppContent: React.FC<AppContentProps> = ({
     },
     edgeAnnotationLookup
   );
+  const enableSelectedNodeVisualEditor =
+    interactionMode === "view" &&
+    isInteractionLocked === false &&
+    selectionData.editingNodeData === null &&
+    selectionData.selectedNodeEditorData !== null;
+  const effectiveNodeEditorData =
+    selectionData.editingNodeData ??
+    (enableSelectedNodeVisualEditor ? selectionData.selectedNodeEditorData : null);
 
   const [paletteTabRequest, setPaletteTabRequest] = React.useState<{ tabId: string } | undefined>(
     undefined
@@ -994,6 +1033,7 @@ export const AppContent: React.FC<AppContentProps> = ({
 
   const { nodeEditorHandlers, linkEditorHandlers, networkEditorHandlers } = useAppEditorBindings({
     selectionData,
+    effectiveNodeEditorData,
     state: {
       edgeAnnotations: state.edgeAnnotations
     },
@@ -1343,6 +1383,10 @@ export const AppContent: React.FC<AppContentProps> = ({
     panelVisibility.handleOpenContextPanel("manual");
     setPaletteTabRequest({ tabId: "yaml" });
   }, [panelVisibility]);
+  const isBulkLinkModalOpen = shouldShowBulkLinkModal(
+    panelVisibility.showBulkLinkModal,
+    isProcessing
+  );
 
   return (
     <MuiThemeProvider>
@@ -1446,6 +1490,13 @@ export const AppContent: React.FC<AppContentProps> = ({
             editor={{
               editingNodeData: selectionData.editingNodeData,
               editingNodeInheritedProps: selectionData.editingNodeInheritedProps,
+              selectedNodeVisualData: enableSelectedNodeVisualEditor
+                ? selectionData.selectedNodeEditorData
+                : null,
+              selectedNodeVisualInheritedProps: enableSelectedNodeVisualEditor
+                ? selectionData.selectedNodeInheritedProps
+                : [],
+              enableSelectedNodeVisualEditor,
               nodeEditorHandlers: {
                 handleClose: nodeEditorHandlers.handleClose,
                 handleSave: nodeEditorHandlers.handleSave,
@@ -1580,16 +1631,16 @@ export const AppContent: React.FC<AppContentProps> = ({
           isOpen={panelVisibility.showShortcutsModal}
           onClose={panelVisibility.handleCloseShortcuts}
         />
-        {panelVisibility.showSvgExportModal ? (
+        {panelVisibility.showSvgExportModal && (
           <SvgExportModalContainer
             onClose={panelVisibility.handleCloseSvgExport}
             rfInstance={rfInstance}
             labName={state.labName}
             customIcons={getCustomIconMap(state.customIcons)}
           />
-        ) : null}
+        )}
         <BulkLinkModal
-          isOpen={panelVisibility.showBulkLinkModal && !isProcessing}
+          isOpen={isBulkLinkModalOpen}
           mode={interactionMode}
           isLocked={isInteractionLocked}
           onClose={panelVisibility.handleCloseBulkLink}
