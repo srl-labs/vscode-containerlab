@@ -393,7 +393,7 @@ function useRenderConfig(
   const edgeRenderConfig = useMemo(
     () => ({
       labelMode: linkLabelMode,
-      suppressLabels: isLowDetail,
+      suppressLabels: isLowDetail && linkLabelMode !== "grafana",
       suppressHitArea: isLowDetail
     }),
     [linkLabelMode, isLowDetail]

@@ -25,7 +25,7 @@ import { vscodePalette } from "../../theme/vscodeTheme";
 export type GridStyle = "dotted" | "quadratic";
 
 /** Edge label rendering mode */
-export type EdgeLabelMode = "show-all" | "on-select" | "hide";
+export type EdgeLabelMode = "show-all" | "on-select" | "hide" | "grafana";
 
 export type {
   TopologyNodeData,

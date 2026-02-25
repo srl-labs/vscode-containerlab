@@ -110,7 +110,7 @@ test.describe("Navbar Interactions", () => {
   });
 
   test.describe("Link Labels Dropdown", () => {
-    test("link labels dropdown has Show All, On Select, and Hide options", async ({
+    test("link labels dropdown has Show All, On Select, Hide, and Grafana options", async ({
       page
     }) => {
       const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
@@ -121,6 +121,123 @@ test.describe("Navbar Interactions", () => {
       await expect(page.locator('[data-testid="navbar-link-label-show-all"]')).toBeVisible();
       await expect(page.locator('[data-testid="navbar-link-label-on-select"]')).toBeVisible();
       await expect(page.locator('[data-testid="navbar-link-label-hide"]')).toBeVisible();
+      await expect(page.locator('[data-testid="navbar-link-label-grafana"]')).toBeVisible();
+      await expect(
+        page.locator('[data-testid="navbar-link-label-grafana-settings"]')
+      ).toBeVisible();
+    });
+
+    test("grafana gear opens settings modal", async ({ page }) => {
+      const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
+      await linkLabelsBtn.click();
+      await page.waitForTimeout(200);
+
+      await page.locator('[data-testid="navbar-link-label-grafana-settings"]').click();
+      await page.waitForTimeout(200);
+
+      await expect(
+        page.locator('[data-testid="navbar-grafana-label-settings-modal"]')
+      ).toBeVisible();
+    });
+
+    test("grafana node size setting resizes node icons on canvas", async ({ page }) => {
+      const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
+      await linkLabelsBtn.click();
+      await page.waitForTimeout(200);
+      await page.locator('[data-testid="navbar-link-label-grafana"]').click();
+      await page.waitForTimeout(200);
+
+      const nodeIcon = page.locator(".topology-node-icon, .network-node-icon").first();
+      await expect(nodeIcon).toBeVisible();
+      const beforeBox = await nodeIcon.boundingBox();
+      expect(beforeBox).not.toBeNull();
+      const beforeWidth = beforeBox?.width ?? 0;
+      expect(beforeWidth).toBeGreaterThan(0);
+
+      await linkLabelsBtn.click();
+      await page.waitForTimeout(200);
+      await page.locator('[data-testid="navbar-link-label-grafana-settings"]').click();
+      await page.waitForTimeout(200);
+
+      const modal = page.locator('[data-testid="navbar-grafana-label-settings-modal"]');
+      await expect(modal).toBeVisible();
+
+      const nodeSizeInput = modal.getByLabel("Node size");
+      await nodeSizeInput.fill("80");
+      await page.waitForTimeout(200);
+      await modal.getByRole("button", { name: "Done" }).click();
+      await expect(modal).not.toBeVisible();
+
+      await expect
+        .poll(
+          async () => {
+            const afterBox = await nodeIcon.boundingBox();
+            return afterBox?.width ?? 0;
+          },
+          { timeout: 4000 }
+        )
+        .toBeGreaterThan(beforeWidth + 10);
+
+      await linkLabelsBtn.click();
+      await page.waitForTimeout(200);
+      await page.locator('[data-testid="navbar-link-label-grafana-settings"]').click();
+      await page.waitForTimeout(200);
+      await modal.getByLabel("Node size").fill("40");
+      await page.waitForTimeout(200);
+      await modal.getByRole("button", { name: "Done" }).click();
+    });
+
+    test("grafana settings only apply when grafana mode is selected", async ({ page }) => {
+      const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
+      const nodeIcon = page.locator(".topology-node-icon, .network-node-icon").first();
+
+      await expect(nodeIcon).toBeVisible();
+      const beforeBox = await nodeIcon.boundingBox();
+      expect(beforeBox).not.toBeNull();
+      const beforeWidth = beforeBox?.width ?? 0;
+      expect(beforeWidth).toBeGreaterThan(0);
+
+      // Change Grafana node size while still on default link-label mode.
+      await linkLabelsBtn.click();
+      await page.waitForTimeout(200);
+      await page.locator('[data-testid="navbar-link-label-grafana-settings"]').click();
+      await page.waitForTimeout(200);
+
+      const modal = page.locator('[data-testid="navbar-grafana-label-settings-modal"]');
+      await expect(modal).toBeVisible();
+      await modal.getByLabel("Node size").fill("90");
+      await page.waitForTimeout(200);
+      await modal.getByRole("button", { name: "Done" }).click();
+      await expect(modal).not.toBeVisible();
+
+      // Should not affect nodes until Grafana mode is explicitly selected.
+      const afterSettingsBox = await nodeIcon.boundingBox();
+      const afterSettingsWidth = afterSettingsBox?.width ?? 0;
+      expect(Math.abs(afterSettingsWidth - beforeWidth)).toBeLessThan(5);
+
+      await linkLabelsBtn.click();
+      await page.waitForTimeout(200);
+      await page.locator('[data-testid="navbar-link-label-grafana"]').click();
+      await page.waitForTimeout(200);
+
+      await expect
+        .poll(
+          async () => {
+            const afterGrafanaBox = await nodeIcon.boundingBox();
+            return afterGrafanaBox?.width ?? 0;
+          },
+          { timeout: 4000 }
+        )
+        .toBeGreaterThan(beforeWidth + 20);
+
+      // Reset setting back to default.
+      await linkLabelsBtn.click();
+      await page.waitForTimeout(200);
+      await page.locator('[data-testid="navbar-link-label-grafana-settings"]').click();
+      await page.waitForTimeout(200);
+      await modal.getByLabel("Node size").fill("40");
+      await page.waitForTimeout(200);
+      await modal.getByRole("button", { name: "Done" }).click();
     });
   });
 

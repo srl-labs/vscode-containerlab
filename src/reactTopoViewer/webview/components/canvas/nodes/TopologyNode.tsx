@@ -17,8 +17,14 @@ import {
   useNodeRenderConfig,
   useEasterEggGlow
 } from "../../../stores/canvasStore";
-import { useCustomIcons, useDeploymentState } from "../../../stores/topoViewerStore";
+import {
+  useCustomIcons,
+  useDeploymentState,
+  useLinkLabelMode,
+  useTopoViewerStore
+} from "../../../stores/topoViewerStore";
 import { getCustomIconMap } from "../../../utils/iconUtils";
+import { clampGrafanaNodeSizePx } from "../../../utils/grafanaInterfaceLabels";
 
 import {
   buildNodeLabelStyle,
@@ -71,7 +77,7 @@ function getRoleSvgType(role: string): NodeType {
 }
 
 // Icon style constants
-const ICON_SIZE = 40;
+const DEFAULT_ICON_SIZE = 40;
 
 // Constant styles extracted outside component to avoid recreation on every render
 const CONTAINER_STYLE_BASE: React.CSSProperties = {
@@ -79,8 +85,6 @@ const CONTAINER_STYLE_BASE: React.CSSProperties = {
   flexDirection: "column",
   alignItems: "center",
   position: "relative",
-  width: ICON_SIZE,
-  height: ICON_SIZE,
   overflow: "visible"
 };
 
@@ -90,8 +94,6 @@ const CONTAINER_STYLE_LINK_TARGET: React.CSSProperties = {
 };
 
 const ICON_STYLE_BASE: React.CSSProperties = {
-  width: ICON_SIZE,
-  height: ICON_SIZE,
   flexShrink: 0,
   backgroundSize: "cover",
   backgroundPosition: "center",
@@ -167,7 +169,14 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const easterEggGlow = useEasterEggGlow();
   const customIcons = useCustomIcons();
   const deploymentState = useDeploymentState();
+  const linkLabelMode = useLinkLabelMode();
+  const grafanaNodeSizePx = useTopoViewerStore((state) => state.grafanaNodeSizePx);
   const directionRotation = useMemo(() => getNodeDirectionRotation(direction), [direction]);
+  const iconSize = useMemo(
+    () =>
+      linkLabelMode === "grafana" ? clampGrafanaNodeSizePx(grafanaNodeSizePx) : DEFAULT_ICON_SIZE,
+    [linkLabelMode, grafanaNodeSizePx]
+  );
 
   // Check if this node is a valid link target (in link creation mode)
   const isLinkTarget = linkSourceNode !== null;
@@ -192,6 +201,8 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const iconStyle = useMemo((): React.CSSProperties => {
     const style: React.CSSProperties = {
       ...ICON_STYLE_BASE,
+      width: iconSize,
+      height: iconSize,
       backgroundImage: `url(${iconUrl})`,
       borderRadius: typeof iconCornerRadius === "number" ? `${iconCornerRadius}px` : 4,
       transform: directionRotation !== 0 ? `rotate(${directionRotation}deg)` : undefined,
@@ -209,10 +220,17 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
     }
 
     return style;
-  }, [iconUrl, iconCornerRadius, directionRotation, selected, easterEggGlow]);
+  }, [iconUrl, iconCornerRadius, directionRotation, selected, easterEggGlow, iconSize]);
 
   // Container style based on link target mode
-  const containerStyle = isLinkTarget ? CONTAINER_STYLE_LINK_TARGET : CONTAINER_STYLE_BASE;
+  const containerStyle = useMemo(
+    (): React.CSSProperties => ({
+      ...(isLinkTarget ? CONTAINER_STYLE_LINK_TARGET : CONTAINER_STYLE_BASE),
+      width: iconSize,
+      height: iconSize
+    }),
+    [isLinkTarget, iconSize]
+  );
 
   // Build class names for CSS-based hover effects
   const iconClassName = isLinkTarget ? "topology-node-icon link-target" : "topology-node-icon";
@@ -243,11 +261,11 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
         position: labelPosition,
         direction,
         backgroundColor: labelBackgroundColor,
-        iconSize: ICON_SIZE,
+        iconSize,
         fontSize: "0.7rem",
         maxWidth: 110
       }),
-    [labelPosition, direction, labelBackgroundColor]
+    [labelPosition, direction, labelBackgroundColor, iconSize]
   );
 
   return (
