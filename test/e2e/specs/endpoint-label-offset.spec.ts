@@ -24,13 +24,14 @@ test.describe("Endpoint Label Offset", () => {
     await topoViewerPage.unlock();
   });
 
-  test("link labels menu has Show All, On Select, and Hide options", async ({ page }) => {
+  test("link labels menu has Show All, On Select, Hide, and Grafana options", async ({ page }) => {
     await page.locator(SEL_LINK_LABELS_BTN).click();
     await page.waitForTimeout(200);
 
     await expect(page.locator('[data-testid="navbar-link-label-show-all"]')).toBeVisible();
     await expect(page.locator('[data-testid="navbar-link-label-on-select"]')).toBeVisible();
     await expect(page.locator('[data-testid="navbar-link-label-hide"]')).toBeVisible();
+    await expect(page.locator('[data-testid="navbar-link-label-grafana"]')).toBeVisible();
   });
 
   test("per-link endpoint offset override persists after apply", async ({
@@ -91,9 +92,7 @@ test.describe("Endpoint Label Offset", () => {
     await page.waitForTimeout(300);
 
     // Verify persisted
-    await expect
-      .poll(readState, { timeout: 5000 })
-      .toEqual({ enabled: true, offset: newValue });
+    await expect.poll(readState, { timeout: 5000 }).toEqual({ enabled: true, offset: newValue });
 
     // Reload and verify the per-link override remains.
     await topoViewerPage.gotoFile(SIMPLE_FILE);

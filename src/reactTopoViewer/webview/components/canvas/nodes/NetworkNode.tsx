@@ -11,11 +11,13 @@ import {
   useNodeRenderConfig,
   useEasterEggGlow
 } from "../../../stores/canvasStore";
+import { useLinkLabelMode, useTopoViewerStore } from "../../../stores/topoViewerStore";
+import { clampGrafanaNodeSizePx } from "../../../utils/grafanaInterfaceLabels";
 
 import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE, getNodeDirectionRotation } from "./nodeStyles";
 import { getNetworkNodeTypeColor, toNetworkNodeData } from "./networkNodeShared";
 
-const ICON_SIZE = 40;
+const DEFAULT_ICON_SIZE = 40;
 
 const HANDLE_POSITIONS = [
   { position: Position.Top, id: "top" },
@@ -33,8 +35,15 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const { linkSourceNode } = useLinkCreationContext();
   const { suppressLabels } = useNodeRenderConfig();
   const easterEggGlow = useEasterEggGlow();
+  const linkLabelMode = useLinkLabelMode();
+  const grafanaNodeSizePx = useTopoViewerStore((state) => state.grafanaNodeSizePx);
   const [isHovered, setIsHovered] = useState(false);
   const directionRotation = useMemo(() => getNodeDirectionRotation(direction), [direction]);
+  const iconSize = useMemo(
+    () =>
+      linkLabelMode === "grafana" ? clampGrafanaNodeSizePx(grafanaNodeSizePx) : DEFAULT_ICON_SIZE,
+    [linkLabelMode, grafanaNodeSizePx]
+  );
   const handleMouseEnter = useCallback(() => {
     setIsHovered(true);
   }, []);
@@ -59,8 +68,8 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     flexDirection: "column",
     alignItems: "center",
     position: "relative",
-    width: ICON_SIZE,
-    height: ICON_SIZE,
+    width: iconSize,
+    height: iconSize,
     overflow: "visible",
     cursor: isLinkTarget ? "crosshair" : undefined
   };
@@ -98,8 +107,8 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
 
   // Icon styles
   const iconStyle: React.CSSProperties = {
-    width: ICON_SIZE,
-    height: ICON_SIZE,
+    width: iconSize,
+    height: iconSize,
     flexShrink: 0,
     backgroundImage: `url(${svgUrl})`,
     backgroundSize: "cover",
@@ -117,11 +126,11 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
         position: labelPosition,
         direction,
         backgroundColor: labelBackgroundColor,
-        iconSize: ICON_SIZE,
+        iconSize,
         fontSize: "0.65rem",
         maxWidth: 110
       }),
-    [labelPosition, direction, labelBackgroundColor]
+    [labelPosition, direction, labelBackgroundColor, iconSize]
   );
 
   return (
