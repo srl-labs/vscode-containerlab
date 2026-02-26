@@ -68,8 +68,18 @@ async function fillField(page: Page, fieldId: string, value: string): Promise<vo
 async function selectMuiOption(page: Page, fieldId: string, optionName: string): Promise<void> {
   const select = page.locator(`#${fieldId}`);
   await expect(select).toBeVisible({ timeout: 3000 });
-  await select.click({ force: true });
-  const listbox = page.getByRole("listbox").first();
+  await select.scrollIntoViewIfNeeded();
+  await select.click();
+
+  let listbox = page.locator('[role="listbox"]:visible').last();
+  const menuOpened = await listbox.isVisible().catch(() => false);
+  if (!menuOpened) {
+    // Fallback: MUI Select can occasionally focus without opening on click in headless runs.
+    await select.focus();
+    await select.press("ArrowDown");
+    listbox = page.locator('[role="listbox"]:visible').last();
+  }
+
   await expect(listbox).toBeVisible({ timeout: 3000 });
   const option = listbox.getByRole("option", { name: optionName }).first();
   await expect(option).toBeVisible({ timeout: 3000 });
@@ -82,10 +92,16 @@ async function selectMuiOption(page: Page, fieldId: string, optionName: string):
  */
 async function setCheckbox(page: Page, fieldId: string, checked: boolean): Promise<void> {
   const checkbox = page.locator(`#${fieldId}`);
-  const isChecked = await checkbox.isChecked();
-  if (isChecked !== checked) {
-    await checkbox.click({ force: true });
+  await expect(checkbox).toBeVisible({ timeout: 3000 });
+  await checkbox.scrollIntoViewIfNeeded();
+  if (checked) {
+    await checkbox.check();
+    await expect(checkbox).toBeChecked();
+    return;
   }
+
+  await checkbox.uncheck();
+  await expect(checkbox).not.toBeChecked();
 }
 
 /**
