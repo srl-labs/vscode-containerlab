@@ -89,6 +89,7 @@ describe("grafanaExport helpers", () => {
     expect(yaml).to.contain("---");
     expect(yaml).to.contain("thresholds-operstate: &thresholds-operstate");
     expect(yaml).to.contain("thresholds-traffic: &thresholds-traffic");
+    expect(yaml).to.contain("thresholds-rate-label: &thresholds-rate-label");
     expect(yaml).to.contain("label-config: &label-config");
     expect(yaml).to.contain("valueMappings:");
     expect(yaml).to.contain('{ valueMax: 199999, text: "\\u200B" }');
@@ -96,7 +97,9 @@ describe("grafanaExport helpers", () => {
     expect(yaml).to.contain('"leaf1:e1-1":');
     expect(yaml).to.contain('"client1:eth1":');
     expect(yaml).to.contain('"link_id:leaf1:e1-1:client1:eth1":');
+    expect(yaml).to.contain('"link_id:leaf1:e1-1:client1:eth1:label":');
     expect(yaml).to.contain('"link_id:client1:eth1:leaf1:e1-1":');
+    expect(yaml).to.contain('"link_id:client1:eth1:leaf1:e1-1:label":');
     expect(yaml).to.contain('dataRef: "oper-state:leaf1:e1-1"');
     expect(yaml).to.contain('dataRef: "oper-state:client1:eth1"');
     expect(yaml).to.contain('dataRef: "leaf1:e1-1:out"');
@@ -134,6 +137,43 @@ describe("grafanaExport helpers", () => {
     expect(yaml).to.contain('{ color: "orange", level: 789 }');
     expect(yaml).to.contain('{ color: "red", level: 1234 }');
     expect(yaml).to.contain('{ valueMax: 123, text: "\\u200B" }');
+  });
+
+  it("adds hide-rates filter tags in panel YAML", () => {
+    const yaml = buildGrafanaPanelYaml(
+      [
+        {
+          edgeId: EDGE_VALID_ID,
+          source: "leaf1",
+          sourceEndpoint: "e1-1",
+          target: "client1",
+          targetEndpoint: "eth1",
+          operstateCellId: EDGE_VALID_OPERSTATE_ID,
+          targetOperstateCellId: EDGE_VALID_OPERSTATE_REVERSE_ID,
+          trafficCellId: EDGE_VALID_TRAFFIC_ID,
+          reverseTrafficCellId: EDGE_VALID_TRAFFIC_REVERSE_ID
+        }
+      ]
+    );
+
+    expect(yaml).to.contain("tagConfig:");
+    expect(yaml).to.contain('legend: ["hide-rates"]');
+    expect(yaml).to.contain("lowlightAlphaFactor: 0");
+    expect(yaml).to.contain(
+      '"link_id:leaf1:e1-1:client1:eth1":\n' +
+        '    dataRef: "leaf1:e1-1:out"\n' +
+        "    strokeColor:\n" +
+        "      thresholds: *thresholds-traffic\n" +
+        '    tags: ["hide-rates"]'
+    );
+    expect(yaml).to.contain(
+      '"link_id:leaf1:e1-1:client1:eth1:label":\n' +
+        '    dataRef: "leaf1:e1-1:out"\n' +
+        "    label: *label-config\n" +
+        "    labelColor:\n" +
+        "      thresholds: *thresholds-rate-label"
+    );
+    expect(yaml).to.not.contain('tags: ["rates"]');
   });
 
   it("builds dashboard JSON with embedded panel config and SVG", () => {

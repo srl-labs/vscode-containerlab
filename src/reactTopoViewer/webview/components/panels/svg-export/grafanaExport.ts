@@ -49,6 +49,10 @@ interface GrafanaDashboardTargetConfig {
   hide?: boolean;
 }
 
+function getTrafficLabelCellId(trafficCellId: string): string {
+  return `${trafficCellId}:label`;
+}
+
 const DEFAULT_GRAFANA_TARGETS: GrafanaDashboardTargetConfig[] = [
   {
     datasource: "prometheus",
@@ -1197,13 +1201,13 @@ function createTrafficHalfCell(
   text.setAttribute("y", fmt(mid.y));
   text.setAttribute("font-size", "10");
   text.setAttribute("font-family", "Helvetica, Arial, sans-serif");
-  text.setAttribute("fill", "#FFFFFF");
+  setCellIdAttributes(text, getTrafficLabelCellId(shortCellId));
+  text.style.color = "#FFFFFF";
+  text.style.filter = "drop-shadow(0 0 1px rgba(0, 0, 0, 0.95))";
+  text.setAttribute("fill", "currentColor");
   text.setAttribute("text-anchor", "middle");
   text.setAttribute("dominant-baseline", "middle");
-  text.setAttribute("stroke", "rgba(0, 0, 0, 0.95)");
-  text.setAttribute("stroke-width", "0.75");
-  text.setAttribute("paint-order", "stroke");
-  text.setAttribute("stroke-linejoin", "round");
+  text.setAttribute("stroke", "none");
   text.textContent = trafficLabelPlaceholder;
   group.appendChild(text);
 
@@ -1356,6 +1360,7 @@ export function applyGrafanaCellIdsToSvg(
   options: GrafanaCellIdSvgOptions = {}
 ): string {
   if (mappings.length === 0) return svgContent;
+  const trafficRatesOnHoverOnly = options.trafficRatesOnHoverOnly === true;
 
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgContent, SVG_MIME_TYPE);
@@ -1375,12 +1380,12 @@ export function applyGrafanaCellIdsToSvg(
       occupiedTrafficLabelPoints,
       interfaceLabelPoints,
       graphScale,
-      options.trafficRatesOnHoverOnly === true
+      trafficRatesOnHoverOnly
     );
     applyOperstateCellsToEdgeGroup(doc, mapping, trafficGroup);
   }
 
-  if (options.trafficRatesOnHoverOnly === true) {
+  if (trafficRatesOnHoverOnly) {
     applyTrafficLabelHoverOnlyStyle(doc);
   }
 
@@ -1444,6 +1449,8 @@ function asValidYamlNumber(value: number, fallback: number): number {
   return Math.max(0, value);
 }
 
+const RATE_LABEL_HIDE_TAG = "hide-rates";
+
 export function buildGrafanaPanelYaml(
   mappings: GrafanaEdgeCellMapping[],
   options: GrafanaPanelYamlOptions = {}
@@ -1477,6 +1484,8 @@ export function buildGrafanaPanelYaml(
     `    - { color: "yellow", level: ${yellowThreshold} }`,
     `    - { color: "orange", level: ${orangeThreshold} }`,
     `    - { color: "red", level: ${redThreshold} }`,
+    "  thresholds-rate-label: &thresholds-rate-label",
+    '    - { color: "white", level: 0 }',
     "  label-config: &label-config",
     '    separator: "replace"',
     '    units: "bps"',
@@ -1484,6 +1493,10 @@ export function buildGrafanaPanelYaml(
     "    valueMappings:",
     `      - { valueMax: ${greenThreshold}, text: "\\u200B" }`,
     'cellIdPreamble: "cell-"',
+    "tagConfig:",
+    `  legend: ["${RATE_LABEL_HIDE_TAG}"]`,
+    "  lowlightAlphaFactor: 0",
+    "  highlightRgbFactor: 1",
     "cells:"
   ];
 
@@ -1501,20 +1514,32 @@ export function buildGrafanaPanelYaml(
     lines.push(`    dataRef: ${quoteYaml(operstateDataRef)}`);
     lines.push("    fillColor:");
     lines.push("      thresholds: *thresholds-operstate");
+    lines.push(`    tags: ["${RATE_LABEL_HIDE_TAG}"]`);
     lines.push(`  ${quoteYaml(mapping.targetOperstateCellId)}:`);
     lines.push(`    dataRef: ${quoteYaml(targetOperstateDataRef)}`);
     lines.push("    fillColor:");
     lines.push("      thresholds: *thresholds-operstate");
+    lines.push(`    tags: ["${RATE_LABEL_HIDE_TAG}"]`);
     lines.push(`  ${quoteYaml(mapping.trafficCellId)}:`);
     lines.push(`    dataRef: ${quoteYaml(trafficDataRef)}`);
-    lines.push("    label: *label-config");
     lines.push("    strokeColor:");
     lines.push("      thresholds: *thresholds-traffic");
+    lines.push(`    tags: ["${RATE_LABEL_HIDE_TAG}"]`);
+    lines.push(`  ${quoteYaml(getTrafficLabelCellId(mapping.trafficCellId))}:`);
+    lines.push(`    dataRef: ${quoteYaml(trafficDataRef)}`);
+    lines.push("    label: *label-config");
+    lines.push("    labelColor:");
+    lines.push("      thresholds: *thresholds-rate-label");
     lines.push(`  ${quoteYaml(mapping.reverseTrafficCellId)}:`);
     lines.push(`    dataRef: ${quoteYaml(reverseTrafficDataRef)}`);
-    lines.push("    label: *label-config");
     lines.push("    strokeColor:");
     lines.push("      thresholds: *thresholds-traffic");
+    lines.push(`    tags: ["${RATE_LABEL_HIDE_TAG}"]`);
+    lines.push(`  ${quoteYaml(getTrafficLabelCellId(mapping.reverseTrafficCellId))}:`);
+    lines.push(`    dataRef: ${quoteYaml(reverseTrafficDataRef)}`);
+    lines.push("    label: *label-config");
+    lines.push("    labelColor:");
+    lines.push("      thresholds: *thresholds-rate-label");
   }
 
   return `${lines.join("\n")}\n`;
