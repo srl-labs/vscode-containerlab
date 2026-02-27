@@ -395,6 +395,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   const [isGrafanaSettingsOpen, setIsGrafanaSettingsOpen] = useState(false);
   const [excludeNodesWithoutLinks, setExcludeNodesWithoutLinks] = useState(true);
   const [includeGrafanaLegend, setIncludeGrafanaLegend] = useState(false);
+  const [trafficRatesOnHoverOnly, setTrafficRatesOnHoverOnly] = useState(false);
   const [trafficThresholds, setTrafficThresholds] = useState<GrafanaTrafficThresholds>({
     ...DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS
   });
@@ -590,7 +591,9 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         );
       }
 
-      let grafanaSvg = applyGrafanaCellIdsToSvg(grafanaBaseSvg, mappings);
+      let grafanaSvg = applyGrafanaCellIdsToSvg(grafanaBaseSvg, mappings, {
+        trafficRatesOnHoverOnly
+      });
       if (includeGrafanaLegend) {
         grafanaSvg = addGrafanaTrafficLegend(grafanaSvg, trafficThresholds, trafficThresholdUnit);
       }
@@ -618,6 +621,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       excludeNodesWithoutLinks,
       borderPadding,
       includeGrafanaLegend,
+      trafficRatesOnHoverOnly,
       trafficThresholdUnit
     ]
   );
@@ -1104,6 +1108,16 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   />
                 }
                 label="Add traffic legend (top-left)"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={trafficRatesOnHoverOnly}
+                    onChange={(e) => setTrafficRatesOnHoverOnly(e.target.checked)}
+                  />
+                }
+                label="Show traffic rates on hover only"
               />
             </>
           )}

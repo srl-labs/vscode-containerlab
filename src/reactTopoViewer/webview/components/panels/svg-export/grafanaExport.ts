@@ -29,6 +29,10 @@ export interface GrafanaPanelYamlOptions {
   trafficThresholds?: GrafanaTrafficThresholds;
 }
 
+export interface GrafanaCellIdSvgOptions {
+  trafficRatesOnHoverOnly?: boolean;
+}
+
 export const DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS: GrafanaTrafficThresholds = {
   green: 199999,
   yellow: 500000,
@@ -1155,7 +1159,8 @@ function createTrafficHalfCell(
   occupiedLabelPoints: TrafficLabelPlacement[],
   interfaceLabelPoints: Point[],
   interfaceSide: "start" | "end",
-  graphScale: number
+  graphScale: number,
+  trafficRatesOnHoverOnly: boolean
 ): Element {
   const trafficLabelPlaceholder = "rate";
 
@@ -1172,6 +1177,13 @@ function createTrafficHalfCell(
   path.removeAttribute("id");
   path.removeAttribute("data-cell-id");
   group.appendChild(path);
+
+  if (trafficRatesOnHoverOnly) {
+    const hitboxPath = doc.createElementNS(SVG_NS, "path");
+    hitboxPath.setAttribute("class", "grafana-traffic-hitbox");
+    hitboxPath.setAttribute("d", halfPathData);
+    group.appendChild(hitboxPath);
+  }
 
   const mid = resolveTrafficLabelPoint(
     halfPathData,
@@ -1234,13 +1246,29 @@ function collectInterfaceLabelPoints(doc: XMLDocument): Point[] {
   return interfaceLabelPoints;
 }
 
+function applyTrafficLabelHoverOnlyStyle(doc: XMLDocument): void {
+  const svgEl = doc.documentElement;
+  if (svgEl.querySelector("#grafana-traffic-hover-style")) return;
+
+  const styleEl = doc.createElementNS(SVG_NS, "style");
+  styleEl.setAttribute("id", "grafana-traffic-hover-style");
+  styleEl.setAttribute("type", "text/css");
+  styleEl.textContent = [
+    ".grafana-traffic-half > path.grafana-traffic-hitbox{fill:none;stroke:transparent !important;stroke-width:14;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:stroke;}",
+    ".grafana-traffic-half > text{opacity:0;pointer-events:none;transition:opacity 120ms ease-in-out;}",
+    ".grafana-traffic-half:hover > text{opacity:1;}"
+  ].join("");
+  svgEl.insertBefore(styleEl, svgEl.firstChild);
+}
+
 function replaceTrafficPathWithHalfCells(
   doc: XMLDocument,
   trafficPath: Element,
   mapping: GrafanaEdgeCellMapping,
   occupiedTrafficLabelPoints: TrafficLabelPlacement[],
   interfaceLabelPoints: Point[],
-  graphScale: number
+  graphScale: number,
+  trafficRatesOnHoverOnly: boolean
 ): void {
   const parent = trafficPath.parentNode;
   if (!parent) return;
@@ -1258,7 +1286,8 @@ function replaceTrafficPathWithHalfCells(
     occupiedTrafficLabelPoints,
     interfaceLabelPoints,
     "start",
-    graphScale
+    graphScale,
+    trafficRatesOnHoverOnly
   );
   const secondHalf = createTrafficHalfCell(
     doc,
@@ -1268,7 +1297,8 @@ function replaceTrafficPathWithHalfCells(
     occupiedTrafficLabelPoints,
     interfaceLabelPoints,
     "end",
-    graphScale
+    graphScale,
+    trafficRatesOnHoverOnly
   );
   parent.insertBefore(firstHalf, trafficPath);
   parent.insertBefore(secondHalf, trafficPath);
@@ -1281,7 +1311,8 @@ function applyTrafficCellsToEdgeGroup(
   trafficGroup: Element,
   occupiedTrafficLabelPoints: TrafficLabelPlacement[],
   interfaceLabelPoints: Point[],
-  graphScale: number
+  graphScale: number,
+  trafficRatesOnHoverOnly: boolean
 ): void {
   const trafficCellEl = resolveTrafficCellElement(trafficGroup);
   if (trafficCellEl.tagName.toLowerCase() !== "path") {
@@ -1295,7 +1326,8 @@ function applyTrafficCellsToEdgeGroup(
     mapping,
     occupiedTrafficLabelPoints,
     interfaceLabelPoints,
-    graphScale
+    graphScale,
+    trafficRatesOnHoverOnly
   );
 }
 
@@ -1320,7 +1352,8 @@ function applyOperstateCellsToEdgeGroup(
 
 export function applyGrafanaCellIdsToSvg(
   svgContent: string,
-  mappings: GrafanaEdgeCellMapping[]
+  mappings: GrafanaEdgeCellMapping[],
+  options: GrafanaCellIdSvgOptions = {}
 ): string {
   if (mappings.length === 0) return svgContent;
 
@@ -1341,9 +1374,14 @@ export function applyGrafanaCellIdsToSvg(
       trafficGroup,
       occupiedTrafficLabelPoints,
       interfaceLabelPoints,
-      graphScale
+      graphScale,
+      options.trafficRatesOnHoverOnly === true
     );
     applyOperstateCellsToEdgeGroup(doc, mapping, trafficGroup);
+  }
+
+  if (options.trafficRatesOnHoverOnly === true) {
+    applyTrafficLabelHoverOnlyStyle(doc);
   }
 
   return new XMLSerializer().serializeToString(doc.documentElement);

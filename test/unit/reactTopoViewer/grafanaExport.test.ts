@@ -328,6 +328,43 @@ describe("grafanaExport helpers", () => {
     expect(textPoints.every((point) => Math.abs(point.x - 120) > 24)).to.equal(true);
   });
 
+  it("can export traffic rate labels as hover-only", () => {
+    if (typeof DOMParser === "undefined") {
+      return;
+    }
+
+    const baseSvg =
+      '<svg xmlns="http://www.w3.org/2000/svg">' +
+      '<g class="export-edge" data-id="edge-a"><path d="M 0 0 L 100 0"/></g>' +
+      "</svg>";
+
+    const withCells = applyGrafanaCellIdsToSvg(
+      baseSvg,
+      [
+        {
+          edgeId: "edge-a",
+          source: "spine1",
+          sourceEndpoint: "e1-1",
+          target: "leaf1",
+          targetEndpoint: "e1-49",
+          operstateCellId: "spine1:e1-1",
+          targetOperstateCellId: "leaf1:e1-49",
+          trafficCellId: "link_id:spine1:e1-1:leaf1:e1-49",
+          reverseTrafficCellId: "link_id:leaf1:e1-49:spine1:e1-1"
+        }
+      ],
+      { trafficRatesOnHoverOnly: true }
+    );
+
+    expect(withCells).to.contain('class="grafana-traffic-hitbox"');
+    expect(withCells).to.contain('id="grafana-traffic-hover-style"');
+    expect(withCells).to.contain(
+      ".grafana-traffic-half > path.grafana-traffic-hitbox{fill:none;stroke:transparent !important;"
+    );
+    expect(withCells).to.contain(".grafana-traffic-half > text{opacity:0");
+    expect(withCells).to.contain(".grafana-traffic-half:hover > text{opacity:1;}");
+  });
+
   it("formats traffic legend values in selected unit", () => {
     if (typeof DOMParser === "undefined") {
       return;
