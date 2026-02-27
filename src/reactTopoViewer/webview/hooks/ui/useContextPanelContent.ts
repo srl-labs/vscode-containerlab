@@ -71,10 +71,15 @@ function resolveAnnotationView(annotationUI: AnnotationUIState): PanelView | nul
 }
 
 function resolveSelectionView(
-  state: Pick<TopoViewerState, "selectedNode" | "selectedEdge" | "mode">
+  state: Pick<TopoViewerState, "selectedNode" | "selectedEdge" | "mode" | "isLocked">
 ): PanelView | null {
   if (hasId(state.selectedNode) && state.mode === "view")
-    return { kind: "nodeInfo", title: "Node Properties", hasFooter: false };
+    return {
+      kind: "nodeInfo",
+      title: "Node Properties",
+      // In unlocked view mode, node selection can also drive visual edits (Icon/Label/Direction).
+      hasFooter: !state.isLocked
+    };
   if (hasId(state.selectedEdge) && state.mode === "view")
     return { kind: "linkInfo", title: "Link Properties", hasFooter: false };
   return null;

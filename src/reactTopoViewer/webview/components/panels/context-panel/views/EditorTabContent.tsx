@@ -36,6 +36,9 @@ const EditorPlaceholder: React.FC = () => (
 export const EditorTabContent: React.FC<EditorTabContentProps> = ({
   editingNodeData,
   editingNodeInheritedProps,
+  selectedNodeVisualData,
+  selectedNodeVisualInheritedProps,
+  enableSelectedNodeVisualEditor,
   nodeEditorHandlers,
   editingLinkData,
   linkEditorHandlers,
@@ -57,19 +60,29 @@ export const EditorTabContent: React.FC<EditorTabContentProps> = ({
   const panelView = useContextPanelContent();
   const isLocked = useIsLocked();
   const isReadOnly = isLocked && panelView.hasFooter;
+  const shouldUseSelectedNodeVisualEditor =
+    enableSelectedNodeVisualEditor && panelView.kind === "nodeInfo";
+  const nodeEditorData = shouldUseSelectedNodeVisualEditor
+    ? selectedNodeVisualData
+    : editingNodeData;
+  const nodeEditorInheritedProps = shouldUseSelectedNodeVisualEditor
+    ? selectedNodeVisualInheritedProps
+    : editingNodeInheritedProps;
 
   // Render the appropriate editor based on current state
   switch (panelView.kind) {
     case "nodeEditor":
+    case "nodeInfo":
       return (
         <NodeEditorView
-          nodeData={editingNodeData}
+          nodeData={nodeEditorData}
           onSave={nodeEditorHandlers.handleSave}
           onApply={nodeEditorHandlers.handleApply}
           onPreview={nodeEditorHandlers.previewVisuals}
-          inheritedProps={editingNodeInheritedProps}
+          inheritedProps={nodeEditorInheritedProps}
           onFooterRef={onFooterRef}
           readOnly={isReadOnly}
+          visualOnly={shouldUseSelectedNodeVisualEditor}
         />
       );
     case "linkEditor":

@@ -158,6 +158,10 @@ export function useSelectionData(
     () => convertToEditorData(editingNodeRawData),
     [editingNodeRawData]
   );
+  const selectedNodeEditorData = React.useMemo(
+    () => convertToEditorData(selectedNodeData),
+    [selectedNodeData]
+  );
   const editingNodeInheritedProps = React.useMemo(() => {
     const extra = getRecordUnknown(editingNodeRawData?.["extraData"]);
     const inherited = extra?.inherited;
@@ -165,6 +169,13 @@ export function useSelectionData(
       ? inherited.filter((p): p is string => typeof p === "string")
       : [];
   }, [editingNodeRawData]);
+  const selectedNodeInheritedProps = React.useMemo(() => {
+    const extra = getRecordUnknown(selectedNodeData?.["extraData"]);
+    const inherited = extra?.inherited;
+    return Array.isArray(inherited)
+      ? inherited.filter((p): p is string => typeof p === "string")
+      : [];
+  }, [selectedNodeData]);
   const editingNetworkData = React.useMemo(
     () => convertToNetworkEditorData(editingNetworkRawData),
     [editingNetworkRawData]
@@ -193,6 +204,8 @@ export function useSelectionData(
 
   return {
     selectedNodeData,
+    selectedNodeEditorData,
+    selectedNodeInheritedProps,
     selectedLinkData,
     selectedLinkImpairmentData,
     editingNodeData,

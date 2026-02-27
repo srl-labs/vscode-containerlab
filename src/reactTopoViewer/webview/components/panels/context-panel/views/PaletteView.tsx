@@ -118,6 +118,9 @@ export const PaletteView: React.FC<PaletteViewProps> = ({
     <EditorTabContent
       editingNodeData={editor.editingNodeData}
       editingNodeInheritedProps={editor.editingNodeInheritedProps}
+      selectedNodeVisualData={editor.selectedNodeVisualData}
+      selectedNodeVisualInheritedProps={editor.selectedNodeVisualInheritedProps}
+      enableSelectedNodeVisualEditor={editor.enableSelectedNodeVisualEditor}
       nodeEditorHandlers={editor.nodeEditorHandlers}
       editingLinkData={editor.editingLinkData}
       linkEditorHandlers={editor.linkEditorHandlers}
