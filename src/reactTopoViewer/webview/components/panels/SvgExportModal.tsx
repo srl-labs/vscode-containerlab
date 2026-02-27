@@ -261,7 +261,9 @@ function getInterfaceSelectionValue(
   interfaceLabelOverrides: Record<string, string>
 ): string {
   const override = interfaceLabelOverrides[endpoint];
-  if (override.length === 0) return INTERFACE_SELECT_AUTO;
+  if (typeof override !== "string" || override.length === 0) {
+    return INTERFACE_SELECT_AUTO;
+  }
   if (override === endpoint) return INTERFACE_SELECT_FULL;
   return `${INTERFACE_SELECT_TOKEN_PREFIX}${override}`;
 }
