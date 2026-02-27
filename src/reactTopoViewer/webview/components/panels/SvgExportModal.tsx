@@ -590,7 +590,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
 
       let grafanaSvg = applyGrafanaCellIdsToSvg(grafanaBaseSvg, mappings);
       if (includeGrafanaLegend) {
-        grafanaSvg = addGrafanaTrafficLegend(grafanaSvg, trafficThresholds);
+        grafanaSvg = addGrafanaTrafficLegend(grafanaSvg, trafficThresholds, trafficThresholdUnit);
       }
       grafanaSvg = makeGrafanaSvgResponsive(grafanaSvg);
       const panelYaml = buildGrafanaPanelYaml(mappings, { trafficThresholds });
@@ -611,7 +611,13 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         message: `Grafana bundle exported successfully${suffix}`
       });
     },
-    [trafficThresholds, excludeNodesWithoutLinks, borderPadding, includeGrafanaLegend]
+    [
+      trafficThresholds,
+      excludeNodesWithoutLinks,
+      borderPadding,
+      includeGrafanaLegend,
+      trafficThresholdUnit
+    ]
   );
 
   const handleExport = useCallback(async () => {

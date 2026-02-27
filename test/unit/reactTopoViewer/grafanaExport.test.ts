@@ -8,6 +8,7 @@ import {
   buildGrafanaPanelYaml,
   collectLinkedNodeIds,
   collectGrafanaEdgeCellMappings,
+  addGrafanaTrafficLegend,
   removeUnlinkedNodesFromSvg,
   sanitizeSvgForGrafana,
 } from "../../../src/reactTopoViewer/webview/components/panels/svg-export/grafanaExport";
@@ -258,5 +259,29 @@ describe("grafanaExport helpers", () => {
     );
 
     expect(uniqueCoords.size).to.equal(4);
+  });
+
+  it("formats traffic legend values in selected unit", () => {
+    if (typeof DOMParser === "undefined") {
+      return;
+    }
+
+    const baseSvg = '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
+    const legendSvg = addGrafanaTrafficLegend(
+      baseSvg,
+      {
+        green: 1_000_000_000,
+        yellow: 2_000_000_000,
+        orange: 5_000_000_000,
+        red: 10_000_000_000,
+      },
+      "gbit"
+    );
+
+    expect(legendSvg).to.contain("0 - 1 Gbps");
+    expect(legendSvg).to.contain("1 - 2 Gbps");
+    expect(legendSvg).to.contain("2 - 5 Gbps");
+    expect(legendSvg).to.contain("5 - 10 Gbps");
+    expect(legendSvg).to.contain("10+ Gbps");
   });
 });

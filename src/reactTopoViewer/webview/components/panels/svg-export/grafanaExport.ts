@@ -4,6 +4,7 @@ import type { Edge, Node } from "@xyflow/react";
 const SVG_NS = "http://www.w3.org/2000/svg";
 const SVG_MIME_TYPE = "image/svg+xml";
 const CELL_ID_PREAMBLE = "cell-";
+type TrafficThresholdUnit = "kbit" | "mbit" | "gbit";
 
 export interface GrafanaEdgeCellMapping {
   edgeId: string;
@@ -353,31 +354,56 @@ export function trimGrafanaSvgToTopologyContent(svgContent: string, padding = 12
   return new XMLSerializer().serializeToString(svgEl);
 }
 
-function formatTrafficMbps(valueBps: number): string {
-  const mbps = Math.max(0, valueBps) / 1_000_000;
-  if (mbps === 0) return "0";
+function getTrafficThresholdUnitLabel(unit: TrafficThresholdUnit): string {
+  switch (unit) {
+    case "kbit":
+      return "Kbps";
+    case "gbit":
+      return "Gbps";
+    default:
+      return "Mbps";
+  }
+}
 
-  const precision = mbps < 1 ? 2 : 1;
-  return mbps
+function getTrafficThresholdUnitDivisor(unit: TrafficThresholdUnit): number {
+  switch (unit) {
+    case "kbit":
+      return 1_000;
+    case "gbit":
+      return 1_000_000_000;
+    default:
+      return 1_000_000;
+  }
+}
+
+function formatTrafficUnit(valueBps: number, unit: TrafficThresholdUnit): string {
+  const divisor = getTrafficThresholdUnitDivisor(unit);
+  const scaled = Math.max(0, valueBps) / divisor;
+  if (scaled === 0) return "0";
+
+  const precision = scaled < 1 ? 2 : 1;
+  return scaled
     .toFixed(precision)
     .replace(/\.0+$/, "")
     .replace(/(\.\d*[1-9])0+$/, "$1");
 }
 
 function createLegendTextRows(
-  thresholds: GrafanaTrafficThresholds
+  thresholds: GrafanaTrafficThresholds,
+  trafficThresholdUnit: TrafficThresholdUnit
 ): Array<{ color: string; text: string }> {
-  const green = formatTrafficMbps(thresholds.green);
-  const yellow = formatTrafficMbps(thresholds.yellow);
-  const orange = formatTrafficMbps(thresholds.orange);
-  const red = formatTrafficMbps(thresholds.red);
+  const green = formatTrafficUnit(thresholds.green, trafficThresholdUnit);
+  const yellow = formatTrafficUnit(thresholds.yellow, trafficThresholdUnit);
+  const orange = formatTrafficUnit(thresholds.orange, trafficThresholdUnit);
+  const red = formatTrafficUnit(thresholds.red, trafficThresholdUnit);
+  const unitLabel = getTrafficThresholdUnitLabel(trafficThresholdUnit);
 
   return [
-    { color: "#b8c4d3", text: `0 - ${green} Mbps` },
-    { color: "#5fe15c", text: `${green} - ${yellow} Mbps` },
-    { color: "#ffe24a", text: `${yellow} - ${orange} Mbps` },
-    { color: "#ff9f1a", text: `${orange} - ${red} Mbps` },
-    { color: "#ff4f6b", text: `${red}+ Mbps` }
+    { color: "#b8c4d3", text: `0 - ${green} ${unitLabel}` },
+    { color: "#5fe15c", text: `${green} - ${yellow} ${unitLabel}` },
+    { color: "#ffe24a", text: `${yellow} - ${orange} ${unitLabel}` },
+    { color: "#ff9f1a", text: `${orange} - ${red} ${unitLabel}` },
+    { color: "#ff4f6b", text: `${red}+ ${unitLabel}` }
   ];
 }
 
@@ -410,7 +436,8 @@ function parseViewBox(svgEl: Element): {
 
 export function addGrafanaTrafficLegend(
   svgContent: string,
-  trafficThresholds: GrafanaTrafficThresholds
+  trafficThresholds: GrafanaTrafficThresholds,
+  trafficThresholdUnit: TrafficThresholdUnit = "mbit"
 ): string {
   if (typeof DOMParser === "undefined" || typeof XMLSerializer === "undefined") {
     return svgContent;
@@ -419,7 +446,7 @@ export function addGrafanaTrafficLegend(
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgContent, SVG_MIME_TYPE);
   const svgEl = doc.documentElement;
-  const legendRows = createLegendTextRows(trafficThresholds);
+  const legendRows = createLegendTextRows(trafficThresholds, trafficThresholdUnit);
   const viewBox = parseViewBox(svgEl);
   const transform = parseGraphTransform(svgEl);
   const legendScale = Math.max(0.1, Math.abs(transform.scale));
