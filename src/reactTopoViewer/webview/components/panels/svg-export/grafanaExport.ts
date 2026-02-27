@@ -253,10 +253,16 @@ function parseTransformFunctionArgs(transformAttr: string, functionName: string)
     .filter((value) => Number.isFinite(value));
 }
 
-function parseGraphTransform(svgEl: Element): GraphTransform {
-  const transformedRoot = Array.from(svgEl.children).find(
-    (child) => child.tagName.toLowerCase() === "g" && child.hasAttribute("transform")
+function findGraphTransformGroup(svgEl: Element): Element | null {
+  return (
+    Array.from(svgEl.children).find(
+      (child) => child.tagName.toLowerCase() === "g" && child.hasAttribute("transform")
+    ) ?? null
   );
+}
+
+function parseGraphTransform(svgEl: Element): GraphTransform {
+  const transformedRoot = findGraphTransformGroup(svgEl);
   const transformAttr = transformedRoot?.getAttribute("transform") ?? "";
 
   const translateArgs = parseTransformFunctionArgs(transformAttr, "translate");
@@ -271,6 +277,10 @@ function parseGraphTransform(svgEl: Element): GraphTransform {
     ty: Number.isFinite(ty) ? ty : 0,
     scale: Number.isFinite(scale) && scale !== 0 ? scale : 1
   };
+}
+
+function formatTransformNumber(value: number): string {
+  return Number(value.toFixed(6)).toString();
 }
 
 function includePathBounds(bounds: Bounds, transform: GraphTransform, pathData: string): void {
@@ -332,6 +342,7 @@ export function trimGrafanaSvgToTopologyContent(svgContent: string, padding = 12
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgContent, SVG_MIME_TYPE);
   const svgEl = doc.documentElement;
+  const transformedRoot = findGraphTransformGroup(svgEl);
   const transform = parseGraphTransform(svgEl);
   const bounds = createBounds();
 
@@ -347,7 +358,17 @@ export function trimGrafanaSvgToTopologyContent(svgContent: string, padding = 12
   const width = Math.max(1, bounds.maxX - bounds.minX + safePadding * 2);
   const height = Math.max(1, bounds.maxY - bounds.minY + safePadding * 2);
 
-  svgEl.setAttribute("viewBox", `${minX} ${minY} ${width} ${height}`);
+  if (transformedRoot !== null) {
+    const normalizedTx = transform.tx - minX;
+    const normalizedTy = transform.ty - minY;
+    transformedRoot.setAttribute(
+      "transform",
+      `translate(${formatTransformNumber(normalizedTx)}, ${formatTransformNumber(normalizedTy)}) scale(${formatTransformNumber(transform.scale)})`
+    );
+    svgEl.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  } else {
+    svgEl.setAttribute("viewBox", `${minX} ${minY} ${width} ${height}`);
+  }
   svgEl.setAttribute("width", Number(width.toFixed(3)).toString());
   svgEl.setAttribute("height", Number(height.toFixed(3)).toString());
 
@@ -589,6 +610,10 @@ interface Point {
   y: number;
 }
 
+interface TrafficLabelPlacement {
+  point: Point;
+}
+
 function lerp(a: Point, b: Point, t = 0.5): Point {
   return {
     x: a.x + (b.x - a.x) * t,
@@ -664,57 +689,122 @@ function parsePathCommand(pathData: string): ParsedPathCommand | null {
   }
 }
 
-function midpointForLinePath(sx: number, sy: number, args: [number, number]): Point {
-  const [tx, ty] = args;
-  return lerp({ x: sx, y: sy }, { x: tx, y: ty }, 0.5);
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value));
 }
 
-function midpointForQuadraticPath(
-  sx: number,
-  sy: number,
-  args: [number, number, number, number]
-): Point {
-  const [cx, cy, tx, ty] = args;
-  const t = 0.5;
-  const oneMinusT = 1 - t;
+function pointForLinePathAtT(sx: number, sy: number, args: [number, number], t: number): Point {
+  const [tx, ty] = args;
+  const clampedT = clamp01(t);
   return {
-    x: oneMinusT * oneMinusT * sx + 2 * oneMinusT * t * cx + t * t * tx,
-    y: oneMinusT * oneMinusT * sy + 2 * oneMinusT * t * cy + t * t * ty
+    x: sx + (tx - sx) * clampedT,
+    y: sy + (ty - sy) * clampedT
   };
 }
 
-function midpointForCubicPath(
+function pointForQuadraticPathAtT(
   sx: number,
   sy: number,
-  args: [number, number, number, number, number, number]
+  args: [number, number, number, number],
+  t: number
+): Point {
+  const [cx, cy, tx, ty] = args;
+  const clampedT = clamp01(t);
+  const oneMinusT = 1 - clampedT;
+  return {
+    x: oneMinusT * oneMinusT * sx + 2 * oneMinusT * clampedT * cx + clampedT * clampedT * tx,
+    y: oneMinusT * oneMinusT * sy + 2 * oneMinusT * clampedT * cy + clampedT * clampedT * ty
+  };
+}
+
+function pointForCubicPathAtT(
+  sx: number,
+  sy: number,
+  args: [number, number, number, number, number, number],
+  t: number
 ): Point {
   const [c1x, c1y, c2x, c2y, tx, ty] = args;
-  const t = 0.5;
-  const oneMinusT = 1 - t;
+  const clampedT = clamp01(t);
+  const oneMinusT = 1 - clampedT;
   return {
     x:
       oneMinusT * oneMinusT * oneMinusT * sx +
-      3 * oneMinusT * oneMinusT * t * c1x +
-      3 * oneMinusT * t * t * c2x +
-      t * t * t * tx,
+      3 * oneMinusT * oneMinusT * clampedT * c1x +
+      3 * oneMinusT * clampedT * clampedT * c2x +
+      clampedT * clampedT * clampedT * tx,
     y:
       oneMinusT * oneMinusT * oneMinusT * sy +
-      3 * oneMinusT * oneMinusT * t * c1y +
-      3 * oneMinusT * t * t * c2y +
-      t * t * t * ty
+      3 * oneMinusT * oneMinusT * clampedT * c1y +
+      3 * oneMinusT * clampedT * clampedT * c2y +
+      clampedT * clampedT * clampedT * ty
   };
 }
 
-function midpointForPath(pathData: string): Point | null {
-  const parsed = parsePathCommand(pathData);
-  if (!parsed) return null;
+function pointOnParsedPathAtT(parsed: ParsedPathCommand, t: number): Point {
   switch (parsed.command) {
     case "L":
-      return midpointForLinePath(parsed.sx, parsed.sy, parsed.args);
+      return pointForLinePathAtT(parsed.sx, parsed.sy, parsed.args, t);
     case "Q":
-      return midpointForQuadraticPath(parsed.sx, parsed.sy, parsed.args);
+      return pointForQuadraticPathAtT(parsed.sx, parsed.sy, parsed.args, t);
     case "C":
-      return midpointForCubicPath(parsed.sx, parsed.sy, parsed.args);
+      return pointForCubicPathAtT(parsed.sx, parsed.sy, parsed.args, t);
+  }
+}
+
+function normalizeVector(x: number, y: number): Point {
+  const length = Math.hypot(x, y);
+  if (!Number.isFinite(length) || length < 0.0001) {
+    return { x: 1, y: 0 };
+  }
+  return { x: x / length, y: y / length };
+}
+
+function tangentForLinePath(args: [number, number], sx: number, sy: number): Point {
+  const [tx, ty] = args;
+  return normalizeVector(tx - sx, ty - sy);
+}
+
+function tangentForQuadraticPath(
+  args: [number, number, number, number],
+  sx: number,
+  sy: number,
+  t: number
+): Point {
+  const [cx, cy, tx, ty] = args;
+  const clampedT = clamp01(t);
+  const dx = 2 * (1 - clampedT) * (cx - sx) + 2 * clampedT * (tx - cx);
+  const dy = 2 * (1 - clampedT) * (cy - sy) + 2 * clampedT * (ty - cy);
+  return normalizeVector(dx, dy);
+}
+
+function tangentForCubicPath(
+  args: [number, number, number, number, number, number],
+  sx: number,
+  sy: number,
+  t: number
+): Point {
+  const [c1x, c1y, c2x, c2y, tx, ty] = args;
+  const clampedT = clamp01(t);
+  const oneMinusT = 1 - clampedT;
+  const dx =
+    3 * oneMinusT * oneMinusT * (c1x - sx) +
+    6 * oneMinusT * clampedT * (c2x - c1x) +
+    3 * clampedT * clampedT * (tx - c2x);
+  const dy =
+    3 * oneMinusT * oneMinusT * (c1y - sy) +
+    6 * oneMinusT * clampedT * (c2y - c1y) +
+    3 * clampedT * clampedT * (ty - c2y);
+  return normalizeVector(dx, dy);
+}
+
+function tangentOnParsedPathAtT(parsed: ParsedPathCommand, t: number): Point {
+  switch (parsed.command) {
+    case "L":
+      return tangentForLinePath(parsed.args, parsed.sx, parsed.sy);
+    case "Q":
+      return tangentForQuadraticPath(parsed.args, parsed.sx, parsed.sy, t);
+    case "C":
+      return tangentForCubicPath(parsed.args, parsed.sx, parsed.sy, t);
   }
 }
 
@@ -790,25 +880,119 @@ function splitPathIntoHalves(pathData: string): { first: string; second: string 
   }
 }
 
-function parsePathEndpoints(pathData: string): { start: Point; end: Point } | null {
-  const tokens = pathData.match(/[A-Za-z]|[-+]?\d*\.?\d+(?:e[-+]?\d+)?/g);
-  if (!tokens || tokens.length < 6) return null;
+function estimateParsedPathLength(parsed: ParsedPathCommand): number {
+  switch (parsed.command) {
+    case "L": {
+      const [tx, ty] = parsed.args;
+      return Math.hypot(tx - parsed.sx, ty - parsed.sy);
+    }
+    case "Q": {
+      const [cx, cy, tx, ty] = parsed.args;
+      return Math.hypot(cx - parsed.sx, cy - parsed.sy) + Math.hypot(tx - cx, ty - cy);
+    }
+    case "C": {
+      const [c1x, c1y, c2x, c2y, tx, ty] = parsed.args;
+      return (
+        Math.hypot(c1x - parsed.sx, c1y - parsed.sy) +
+        Math.hypot(c2x - c1x, c2y - c1y) +
+        Math.hypot(tx - c2x, ty - c2y)
+      );
+    }
+  }
+}
 
-  const cmd0 = tokens[0]?.toUpperCase();
-  if (cmd0 !== "M") return null;
+function buildTrafficLabelCandidateTs(
+  interfaceSide: "start" | "end",
+  pathLength: number,
+  graphScale: number
+): number[] {
+  const safeScale = Math.max(0.05, Math.abs(graphScale));
+  const alongStepPx = 20 / safeScale;
+  const stepT = Math.min(0.22, Math.max(0.06, alongStepPx / Math.max(1, pathLength)));
+  // Prefer labels away from the shared midpoint area in dense fanouts.
+  const baseT = interfaceSide === "start" ? 0.38 : 0.62;
+  const offsets = [
+    0,
+    stepT,
+    -stepT,
+    stepT * 2,
+    -stepT * 2,
+    stepT * 3,
+    -stepT * 3,
+    stepT * 4,
+    -stepT * 4
+  ];
 
-  const numbers = tokens
-    .slice(1)
-    .map((token) => Number(token))
-    .filter((value) => Number.isFinite(value));
-  if (numbers.length < 4) return null;
+  const candidates: number[] = [];
+  const seen = new Set<string>();
+  for (const offset of offsets) {
+    const candidateT = clamp01(baseT + offset);
+    if (candidateT < 0.08 || candidateT > 0.92) continue;
+    const key = candidateT.toFixed(3);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    candidates.push(candidateT);
+  }
+  return candidates;
+}
 
-  const start = { x: numbers[0], y: numbers[1] };
-  const end = {
-    x: numbers[numbers.length - 2],
-    y: numbers[numbers.length - 1]
+function buildExpandedTrafficLabelCandidateTs(interfaceSide: "start" | "end"): number[] {
+  const minT = 0.08;
+  const maxT = 0.92;
+  const sampleCount = 81;
+  const preferredT = interfaceSide === "start" ? 0.38 : 0.62;
+  const samples = Array.from({ length: sampleCount }, (_, index) => {
+    const ratio = index / (sampleCount - 1);
+    return minT + (maxT - minT) * ratio;
+  });
+  samples.sort((a, b) => Math.abs(a - preferredT) - Math.abs(b - preferredT));
+  return samples;
+}
+
+function getTrafficLabelCollisionThresholds(graphScale: number): { minDx: number; minDy: number } {
+  const safeScale = Math.max(0.05, Math.abs(graphScale));
+  const sampleLabel = "775.3 Mb/s";
+  const fontSizePx = 10;
+  const charWidthPx = fontSizePx * 0.58;
+  // Keep a tight collision box: approximate glyph bounds plus ~1px gap.
+  const labelWidthPx = sampleLabel.length * charWidthPx + 2;
+  const labelHeightPx = fontSizePx + 2;
+  return {
+    minDx: labelWidthPx / safeScale,
+    minDy: labelHeightPx / safeScale
   };
-  return { start, end };
+}
+
+function buildTrafficLabelOffsetPairs(maxStep: number): Array<{ along: number; normal: number }> {
+  const pairs: Array<{ along: number; normal: number }> = [];
+  const seen = new Set<string>();
+
+  const pushPair = (along: number, normal: number) => {
+    const key = `${along}:${normal}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    pairs.push({ along, normal });
+  };
+
+  pushPair(0, 0);
+  for (let step = 1; step <= maxStep; step++) {
+    pushPair(0, step);
+    pushPair(0, -step);
+    pushPair(step, 0);
+    pushPair(-step, 0);
+    for (let along = 1; along <= step; along++) {
+      pushPair(along, step);
+      pushPair(-along, step);
+      pushPair(along, -step);
+      pushPair(-along, -step);
+      if (along === step) continue;
+      pushPair(step, along);
+      pushPair(step, -along);
+      pushPair(-step, along);
+      pushPair(-step, -along);
+    }
+  }
+  return pairs;
 }
 
 function isLabelCollision(
@@ -824,69 +1008,143 @@ function isLabelCollision(
   });
 }
 
+function isTrafficLabelCollision(
+  point: Point,
+  placements: TrafficLabelPlacement[],
+  minDx: number,
+  minDy: number
+): boolean {
+  return placements.some((placement) => {
+    const dx = point.x - placement.point.x;
+    const dy = point.y - placement.point.y;
+    return Math.abs(dx) < minDx && Math.abs(dy) < minDy;
+  });
+}
+
+function nearestPlacementDistance(point: Point, placements: TrafficLabelPlacement[]): number {
+  if (placements.length === 0) return Number.POSITIVE_INFINITY;
+  let minDistance = Number.POSITIVE_INFINITY;
+  for (const placement of placements) {
+    const distance = Math.hypot(point.x - placement.point.x, point.y - placement.point.y);
+    if (distance < minDistance) {
+      minDistance = distance;
+    }
+  }
+  return minDistance;
+}
+
+function nearestPointDistance(point: Point, points: Point[]): number {
+  if (points.length === 0) return Number.POSITIVE_INFINITY;
+  let minDistance = Number.POSITIVE_INFINITY;
+  for (const other of points) {
+    const distance = Math.hypot(point.x - other.x, point.y - other.y);
+    if (distance < minDistance) {
+      minDistance = distance;
+    }
+  }
+  return minDistance;
+}
+
 function resolveTrafficLabelPoint(
   halfPathData: string,
-  occupiedPoints: Point[],
+  occupiedPlacements: TrafficLabelPlacement[],
+  interfaceLabelPoints: Point[],
+  interfaceSide: "start" | "end",
   graphScale: number
 ): Point {
-  const base = midpointForPath(halfPathData) ?? parsePathStart(halfPathData) ?? { x: 0, y: 0 };
-  const endpoints = parsePathEndpoints(halfPathData);
-
-  let tangent = { x: 1, y: 0 };
-  let normal = { x: 0, y: 1 };
-  if (endpoints) {
-    const dx = endpoints.end.x - endpoints.start.x;
-    const dy = endpoints.end.y - endpoints.start.y;
-    const length = Math.hypot(dx, dy);
-    if (length > 0.001) {
-      tangent = { x: dx / length, y: dy / length };
-      normal = { x: -dy / length, y: dx / length };
-    }
-  }
-
   const safeScale = Math.max(0.05, Math.abs(graphScale));
-  const alongStep = 20 / safeScale;
-  const normalStep = 8 / safeScale;
-  // Keep enough space for typical throughput labels (e.g. "248.5 kb/s", "12.4 Mb/s").
-  const minimumDx = 58 / safeScale;
-  const minimumDy = 16 / safeScale;
-  const alongOffsets = [
-    0,
-    alongStep,
-    -alongStep,
-    alongStep * 2,
-    -alongStep * 2,
-    alongStep * 3,
-    -alongStep * 3,
-    alongStep * 4,
-    -alongStep * 4
-  ];
+  const trafficThresholds = getTrafficLabelCollisionThresholds(graphScale);
+  const minimumInterfaceDx = 38 / safeScale;
+  const minimumInterfaceDy = 14 / safeScale;
+  const alongStep = 1 / safeScale;
+  const normalStep = 1 / safeScale;
+  const offsetPairs = buildTrafficLabelOffsetPairs(10);
+  const parsed = parsePathCommand(halfPathData);
+  const preferredT = interfaceSide === "start" ? 0.38 : 0.62;
+  const base = parsed
+    ? pointOnParsedPathAtT(parsed, preferredT)
+    : (parsePathStart(halfPathData) ?? { x: 0, y: 0 });
 
-  for (const offset of alongOffsets) {
-    const candidate = {
-      x: base.x + tangent.x * offset,
-      y: base.y + tangent.y * offset
-    };
-    if (!isLabelCollision(candidate, occupiedPoints, minimumDx, minimumDy)) {
-      occupiedPoints.push(candidate);
-      return candidate;
+  const canPlaceAt = (candidate: Point): boolean => {
+    const intersectsInterface = isLabelCollision(
+      candidate,
+      interfaceLabelPoints,
+      minimumInterfaceDx,
+      minimumInterfaceDy
+    );
+    if (intersectsInterface) return false;
+    return !isTrafficLabelCollision(
+      candidate,
+      occupiedPlacements,
+      trafficThresholds.minDx,
+      trafficThresholds.minDy
+    );
+  };
+
+  let fallback = base;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  const scoreCandidate = (candidate: Point) => {
+    const distanceToTrafficLabels = nearestPlacementDistance(candidate, occupiedPlacements);
+    const distanceToInterfaceLabels = nearestPointDistance(candidate, interfaceLabelPoints);
+    const score = Math.min(distanceToTrafficLabels, distanceToInterfaceLabels);
+    if (score > bestScore) {
+      bestScore = score;
+      fallback = candidate;
+    }
+  };
+
+  if (!parsed) {
+    if (!canPlaceAt(base)) {
+      occupiedPlacements.push({ point: base });
+      return base;
+    }
+    occupiedPlacements.push({ point: base });
+    return base;
+  }
+
+  const candidateTs = buildTrafficLabelCandidateTs(
+    interfaceSide,
+    estimateParsedPathLength(parsed),
+    graphScale
+  );
+  const allCandidateTs = [...candidateTs, ...buildExpandedTrafficLabelCandidateTs(interfaceSide)];
+  const seenCandidateTs = new Set<string>();
+  const candidatePoints: Array<{ point: Point; distanceFromPreferred: number }> = [];
+  const seenCandidatePoints = new Set<string>();
+
+  for (const candidateT of allCandidateTs) {
+    const candidateKey = candidateT.toFixed(3);
+    if (seenCandidateTs.has(candidateKey)) continue;
+    seenCandidateTs.add(candidateKey);
+    const anchor = pointOnParsedPathAtT(parsed, candidateT);
+    const tangent = tangentOnParsedPathAtT(parsed, candidateT);
+    const normal = { x: -tangent.y, y: tangent.x };
+
+    for (const offset of offsetPairs) {
+      const candidate = {
+        x: anchor.x + tangent.x * offset.along * alongStep + normal.x * offset.normal * normalStep,
+        y: anchor.y + tangent.y * offset.along * alongStep + normal.y * offset.normal * normalStep
+      };
+      scoreCandidate(candidate);
+      const pointKey = `${candidate.x.toFixed(2)}:${candidate.y.toFixed(2)}`;
+      if (seenCandidatePoints.has(pointKey)) continue;
+      seenCandidatePoints.add(pointKey);
+      candidatePoints.push({
+        point: candidate,
+        distanceFromPreferred: Math.hypot(candidate.x - base.x, candidate.y - base.y)
+      });
     }
   }
 
-  // Fallback: add slight off-line nudge only if all along-line slots are occupied.
-  for (const offset of alongOffsets) {
-    const candidate = {
-      x: base.x + tangent.x * offset + normal.x * normalStep,
-      y: base.y + tangent.y * offset + normal.y * normalStep
-    };
-    if (!isLabelCollision(candidate, occupiedPoints, minimumDx, minimumDy)) {
-      occupiedPoints.push(candidate);
-      return candidate;
-    }
+  candidatePoints.sort((a, b) => a.distanceFromPreferred - b.distanceFromPreferred);
+  for (const candidate of candidatePoints) {
+    if (!canPlaceAt(candidate.point)) continue;
+    occupiedPlacements.push({ point: candidate.point });
+    return candidate.point;
   }
 
-  occupiedPoints.push(base);
-  return base;
+  occupiedPlacements.push({ point: fallback });
+  return fallback;
 }
 
 function createTrafficHalfCell(
@@ -894,7 +1152,9 @@ function createTrafficHalfCell(
   sourcePath: Element,
   halfPathData: string,
   shortCellId: string,
-  occupiedLabelPoints: Point[],
+  occupiedLabelPoints: TrafficLabelPlacement[],
+  interfaceLabelPoints: Point[],
+  interfaceSide: "start" | "end",
   graphScale: number
 ): Element {
   const trafficLabelPlaceholder = "rate";
@@ -913,7 +1173,13 @@ function createTrafficHalfCell(
   path.removeAttribute("data-cell-id");
   group.appendChild(path);
 
-  const mid = resolveTrafficLabelPoint(halfPathData, occupiedLabelPoints, graphScale);
+  const mid = resolveTrafficLabelPoint(
+    halfPathData,
+    occupiedLabelPoints,
+    interfaceLabelPoints,
+    interfaceSide,
+    graphScale
+  );
   const text = doc.createElementNS(SVG_NS, "text");
   text.setAttribute("x", fmt(mid.x));
   text.setAttribute("y", fmt(mid.y));
@@ -957,11 +1223,23 @@ function buildEdgeGroupByDataId(doc: XMLDocument): Map<string, Element> {
   return edgeGroupByDataId;
 }
 
+function collectInterfaceLabelPoints(doc: XMLDocument): Point[] {
+  const interfaceLabelPoints: Point[] = [];
+  for (const textEl of Array.from(doc.querySelectorAll("g.edge-label text[x][y]"))) {
+    const x = parseNumericAttr(textEl, "x");
+    const y = parseNumericAttr(textEl, "y");
+    if (x === null || y === null) continue;
+    interfaceLabelPoints.push({ x, y });
+  }
+  return interfaceLabelPoints;
+}
+
 function replaceTrafficPathWithHalfCells(
   doc: XMLDocument,
   trafficPath: Element,
   mapping: GrafanaEdgeCellMapping,
-  occupiedTrafficLabelPoints: Point[],
+  occupiedTrafficLabelPoints: TrafficLabelPlacement[],
+  interfaceLabelPoints: Point[],
   graphScale: number
 ): void {
   const parent = trafficPath.parentNode;
@@ -978,6 +1256,8 @@ function replaceTrafficPathWithHalfCells(
     firstHalfData,
     mapping.trafficCellId,
     occupiedTrafficLabelPoints,
+    interfaceLabelPoints,
+    "start",
     graphScale
   );
   const secondHalf = createTrafficHalfCell(
@@ -986,6 +1266,8 @@ function replaceTrafficPathWithHalfCells(
     secondHalfData,
     mapping.reverseTrafficCellId,
     occupiedTrafficLabelPoints,
+    interfaceLabelPoints,
+    "end",
     graphScale
   );
   parent.insertBefore(firstHalf, trafficPath);
@@ -997,7 +1279,8 @@ function applyTrafficCellsToEdgeGroup(
   doc: XMLDocument,
   mapping: GrafanaEdgeCellMapping,
   trafficGroup: Element,
-  occupiedTrafficLabelPoints: Point[],
+  occupiedTrafficLabelPoints: TrafficLabelPlacement[],
+  interfaceLabelPoints: Point[],
   graphScale: number
 ): void {
   const trafficCellEl = resolveTrafficCellElement(trafficGroup);
@@ -1011,6 +1294,7 @@ function applyTrafficCellsToEdgeGroup(
     trafficCellEl,
     mapping,
     occupiedTrafficLabelPoints,
+    interfaceLabelPoints,
     graphScale
   );
 }
@@ -1045,7 +1329,8 @@ export function applyGrafanaCellIdsToSvg(
   const graphTransform = parseGraphTransform(doc.documentElement);
   const graphScale = Math.max(0.05, Math.abs(graphTransform.scale));
   const edgeGroupByDataId = buildEdgeGroupByDataId(doc);
-  const occupiedTrafficLabelPoints: Point[] = [];
+  const occupiedTrafficLabelPoints: TrafficLabelPlacement[] = [];
+  const interfaceLabelPoints = collectInterfaceLabelPoints(doc);
 
   for (const mapping of mappings) {
     const trafficGroup = edgeGroupByDataId.get(mapping.edgeId);
@@ -1055,6 +1340,7 @@ export function applyGrafanaCellIdsToSvg(
       mapping,
       trafficGroup,
       occupiedTrafficLabelPoints,
+      interfaceLabelPoints,
       graphScale
     );
     applyOperstateCellsToEdgeGroup(doc, mapping, trafficGroup);
