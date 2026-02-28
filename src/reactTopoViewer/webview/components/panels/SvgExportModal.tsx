@@ -261,7 +261,9 @@ function getInterfaceSelectionValue(
   interfaceLabelOverrides: Record<string, string>
 ): string {
   const override = interfaceLabelOverrides[endpoint];
-  if (override.length === 0) return INTERFACE_SELECT_AUTO;
+  if (typeof override !== "string" || override.length === 0) {
+    return INTERFACE_SELECT_AUTO;
+  }
   if (override === endpoint) return INTERFACE_SELECT_FULL;
   return `${INTERFACE_SELECT_TOKEN_PREFIX}${override}`;
 }
@@ -393,6 +395,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   const [isGrafanaSettingsOpen, setIsGrafanaSettingsOpen] = useState(false);
   const [excludeNodesWithoutLinks, setExcludeNodesWithoutLinks] = useState(true);
   const [includeGrafanaLegend, setIncludeGrafanaLegend] = useState(false);
+  const [trafficRatesOnHoverOnly, setTrafficRatesOnHoverOnly] = useState(false);
   const [trafficThresholds, setTrafficThresholds] = useState<GrafanaTrafficThresholds>({
     ...DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS
   });
@@ -588,9 +591,11 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         );
       }
 
-      let grafanaSvg = applyGrafanaCellIdsToSvg(grafanaBaseSvg, mappings);
+      let grafanaSvg = applyGrafanaCellIdsToSvg(grafanaBaseSvg, mappings, {
+        trafficRatesOnHoverOnly
+      });
       if (includeGrafanaLegend) {
-        grafanaSvg = addGrafanaTrafficLegend(grafanaSvg, trafficThresholds);
+        grafanaSvg = addGrafanaTrafficLegend(grafanaSvg, trafficThresholds, trafficThresholdUnit);
       }
       grafanaSvg = makeGrafanaSvgResponsive(grafanaSvg);
       const panelYaml = buildGrafanaPanelYaml(mappings, { trafficThresholds });
@@ -611,7 +616,14 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         message: `Grafana bundle exported successfully${suffix}`
       });
     },
-    [trafficThresholds, excludeNodesWithoutLinks, borderPadding, includeGrafanaLegend]
+    [
+      trafficThresholds,
+      excludeNodesWithoutLinks,
+      borderPadding,
+      includeGrafanaLegend,
+      trafficRatesOnHoverOnly,
+      trafficThresholdUnit
+    ]
   );
 
   const handleExport = useCallback(async () => {
@@ -1096,6 +1108,16 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   />
                 }
                 label="Add traffic legend (top-left)"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={trafficRatesOnHoverOnly}
+                    onChange={(e) => setTrafficRatesOnHoverOnly(e.target.checked)}
+                  />
+                }
+                label="Show traffic rates on hover only"
               />
             </>
           )}
