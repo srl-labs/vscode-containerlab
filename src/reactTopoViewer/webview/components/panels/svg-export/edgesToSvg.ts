@@ -16,6 +16,7 @@ import {
   CONTROL_POINT_STEP_SIZE,
   escapeXml
 } from "./constants";
+import { getAutoCompactInterfaceLabel } from "../../../utils/grafanaInterfaceLabels";
 
 // ============================================================================
 // Types
@@ -506,30 +507,6 @@ function buildEndpointLabelSvg(
 
   svg += `</g>`;
   return svg;
-}
-
-function getAutoCompactInterfaceLabel(endpoint: string): string {
-  const trimmed = endpoint.trim();
-  if (!trimmed) return "";
-
-  let end = trimmed.length - 1;
-  while (end >= 0 && (trimmed[end] < "0" || trimmed[end] > "9")) {
-    end -= 1;
-  }
-  if (end >= 0) {
-    let start = end;
-    while (start >= 0 && trimmed[start] >= "0" && trimmed[start] <= "9") {
-      start -= 1;
-    }
-    return trimmed.slice(start + 1, end + 1);
-  }
-
-  const token =
-    trimmed
-      .split(/[:/.-]/)
-      .filter((part) => part.length > 0)
-      .pop() ?? trimmed;
-  return token.length <= 3 ? token : token.slice(-3);
 }
 
 function getDisplayInterfaceLabel(

@@ -19,7 +19,7 @@ import { useAnnotationUIStore } from "./annotationUIStore";
 // ============================================================================
 
 export type DeploymentState = "deployed" | "undeployed" | "unknown";
-export type LinkLabelMode = "show-all" | "on-select" | "hide";
+export type LinkLabelMode = "show-all" | "on-select" | "hide" | "grafana";
 export type ProcessingMode = "deploy" | "destroy" | null;
 export type LifecycleLogStream = "stdout" | "stderr";
 export type LifecycleStatus = "running" | "success" | "error" | null;
@@ -51,6 +51,10 @@ export interface TopoViewerState {
   showDummyLinks: boolean;
   endpointLabelOffsetEnabled: boolean;
   endpointLabelOffset: number;
+  grafanaNodeSizePx: number;
+  grafanaInterfaceSizePercent: number;
+  grafanaGlobalInterfaceOverrideSelection: string;
+  grafanaInterfaceLabelOverrides: Record<string, string>;
   gridColor: string | null;
   gridBgColor: string | null;
   edgeAnnotations: EdgeAnnotation[];
@@ -91,6 +95,11 @@ export interface TopoViewerActions {
   toggleDummyLinks: () => void;
   toggleEndpointLabelOffset: () => void;
   setEndpointLabelOffset: (value: number) => void;
+  setGrafanaNodeSizePx: (value: number) => void;
+  setGrafanaInterfaceSizePercent: (value: number) => void;
+  setGrafanaGlobalInterfaceOverrideSelection: (value: string) => void;
+  setGrafanaInterfaceLabelOverrides: (overrides: Record<string, string>) => void;
+  setGrafanaInterfaceLabelOverride: (endpoint: string, override: string | null) => void;
   setGridColor: (color: string | null) => void;
   setGridBgColor: (color: string | null) => void;
 
@@ -149,6 +158,10 @@ const initialState: TopoViewerState = {
   showDummyLinks: true,
   endpointLabelOffsetEnabled: true,
   endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
+  grafanaNodeSizePx: 40,
+  grafanaInterfaceSizePercent: 100,
+  grafanaGlobalInterfaceOverrideSelection: "__auto__",
+  grafanaInterfaceLabelOverrides: {},
   gridColor: null,
   gridBgColor: null,
   edgeAnnotations: [],
@@ -321,6 +334,36 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       ? clampEndpointLabelOffset(value)
       : DEFAULT_ENDPOINT_LABEL_OFFSET;
     set({ endpointLabelOffset: next });
+  },
+
+  setGrafanaNodeSizePx: (value) => {
+    const next = Number.isFinite(value) ? value : 40;
+    set({ grafanaNodeSizePx: next });
+  },
+
+  setGrafanaInterfaceSizePercent: (value) => {
+    const next = Number.isFinite(value) ? value : 100;
+    set({ grafanaInterfaceSizePercent: next });
+  },
+
+  setGrafanaGlobalInterfaceOverrideSelection: (value) => {
+    set({ grafanaGlobalInterfaceOverrideSelection: value });
+  },
+
+  setGrafanaInterfaceLabelOverrides: (overrides) => {
+    set({ grafanaInterfaceLabelOverrides: { ...overrides } });
+  },
+
+  setGrafanaInterfaceLabelOverride: (endpoint, override) => {
+    set((state) => {
+      const next = { ...state.grafanaInterfaceLabelOverrides };
+      if (override === null || override.trim().length === 0) {
+        delete next[endpoint];
+      } else {
+        next[endpoint] = override.trim();
+      }
+      return { grafanaInterfaceLabelOverrides: next };
+    });
   },
 
   setGridColor: (color) => {
@@ -520,6 +563,18 @@ export const useShowDummyLinks = () => useTopoViewerStore((state) => state.showD
 export const useEndpointLabelOffset = () =>
   useTopoViewerStore((state) => state.endpointLabelOffset);
 
+/** Get Grafana label rendering settings */
+export const useGrafanaLabelSettings = () =>
+  useTopoViewerStore(
+    (state) => ({
+      nodeSizePx: state.grafanaNodeSizePx,
+      interfaceSizePercent: state.grafanaInterfaceSizePercent,
+      globalInterfaceOverrideSelection: state.grafanaGlobalInterfaceOverrideSelection,
+      interfaceLabelOverrides: state.grafanaInterfaceLabelOverrides
+    }),
+    shallow
+  );
+
 export const useGridColor = () => useTopoViewerStore((state) => state.gridColor);
 export const useGridBgColor = () => useTopoViewerStore((state) => state.gridBgColor);
 
@@ -563,6 +618,10 @@ export const useTopoViewerState = () =>
       showDummyLinks: state.showDummyLinks,
       endpointLabelOffsetEnabled: state.endpointLabelOffsetEnabled,
       endpointLabelOffset: state.endpointLabelOffset,
+      grafanaNodeSizePx: state.grafanaNodeSizePx,
+      grafanaInterfaceSizePercent: state.grafanaInterfaceSizePercent,
+      grafanaGlobalInterfaceOverrideSelection: state.grafanaGlobalInterfaceOverrideSelection,
+      grafanaInterfaceLabelOverrides: state.grafanaInterfaceLabelOverrides,
       edgeAnnotations: state.edgeAnnotations,
       customNodes: state.customNodes,
       defaultNode: state.defaultNode,
@@ -597,6 +656,11 @@ export const useTopoViewerActions = () =>
       toggleDummyLinks: state.toggleDummyLinks,
       toggleEndpointLabelOffset: state.toggleEndpointLabelOffset,
       setEndpointLabelOffset: state.setEndpointLabelOffset,
+      setGrafanaNodeSizePx: state.setGrafanaNodeSizePx,
+      setGrafanaInterfaceSizePercent: state.setGrafanaInterfaceSizePercent,
+      setGrafanaGlobalInterfaceOverrideSelection: state.setGrafanaGlobalInterfaceOverrideSelection,
+      setGrafanaInterfaceLabelOverrides: state.setGrafanaInterfaceLabelOverrides,
+      setGrafanaInterfaceLabelOverride: state.setGrafanaInterfaceLabelOverride,
       setEdgeAnnotations: state.setEdgeAnnotations,
       upsertEdgeAnnotation: state.upsertEdgeAnnotation,
       setCustomNodes: state.setCustomNodes,
