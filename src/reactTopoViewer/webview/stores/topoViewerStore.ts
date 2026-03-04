@@ -19,7 +19,8 @@ import { useAnnotationUIStore } from "./annotationUIStore";
 // ============================================================================
 
 export type DeploymentState = "deployed" | "undeployed" | "unknown";
-export type LinkLabelMode = "show-all" | "on-select" | "hide" | "grafana";
+export type LinkLabelMode = "show-all" | "on-select" | "hide" | "telemetry-style";
+export type NonTelemetryLinkLabelMode = Exclude<LinkLabelMode, "telemetry-style">;
 export type ProcessingMode = "deploy" | "destroy" | null;
 export type LifecycleLogStream = "stdout" | "stderr";
 export type LifecycleStatus = "running" | "success" | "error" | null;
@@ -48,13 +49,14 @@ export interface TopoViewerState {
   editingNetwork: string | null;
   isLocked: boolean;
   linkLabelMode: LinkLabelMode;
+  lastNonTelemetryLinkLabelMode: NonTelemetryLinkLabelMode;
   showDummyLinks: boolean;
   endpointLabelOffsetEnabled: boolean;
   endpointLabelOffset: number;
-  grafanaNodeSizePx: number;
-  grafanaInterfaceSizePercent: number;
-  grafanaGlobalInterfaceOverrideSelection: string;
-  grafanaInterfaceLabelOverrides: Record<string, string>;
+  telemetryNodeSizePx: number;
+  telemetryInterfaceSizePercent: number;
+  telemetryGlobalInterfaceOverrideSelection: string;
+  telemetryInterfaceLabelOverrides: Record<string, string>;
   gridColor: string | null;
   gridBgColor: string | null;
   edgeAnnotations: EdgeAnnotation[];
@@ -95,11 +97,11 @@ export interface TopoViewerActions {
   toggleDummyLinks: () => void;
   toggleEndpointLabelOffset: () => void;
   setEndpointLabelOffset: (value: number) => void;
-  setGrafanaNodeSizePx: (value: number) => void;
-  setGrafanaInterfaceSizePercent: (value: number) => void;
-  setGrafanaGlobalInterfaceOverrideSelection: (value: string) => void;
-  setGrafanaInterfaceLabelOverrides: (overrides: Record<string, string>) => void;
-  setGrafanaInterfaceLabelOverride: (endpoint: string, override: string | null) => void;
+  setTelemetryNodeSizePx: (value: number) => void;
+  setTelemetryInterfaceSizePercent: (value: number) => void;
+  setTelemetryGlobalInterfaceOverrideSelection: (value: string) => void;
+  setTelemetryInterfaceLabelOverrides: (overrides: Record<string, string>) => void;
+  setTelemetryInterfaceLabelOverride: (endpoint: string, override: string | null) => void;
   setGridColor: (color: string | null) => void;
   setGridBgColor: (color: string | null) => void;
 
@@ -155,13 +157,14 @@ const initialState: TopoViewerState = {
   editingNetwork: null,
   isLocked: true,
   linkLabelMode: "show-all",
+  lastNonTelemetryLinkLabelMode: "show-all",
   showDummyLinks: true,
   endpointLabelOffsetEnabled: true,
   endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
-  grafanaNodeSizePx: 40,
-  grafanaInterfaceSizePercent: 100,
-  grafanaGlobalInterfaceOverrideSelection: "__auto__",
-  grafanaInterfaceLabelOverrides: {},
+  telemetryNodeSizePx: 40,
+  telemetryInterfaceSizePercent: 100,
+  telemetryGlobalInterfaceOverrideSelection: "__auto__",
+  telemetryInterfaceLabelOverrides: {},
   gridColor: null,
   gridBgColor: null,
   edgeAnnotations: [],
@@ -318,7 +321,11 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
 
   // Rendering settings
   setLinkLabelMode: (linkLabelMode) => {
-    set({ linkLabelMode });
+    set((state) => ({
+      linkLabelMode,
+      lastNonTelemetryLinkLabelMode:
+        linkLabelMode === "telemetry-style" ? state.lastNonTelemetryLinkLabelMode : linkLabelMode
+    }));
   },
 
   toggleDummyLinks: () => {
@@ -336,33 +343,33 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
     set({ endpointLabelOffset: next });
   },
 
-  setGrafanaNodeSizePx: (value) => {
+  setTelemetryNodeSizePx: (value) => {
     const next = Number.isFinite(value) ? value : 40;
-    set({ grafanaNodeSizePx: next });
+    set({ telemetryNodeSizePx: next });
   },
 
-  setGrafanaInterfaceSizePercent: (value) => {
+  setTelemetryInterfaceSizePercent: (value) => {
     const next = Number.isFinite(value) ? value : 100;
-    set({ grafanaInterfaceSizePercent: next });
+    set({ telemetryInterfaceSizePercent: next });
   },
 
-  setGrafanaGlobalInterfaceOverrideSelection: (value) => {
-    set({ grafanaGlobalInterfaceOverrideSelection: value });
+  setTelemetryGlobalInterfaceOverrideSelection: (value) => {
+    set({ telemetryGlobalInterfaceOverrideSelection: value });
   },
 
-  setGrafanaInterfaceLabelOverrides: (overrides) => {
-    set({ grafanaInterfaceLabelOverrides: { ...overrides } });
+  setTelemetryInterfaceLabelOverrides: (overrides) => {
+    set({ telemetryInterfaceLabelOverrides: { ...overrides } });
   },
 
-  setGrafanaInterfaceLabelOverride: (endpoint, override) => {
+  setTelemetryInterfaceLabelOverride: (endpoint, override) => {
     set((state) => {
-      const next = { ...state.grafanaInterfaceLabelOverrides };
+      const next = { ...state.telemetryInterfaceLabelOverrides };
       if (override === null || override.trim().length === 0) {
         delete next[endpoint];
       } else {
         next[endpoint] = override.trim();
       }
-      return { grafanaInterfaceLabelOverrides: next };
+      return { telemetryInterfaceLabelOverrides: next };
     });
   },
 
@@ -563,14 +570,14 @@ export const useShowDummyLinks = () => useTopoViewerStore((state) => state.showD
 export const useEndpointLabelOffset = () =>
   useTopoViewerStore((state) => state.endpointLabelOffset);
 
-/** Get Grafana label rendering settings */
-export const useGrafanaLabelSettings = () =>
+/** Get Telemetry label rendering settings */
+export const useTelemetryLabelSettings = () =>
   useTopoViewerStore(
     (state) => ({
-      nodeSizePx: state.grafanaNodeSizePx,
-      interfaceSizePercent: state.grafanaInterfaceSizePercent,
-      globalInterfaceOverrideSelection: state.grafanaGlobalInterfaceOverrideSelection,
-      interfaceLabelOverrides: state.grafanaInterfaceLabelOverrides
+      nodeSizePx: state.telemetryNodeSizePx,
+      interfaceSizePercent: state.telemetryInterfaceSizePercent,
+      globalInterfaceOverrideSelection: state.telemetryGlobalInterfaceOverrideSelection,
+      interfaceLabelOverrides: state.telemetryInterfaceLabelOverrides
     }),
     shallow
   );
@@ -615,13 +622,14 @@ export const useTopoViewerState = () =>
       editingNetwork: state.editingNetwork,
       isLocked: state.isLocked,
       linkLabelMode: state.linkLabelMode,
+      lastNonTelemetryLinkLabelMode: state.lastNonTelemetryLinkLabelMode,
       showDummyLinks: state.showDummyLinks,
       endpointLabelOffsetEnabled: state.endpointLabelOffsetEnabled,
       endpointLabelOffset: state.endpointLabelOffset,
-      grafanaNodeSizePx: state.grafanaNodeSizePx,
-      grafanaInterfaceSizePercent: state.grafanaInterfaceSizePercent,
-      grafanaGlobalInterfaceOverrideSelection: state.grafanaGlobalInterfaceOverrideSelection,
-      grafanaInterfaceLabelOverrides: state.grafanaInterfaceLabelOverrides,
+      telemetryNodeSizePx: state.telemetryNodeSizePx,
+      telemetryInterfaceSizePercent: state.telemetryInterfaceSizePercent,
+      telemetryGlobalInterfaceOverrideSelection: state.telemetryGlobalInterfaceOverrideSelection,
+      telemetryInterfaceLabelOverrides: state.telemetryInterfaceLabelOverrides,
       edgeAnnotations: state.edgeAnnotations,
       customNodes: state.customNodes,
       defaultNode: state.defaultNode,
@@ -656,11 +664,12 @@ export const useTopoViewerActions = () =>
       toggleDummyLinks: state.toggleDummyLinks,
       toggleEndpointLabelOffset: state.toggleEndpointLabelOffset,
       setEndpointLabelOffset: state.setEndpointLabelOffset,
-      setGrafanaNodeSizePx: state.setGrafanaNodeSizePx,
-      setGrafanaInterfaceSizePercent: state.setGrafanaInterfaceSizePercent,
-      setGrafanaGlobalInterfaceOverrideSelection: state.setGrafanaGlobalInterfaceOverrideSelection,
-      setGrafanaInterfaceLabelOverrides: state.setGrafanaInterfaceLabelOverrides,
-      setGrafanaInterfaceLabelOverride: state.setGrafanaInterfaceLabelOverride,
+      setTelemetryNodeSizePx: state.setTelemetryNodeSizePx,
+      setTelemetryInterfaceSizePercent: state.setTelemetryInterfaceSizePercent,
+      setTelemetryGlobalInterfaceOverrideSelection:
+        state.setTelemetryGlobalInterfaceOverrideSelection,
+      setTelemetryInterfaceLabelOverrides: state.setTelemetryInterfaceLabelOverrides,
+      setTelemetryInterfaceLabelOverride: state.setTelemetryInterfaceLabelOverride,
       setEdgeAnnotations: state.setEdgeAnnotations,
       upsertEdgeAnnotation: state.upsertEdgeAnnotation,
       setCustomNodes: state.setCustomNodes,

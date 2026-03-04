@@ -8,7 +8,7 @@ import { EdgeLabelRenderer, useStore, type EdgeProps, type Edge, type Node } fro
 import { SELECTION_COLOR, type EdgeLabelMode } from "../types";
 import { useEdgeInfo, useEdgeRenderConfig } from "../../../stores/canvasStore";
 import { useEdges, useGraphStore } from "../../../stores/graphStore";
-import { useGrafanaLabelSettings, useMode } from "../../../stores/topoViewerStore";
+import { useTelemetryLabelSettings, useMode } from "../../../stores/topoViewerStore";
 import {
   calculateControlPoint,
   getEdgePoints,
@@ -17,10 +17,10 @@ import {
 } from "../edgeGeometry";
 import { DEFAULT_ENDPOINT_LABEL_OFFSET } from "../../../annotations/endpointLabelOffset";
 import {
-  clampGrafanaInterfaceSizePercent,
-  clampGrafanaNodeSizePx,
-  resolveGrafanaInterfaceLabel
-} from "../../../utils/grafanaInterfaceLabels";
+  clampTelemetryInterfaceSizePercent,
+  clampTelemetryNodeSizePx,
+  resolveTelemetryInterfaceLabel
+} from "../../../utils/telemetryInterfaceLabels";
 
 // Edge style constants
 const EDGE_COLOR_DEFAULT = "#969799";
@@ -38,21 +38,21 @@ const LABEL_TEXT_COLOR = "var(--topoviewer-edge-label-foreground)";
 const LABEL_OUTLINE_COLOR = "var(--topoviewer-edge-label-outline)";
 const LABEL_PADDING = "0px 2px";
 const LABEL_FONT_FAMILY = '"Helvetica Neue", Helvetica, Arial, sans-serif';
-const GRAFANA_LABEL_FONT_FAMILY = "Helvetica, Arial, sans-serif";
+const TELEMETRY_LABEL_FONT_FAMILY = "Helvetica, Arial, sans-serif";
 
-const GRAFANA_LABEL_FONT_SIZE_PX = 10;
-const GRAFANA_LABEL_TEXT_COLOR = "#FFFFFF";
-const GRAFANA_LABEL_BG_COLOR = "#bec8d2";
-const GRAFANA_LABEL_STROKE_COLOR = "rgba(0, 0, 0, 0.95)";
-const GRAFANA_LABEL_BORDER_COLOR = "rgba(0, 0, 0, 0.25)";
-const GRAFANA_LABEL_TEXT_STROKE_WIDTH_PX = 0.6;
-const GRAFANA_LABEL_MIN_RADIUS_PX = 7;
-const GRAFANA_LABEL_HORIZONTAL_PADDING_PX = 2;
-const GRAFANA_LABEL_CHAR_WIDTH_RATIO = 0.58;
-const GRAFANA_LABEL_OFFSET_PADDING_PX = 1;
-const GRAFANA_LOOP_LABEL_OFFSET = 10;
-const GRAFANA_INTERFACE_UP_BG_COLOR = EDGE_COLOR_UP;
-const GRAFANA_INTERFACE_DOWN_BG_COLOR = EDGE_COLOR_DOWN;
+const TELEMETRY_LABEL_FONT_SIZE_PX = 10;
+const TELEMETRY_LABEL_TEXT_COLOR = "#FFFFFF";
+const TELEMETRY_LABEL_BG_COLOR = "#bec8d2";
+const TELEMETRY_LABEL_STROKE_COLOR = "rgba(0, 0, 0, 0.95)";
+const TELEMETRY_LABEL_BORDER_COLOR = "rgba(0, 0, 0, 0.25)";
+const TELEMETRY_LABEL_TEXT_STROKE_WIDTH_PX = 0.6;
+const TELEMETRY_LABEL_MIN_RADIUS_PX = 7;
+const TELEMETRY_LABEL_HORIZONTAL_PADDING_PX = 2;
+const TELEMETRY_LABEL_CHAR_WIDTH_RATIO = 0.58;
+const TELEMETRY_LABEL_OFFSET_PADDING_PX = 1;
+const TELEMETRY_LOOP_LABEL_OFFSET = 10;
+const TELEMETRY_INTERFACE_UP_BG_COLOR = EDGE_COLOR_UP;
+const TELEMETRY_INTERFACE_DOWN_BG_COLOR = EDGE_COLOR_DOWN;
 // Bezier curve constants for parallel edges
 const CONTROL_POINT_STEP_SIZE = 40; // Spacing between parallel edges (more curvy for label space)
 
@@ -79,7 +79,7 @@ interface EdgeDataLike {
   endpointLabelOffset?: number;
 }
 
-type EdgeLabelVariant = "default" | "grafana";
+type EdgeLabelVariant = "default" | "telemetry-style";
 
 interface EdgeLabelOffsets {
   source: number;
@@ -108,7 +108,7 @@ interface EndpointAssignment {
 
 type NodeInterfaceAnchorMap = Map<string, Map<string, InterfaceAnchor>>;
 
-interface GrafanaLabelRenderConfig {
+interface TelemetryLabelRenderConfig {
   nodeIconSize: number;
   interfaceScale: number;
   globalInterfaceOverrideSelection: string;
@@ -168,14 +168,14 @@ function normalizeInterfaceState(value: unknown): "up" | "down" | "unknown" | un
   return "unknown";
 }
 
-function getGrafanaInterfaceBackgroundColor(
+function getTelemetryInterfaceBackgroundColor(
   interfaceState: "up" | "down" | "unknown" | undefined,
   colorByInterfaceState: boolean
 ): string {
-  if (!colorByInterfaceState) return GRAFANA_LABEL_BG_COLOR;
-  if (interfaceState === "up") return GRAFANA_INTERFACE_UP_BG_COLOR;
-  if (interfaceState === "down") return GRAFANA_INTERFACE_DOWN_BG_COLOR;
-  return GRAFANA_LABEL_BG_COLOR;
+  if (!colorByInterfaceState) return TELEMETRY_LABEL_BG_COLOR;
+  if (interfaceState === "up") return TELEMETRY_INTERFACE_UP_BG_COLOR;
+  if (interfaceState === "down") return TELEMETRY_INTERFACE_DOWN_BG_COLOR;
+  return TELEMETRY_LABEL_BG_COLOR;
 }
 
 function normalizeEndpoint(value: unknown): string | null {
@@ -207,7 +207,7 @@ function getRectCenter(rect: { x: number; y: number; width: number; height: numb
   };
 }
 
-function getGrafanaLabelMetrics(
+function getTelemetryLabelMetrics(
   labelText: string,
   interfaceScale = 1
 ): {
@@ -217,20 +217,20 @@ function getGrafanaLabelMetrics(
   textStrokeWidth: number;
 } {
   const text = labelText.trim();
-  const fontSize = GRAFANA_LABEL_FONT_SIZE_PX * interfaceScale;
+  const fontSize = TELEMETRY_LABEL_FONT_SIZE_PX * interfaceScale;
   const textWidth = Math.max(
     fontSize * 0.8,
-    text.length * fontSize * GRAFANA_LABEL_CHAR_WIDTH_RATIO
+    text.length * fontSize * TELEMETRY_LABEL_CHAR_WIDTH_RATIO
   );
   const radius = Math.max(
-    GRAFANA_LABEL_MIN_RADIUS_PX * interfaceScale,
-    textWidth / 2 + GRAFANA_LABEL_HORIZONTAL_PADDING_PX * interfaceScale
+    TELEMETRY_LABEL_MIN_RADIUS_PX * interfaceScale,
+    textWidth / 2 + TELEMETRY_LABEL_HORIZONTAL_PADDING_PX * interfaceScale
   );
   return {
     text,
     radius,
     fontSize,
-    textStrokeWidth: GRAFANA_LABEL_TEXT_STROKE_WIDTH_PX * interfaceScale
+    textStrokeWidth: TELEMETRY_LABEL_TEXT_STROKE_WIDTH_PX * interfaceScale
   };
 }
 
@@ -292,19 +292,19 @@ function sortEndpointAssignments(assignments: EndpointAssignment[]): void {
 function buildNodeSideAssignments(
   endpoints: Set<string>,
   nodeVectors: Map<string, EndpointVector> | undefined,
-  grafanaConfig: GrafanaLabelRenderConfig
+  telemetryConfig: TelemetryLabelRenderConfig
 ): Record<InterfaceSide, EndpointAssignment[]> {
   const buckets = sideBuckets();
   for (const endpoint of endpoints) {
     const vector = nodeVectors?.get(endpoint);
     const side = classifyInterfaceSide(vector);
     const sortKey = getInterfaceSortKey(side, vector);
-    const labelText = resolveGrafanaInterfaceLabel(
+    const labelText = resolveTelemetryInterfaceLabel(
       endpoint,
-      grafanaConfig.globalInterfaceOverrideSelection,
-      grafanaConfig.interfaceLabelOverrides
+      telemetryConfig.globalInterfaceOverrideSelection,
+      telemetryConfig.interfaceLabelOverrides
     );
-    const { radius } = getGrafanaLabelMetrics(labelText, grafanaConfig.interfaceScale);
+    const { radius } = getTelemetryLabelMetrics(labelText, telemetryConfig.interfaceScale);
     buckets[side].push({ endpoint, sortKey, radius });
   }
   return buckets;
@@ -406,7 +406,7 @@ function collectEdgeEndpointVectors(
 function buildInterfaceAnchorMap(
   edges: Edge[],
   nodes: Node[],
-  grafanaConfig: GrafanaLabelRenderConfig
+  telemetryConfig: TelemetryLabelRenderConfig
 ): NodeInterfaceAnchorMap {
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
   const endpointsByNode = new Map<string, Set<string>>();
@@ -424,7 +424,7 @@ function buildInterfaceAnchorMap(
       targetEndpoint,
       nodeMap,
       vectorsByNode,
-      grafanaConfig.nodeIconSize
+      telemetryConfig.nodeIconSize
     );
   }
 
@@ -432,9 +432,9 @@ function buildInterfaceAnchorMap(
   for (const [nodeId, endpoints] of endpointsByNode) {
     const node = nodeMap.get(nodeId);
     if (!node) continue;
-    const buckets = buildNodeSideAssignments(endpoints, vectorsByNode.get(nodeId), grafanaConfig);
+    const buckets = buildNodeSideAssignments(endpoints, vectorsByNode.get(nodeId), telemetryConfig);
     const endpointAnchors = assignNodeAnchors(
-      getNodeRect(node, grafanaConfig.nodeIconSize),
+      getNodeRect(node, telemetryConfig.nodeIconSize),
       buckets
     );
     anchorsByNode.set(nodeId, endpointAnchors);
@@ -464,29 +464,30 @@ let interfaceAnchorMapCache: {
 function getCachedInterfaceAnchorMap(
   edges: Edge[],
   nodes: Node[],
-  grafanaConfig: GrafanaLabelRenderConfig
+  telemetryConfig: TelemetryLabelRenderConfig
 ): NodeInterfaceAnchorMap {
   if (
     interfaceAnchorMapCache.edgesRef === edges &&
     interfaceAnchorMapCache.nodesRef === nodes &&
-    interfaceAnchorMapCache.nodeIconSize === grafanaConfig.nodeIconSize &&
-    interfaceAnchorMapCache.interfaceScale === grafanaConfig.interfaceScale &&
+    interfaceAnchorMapCache.nodeIconSize === telemetryConfig.nodeIconSize &&
+    interfaceAnchorMapCache.interfaceScale === telemetryConfig.interfaceScale &&
     interfaceAnchorMapCache.globalInterfaceOverrideSelection ===
-      grafanaConfig.globalInterfaceOverrideSelection &&
-    interfaceAnchorMapCache.interfaceLabelOverridesRef === grafanaConfig.interfaceLabelOverrides &&
+      telemetryConfig.globalInterfaceOverrideSelection &&
+    interfaceAnchorMapCache.interfaceLabelOverridesRef ===
+      telemetryConfig.interfaceLabelOverrides &&
     interfaceAnchorMapCache.anchorsByNode
   ) {
     return interfaceAnchorMapCache.anchorsByNode;
   }
 
-  const anchorsByNode = buildInterfaceAnchorMap(edges, nodes, grafanaConfig);
+  const anchorsByNode = buildInterfaceAnchorMap(edges, nodes, telemetryConfig);
   interfaceAnchorMapCache = {
     edgesRef: edges,
     nodesRef: nodes,
-    nodeIconSize: grafanaConfig.nodeIconSize,
-    interfaceScale: grafanaConfig.interfaceScale,
-    globalInterfaceOverrideSelection: grafanaConfig.globalInterfaceOverrideSelection,
-    interfaceLabelOverridesRef: grafanaConfig.interfaceLabelOverrides,
+    nodeIconSize: telemetryConfig.nodeIconSize,
+    interfaceScale: telemetryConfig.interfaceScale,
+    globalInterfaceOverrideSelection: telemetryConfig.globalInterfaceOverrideSelection,
+    interfaceLabelOverridesRef: telemetryConfig.interfaceLabelOverrides,
     anchorsByNode
   };
   return anchorsByNode;
@@ -503,21 +504,21 @@ function resolveEdgeLabelOffsets(
     return { source: 0, target: 0, loop: 0 };
   }
 
-  if (labelMode === "grafana") {
+  if (labelMode === "telemetry-style") {
     const hasSourceLabel = typeof sourceLabel === "string" && sourceLabel.length > 0;
     const hasTargetLabel = typeof targetLabel === "string" && targetLabel.length > 0;
     const sourceOffset = hasSourceLabel
-      ? getGrafanaLabelMetrics(sourceLabel, interfaceScale).radius +
-        GRAFANA_LABEL_OFFSET_PADDING_PX * interfaceScale
+      ? getTelemetryLabelMetrics(sourceLabel, interfaceScale).radius +
+        TELEMETRY_LABEL_OFFSET_PADDING_PX * interfaceScale
       : DEFAULT_ENDPOINT_LABEL_OFFSET;
     const targetOffset = hasTargetLabel
-      ? getGrafanaLabelMetrics(targetLabel, interfaceScale).radius +
-        GRAFANA_LABEL_OFFSET_PADDING_PX * interfaceScale
+      ? getTelemetryLabelMetrics(targetLabel, interfaceScale).radius +
+        TELEMETRY_LABEL_OFFSET_PADDING_PX * interfaceScale
       : DEFAULT_ENDPOINT_LABEL_OFFSET;
     return {
       source: sourceOffset,
       target: targetOffset,
-      loop: GRAFANA_LOOP_LABEL_OFFSET * interfaceScale
+      loop: TELEMETRY_LOOP_LABEL_OFFSET * interfaceScale
     };
   }
 
@@ -525,10 +526,11 @@ function resolveEdgeLabelOffsets(
     typeof edgeData?.endpointLabelOffset === "number"
       ? edgeData.endpointLabelOffset
       : DEFAULT_ENDPOINT_LABEL_OFFSET;
+  const scaledDefaultOffset = defaultOffset * interfaceScale;
   return {
-    source: defaultOffset,
-    target: defaultOffset,
-    loop: defaultOffset
+    source: scaledDefaultOffset,
+    target: scaledDefaultOffset,
+    loop: scaledDefaultOffset
   };
 }
 
@@ -651,17 +653,17 @@ const LABEL_STYLE_BASE: React.CSSProperties = {
   zIndex: 1
 };
 
-const GRAFANA_LABEL_STYLE_BASE: React.CSSProperties = {
+const TELEMETRY_LABEL_STYLE_BASE: React.CSSProperties = {
   position: "absolute",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontFamily: GRAFANA_LABEL_FONT_FAMILY,
+  fontFamily: TELEMETRY_LABEL_FONT_FAMILY,
   fontWeight: 600,
-  color: GRAFANA_LABEL_TEXT_COLOR,
-  backgroundColor: GRAFANA_LABEL_BG_COLOR,
+  color: TELEMETRY_LABEL_TEXT_COLOR,
+  backgroundColor: TELEMETRY_LABEL_BG_COLOR,
   borderRadius: "999px",
-  border: `0.7px solid ${GRAFANA_LABEL_BORDER_COLOR}`,
+  border: `0.7px solid ${TELEMETRY_LABEL_BORDER_COLOR}`,
   boxSizing: "border-box",
   pointerEvents: "none",
   whiteSpace: "nowrap",
@@ -680,7 +682,7 @@ const EndpointLabel = memo(function EndpointLabel({
   variant,
   interfaceState,
   colorByInterfaceState,
-  grafanaInterfaceScale
+  telemetryInterfaceScale
 }: Readonly<{
   text: string;
   x: number;
@@ -688,37 +690,47 @@ const EndpointLabel = memo(function EndpointLabel({
   variant: EdgeLabelVariant;
   interfaceState?: "up" | "down" | "unknown";
   colorByInterfaceState: boolean;
-  grafanaInterfaceScale: number;
+  telemetryInterfaceScale: number;
 }>) {
-  const grafanaMetrics = useMemo(
-    () => (variant === "grafana" ? getGrafanaLabelMetrics(text, grafanaInterfaceScale) : null),
-    [text, variant, grafanaInterfaceScale]
+  const telemetryMetrics = useMemo(
+    () =>
+      variant === "telemetry-style"
+        ? getTelemetryLabelMetrics(text, telemetryInterfaceScale)
+        : null,
+    [text, variant, telemetryInterfaceScale]
   );
-  const grafanaBackgroundColor = useMemo(
-    () => getGrafanaInterfaceBackgroundColor(interfaceState, colorByInterfaceState),
+  const telemetryBackgroundColor = useMemo(
+    () => getTelemetryInterfaceBackgroundColor(interfaceState, colorByInterfaceState),
     [interfaceState, colorByInterfaceState]
   );
 
-  const renderedText = grafanaMetrics?.text ?? text;
+  const renderedText = telemetryMetrics?.text ?? text;
   const style = useMemo((): React.CSSProperties => {
-    if (variant === "grafana" && grafanaMetrics) {
-      const diameter = grafanaMetrics.radius * 2;
+    if (variant === "telemetry-style" && telemetryMetrics) {
+      const diameter = telemetryMetrics.radius * 2;
       return {
-        ...GRAFANA_LABEL_STYLE_BASE,
-        backgroundColor: grafanaBackgroundColor,
+        ...TELEMETRY_LABEL_STYLE_BASE,
+        backgroundColor: telemetryBackgroundColor,
         width: `${diameter}px`,
         minWidth: `${diameter}px`,
         height: `${diameter}px`,
-        fontSize: `${grafanaMetrics.fontSize}px`,
-        textShadow: `0 0 ${grafanaMetrics.textStrokeWidth}px ${GRAFANA_LABEL_STROKE_COLOR}, 0 0 ${grafanaMetrics.textStrokeWidth}px ${GRAFANA_LABEL_STROKE_COLOR}`,
+        fontSize: `${telemetryMetrics.fontSize}px`,
+        textShadow: `0 0 ${telemetryMetrics.textStrokeWidth}px ${TELEMETRY_LABEL_STROKE_COLOR}, 0 0 ${telemetryMetrics.textStrokeWidth}px ${TELEMETRY_LABEL_STROKE_COLOR}`,
         transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`
       };
     }
+    const scaledFontSize = Math.max(8, TELEMETRY_LABEL_FONT_SIZE_PX * telemetryInterfaceScale);
+    const scaledHorizontalPadding = Math.max(
+      2,
+      TELEMETRY_LABEL_HORIZONTAL_PADDING_PX * telemetryInterfaceScale
+    );
     return {
       ...LABEL_STYLE_BASE,
+      fontSize: `${scaledFontSize}px`,
+      padding: `0px ${scaledHorizontalPadding}px`,
       transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`
     };
-  }, [variant, grafanaMetrics, grafanaBackgroundColor, x, y]);
+  }, [variant, telemetryMetrics, telemetryBackgroundColor, telemetryInterfaceScale, x, y]);
 
   if (renderedText.length === 0) {
     return null;
@@ -918,23 +930,25 @@ function useEdgeGeometry(
   labelOffsets: EdgeLabelOffsets,
   edgeData: EdgeDataLike | undefined,
   labelMode: EdgeLabelMode,
-  grafanaConfig: GrafanaLabelRenderConfig | null
+  telemetryConfig: TelemetryLabelRenderConfig | null
 ) {
-  const nodeIconSize =
-    labelMode === "grafana" ? (grafanaConfig?.nodeIconSize ?? NODE_ICON_SIZE) : NODE_ICON_SIZE;
+  const nodeIconSize = telemetryConfig?.nodeIconSize ?? NODE_ICON_SIZE;
   const sourceNode = useNodeGeometry(source, nodeIconSize);
   const targetNode = useNodeGeometry(target, nodeIconSize);
   const edges = useEdges();
   const nodeListForAnchors = useGraphStore(
-    useCallback((state) => (labelMode === "grafana" ? state.nodes : EMPTY_GRAPH_NODES), [labelMode])
+    useCallback(
+      (state) => (labelMode === "telemetry-style" ? state.nodes : EMPTY_GRAPH_NODES),
+      [labelMode]
+    )
   );
   const { getParallelInfo, getLoopInfo } = useEdgeInfo(edges);
   const interfaceAnchorMap = useMemo(
     () =>
-      labelMode === "grafana" && grafanaConfig
-        ? getCachedInterfaceAnchorMap(edges, nodeListForAnchors, grafanaConfig)
+      labelMode === "telemetry-style" && telemetryConfig
+        ? getCachedInterfaceAnchorMap(edges, nodeListForAnchors, telemetryConfig)
         : undefined,
-    [labelMode, edges, nodeListForAnchors, grafanaConfig]
+    [labelMode, edges, nodeListForAnchors, telemetryConfig]
   );
 
   const parallelInfo = getParallelInfo(edgeId);
@@ -978,7 +992,7 @@ function useEdgeGeometry(
       { source: labelOffsets.source, target: labelOffsets.target },
       sourceAnchor,
       targetAnchor,
-      labelMode === "grafana"
+      labelMode === "telemetry-style"
     );
   }, [
     sourceNode,
@@ -1029,64 +1043,64 @@ function shouldRenderEdgeLabels(
  */
 const TopologyEdgeComponent: React.FC<EdgeProps> = ({ id, source, target, data, selected }) => {
   const mode = useMode();
-  const grafanaLabelSettings = useGrafanaLabelSettings();
+  const telemetryLabelSettings = useTelemetryLabelSettings();
   const edgeData = useMemo(() => toEdgeData(data), [data]);
   const { labelMode, suppressLabels, suppressHitArea } = useEdgeRenderConfig();
-  const grafanaConfig = useMemo<GrafanaLabelRenderConfig>(
+  const telemetryConfig = useMemo<TelemetryLabelRenderConfig>(
     () => ({
-      nodeIconSize: clampGrafanaNodeSizePx(grafanaLabelSettings.nodeSizePx),
+      nodeIconSize: clampTelemetryNodeSizePx(telemetryLabelSettings.nodeSizePx),
       interfaceScale:
-        clampGrafanaInterfaceSizePercent(grafanaLabelSettings.interfaceSizePercent) / 100,
-      globalInterfaceOverrideSelection: grafanaLabelSettings.globalInterfaceOverrideSelection,
-      interfaceLabelOverrides: grafanaLabelSettings.interfaceLabelOverrides
+        clampTelemetryInterfaceSizePercent(telemetryLabelSettings.interfaceSizePercent) / 100,
+      globalInterfaceOverrideSelection: telemetryLabelSettings.globalInterfaceOverrideSelection,
+      interfaceLabelOverrides: telemetryLabelSettings.interfaceLabelOverrides
     }),
     [
-      grafanaLabelSettings.nodeSizePx,
-      grafanaLabelSettings.interfaceSizePercent,
-      grafanaLabelSettings.globalInterfaceOverrideSelection,
-      grafanaLabelSettings.interfaceLabelOverrides
+      telemetryLabelSettings.nodeSizePx,
+      telemetryLabelSettings.interfaceSizePercent,
+      telemetryLabelSettings.globalInterfaceOverrideSelection,
+      telemetryLabelSettings.interfaceLabelOverrides
     ]
   );
   const sourceEndpoint = normalizeEndpoint(edgeData.sourceEndpoint);
   const targetEndpoint = normalizeEndpoint(edgeData.targetEndpoint);
   const sourceRenderedLabel = useMemo(() => {
     if (sourceEndpoint === null) return null;
-    if (labelMode !== "grafana") return sourceEndpoint;
-    return resolveGrafanaInterfaceLabel(
+    if (labelMode !== "telemetry-style") return sourceEndpoint;
+    return resolveTelemetryInterfaceLabel(
       sourceEndpoint,
-      grafanaConfig.globalInterfaceOverrideSelection,
-      grafanaConfig.interfaceLabelOverrides
+      telemetryConfig.globalInterfaceOverrideSelection,
+      telemetryConfig.interfaceLabelOverrides
     );
   }, [
     sourceEndpoint,
     labelMode,
-    grafanaConfig.globalInterfaceOverrideSelection,
-    grafanaConfig.interfaceLabelOverrides
+    telemetryConfig.globalInterfaceOverrideSelection,
+    telemetryConfig.interfaceLabelOverrides
   ]);
   const targetRenderedLabel = useMemo(() => {
     if (targetEndpoint === null) return null;
-    if (labelMode !== "grafana") return targetEndpoint;
-    return resolveGrafanaInterfaceLabel(
+    if (labelMode !== "telemetry-style") return targetEndpoint;
+    return resolveTelemetryInterfaceLabel(
       targetEndpoint,
-      grafanaConfig.globalInterfaceOverrideSelection,
-      grafanaConfig.interfaceLabelOverrides
+      telemetryConfig.globalInterfaceOverrideSelection,
+      telemetryConfig.interfaceLabelOverrides
     );
   }, [
     targetEndpoint,
     labelMode,
-    grafanaConfig.globalInterfaceOverrideSelection,
-    grafanaConfig.interfaceLabelOverrides
+    telemetryConfig.globalInterfaceOverrideSelection,
+    telemetryConfig.interfaceLabelOverrides
   ]);
   const labelOffsets = useMemo(
     () =>
       resolveEdgeLabelOffsets(
         edgeData,
         labelMode,
-        grafanaConfig.interfaceScale,
+        telemetryConfig.interfaceScale,
         sourceRenderedLabel ?? undefined,
         targetRenderedLabel ?? undefined
       ),
-    [edgeData, labelMode, grafanaConfig.interfaceScale, sourceRenderedLabel, targetRenderedLabel]
+    [edgeData, labelMode, telemetryConfig.interfaceScale, sourceRenderedLabel, targetRenderedLabel]
   );
   const geometry = useEdgeGeometry(
     id,
@@ -1095,13 +1109,14 @@ const TopologyEdgeComponent: React.FC<EdgeProps> = ({ id, source, target, data, 
     labelOffsets,
     edgeData,
     labelMode,
-    grafanaConfig
+    telemetryConfig
   );
 
   if (!geometry) return null;
   const shouldRenderLabels = shouldRenderEdgeLabels(labelMode, suppressLabels, selected === true);
-  const labelVariant: EdgeLabelVariant = labelMode === "grafana" ? "grafana" : "default";
-  const colorInterfacesByState = labelMode === "grafana" && mode === "view";
+  const labelVariant: EdgeLabelVariant =
+    labelMode === "telemetry-style" ? "telemetry-style" : "default";
+  const colorInterfacesByState = labelMode === "telemetry-style" && mode === "view";
 
   const stroke = getStrokeStyle(edgeData.linkStatus, selected === true, !colorInterfacesByState);
   const sourceInterfaceState = normalizeInterfaceState(edgeData.sourceInterfaceState);
@@ -1141,7 +1156,7 @@ const TopologyEdgeComponent: React.FC<EdgeProps> = ({ id, source, target, data, 
               variant={labelVariant}
               interfaceState={sourceInterfaceState}
               colorByInterfaceState={colorInterfacesByState}
-              grafanaInterfaceScale={grafanaConfig.interfaceScale}
+              telemetryInterfaceScale={telemetryConfig.interfaceScale}
             />
           )}
           {targetRenderedLabel !== null && targetRenderedLabel.length > 0 && (
@@ -1152,7 +1167,7 @@ const TopologyEdgeComponent: React.FC<EdgeProps> = ({ id, source, target, data, 
               variant={labelVariant}
               interfaceState={targetInterfaceState}
               colorByInterfaceState={colorInterfacesByState}
-              grafanaInterfaceScale={grafanaConfig.interfaceScale}
+              telemetryInterfaceScale={telemetryConfig.interfaceScale}
             />
           )}
         </EdgeLabelRenderer>

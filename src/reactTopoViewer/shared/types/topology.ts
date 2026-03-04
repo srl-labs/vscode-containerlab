@@ -256,6 +256,9 @@ export interface TopologyAnnotations {
     endpointLabelOffset?: number;
     gridColor?: string | null;
     gridBgColor?: string | null;
+    style?: "default" | "telemetry-style";
+    linkLabelMode?: "show-all" | "on-select" | "hide" | "telemetry-style";
+    lastNonTelemetryLinkLabelMode?: "show-all" | "on-select" | "hide";
   };
   [key: string]: unknown;
 }

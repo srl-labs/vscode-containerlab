@@ -1,5 +1,5 @@
-export const DEFAULT_GRAFANA_NODE_SIZE_PX = 40;
-export const DEFAULT_GRAFANA_INTERFACE_SIZE_PERCENT = 100;
+export const DEFAULT_TELEMETRY_NODE_SIZE_PX = 40;
+export const DEFAULT_TELEMETRY_INTERFACE_SIZE_PERCENT = 100;
 
 export const INTERFACE_SELECT_AUTO = "__auto__";
 export const INTERFACE_SELECT_FULL = "__full__";
@@ -17,13 +17,13 @@ export function parseBoundedNumber(
   return Math.max(min, Math.min(max, parsed));
 }
 
-export function clampGrafanaNodeSizePx(value: number): number {
-  if (!Number.isFinite(value)) return DEFAULT_GRAFANA_NODE_SIZE_PX;
+export function clampTelemetryNodeSizePx(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_TELEMETRY_NODE_SIZE_PX;
   return Math.max(12, Math.min(240, value));
 }
 
-export function clampGrafanaInterfaceSizePercent(value: number): number {
-  if (!Number.isFinite(value)) return DEFAULT_GRAFANA_INTERFACE_SIZE_PERCENT;
+export function clampTelemetryInterfaceSizePercent(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_TELEMETRY_INTERFACE_SIZE_PERCENT;
   return Math.max(40, Math.min(400, value));
 }
 
@@ -123,7 +123,7 @@ export function getInterfaceSelectionValue(
   return `${INTERFACE_SELECT_TOKEN_PREFIX}${override}`;
 }
 
-export function resolveGrafanaInterfaceLabel(
+export function resolveTelemetryInterfaceLabel(
   endpoint: string,
   globalSelection: string,
   interfaceLabelOverrides: Record<string, string>

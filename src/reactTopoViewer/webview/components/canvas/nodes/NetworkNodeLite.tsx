@@ -5,20 +5,19 @@ import React, { memo, useMemo } from "react";
 import type { NodeProps } from "@xyflow/react";
 
 import { SELECTION_COLOR } from "../types";
-import { useLinkLabelMode, useTopoViewerStore } from "../../../stores/topoViewerStore";
-import { clampGrafanaNodeSizePx } from "../../../utils/grafanaInterfaceLabels";
+import { useTopoViewerStore } from "../../../stores/topoViewerStore";
+import { clampTelemetryNodeSizePx } from "../../../utils/telemetryInterfaceLabels";
 
-import { ICON_SIZE, LiteNodeShell } from "./NodeLiteBase";
+import { LiteNodeShell } from "./NodeLiteBase";
 import { getNodeDirectionRotation } from "./nodeStyles";
 import { getNetworkNodeTypeColor, toNetworkNodeData } from "./networkNodeShared";
 
 const NetworkNodeLiteComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const nodeData = toNetworkNodeData(data);
-  const linkLabelMode = useLinkLabelMode();
-  const grafanaNodeSizePx = useTopoViewerStore((state) => state.grafanaNodeSizePx);
+  const telemetryNodeSizePx = useTopoViewerStore((state) => state.telemetryNodeSizePx);
   const iconSize = useMemo(
-    () => (linkLabelMode === "grafana" ? clampGrafanaNodeSizePx(grafanaNodeSizePx) : ICON_SIZE),
-    [linkLabelMode, grafanaNodeSizePx]
+    () => clampTelemetryNodeSizePx(telemetryNodeSizePx),
+    [telemetryNodeSizePx]
   );
   const color = getNetworkNodeTypeColor(nodeData.nodeType);
   const rotation = getNodeDirectionRotation(nodeData.direction);

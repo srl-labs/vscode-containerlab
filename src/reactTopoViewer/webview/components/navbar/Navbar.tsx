@@ -2,7 +2,6 @@
 import React from "react";
 import {
   AppBar,
-  Box,
   Divider,
   IconButton,
   ListItemIcon,
@@ -20,7 +19,6 @@ import {
   Check as CheckIcon,
   CleaningServices as CleaningServicesIcon,
   FitScreen as FitScreenIcon,
-  GridOn as GridOnIcon,
   Info as InfoIcon,
   Keyboard as KeyboardIcon,
   Label as LabelIcon,
@@ -51,7 +49,6 @@ import { useDeploymentCommands } from "../../hooks/ui";
 import type { LayoutOption } from "../../hooks/ui";
 
 import { ContainerlabLogo } from "./ContainerlabLogo";
-import { GrafanaLabelSettingsModal } from "./GrafanaLabelSettingsModal";
 
 const ERROR_MAIN = "error.main";
 const SUCCESS_MAIN = "success.main";
@@ -94,7 +91,6 @@ export interface NavbarProps {
   isPartyMode?: boolean;
   /** Easter egg logo click handler and state */
   onLogoClick?: () => void;
-  onShowGridSettings?: (position: { top: number; left: number }) => void;
   linkLabelMode: LinkLabelMode;
   onLinkLabelModeChange: (mode: LinkLabelMode) => void;
 }
@@ -121,7 +117,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogoClick,
   logoClickProgress = 0,
   isPartyMode = false,
-  onShowGridSettings,
   linkLabelMode,
   onLinkLabelModeChange
 }) => {
@@ -141,7 +136,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     left: number;
   } | null>(null);
   const linkLabelMenuOpen = Boolean(linkLabelMenuPosition);
-  const [isGrafanaSettingsOpen, setIsGrafanaSettingsOpen] = React.useState(false);
 
   const handleLinkLabelClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     const anchorPosition = getToolbarAnchorPosition(appBarRef.current, event.currentTarget);
@@ -152,19 +146,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const handleLinkLabelClose = React.useCallback(() => {
     setLinkLabelMenuPosition(null);
-  }, []);
-
-  const handleOpenGrafanaSettings = React.useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      event.stopPropagation();
-      setLinkLabelMenuPosition(null);
-      setIsGrafanaSettingsOpen(true);
-    },
-    []
-  );
-
-  const handleCloseGrafanaSettings = React.useCallback(() => {
-    setIsGrafanaSettingsOpen(false);
   }, []);
 
   const handleLinkLabelSelect = React.useCallback(
@@ -261,16 +242,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     [onLayoutChange]
   );
 
-  const handleGridSettingsClick = React.useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      const anchorPosition = getToolbarAnchorPosition(appBarRef.current, event.currentTarget);
-      if (anchorPosition) {
-        onShowGridSettings?.(anchorPosition);
-      }
-    },
-    [onShowGridSettings]
-  );
-
   const handleFindNodeClick = React.useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       const anchorPosition = getToolbarAnchorPosition(appBarRef.current, event.currentTarget);
@@ -282,375 +253,335 @@ export const Navbar: React.FC<NavbarProps> = ({
   );
 
   return (
-    <>
-      <AppBar
-        ref={appBarRef}
-        position="static"
-        elevation={0}
-        sx={{ borderBottom: 1, borderColor: "divider" }}
+    <AppBar
+      ref={appBarRef}
+      position="static"
+      elevation={0}
+      sx={{ borderBottom: 1, borderColor: "divider" }}
+    >
+      <Toolbar
+        variant="dense"
+        disableGutters
+        sx={{ minHeight: 40, px: 1, display: "flex", alignItems: "center", gap: 0.5 }}
       >
-        <Toolbar
-          variant="dense"
-          disableGutters
-          sx={{ minHeight: 40, px: 1, display: "flex", alignItems: "center", gap: 0.5 }}
+        {/* Left: Logo + Title */}
+        <IconButton size="small" onClick={onLogoClick}>
+          <ContainerlabLogo clickProgress={logoClickProgress} isExploded={isPartyMode} />
+        </IconButton>
+        <Typography
+          variant="h5"
+          fontWeight={500}
+          ml={0.5}
+          sx={{ lineHeight: 1, flexGrow: 1 }}
+          data-testid="navbar-lab-name"
         >
-          {/* Left: Logo + Title */}
-          <IconButton size="small" onClick={onLogoClick}>
-            <ContainerlabLogo clickProgress={logoClickProgress} isExploded={isPartyMode} />
-          </IconButton>
-          <Typography
-            variant="h5"
-            fontWeight={500}
-            ml={0.5}
-            sx={{ lineHeight: 1, flexGrow: 1 }}
-            data-testid="navbar-lab-name"
-          >
-            {labName || "TopoViewer"}
-          </Typography>
+          {labName || "TopoViewer"}
+        </Typography>
 
-          {/* Deploy / Destroy */}
-          <Tooltip title={isViewerMode ? "Destroy Lab" : "Deploy Lab"}>
-            <IconButton
-              size="small"
-              onClick={handlePrimaryAction}
-              disabled={isProcessing}
-              sx={{ color: isViewerMode ? ERROR_MAIN : SUCCESS_MAIN }}
-              data-testid="navbar-deploy"
-            >
-              {isViewerMode ? <StopIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
-            </IconButton>
-          </Tooltip>
+        {/* Deploy / Destroy */}
+        <Tooltip title={isViewerMode ? "Destroy Lab" : "Deploy Lab"}>
           <IconButton
             size="small"
-            onClick={handleDeployMenuOpen}
+            onClick={handlePrimaryAction}
             disabled={isProcessing}
-            aria-controls={deployMenuOpen ? "deploy-split-menu" : undefined}
-            aria-haspopup="true"
-            aria-expanded={deployMenuOpen ? "true" : undefined}
-            sx={{ color: isViewerMode ? ERROR_MAIN : SUCCESS_MAIN, ml: -0.5 }}
-            data-testid="navbar-deploy-menu"
+            sx={{ color: isViewerMode ? ERROR_MAIN : SUCCESS_MAIN }}
+            data-testid="navbar-deploy"
           >
-            <ExpandMoreIcon fontSize="small" />
+            {isViewerMode ? <StopIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
           </IconButton>
-          <Menu
-            id="deploy-split-menu"
-            open={deployMenuOpen}
-            onClose={handleDeployMenuClose}
-            anchorReference="anchorPosition"
-            anchorPosition={deployMenuPosition ?? undefined}
-            transformOrigin={{ vertical: "top", horizontal: "center" }}
+        </Tooltip>
+        <IconButton
+          size="small"
+          onClick={handleDeployMenuOpen}
+          disabled={isProcessing}
+          aria-controls={deployMenuOpen ? "deploy-split-menu" : undefined}
+          aria-haspopup="true"
+          aria-expanded={deployMenuOpen ? "true" : undefined}
+          sx={{ color: isViewerMode ? ERROR_MAIN : SUCCESS_MAIN, ml: -0.5 }}
+          data-testid="navbar-deploy-menu"
+        >
+          <ExpandMoreIcon fontSize="small" />
+        </IconButton>
+        <Menu
+          id="deploy-split-menu"
+          open={deployMenuOpen}
+          onClose={handleDeployMenuClose}
+          anchorReference="anchorPosition"
+          anchorPosition={deployMenuPosition ?? undefined}
+          transformOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+          {isViewerMode
+            ? [
+                <MenuItem
+                  key="destroy"
+                  onClick={handleDestroy}
+                  data-testid="navbar-deploy-item-destroy"
+                >
+                  <ListItemIcon>
+                    <StopIcon fontSize="small" sx={{ color: ERROR_MAIN }} />
+                  </ListItemIcon>
+                  <ListItemText>Destroy</ListItemText>
+                </MenuItem>,
+                <MenuItem
+                  key="destroy-cleanup"
+                  onClick={handleDestroyCleanup}
+                  data-testid="navbar-deploy-item-destroy-cleanup"
+                >
+                  <ListItemIcon>
+                    <CleaningServicesIcon fontSize="small" sx={{ color: ERROR_MAIN }} />
+                  </ListItemIcon>
+                  <ListItemText>Destroy (cleanup)</ListItemText>
+                </MenuItem>,
+                <Divider key="divider" sx={{ my: 0.5 }} />,
+                <MenuItem
+                  key="redeploy"
+                  onClick={handleRedeploy}
+                  data-testid="navbar-deploy-item-redeploy"
+                >
+                  <ListItemIcon>
+                    <ReplayIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
+                  </ListItemIcon>
+                  <ListItemText>Redeploy</ListItemText>
+                </MenuItem>,
+                <MenuItem
+                  key="redeploy-cleanup"
+                  onClick={handleRedeployCleanup}
+                  data-testid="navbar-deploy-item-redeploy-cleanup"
+                >
+                  <ListItemIcon>
+                    <CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
+                  </ListItemIcon>
+                  <ListItemText>Redeploy (cleanup)</ListItemText>
+                </MenuItem>
+              ]
+            : [
+                <MenuItem
+                  key="deploy"
+                  onClick={() => {
+                    handleDeployMenuClose();
+                    handleDeploy();
+                  }}
+                  data-testid="navbar-deploy-item-deploy"
+                >
+                  <ListItemIcon>
+                    <PlayArrowIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
+                  </ListItemIcon>
+                  <ListItemText>Deploy</ListItemText>
+                </MenuItem>,
+                <MenuItem
+                  key="deploy-cleanup"
+                  onClick={handleDeployCleanup}
+                  data-testid="navbar-deploy-item-deploy-cleanup"
+                >
+                  <ListItemIcon>
+                    <CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
+                  </ListItemIcon>
+                  <ListItemText>Deploy (cleanup)</ListItemText>
+                </MenuItem>
+              ]}
+        </Menu>
+
+        <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+
+        {/* Lock / Unlock */}
+        <Tooltip title={isLocked ? "Unlock lab to edit" : "Lock Lab"}>
+          <IconButton
+            size="small"
+            onClick={toggleLock}
+            disabled={isProcessing}
+            sx={{ color: isLocked ? ERROR_MAIN : "inherit" }}
+            data-testid="navbar-lock"
           >
-            {isViewerMode
-              ? [
-                  <MenuItem
-                    key="destroy"
-                    onClick={handleDestroy}
-                    data-testid="navbar-deploy-item-destroy"
-                  >
-                    <ListItemIcon>
-                      <StopIcon fontSize="small" sx={{ color: ERROR_MAIN }} />
-                    </ListItemIcon>
-                    <ListItemText>Destroy</ListItemText>
-                  </MenuItem>,
-                  <MenuItem
-                    key="destroy-cleanup"
-                    onClick={handleDestroyCleanup}
-                    data-testid="navbar-deploy-item-destroy-cleanup"
-                  >
-                    <ListItemIcon>
-                      <CleaningServicesIcon fontSize="small" sx={{ color: ERROR_MAIN }} />
-                    </ListItemIcon>
-                    <ListItemText>Destroy (cleanup)</ListItemText>
-                  </MenuItem>,
-                  <Divider key="divider" sx={{ my: 0.5 }} />,
-                  <MenuItem
-                    key="redeploy"
-                    onClick={handleRedeploy}
-                    data-testid="navbar-deploy-item-redeploy"
-                  >
-                    <ListItemIcon>
-                      <ReplayIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
-                    </ListItemIcon>
-                    <ListItemText>Redeploy</ListItemText>
-                  </MenuItem>,
-                  <MenuItem
-                    key="redeploy-cleanup"
-                    onClick={handleRedeployCleanup}
-                    data-testid="navbar-deploy-item-redeploy-cleanup"
-                  >
-                    <ListItemIcon>
-                      <CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
-                    </ListItemIcon>
-                    <ListItemText>Redeploy (cleanup)</ListItemText>
-                  </MenuItem>
-                ]
-              : [
-                  <MenuItem
-                    key="deploy"
-                    onClick={() => {
-                      handleDeployMenuClose();
-                      handleDeploy();
-                    }}
-                    data-testid="navbar-deploy-item-deploy"
-                  >
-                    <ListItemIcon>
-                      <PlayArrowIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
-                    </ListItemIcon>
-                    <ListItemText>Deploy</ListItemText>
-                  </MenuItem>,
-                  <MenuItem
-                    key="deploy-cleanup"
-                    onClick={handleDeployCleanup}
-                    data-testid="navbar-deploy-item-deploy-cleanup"
-                  >
-                    <ListItemIcon>
-                      <CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} />
-                    </ListItemIcon>
-                    <ListItemText>Deploy (cleanup)</ListItemText>
-                  </MenuItem>
-                ]}
-          </Menu>
+            {isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
 
-          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+        {/* Lab Settings */}
+        <Tooltip title="Lab Settings">
+          <IconButton size="small" onClick={onLabSettings} data-testid="navbar-lab-settings">
+            <SettingsIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
 
-          {/* Lock / Unlock */}
-          <Tooltip title={isLocked ? "Unlock lab to edit" : "Lock Lab"}>
-            <IconButton
-              size="small"
-              onClick={toggleLock}
-              disabled={isProcessing}
-              sx={{ color: isLocked ? ERROR_MAIN : "inherit" }}
-              data-testid="navbar-lock"
-            >
-              {isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
-            </IconButton>
+        {/* Undo - only show in edit mode */}
+        {isEditMode && (
+          <Tooltip title="Undo (Ctrl+Z)">
+            <span>
+              <IconButton
+                size="small"
+                onClick={onUndo}
+                disabled={!canUndo}
+                data-testid="navbar-undo"
+              >
+                <UndoIcon fontSize="small" />
+              </IconButton>
+            </span>
           </Tooltip>
+        )}
 
-          {/* Lab Settings */}
-          <Tooltip title="Lab Settings">
-            <IconButton size="small" onClick={onLabSettings} data-testid="navbar-lab-settings">
-              <SettingsIcon fontSize="small" />
-            </IconButton>
+        {/* Redo - only show in edit mode */}
+        {isEditMode && (
+          <Tooltip title="Redo (Ctrl+Y)">
+            <span>
+              <IconButton
+                size="small"
+                onClick={onRedo}
+                disabled={!canRedo}
+                data-testid="navbar-redo"
+              >
+                <RedoIcon fontSize="small" />
+              </IconButton>
+            </span>
           </Tooltip>
+        )}
 
-          {/* Undo - only show in edit mode */}
-          {isEditMode && (
-            <Tooltip title="Undo (Ctrl+Z)">
-              <span>
-                <IconButton
-                  size="small"
-                  onClick={onUndo}
-                  disabled={!canUndo}
-                  data-testid="navbar-undo"
-                >
-                  <UndoIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-          )}
+        <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
-          {/* Redo - only show in edit mode */}
-          {isEditMode && (
-            <Tooltip title="Redo (Ctrl+Y)">
-              <span>
-                <IconButton
-                  size="small"
-                  onClick={onRedo}
-                  disabled={!canRedo}
-                  data-testid="navbar-redo"
-                >
-                  <RedoIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-          )}
-
-          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-
-          {/* Bulk Link - only show in edit mode */}
-          {isEditMode && (
-            <Tooltip title="Bulk Link Devices">
-              <span>
-                <IconButton
-                  size="small"
-                  onClick={onShowBulkLink}
-                  disabled={isLocked}
-                  data-testid="navbar-bulk-link"
-                >
-                  <LinkIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-          )}
-
-          {/* Fit to Viewport */}
-          <Tooltip title="Fit to Viewport">
-            <IconButton size="small" onClick={onZoomToFit} data-testid="navbar-fit-viewport">
-              <FitScreenIcon fontSize="small" />
-            </IconButton>
+        {/* Bulk Link - only show in edit mode */}
+        {isEditMode && (
+          <Tooltip title="Bulk Link Devices">
+            <span>
+              <IconButton
+                size="small"
+                onClick={onShowBulkLink}
+                disabled={isLocked}
+                data-testid="navbar-bulk-link"
+              >
+                <LinkIcon fontSize="small" />
+              </IconButton>
+            </span>
           </Tooltip>
+        )}
 
-          {/* Toggle YAML Split View */}
-          <Tooltip title="Toggle YAML Split View">
-            <IconButton size="small" onClick={onToggleSplit} data-testid="navbar-split-view">
-              <ViewColumnIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+        {/* Fit to Viewport */}
+        <Tooltip title="Fit to Viewport">
+          <IconButton size="small" onClick={onZoomToFit} data-testid="navbar-fit-viewport">
+            <FitScreenIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
 
-          {/* Layout Manager */}
-          <Tooltip title="Layout">
-            <IconButton size="small" onClick={handleLayoutClick} data-testid="navbar-layout">
-              <AccountTreeIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Menu
-            open={layoutMenuOpen}
-            onClose={handleLayoutClose}
-            anchorReference="anchorPosition"
-            anchorPosition={layoutMenuPosition ?? undefined}
-            transformOrigin={{ vertical: "top", horizontal: "center" }}
+        {/* Toggle YAML Split View */}
+        <Tooltip title="Toggle YAML Split View">
+          <IconButton size="small" onClick={onToggleSplit} data-testid="navbar-split-view">
+            <ViewColumnIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {/* Layout Manager */}
+        <Tooltip title="Layout">
+          <IconButton size="small" onClick={handleLayoutClick} data-testid="navbar-layout">
+            <AccountTreeIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Menu
+          open={layoutMenuOpen}
+          onClose={handleLayoutClose}
+          anchorReference="anchorPosition"
+          anchorPosition={layoutMenuPosition ?? undefined}
+          transformOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+          <MenuItem onClick={() => handleLayoutSelect("preset")} data-testid="navbar-layout-preset">
+            <ListItemIcon>{layout === "preset" && <CheckIcon fontSize="small" />}</ListItemIcon>
+            <ListItemText>Preset</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => handleLayoutSelect("force")} data-testid="navbar-layout-force">
+            <ListItemIcon>{layout === "force" && <CheckIcon fontSize="small" />}</ListItemIcon>
+            <ListItemText>Force</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => handleLayoutSelect("geo")} data-testid="navbar-layout-geo">
+            <ListItemIcon>{layout === "geo" && <CheckIcon fontSize="small" />}</ListItemIcon>
+            <ListItemText>Geo</ListItemText>
+          </MenuItem>
+        </Menu>
+
+        {/* Find Node */}
+        <Tooltip title="Find Node">
+          <IconButton size="small" onClick={handleFindNodeClick} data-testid="navbar-find-node">
+            <SearchIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {/* Link Labels Dropdown */}
+        <Tooltip title="Link Labels">
+          <IconButton size="small" onClick={handleLinkLabelClick} data-testid="navbar-link-labels">
+            <LabelIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Menu
+          open={linkLabelMenuOpen}
+          onClose={handleLinkLabelClose}
+          anchorReference="anchorPosition"
+          anchorPosition={linkLabelMenuPosition ?? undefined}
+          transformOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+          <MenuItem
+            onClick={() => handleLinkLabelSelect("show-all")}
+            data-testid="navbar-link-label-show-all"
           >
-            <MenuItem
-              onClick={() => handleLayoutSelect("preset")}
-              data-testid="navbar-layout-preset"
-            >
-              <ListItemIcon>{layout === "preset" && <CheckIcon fontSize="small" />}</ListItemIcon>
-              <ListItemText>Preset</ListItemText>
-            </MenuItem>
-            <MenuItem onClick={() => handleLayoutSelect("force")} data-testid="navbar-layout-force">
-              <ListItemIcon>{layout === "force" && <CheckIcon fontSize="small" />}</ListItemIcon>
-              <ListItemText>Force</ListItemText>
-            </MenuItem>
-            <MenuItem onClick={() => handleLayoutSelect("geo")} data-testid="navbar-layout-geo">
-              <ListItemIcon>{layout === "geo" && <CheckIcon fontSize="small" />}</ListItemIcon>
-              <ListItemText>Geo</ListItemText>
-            </MenuItem>
-          </Menu>
-
-          {/* Grid line width */}
-          <Tooltip title="Grid Settings">
-            <IconButton size="small" onClick={handleGridSettingsClick} data-testid="navbar-grid">
-              <GridOnIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-
-          {/* Find Node */}
-          <Tooltip title="Find Node">
-            <IconButton size="small" onClick={handleFindNodeClick} data-testid="navbar-find-node">
-              <SearchIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-
-          {/* Link Labels Dropdown */}
-          <Tooltip title="Link Labels">
-            <IconButton
-              size="small"
-              onClick={handleLinkLabelClick}
-              data-testid="navbar-link-labels"
-            >
-              <LabelIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Menu
-            open={linkLabelMenuOpen}
-            onClose={handleLinkLabelClose}
-            anchorReference="anchorPosition"
-            anchorPosition={linkLabelMenuPosition ?? undefined}
-            transformOrigin={{ vertical: "top", horizontal: "center" }}
+            <ListItemIcon>
+              {linkLabelMode === "show-all" && <CheckIcon fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText>Show All</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => handleLinkLabelSelect("on-select")}
+            data-testid="navbar-link-label-on-select"
           >
-            <MenuItem
-              onClick={() => handleLinkLabelSelect("show-all")}
-              data-testid="navbar-link-label-show-all"
-            >
-              <ListItemIcon>
-                {linkLabelMode === "show-all" && <CheckIcon fontSize="small" />}
-              </ListItemIcon>
-              <ListItemText>Show All</ListItemText>
-            </MenuItem>
-            <MenuItem
-              onClick={() => handleLinkLabelSelect("on-select")}
-              data-testid="navbar-link-label-on-select"
-            >
-              <ListItemIcon>
-                {linkLabelMode === "on-select" && <CheckIcon fontSize="small" />}
-              </ListItemIcon>
-              <ListItemText>On Select</ListItemText>
-            </MenuItem>
-            <MenuItem
-              onClick={() => handleLinkLabelSelect("hide")}
-              data-testid="navbar-link-label-hide"
-            >
-              <ListItemIcon>
-                {linkLabelMode === "hide" && <CheckIcon fontSize="small" />}
-              </ListItemIcon>
-              <ListItemText>Hide</ListItemText>
-            </MenuItem>
-            <MenuItem
-              onClick={() => handleLinkLabelSelect("grafana")}
-              data-testid="navbar-link-label-grafana"
-              sx={{ pr: 0.5 }}
-            >
-              <ListItemIcon>
-                {linkLabelMode === "grafana" && <CheckIcon fontSize="small" />}
-              </ListItemIcon>
-              <ListItemText>Grafana</ListItemText>
-              <Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
-                <IconButton
-                  size="small"
-                  aria-label="Grafana label settings"
-                  data-testid="navbar-link-label-grafana-settings"
-                  onClick={handleOpenGrafanaSettings}
-                >
-                  <SettingsIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            </MenuItem>
-          </Menu>
+            <ListItemIcon>
+              {linkLabelMode === "on-select" && <CheckIcon fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText>On Select</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => handleLinkLabelSelect("hide")}
+            data-testid="navbar-link-label-hide"
+          >
+            <ListItemIcon>
+              {linkLabelMode === "hide" && <CheckIcon fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText>Hide</ListItemText>
+          </MenuItem>
+        </Menu>
 
-          {/* Capture Viewport */}
-          <Tooltip title="Capture Viewport as SVG">
-            <IconButton size="small" onClick={onCaptureViewport} data-testid="navbar-capture">
-              <PhotoCameraBackIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+        {/* Capture Viewport */}
+        <Tooltip title="Capture Viewport as SVG">
+          <IconButton size="small" onClick={onCaptureViewport} data-testid="navbar-capture">
+            <PhotoCameraBackIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
 
-          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+        <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
-          {/* Shortcuts */}
-          <Tooltip title="Shortcuts">
-            <IconButton size="small" onClick={onShowShortcuts} data-testid="navbar-shortcuts">
-              <KeyboardIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+        {/* Shortcuts */}
+        <Tooltip title="Shortcuts">
+          <IconButton size="small" onClick={onShowShortcuts} data-testid="navbar-shortcuts">
+            <KeyboardIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
 
-          {/* Toggle Shortcut Display */}
-          <Tooltip title="Toggle Shortcut Display">
-            <IconButton
-              size="small"
-              onClick={onToggleShortcutDisplay}
-              data-testid="navbar-shortcut-display"
-            >
-              {shortcutDisplayEnabled ? (
-                <VisibilityIcon fontSize="small" />
-              ) : (
-                <VisibilityOffIcon fontSize="small" />
-              )}
-            </IconButton>
-          </Tooltip>
+        {/* Toggle Shortcut Display */}
+        <Tooltip title="Toggle Shortcut Display">
+          <IconButton
+            size="small"
+            onClick={onToggleShortcutDisplay}
+            data-testid="navbar-shortcut-display"
+          >
+            {shortcutDisplayEnabled ? (
+              <VisibilityIcon fontSize="small" />
+            ) : (
+              <VisibilityOffIcon fontSize="small" />
+            )}
+          </IconButton>
+        </Tooltip>
 
-          {/* About */}
-          <Tooltip title="About TopoViewer">
-            <IconButton size="small" onClick={onShowAbout} data-testid="navbar-about">
-              <InfoIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Toolbar>
-      </AppBar>
-      <GrafanaLabelSettingsModal
-        isOpen={isGrafanaSettingsOpen}
-        onClose={handleCloseGrafanaSettings}
-      />
-    </>
+        {/* About */}
+        <Tooltip title="About TopoViewer">
+          <IconButton size="small" onClick={onShowAbout} data-testid="navbar-about">
+            <InfoIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Toolbar>
+    </AppBar>
   );
 };
 /* eslint-enable complexity */

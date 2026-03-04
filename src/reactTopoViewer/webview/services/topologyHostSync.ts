@@ -27,6 +27,7 @@ import {
 } from "../annotations";
 import { useGraphStore } from "../stores/graphStore";
 import { useTopoViewerStore } from "../stores/topoViewerStore";
+import type { LinkLabelMode, NonTelemetryLinkLabelMode } from "../stores/topoViewerStore";
 import { useCanvasStore } from "../stores/canvasStore";
 import { applyForceLayout, hasPresetPositions } from "../components/canvas/layout";
 import { snapToGrid } from "../utils/grid";
@@ -48,6 +49,7 @@ const DEFAULT_GROUP_HEIGHT = 200;
 const LEGACY_DEFAULT_MEDIA_TEXT_WIDTH = 120;
 const LEGACY_MEDIA_TEXT_HEIGHT_RATIO = 0.62;
 const LEGACY_MIN_MEDIA_TEXT_HEIGHT = 48;
+type TelemetryStyle = NonNullable<NonNullable<TopologyAnnotations["viewerSettings"]>["style"]>;
 
 function isStandaloneMarkdownImage(value: unknown): boolean {
   if (!isNonEmptyString(value)) return false;
@@ -476,6 +478,32 @@ function hasGeoCoordinates(annotations: Required<TopologyAnnotations>): boolean 
   );
 }
 
+function parseLinkLabelMode(value: unknown): LinkLabelMode | null {
+  if (
+    value === "show-all" ||
+    value === "on-select" ||
+    value === "hide" ||
+    value === "telemetry-style"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function parseNonTelemetryLinkLabelMode(value: unknown): NonTelemetryLinkLabelMode | null {
+  if (value === "show-all" || value === "on-select" || value === "hide") {
+    return value;
+  }
+  return null;
+}
+
+function parseTelemetryStyle(value: unknown): TelemetryStyle | null {
+  if (value === "default" || value === "telemetry-style") {
+    return value;
+  }
+  return null;
+}
+
 export function applySnapshotToStores(
   snapshot: TopologySnapshot,
   options: ApplySnapshotOptions = {}
@@ -512,6 +540,28 @@ export function applySnapshotToStores(
 
   const offset = parseEndpointLabelOffset(annotations.viewerSettings.endpointLabelOffset);
   const { gridColor, gridBgColor } = annotations.viewerSettings;
+  const telemetryStyle = parseTelemetryStyle(annotations.viewerSettings.style);
+  const parsedLinkLabelMode = parseLinkLabelMode(annotations.viewerSettings.linkLabelMode);
+  const parsedLastNonTelemetryLinkLabelMode = parseNonTelemetryLinkLabelMode(
+    annotations.viewerSettings.lastNonTelemetryLinkLabelMode
+  );
+  const resolvedLastNonTelemetryLinkLabelMode =
+    parsedLastNonTelemetryLinkLabelMode ??
+    (parsedLinkLabelMode !== null && parsedLinkLabelMode !== "telemetry-style"
+      ? parsedLinkLabelMode
+      : null);
+
+  const useTelemetryStyle =
+    telemetryStyle === "telemetry-style" ||
+    (telemetryStyle === null && parsedLinkLabelMode === "telemetry-style");
+  let resolvedLinkLabelMode: LinkLabelMode | null = null;
+  if (useTelemetryStyle) {
+    resolvedLinkLabelMode = "telemetry-style";
+  } else if (parsedLinkLabelMode !== null && parsedLinkLabelMode !== "telemetry-style") {
+    resolvedLinkLabelMode = parsedLinkLabelMode;
+  } else if (resolvedLastNonTelemetryLinkLabelMode !== null) {
+    resolvedLinkLabelMode = resolvedLastNonTelemetryLinkLabelMode;
+  }
 
   useTopoViewerStore.getState().setInitialData({
     labName: snapshot.labName,
@@ -526,6 +576,10 @@ export function applySnapshotToStores(
     ...(offset !== null ? { endpointLabelOffset: offset } : {}),
     gridColor: gridColor ?? null,
     gridBgColor: gridBgColor ?? null,
+    ...(resolvedLinkLabelMode !== null ? { linkLabelMode: resolvedLinkLabelMode } : {}),
+    ...(resolvedLastNonTelemetryLinkLabelMode !== null
+      ? { lastNonTelemetryLinkLabelMode: resolvedLastNonTelemetryLinkLabelMode }
+      : {}),
     canUndo: snapshot.canUndo,
     canRedo: snapshot.canRedo
   });

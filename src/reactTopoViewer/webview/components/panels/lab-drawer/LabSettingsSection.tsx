@@ -6,11 +6,13 @@ import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 
 import { useLabSettingsState } from "../../../hooks/editor";
+import type { GridSettingsControlsProps } from "../GridSettingsPopover";
 import { BasicTab } from "../lab-settings/BasicTab";
 import { MgmtTab } from "../lab-settings/MgmtTab";
+import { AppearanceTab } from "../lab-settings/AppearanceTab";
 import type { LabSettings } from "../lab-settings/types";
 
-export interface LabSettingsSectionProps {
+export interface LabSettingsSectionProps extends GridSettingsControlsProps {
   mode: "view" | "edit";
   isLocked: boolean;
   labSettings?: LabSettings;
@@ -23,7 +25,16 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
   isLocked,
   labSettings,
   onClose,
-  saveRef
+  saveRef,
+  gridLineWidth,
+  onGridLineWidthChange,
+  gridStyle,
+  onGridStyleChange,
+  gridColor,
+  onGridColorChange,
+  gridBgColor,
+  onGridBgColorChange,
+  onResetGridColors
 }) => {
   const [activeTab, setActiveTab] = useState("basic");
   const isReadOnly = mode === "view" || isLocked;
@@ -50,6 +61,7 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
       >
         <Tab label="Basic" value="basic" data-testid="lab-settings-tab-basic" />
         <Tab label="Management Network" value="mgmt" data-testid="lab-settings-tab-mgmt" />
+        <Tab label="Appearance" value="appearance" data-testid="lab-settings-tab-appearance" />
       </Tabs>
       <Divider />
 
@@ -96,6 +108,23 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
           onAddDriverOption={state.driverOpts.add}
           onSetDriverOptions={state.driverOpts.setAll}
         />
+      )}
+
+      {activeTab === "appearance" && (
+        <Box sx={{ p: 2 }}>
+          <AppearanceTab
+            gridLineWidth={gridLineWidth}
+            onGridLineWidthChange={onGridLineWidthChange}
+            gridStyle={gridStyle}
+            onGridStyleChange={onGridStyleChange}
+            gridColor={gridColor}
+            onGridColorChange={onGridColorChange}
+            gridBgColor={gridBgColor}
+            onGridBgColorChange={onGridBgColorChange}
+            onResetGridColors={onResetGridColors}
+            isReadOnly={isReadOnly}
+          />
+        </Box>
       )}
     </Box>
   );

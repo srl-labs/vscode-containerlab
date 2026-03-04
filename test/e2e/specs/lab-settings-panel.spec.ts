@@ -8,6 +8,7 @@ const SEL_LAB_SETTINGS_MODAL = '[data-testid="lab-settings-modal"]';
 const SEL_LAB_SETTINGS_CLOSE_BTN = '[data-testid="lab-settings-close-btn"]';
 const SEL_LAB_SETTINGS_TAB_BASIC = '[data-testid="lab-settings-tab-basic"]';
 const SEL_LAB_SETTINGS_TAB_MGMT = '[data-testid="lab-settings-tab-mgmt"]';
+const SEL_LAB_SETTINGS_TAB_APPEARANCE = '[data-testid="lab-settings-tab-appearance"]';
 const SEL_LAB_SETTINGS_SAVE_BTN = '[data-testid="lab-settings-save-btn"]';
 
 const LABEL_CONTAINER_NAME_PREFIX = "Container Name Prefix";
@@ -20,7 +21,7 @@ const ARIA_FALSE = "false";
  * Lab Settings Modal E2E Tests (MUI Dialog version)
  *
  * In the new MUI design, lab settings are shown in a Dialog (modal)
- * with tabs for Basic and Management settings.
+ * with tabs for Basic, Management, and Appearance settings.
  */
 test.describe("Lab Settings Modal", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
@@ -47,7 +48,7 @@ test.describe("Lab Settings Modal", () => {
     // Prefer MUI Select's internal trigger element; fall back to ARIA roles.
     const formControl = formControlByLabel(modal, labelText);
     return formControl
-      .locator("[role=\"combobox\"],[role=\"button\"],.MuiSelect-select,[aria-haspopup=\"listbox\"]")
+      .locator('[role="combobox"],[role="button"],.MuiSelect-select,[aria-haspopup="listbox"]')
       .first();
   }
 
@@ -87,14 +88,16 @@ test.describe("Lab Settings Modal", () => {
     await expect(modal.locator("h2")).toHaveText("Lab Settings");
   });
 
-  test("lab settings modal has Basic and Management tabs", async ({ page }) => {
+  test("lab settings modal has Basic, Management, and Appearance tabs", async ({ page }) => {
     await page.locator(SEL_LAB_SETTINGS_BTN).click();
     await page.waitForTimeout(300);
 
     const basicTab = page.locator(SEL_LAB_SETTINGS_TAB_BASIC);
     const mgmtTab = page.locator(SEL_LAB_SETTINGS_TAB_MGMT);
+    const appearanceTab = page.locator(SEL_LAB_SETTINGS_TAB_APPEARANCE);
     await expect(basicTab).toBeVisible();
     await expect(mgmtTab).toBeVisible();
+    await expect(appearanceTab).toBeVisible();
   });
 
   test("Basic tab is selected by default", async ({ page }) => {
@@ -116,6 +119,28 @@ test.describe("Lab Settings Modal", () => {
     await expect(mgmtTab).toHaveAttribute(ATTR_ARIA_SELECTED, ARIA_TRUE);
     const basicTab = page.locator(SEL_LAB_SETTINGS_TAB_BASIC);
     await expect(basicTab).toHaveAttribute(ATTR_ARIA_SELECTED, ARIA_FALSE);
+  });
+
+  test("Appearance tab shows Style selector and Telemetry options", async ({ page }) => {
+    const modal = await openModal(page);
+
+    await modal.locator(SEL_LAB_SETTINGS_TAB_APPEARANCE).click();
+    await page.waitForTimeout(200);
+
+    const styleSelect = modal
+      .locator('[data-testid="lab-settings-telemetry-style"] [role="combobox"]')
+      .first();
+    await expect(styleSelect).toBeVisible();
+    await expect(modal.getByLabel("Node size")).toBeVisible();
+    await expect(modal.getByLabel("Interface size")).toBeVisible();
+
+    // Interface-name overrides should be hidden on Default style.
+    await expect(modal.getByLabel("Global override (all interfaces)")).toHaveCount(0);
+
+    // Telemetry style exposes interface-name overrides.
+    await styleSelect.click();
+    await chooseOption(page, /^Telemetry Style$/);
+    await expect(modal.getByLabel("Global override (all interfaces)")).toBeVisible();
   });
 
   test("shows current lab name in Basic tab", async ({ page }) => {
@@ -191,6 +216,22 @@ test.describe("Lab Settings Modal", () => {
 
     await expect(modal.getByRole("textbox", { name: "Lab Name" })).toBeDisabled();
     await expectMuiSelectDisabled(modal, LABEL_CONTAINER_NAME_PREFIX);
+
+    await modal.locator(SEL_LAB_SETTINGS_TAB_APPEARANCE).click();
+    await page.waitForTimeout(150);
+    await expectMuiSelectDisabled(modal, "Style");
+    await expect(modal.getByLabel("Node size")).toBeDisabled();
+    await expect(modal.getByLabel("Interface size")).toBeDisabled();
+
+    await modal.locator('[data-testid="lab-settings-appearance-subtab-grid"]').click();
+    await page.waitForTimeout(150);
+    const gridSlider = modal.locator(
+      '[data-testid="lab-settings-grid-line-width"] [role="slider"]'
+    );
+    await expect(gridSlider).toHaveAttribute("aria-disabled", "true");
+    await expect(
+      modal.locator('[data-testid="lab-settings-grid-style"] button').first()
+    ).toBeDisabled();
   });
 
   test("Save button is hidden in view mode", async ({ page, topoViewerPage }) => {

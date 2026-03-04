@@ -11,7 +11,7 @@ const ATTR_DATA_TESTID = "data-testid";
  * - Fit to viewport
  * - Layout dropdown (MUI Menu)
  * - Link labels dropdown (MUI Menu)
- * - Grid settings (MUI Popover)
+ * - Grid settings (Lab Settings > Appearance)
  * - Shortcuts/About modals (MUI Dialog)
  * - Shortcut display toggle
  */
@@ -28,7 +28,6 @@ test.describe("Navbar Interactions", () => {
         "navbar-fit-viewport",
         "navbar-split-view",
         "navbar-layout",
-        "navbar-grid",
         "navbar-find-node",
         "navbar-link-labels",
         "navbar-capture",
@@ -110,9 +109,7 @@ test.describe("Navbar Interactions", () => {
   });
 
   test.describe("Link Labels Dropdown", () => {
-    test("link labels dropdown has Show All, On Select, Hide, and Grafana options", async ({
-      page
-    }) => {
+    test("link labels dropdown has Show All, On Select, and Hide options", async ({ page }) => {
       const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
       await linkLabelsBtn.click();
       await page.waitForTimeout(200);
@@ -121,32 +118,12 @@ test.describe("Navbar Interactions", () => {
       await expect(page.locator('[data-testid="navbar-link-label-show-all"]')).toBeVisible();
       await expect(page.locator('[data-testid="navbar-link-label-on-select"]')).toBeVisible();
       await expect(page.locator('[data-testid="navbar-link-label-hide"]')).toBeVisible();
-      await expect(page.locator('[data-testid="navbar-link-label-grafana"]')).toBeVisible();
-      await expect(
-        page.locator('[data-testid="navbar-link-label-grafana-settings"]')
-      ).toBeVisible();
+      await expect(page.locator('[data-testid="navbar-link-label-grafana"]')).toHaveCount(0);
     });
 
-    test("grafana gear opens settings modal", async ({ page }) => {
-      const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
-      await linkLabelsBtn.click();
-      await page.waitForTimeout(200);
-
-      await page.locator('[data-testid="navbar-link-label-grafana-settings"]').click();
-      await page.waitForTimeout(200);
-
-      await expect(
-        page.locator('[data-testid="navbar-grafana-label-settings-modal"]')
-      ).toBeVisible();
-    });
-
-    test("grafana node size setting resizes node icons on canvas", async ({ page }) => {
-      const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
-      await linkLabelsBtn.click();
-      await page.waitForTimeout(200);
-      await page.locator('[data-testid="navbar-link-label-grafana"]').click();
-      await page.waitForTimeout(200);
-
+    test("Telemetry Style node size setting resizes node icons from Lab Settings", async ({
+      page
+    }) => {
       const nodeIcon = page.locator(".topology-node-icon, .network-node-icon").first();
       await expect(nodeIcon).toBeVisible();
       const beforeBox = await nodeIcon.boundingBox();
@@ -154,18 +131,25 @@ test.describe("Navbar Interactions", () => {
       const beforeWidth = beforeBox?.width ?? 0;
       expect(beforeWidth).toBeGreaterThan(0);
 
-      await linkLabelsBtn.click();
+      await page.locator('[data-testid="navbar-lab-settings"]').click();
       await page.waitForTimeout(200);
-      await page.locator('[data-testid="navbar-link-label-grafana-settings"]').click();
+      const modal = page.locator('[data-testid="lab-settings-modal"]');
+      await expect(modal).toBeVisible();
+
+      await modal.locator('[data-testid="lab-settings-tab-appearance"]').click();
       await page.waitForTimeout(200);
 
-      const modal = page.locator('[data-testid="navbar-grafana-label-settings-modal"]');
-      await expect(modal).toBeVisible();
+      const styleSelect = modal
+        .locator('[data-testid="lab-settings-telemetry-style"] [role="combobox"]')
+        .first();
+      await styleSelect.click();
+      await page.getByRole("option", { name: /^Telemetry Style$/ }).click();
+      await page.waitForTimeout(100);
 
       const nodeSizeInput = modal.getByLabel("Node size");
       await nodeSizeInput.fill("80");
       await page.waitForTimeout(200);
-      await modal.getByRole("button", { name: "Done" }).click();
+      await page.locator('[data-testid="lab-settings-close-btn"]').click();
       await expect(modal).not.toBeVisible();
 
       await expect
@@ -177,86 +161,30 @@ test.describe("Navbar Interactions", () => {
           { timeout: 4000 }
         )
         .toBeGreaterThan(beforeWidth + 10);
-
-      await linkLabelsBtn.click();
-      await page.waitForTimeout(200);
-      await page.locator('[data-testid="navbar-link-label-grafana-settings"]').click();
-      await page.waitForTimeout(200);
-      await modal.getByLabel("Node size").fill("40");
-      await page.waitForTimeout(200);
-      await modal.getByRole("button", { name: "Done" }).click();
-    });
-
-    test("grafana settings only apply when grafana mode is selected", async ({ page }) => {
-      const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
-      const nodeIcon = page.locator(".topology-node-icon, .network-node-icon").first();
-
-      await expect(nodeIcon).toBeVisible();
-      const beforeBox = await nodeIcon.boundingBox();
-      expect(beforeBox).not.toBeNull();
-      const beforeWidth = beforeBox?.width ?? 0;
-      expect(beforeWidth).toBeGreaterThan(0);
-
-      // Change Grafana node size while still on default link-label mode.
-      await linkLabelsBtn.click();
-      await page.waitForTimeout(200);
-      await page.locator('[data-testid="navbar-link-label-grafana-settings"]').click();
-      await page.waitForTimeout(200);
-
-      const modal = page.locator('[data-testid="navbar-grafana-label-settings-modal"]');
-      await expect(modal).toBeVisible();
-      await modal.getByLabel("Node size").fill("90");
-      await page.waitForTimeout(200);
-      await modal.getByRole("button", { name: "Done" }).click();
-      await expect(modal).not.toBeVisible();
-
-      // Should not affect nodes until Grafana mode is explicitly selected.
-      const afterSettingsBox = await nodeIcon.boundingBox();
-      const afterSettingsWidth = afterSettingsBox?.width ?? 0;
-      expect(Math.abs(afterSettingsWidth - beforeWidth)).toBeLessThan(5);
-
-      await linkLabelsBtn.click();
-      await page.waitForTimeout(200);
-      await page.locator('[data-testid="navbar-link-label-grafana"]').click();
-      await page.waitForTimeout(200);
-
-      await expect
-        .poll(
-          async () => {
-            const afterGrafanaBox = await nodeIcon.boundingBox();
-            return afterGrafanaBox?.width ?? 0;
-          },
-          { timeout: 4000 }
-        )
-        .toBeGreaterThan(beforeWidth + 20);
-
-      // Reset setting back to default.
-      await linkLabelsBtn.click();
-      await page.waitForTimeout(200);
-      await page.locator('[data-testid="navbar-link-label-grafana-settings"]').click();
-      await page.waitForTimeout(200);
-      await modal.getByLabel("Node size").fill("40");
-      await page.waitForTimeout(200);
-      await modal.getByRole("button", { name: "Done" }).click();
     });
   });
 
-  test.describe("Grid Settings Popover", () => {
-    test("grid popover opens with slider and style toggles", async ({ page }) => {
-      const gridBtn = page.locator('[data-testid="navbar-grid"]');
-      await gridBtn.click();
+  test.describe("Grid Settings", () => {
+    test("grid settings are available in Lab Settings > Appearance", async ({ page }) => {
+      await page.locator('[data-testid="navbar-lab-settings"]').click();
+      await page.waitForTimeout(200);
+      const modal = page.locator('[data-testid="lab-settings-modal"]');
+      await expect(modal).toBeVisible();
+
+      await modal.locator('[data-testid="lab-settings-tab-appearance"]').click();
+      await page.waitForTimeout(200);
+      await modal.locator('[data-testid="lab-settings-appearance-subtab-grid"]').click();
       await page.waitForTimeout(200);
 
-      // MUI Popover should appear
-      const gridPopover = page.locator('[data-testid="grid-settings-popover"]');
-      await expect(gridPopover).toBeVisible();
+      const gridSection = modal.locator('[data-testid="lab-settings-grid-settings"]');
+      await expect(gridSection).toBeVisible();
 
       // Verify slider exists (MUI Slider)
-      const slider = gridPopover.locator(".MuiSlider-root");
+      const slider = gridSection.locator('[data-testid="lab-settings-grid-line-width"]');
       await expect(slider).toBeVisible();
 
       // Verify toggle buttons exist (Dotted/Quadratic)
-      const toggleGroup = gridPopover.locator(".MuiToggleButtonGroup-root");
+      const toggleGroup = gridSection.locator('[data-testid="lab-settings-grid-style"]');
       await expect(toggleGroup).toBeVisible();
     });
   });

@@ -11,13 +11,11 @@ import {
   useNodeRenderConfig,
   useEasterEggGlow
 } from "../../../stores/canvasStore";
-import { useLinkLabelMode, useTopoViewerStore } from "../../../stores/topoViewerStore";
-import { clampGrafanaNodeSizePx } from "../../../utils/grafanaInterfaceLabels";
+import { useTopoViewerStore } from "../../../stores/topoViewerStore";
+import { clampTelemetryNodeSizePx } from "../../../utils/telemetryInterfaceLabels";
 
 import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE, getNodeDirectionRotation } from "./nodeStyles";
 import { getNetworkNodeTypeColor, toNetworkNodeData } from "./networkNodeShared";
-
-const DEFAULT_ICON_SIZE = 40;
 
 const HANDLE_POSITIONS = [
   { position: Position.Top, id: "top" },
@@ -35,14 +33,12 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const { linkSourceNode } = useLinkCreationContext();
   const { suppressLabels } = useNodeRenderConfig();
   const easterEggGlow = useEasterEggGlow();
-  const linkLabelMode = useLinkLabelMode();
-  const grafanaNodeSizePx = useTopoViewerStore((state) => state.grafanaNodeSizePx);
+  const telemetryNodeSizePx = useTopoViewerStore((state) => state.telemetryNodeSizePx);
   const [isHovered, setIsHovered] = useState(false);
   const directionRotation = useMemo(() => getNodeDirectionRotation(direction), [direction]);
   const iconSize = useMemo(
-    () =>
-      linkLabelMode === "grafana" ? clampGrafanaNodeSizePx(grafanaNodeSizePx) : DEFAULT_ICON_SIZE,
-    [linkLabelMode, grafanaNodeSizePx]
+    () => clampTelemetryNodeSizePx(telemetryNodeSizePx),
+    [telemetryNodeSizePx]
   );
   const handleMouseEnter = useCallback(() => {
     setIsHovered(true);

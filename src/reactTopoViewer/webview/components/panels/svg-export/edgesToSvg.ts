@@ -16,7 +16,7 @@ import {
   CONTROL_POINT_STEP_SIZE,
   escapeXml
 } from "./constants";
-import { getAutoCompactInterfaceLabel } from "../../../utils/grafanaInterfaceLabels";
+import { getAutoCompactInterfaceLabel } from "../../../utils/telemetryInterfaceLabels";
 
 // ============================================================================
 // Types

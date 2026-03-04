@@ -6,10 +6,10 @@ import type { NodeProps } from "@xyflow/react";
 
 import type { TopologyNodeData } from "../types";
 import { SELECTION_COLOR, DEFAULT_ICON_COLOR } from "../types";
-import { useLinkLabelMode, useTopoViewerStore } from "../../../stores/topoViewerStore";
-import { clampGrafanaNodeSizePx } from "../../../utils/grafanaInterfaceLabels";
+import { useTopoViewerStore } from "../../../stores/topoViewerStore";
+import { clampTelemetryNodeSizePx } from "../../../utils/telemetryInterfaceLabels";
 
-import { ICON_SIZE, LiteNodeShell } from "./NodeLiteBase";
+import { LiteNodeShell } from "./NodeLiteBase";
 import { getNodeDirectionRotation } from "./nodeStyles";
 
 function toTopologyNodeData(data: NodeProps["data"]): TopologyNodeData {
@@ -22,11 +22,10 @@ function toTopologyNodeData(data: NodeProps["data"]): TopologyNodeData {
 
 const TopologyNodeLiteComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const nodeData = toTopologyNodeData(data);
-  const linkLabelMode = useLinkLabelMode();
-  const grafanaNodeSizePx = useTopoViewerStore((state) => state.grafanaNodeSizePx);
+  const telemetryNodeSizePx = useTopoViewerStore((state) => state.telemetryNodeSizePx);
   const iconSize = useMemo(
-    () => (linkLabelMode === "grafana" ? clampGrafanaNodeSizePx(grafanaNodeSizePx) : ICON_SIZE),
-    [linkLabelMode, grafanaNodeSizePx]
+    () => clampTelemetryNodeSizePx(telemetryNodeSizePx),
+    [telemetryNodeSizePx]
   );
   const color = nodeData.iconColor ?? DEFAULT_ICON_COLOR;
   const corner = nodeData.iconCornerRadius ?? 4;

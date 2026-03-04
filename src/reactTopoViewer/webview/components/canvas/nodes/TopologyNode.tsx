@@ -20,11 +20,10 @@ import {
 import {
   useCustomIcons,
   useDeploymentState,
-  useLinkLabelMode,
   useTopoViewerStore
 } from "../../../stores/topoViewerStore";
 import { getCustomIconMap } from "../../../utils/iconUtils";
-import { clampGrafanaNodeSizePx } from "../../../utils/grafanaInterfaceLabels";
+import { clampTelemetryNodeSizePx } from "../../../utils/telemetryInterfaceLabels";
 
 import {
   buildNodeLabelStyle,
@@ -75,9 +74,6 @@ function getRoleSvgType(role: string): NodeType {
   if (isNodeType(mapped)) return mapped;
   return "pe"; // Default to PE router icon
 }
-
-// Icon style constants
-const DEFAULT_ICON_SIZE = 40;
 
 // Constant styles extracted outside component to avoid recreation on every render
 const CONTAINER_STYLE_BASE: React.CSSProperties = {
@@ -169,13 +165,11 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const easterEggGlow = useEasterEggGlow();
   const customIcons = useCustomIcons();
   const deploymentState = useDeploymentState();
-  const linkLabelMode = useLinkLabelMode();
-  const grafanaNodeSizePx = useTopoViewerStore((state) => state.grafanaNodeSizePx);
+  const telemetryNodeSizePx = useTopoViewerStore((state) => state.telemetryNodeSizePx);
   const directionRotation = useMemo(() => getNodeDirectionRotation(direction), [direction]);
   const iconSize = useMemo(
-    () =>
-      linkLabelMode === "grafana" ? clampGrafanaNodeSizePx(grafanaNodeSizePx) : DEFAULT_ICON_SIZE,
-    [linkLabelMode, grafanaNodeSizePx]
+    () => clampTelemetryNodeSizePx(telemetryNodeSizePx),
+    [telemetryNodeSizePx]
   );
 
   // Check if this node is a valid link target (in link creation mode)
