@@ -396,6 +396,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   const [excludeNodesWithoutLinks, setExcludeNodesWithoutLinks] = useState(true);
   const [includeGrafanaLegend, setIncludeGrafanaLegend] = useState(false);
   const [trafficRatesOnHoverOnly, setTrafficRatesOnHoverOnly] = useState(false);
+  const [includeHideRatesLegendToggle, setIncludeHideRatesLegendToggle] = useState(true);
   const [trafficThresholds, setTrafficThresholds] = useState<GrafanaTrafficThresholds>({
     ...DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS
   });
@@ -598,7 +599,10 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         grafanaSvg = addGrafanaTrafficLegend(grafanaSvg, trafficThresholds, trafficThresholdUnit);
       }
       grafanaSvg = makeGrafanaSvgResponsive(grafanaSvg);
-      const panelYaml = buildGrafanaPanelYaml(mappings, { trafficThresholds });
+      const panelYaml = buildGrafanaPanelYaml(mappings, {
+        trafficThresholds,
+        includeHideRatesLegendToggle
+      });
       const dashboardJson = buildGrafanaDashboardJson(panelYaml, grafanaSvg, prepared.baseName);
 
       const requestId = createRequestId();
@@ -622,6 +626,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
       borderPadding,
       includeGrafanaLegend,
       trafficRatesOnHoverOnly,
+      includeHideRatesLegendToggle,
       trafficThresholdUnit
     ]
   );
@@ -1118,6 +1123,16 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   />
                 }
                 label="Show traffic rates on hover only"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={includeHideRatesLegendToggle}
+                    onChange={(e) => setIncludeHideRatesLegendToggle(e.target.checked)}
+                  />
+                }
+                label='Add "hide-rates" legend toggle for rate labels'
               />
             </>
           )}

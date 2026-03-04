@@ -140,21 +140,19 @@ describe("grafanaExport helpers", () => {
   });
 
   it("adds hide-rates filter tags in panel YAML", () => {
-    const yaml = buildGrafanaPanelYaml(
-      [
-        {
-          edgeId: EDGE_VALID_ID,
-          source: "leaf1",
-          sourceEndpoint: "e1-1",
-          target: "client1",
-          targetEndpoint: "eth1",
-          operstateCellId: EDGE_VALID_OPERSTATE_ID,
-          targetOperstateCellId: EDGE_VALID_OPERSTATE_REVERSE_ID,
-          trafficCellId: EDGE_VALID_TRAFFIC_ID,
-          reverseTrafficCellId: EDGE_VALID_TRAFFIC_REVERSE_ID
-        }
-      ]
-    );
+    const yaml = buildGrafanaPanelYaml([
+      {
+        edgeId: EDGE_VALID_ID,
+        source: "leaf1",
+        sourceEndpoint: "e1-1",
+        target: "client1",
+        targetEndpoint: "eth1",
+        operstateCellId: EDGE_VALID_OPERSTATE_ID,
+        targetOperstateCellId: EDGE_VALID_OPERSTATE_REVERSE_ID,
+        trafficCellId: EDGE_VALID_TRAFFIC_ID,
+        reverseTrafficCellId: EDGE_VALID_TRAFFIC_REVERSE_ID
+      }
+    ]);
 
     expect(yaml).to.contain("tagConfig:");
     expect(yaml).to.contain('legend: ["hide-rates"]');
@@ -174,6 +172,31 @@ describe("grafanaExport helpers", () => {
         "      thresholds: *thresholds-rate-label"
     );
     expect(yaml).to.not.contain('tags: ["rates"]');
+  });
+
+  it("can disable hide-rates filter tags in panel YAML", () => {
+    const yaml = buildGrafanaPanelYaml(
+      [
+        {
+          edgeId: EDGE_VALID_ID,
+          source: "leaf1",
+          sourceEndpoint: "e1-1",
+          target: "client1",
+          targetEndpoint: "eth1",
+          operstateCellId: EDGE_VALID_OPERSTATE_ID,
+          targetOperstateCellId: EDGE_VALID_OPERSTATE_REVERSE_ID,
+          trafficCellId: EDGE_VALID_TRAFFIC_ID,
+          reverseTrafficCellId: EDGE_VALID_TRAFFIC_REVERSE_ID
+        }
+      ],
+      { includeHideRatesLegendToggle: false }
+    );
+
+    expect(yaml).to.not.contain("tagConfig:");
+    expect(yaml).to.not.contain('legend: ["hide-rates"]');
+    expect(yaml).to.not.contain('tags: ["hide-rates"]');
+    expect(yaml).to.contain("label: *label-config");
+    expect(yaml).to.contain("labelColor:");
   });
 
   it("builds dashboard JSON with embedded panel config and SVG", () => {

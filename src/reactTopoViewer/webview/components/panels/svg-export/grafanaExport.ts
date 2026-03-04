@@ -27,6 +27,7 @@ export interface GrafanaTrafficThresholds {
 
 export interface GrafanaPanelYamlOptions {
   trafficThresholds?: GrafanaTrafficThresholds;
+  includeHideRatesLegendToggle?: boolean;
 }
 
 export interface GrafanaCellIdSvgOptions {
@@ -1456,6 +1457,7 @@ export function buildGrafanaPanelYaml(
   options: GrafanaPanelYamlOptions = {}
 ): string {
   const trafficThresholds = options.trafficThresholds ?? DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS;
+  const includeHideRatesLegendToggle = options.includeHideRatesLegendToggle !== false;
   const greenThreshold = asValidYamlNumber(
     trafficThresholds.green,
     DEFAULT_GRAFANA_TRAFFIC_THRESHOLDS.green
@@ -1493,12 +1495,18 @@ export function buildGrafanaPanelYaml(
     "    valueMappings:",
     `      - { valueMax: ${greenThreshold}, text: "\\u200B" }`,
     'cellIdPreamble: "cell-"',
-    "tagConfig:",
-    `  legend: ["${RATE_LABEL_HIDE_TAG}"]`,
-    "  lowlightAlphaFactor: 0",
-    "  highlightRgbFactor: 1",
     "cells:"
   ];
+  if (includeHideRatesLegendToggle) {
+    lines.splice(
+      lines.length - 1,
+      0,
+      "tagConfig:",
+      `  legend: ["${RATE_LABEL_HIDE_TAG}"]`,
+      "  lowlightAlphaFactor: 0",
+      "  highlightRgbFactor: 1"
+    );
+  }
 
   if (mappings.length === 0) {
     lines.push("  {}");
@@ -1514,17 +1522,23 @@ export function buildGrafanaPanelYaml(
     lines.push(`    dataRef: ${quoteYaml(operstateDataRef)}`);
     lines.push("    fillColor:");
     lines.push("      thresholds: *thresholds-operstate");
-    lines.push(`    tags: ["${RATE_LABEL_HIDE_TAG}"]`);
+    if (includeHideRatesLegendToggle) {
+      lines.push(`    tags: ["${RATE_LABEL_HIDE_TAG}"]`);
+    }
     lines.push(`  ${quoteYaml(mapping.targetOperstateCellId)}:`);
     lines.push(`    dataRef: ${quoteYaml(targetOperstateDataRef)}`);
     lines.push("    fillColor:");
     lines.push("      thresholds: *thresholds-operstate");
-    lines.push(`    tags: ["${RATE_LABEL_HIDE_TAG}"]`);
+    if (includeHideRatesLegendToggle) {
+      lines.push(`    tags: ["${RATE_LABEL_HIDE_TAG}"]`);
+    }
     lines.push(`  ${quoteYaml(mapping.trafficCellId)}:`);
     lines.push(`    dataRef: ${quoteYaml(trafficDataRef)}`);
     lines.push("    strokeColor:");
     lines.push("      thresholds: *thresholds-traffic");
-    lines.push(`    tags: ["${RATE_LABEL_HIDE_TAG}"]`);
+    if (includeHideRatesLegendToggle) {
+      lines.push(`    tags: ["${RATE_LABEL_HIDE_TAG}"]`);
+    }
     lines.push(`  ${quoteYaml(getTrafficLabelCellId(mapping.trafficCellId))}:`);
     lines.push(`    dataRef: ${quoteYaml(trafficDataRef)}`);
     lines.push("    label: *label-config");
@@ -1534,7 +1548,9 @@ export function buildGrafanaPanelYaml(
     lines.push(`    dataRef: ${quoteYaml(reverseTrafficDataRef)}`);
     lines.push("    strokeColor:");
     lines.push("      thresholds: *thresholds-traffic");
-    lines.push(`    tags: ["${RATE_LABEL_HIDE_TAG}"]`);
+    if (includeHideRatesLegendToggle) {
+      lines.push(`    tags: ["${RATE_LABEL_HIDE_TAG}"]`);
+    }
     lines.push(`  ${quoteYaml(getTrafficLabelCellId(mapping.reverseTrafficCellId))}:`);
     lines.push(`    dataRef: ${quoteYaml(reverseTrafficDataRef)}`);
     lines.push("    label: *label-config");
