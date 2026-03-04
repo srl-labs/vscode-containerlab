@@ -55,6 +55,7 @@ export {
 } from "./grafanaExport";
 export type {
   GrafanaEdgeCellMapping,
+  GrafanaCellIdSvgOptions,
   GrafanaPanelYamlOptions,
   GrafanaTrafficThresholds
 } from "./grafanaExport";
