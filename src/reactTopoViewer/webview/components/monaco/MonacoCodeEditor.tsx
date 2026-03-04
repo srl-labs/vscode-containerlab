@@ -744,10 +744,63 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
       scheduleValidation();
     });
 
+    // -----------------------------------------------------------------------
+    // Paste workaround for VS Code webview sandbox.
+    //
+    // Monaco's built-in paste calls navigator.clipboard.readText() which is
+    // blocked inside VS Code webviews. VS Code intercepts Ctrl+V itself,
+    // reads the system clipboard, and dispatches a synthetic ClipboardEvent
+    // with clipboardData pre-populated. We listen for that event and insert
+    // the text programmatically so paste works reliably.
+    // -----------------------------------------------------------------------
+    const editorDomNode = editor.getDomNode();
+
+    const handlePaste = (event: ClipboardEvent) => {
+      const text = event.clipboardData?.getData("text/plain");
+      if (!text) return;
+      if (editor.getOption(monaco.editor.EditorOption.readOnly)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      editor.trigger("keyboard", "type", { text });
+    };
+
+    if (editorDomNode) {
+      editorDomNode.addEventListener("paste", handlePaste as EventListener);
+    }
+
+    // Override Monaco's context-menu "Paste" action so it also works in the
+    // webview sandbox. The override tries navigator.clipboard.readText()
+    // (may succeed when triggered by a user gesture like a menu click) and
+    // falls back gracefully.
+    const pasteActionDisposable = editor.addAction({
+      id: "editor.action.clipboardPasteAction.override",
+      label: "Paste",
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV],
+      contextMenuGroupId: "9_cutcopypaste",
+      contextMenuOrder: 3,
+      run: async (ed) => {
+        if (ed.getOption(monaco.editor.EditorOption.readOnly)) return;
+        try {
+          const clipText = await navigator.clipboard.readText();
+          if (clipText) {
+            ed.trigger("keyboard", "type", { text: clipText });
+          }
+        } catch {
+          // clipboard.readText() blocked — the DOM paste listener handles
+          // Ctrl+V via the synthetic ClipboardEvent from VS Code instead.
+        }
+      }
+    });
+
     // Run initial validation
     scheduleValidation();
 
     return () => {
+      if (editorDomNode) {
+        editorDomNode.removeEventListener("paste", handlePaste as EventListener);
+      }
+      pasteActionDisposable.dispose();
       disposable.dispose();
       editorRef.current?.dispose();
       editorRef.current = null;
