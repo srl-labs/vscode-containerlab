@@ -19,6 +19,8 @@ test.describe("Navbar Interactions", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.gotoFile("simple.clab.yml");
     await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
   });
 
   test.describe("Basic Button Visibility", () => {

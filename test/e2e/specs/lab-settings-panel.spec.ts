@@ -225,10 +225,8 @@ test.describe("Lab Settings Modal", () => {
 
     await modal.locator('[data-testid="lab-settings-appearance-subtab-grid"]').click();
     await page.waitForTimeout(150);
-    const gridSlider = modal.locator(
-      '[data-testid="lab-settings-grid-line-width"] [role="slider"]'
-    );
-    await expect(gridSlider).toHaveAttribute("aria-disabled", "true");
+    const gridSlider = modal.locator('[data-testid="lab-settings-grid-line-width"]');
+    await expect(gridSlider).toHaveClass(/Mui-disabled/);
     await expect(
       modal.locator('[data-testid="lab-settings-grid-style"] button').first()
     ).toBeDisabled();
