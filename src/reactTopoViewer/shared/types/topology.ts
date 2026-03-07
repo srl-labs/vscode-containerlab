@@ -253,12 +253,15 @@ export interface TopologyAnnotations {
   aliasEndpointAnnotations?: AliasEndpointAnnotation[];
   viewerSettings?: {
     gridLineWidth?: number;
+    gridStyle?: "dotted" | "quadratic";
     endpointLabelOffset?: number;
     gridColor?: string | null;
     gridBgColor?: string | null;
     style?: "default" | "telemetry-style";
     linkLabelMode?: "show-all" | "on-select" | "hide" | "telemetry-style";
     lastNonTelemetryLinkLabelMode?: "show-all" | "on-select" | "hide";
+    telemetryNodeSizePx?: number;
+    telemetryInterfaceSizePercent?: number;
   };
   [key: string]: unknown;
 }

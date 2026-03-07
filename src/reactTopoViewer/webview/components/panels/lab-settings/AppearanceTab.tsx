@@ -35,7 +35,6 @@ import {
 import { invertHexColor, resolveComputedColor } from "../../../utils/color";
 import type { GridSettingsControlsProps } from "../GridSettingsPopover";
 import { ColorField, InputField } from "../../ui/form";
-import { saveViewerSettings } from "../../../services";
 
 interface EdgeInterfaceRow {
   edgeId: string;
@@ -191,15 +190,7 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
               const value = e.target.value;
               const nextLinkLabelMode =
                 value === "telemetry-style" ? "telemetry-style" : lastNonTelemetryLinkLabelMode;
-              const nextLastNonTelemetryLinkLabelMode =
-                nextLinkLabelMode === "telemetry-style"
-                  ? lastNonTelemetryLinkLabelMode
-                  : nextLinkLabelMode;
               setLinkLabelMode(nextLinkLabelMode);
-              void saveViewerSettings({
-                style: value === "telemetry-style" ? "telemetry-style" : "default",
-                linkLabelMode: nextLastNonTelemetryLinkLabelMode
-              });
             }}
             data-testid="lab-settings-telemetry-style"
           >
@@ -220,11 +211,10 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
               disabled={isReadOnly}
               onChange={(value) => {
                 if (isReadOnly) return;
-                setTelemetryNodeSizePx(
-                  clampTelemetryNodeSizePx(
-                    parseBoundedNumber(value, 12, 240, DEFAULT_TELEMETRY_NODE_SIZE_PX)
-                  )
+                const nextTelemetryNodeSizePx = clampTelemetryNodeSizePx(
+                  parseBoundedNumber(value, 12, 240, DEFAULT_TELEMETRY_NODE_SIZE_PX)
                 );
+                setTelemetryNodeSizePx(nextTelemetryNodeSizePx);
               }}
             />
             <InputField
@@ -239,11 +229,10 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
               disabled={isReadOnly}
               onChange={(value) => {
                 if (isReadOnly) return;
-                setTelemetryInterfaceSizePercent(
-                  clampTelemetryInterfaceSizePercent(
-                    parseBoundedNumber(value, 40, 400, DEFAULT_TELEMETRY_INTERFACE_SIZE_PERCENT)
-                  )
+                const nextTelemetryInterfaceSizePercent = clampTelemetryInterfaceSizePercent(
+                  parseBoundedNumber(value, 40, 400, DEFAULT_TELEMETRY_INTERFACE_SIZE_PERCENT)
                 );
+                setTelemetryInterfaceSizePercent(nextTelemetryInterfaceSizePercent);
               }}
             />
           </Box>

@@ -21,6 +21,7 @@ import { useAnnotationUIStore } from "./annotationUIStore";
 export type DeploymentState = "deployed" | "undeployed" | "unknown";
 export type LinkLabelMode = "show-all" | "on-select" | "hide" | "telemetry-style";
 export type NonTelemetryLinkLabelMode = Exclude<LinkLabelMode, "telemetry-style">;
+export type GridStyle = "dotted" | "quadratic";
 export type ProcessingMode = "deploy" | "destroy" | null;
 export type LifecycleLogStream = "stdout" | "stderr";
 export type LifecycleStatus = "running" | "success" | "error" | null;
@@ -57,6 +58,8 @@ export interface TopoViewerState {
   telemetryInterfaceSizePercent: number;
   telemetryGlobalInterfaceOverrideSelection: string;
   telemetryInterfaceLabelOverrides: Record<string, string>;
+  gridLineWidth: number;
+  gridStyle: GridStyle;
   gridColor: string | null;
   gridBgColor: string | null;
   edgeAnnotations: EdgeAnnotation[];
@@ -102,6 +105,8 @@ export interface TopoViewerActions {
   setTelemetryGlobalInterfaceOverrideSelection: (value: string) => void;
   setTelemetryInterfaceLabelOverrides: (overrides: Record<string, string>) => void;
   setTelemetryInterfaceLabelOverride: (endpoint: string, override: string | null) => void;
+  setGridLineWidth: (width: number) => void;
+  setGridStyle: (style: GridStyle) => void;
   setGridColor: (color: string | null) => void;
   setGridBgColor: (color: string | null) => void;
 
@@ -165,6 +170,8 @@ const initialState: TopoViewerState = {
   telemetryInterfaceSizePercent: 100,
   telemetryGlobalInterfaceOverrideSelection: "__auto__",
   telemetryInterfaceLabelOverrides: {},
+  gridLineWidth: 0.5,
+  gridStyle: "dotted",
   gridColor: null,
   gridBgColor: null,
   edgeAnnotations: [],
@@ -371,6 +378,14 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       }
       return { telemetryInterfaceLabelOverrides: next };
     });
+  },
+
+  setGridLineWidth: (gridLineWidth) => {
+    set({ gridLineWidth });
+  },
+
+  setGridStyle: (gridStyle) => {
+    set({ gridStyle });
   },
 
   setGridColor: (color) => {
@@ -630,6 +645,8 @@ export const useTopoViewerState = () =>
       telemetryInterfaceSizePercent: state.telemetryInterfaceSizePercent,
       telemetryGlobalInterfaceOverrideSelection: state.telemetryGlobalInterfaceOverrideSelection,
       telemetryInterfaceLabelOverrides: state.telemetryInterfaceLabelOverrides,
+      gridLineWidth: state.gridLineWidth,
+      gridStyle: state.gridStyle,
       edgeAnnotations: state.edgeAnnotations,
       customNodes: state.customNodes,
       defaultNode: state.defaultNode,
@@ -670,6 +687,8 @@ export const useTopoViewerActions = () =>
         state.setTelemetryGlobalInterfaceOverrideSelection,
       setTelemetryInterfaceLabelOverrides: state.setTelemetryInterfaceLabelOverrides,
       setTelemetryInterfaceLabelOverride: state.setTelemetryInterfaceLabelOverride,
+      setGridLineWidth: state.setGridLineWidth,
+      setGridStyle: state.setGridStyle,
       setEdgeAnnotations: state.setEdgeAnnotations,
       upsertEdgeAnnotation: state.upsertEdgeAnnotation,
       setCustomNodes: state.setCustomNodes,

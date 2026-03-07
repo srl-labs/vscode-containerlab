@@ -143,6 +143,75 @@ test.describe("Lab Settings Modal", () => {
     await expect(modal.getByLabel("Global override (all interfaces)")).toBeVisible();
   });
 
+  test("Appearance settings persist after reload", async ({ page, topoViewerPage }) => {
+    const modal = await openModal(page);
+
+    await modal.locator(SEL_LAB_SETTINGS_TAB_APPEARANCE).click();
+    await page.waitForTimeout(200);
+
+    const styleSelect = modal
+      .locator('[data-testid="lab-settings-telemetry-style"] [role="combobox"]')
+      .first();
+    await styleSelect.click();
+    await chooseOption(page, /^Telemetry Style$/);
+
+    await modal.getByLabel("Node size").fill("80");
+    await modal.getByLabel("Interface size").fill("150");
+
+    await modal.locator('[data-testid="lab-settings-appearance-subtab-grid"]').click();
+    await page.waitForTimeout(150);
+    await modal
+      .locator('[data-testid="lab-settings-grid-style"] button[value="quadratic"]')
+      .click();
+
+    await page.waitForTimeout(400);
+    const beforeApplyAnnotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
+    expect(beforeApplyAnnotations.viewerSettings?.style).not.toBe("telemetry-style");
+    expect(beforeApplyAnnotations.viewerSettings?.gridStyle).not.toBe("quadratic");
+    expect(beforeApplyAnnotations.viewerSettings?.telemetryNodeSizePx).not.toBe(80);
+    expect(beforeApplyAnnotations.viewerSettings?.telemetryInterfaceSizePercent).not.toBe(150);
+
+    await page.locator(SEL_LAB_SETTINGS_SAVE_BTN).click();
+    await expect(modal).not.toBeVisible({ timeout: 3000 });
+
+    await expect
+      .poll(
+        async () => {
+          const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
+          return annotations.viewerSettings ?? {};
+        },
+        { timeout: 5000 }
+      )
+      .toMatchObject({
+        style: "telemetry-style",
+        gridStyle: "quadratic",
+        telemetryNodeSizePx: 80,
+        telemetryInterfaceSizePercent: 150
+      });
+
+    await topoViewerPage.gotoFile(SIMPLE_FILE);
+    await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+
+    const reloadedModal = await openModal(page);
+    await reloadedModal.locator(SEL_LAB_SETTINGS_TAB_APPEARANCE).click();
+    await page.waitForTimeout(200);
+
+    const reloadedStyleSelect = reloadedModal
+      .locator('[data-testid="lab-settings-telemetry-style"] [role="combobox"]')
+      .first();
+    await expect(reloadedStyleSelect).toContainText("Telemetry Style");
+    await expect(reloadedModal.getByLabel("Node size")).toHaveValue("80");
+    await expect(reloadedModal.getByLabel("Interface size")).toHaveValue("150");
+
+    await reloadedModal.locator('[data-testid="lab-settings-appearance-subtab-grid"]').click();
+    await page.waitForTimeout(150);
+    await expect(
+      reloadedModal.locator('[data-testid="lab-settings-grid-style"] button[value="quadratic"]')
+    ).toHaveAttribute("aria-pressed", ARIA_TRUE);
+  });
+
   test("shows current lab name in Basic tab", async ({ page }) => {
     const modal = await openModal(page);
 

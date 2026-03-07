@@ -6,6 +6,8 @@ import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 
 import { useLabSettingsState } from "../../../hooks/editor";
+import { saveViewerSettings } from "../../../services";
+import { useTopoViewerStore } from "../../../stores/topoViewerStore";
 import type { GridSettingsControlsProps } from "../GridSettingsPopover";
 import { BasicTab } from "../lab-settings/BasicTab";
 import { MgmtTab } from "../lab-settings/MgmtTab";
@@ -40,9 +42,31 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
   const isReadOnly = mode === "view" || isLocked;
 
   const state = useLabSettingsState(labSettings);
+  const linkLabelMode = useTopoViewerStore((store) => store.linkLabelMode);
+  const lastNonTelemetryLinkLabelMode = useTopoViewerStore(
+    (store) => store.lastNonTelemetryLinkLabelMode
+  );
+  const telemetryNodeSizePx = useTopoViewerStore((store) => store.telemetryNodeSizePx);
+  const telemetryInterfaceSizePercent = useTopoViewerStore(
+    (store) => store.telemetryInterfaceSizePercent
+  );
 
   const handleSave = async () => {
     await state.handleSave();
+    const style = linkLabelMode === "telemetry-style" ? "telemetry-style" : "default";
+    const nextLastNonTelemetryLinkLabelMode =
+      linkLabelMode === "telemetry-style" ? lastNonTelemetryLinkLabelMode : linkLabelMode;
+    await saveViewerSettings({
+      style,
+      linkLabelMode,
+      lastNonTelemetryLinkLabelMode: nextLastNonTelemetryLinkLabelMode,
+      telemetryNodeSizePx,
+      telemetryInterfaceSizePercent,
+      gridLineWidth,
+      gridStyle,
+      gridColor,
+      gridBgColor
+    });
     onClose();
   };
 

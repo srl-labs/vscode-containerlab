@@ -1400,7 +1400,8 @@ export const AppContent: React.FC<AppContentProps> = ({
       const style = mode === "telemetry-style" ? "telemetry-style" : "default";
       void saveViewerSettings({
         style,
-        linkLabelMode: nextLastNonTelemetryMode
+        linkLabelMode: mode,
+        lastNonTelemetryLinkLabelMode: nextLastNonTelemetryMode
       });
     },
     [topoActions, state.lastNonTelemetryLinkLabelMode]

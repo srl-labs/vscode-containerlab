@@ -262,8 +262,7 @@ function browserGetGroupDebugInfo(): GroupDebugInfo {
 /**
  * Topology files available in dev/topologies/ (file-based)
  */
-type TopologyFileName =
-  string;
+type TopologyFileName = string;
 
 /**
  * Annotations structure from file API
@@ -311,6 +310,13 @@ interface TopologyAnnotations {
   viewerSettings?: {
     endpointLabelOffsetEnabled?: boolean;
     endpointLabelOffset?: number;
+    gridLineWidth?: number;
+    gridStyle?: "dotted" | "quadratic";
+    style?: "default" | "telemetry-style";
+    linkLabelMode?: "show-all" | "on-select" | "hide" | "telemetry-style";
+    lastNonTelemetryLinkLabelMode?: "show-all" | "on-select" | "hide";
+    telemetryNodeSizePx?: number;
+    telemetryInterfaceSizePercent?: number;
   };
   aliasEndpointAnnotations?: Array<{ id: string }>;
 }
@@ -599,7 +605,9 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             // Wait for the topology data to propagate and confirm the file is loaded
             await page.waitForFunction(
               (expectedFile) => {
-                const currentFile = (window as { __DEV__?: BrowserDevApi }).__DEV__?.getCurrentFile?.();
+                const currentFile = (
+                  window as { __DEV__?: BrowserDevApi }
+                ).__DEV__?.getCurrentFile?.();
                 if (typeof currentFile !== "string" || currentFile.length === 0) return false;
                 return currentFile.endsWith(expectedFile);
               },
@@ -760,7 +768,9 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.getCurrentFile?.() ?? null
         );
         const currentFileName =
-          typeof currentFile === "string" && currentFile.length > 0 ? path.basename(currentFile) : null;
+          typeof currentFile === "string" && currentFile.length > 0
+            ? path.basename(currentFile)
+            : null;
         if (
           currentFileName != null &&
           currentFileName.length > 0 &&
@@ -1317,7 +1327,9 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       ) => {
         // Wait for handleNodeCreatedCallback to be available (exposed via __DEV__)
         await page.waitForFunction(
-          () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.handleNodeCreatedCallback !== undefined,
+          () =>
+            (window as { __DEV__?: BrowserDevApi }).__DEV__?.handleNodeCreatedCallback !==
+            undefined,
           undefined,
           { timeout: 10000 }
         );
@@ -1442,7 +1454,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       ): Promise<string | null> => {
         // Wait for createNetworkAtPosition to be available
         await page.waitForFunction(
-          () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.createNetworkAtPosition !== undefined,
+          () =>
+            (window as { __DEV__?: BrowserDevApi }).__DEV__?.createNetworkAtPosition !== undefined,
           undefined,
           { timeout: 10000 }
         );
