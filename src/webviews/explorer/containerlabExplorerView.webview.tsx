@@ -78,6 +78,8 @@ import {
   type ExplorerUiState
 } from "../shared/explorer/types";
 
+import { resolveQuickActionsForNode } from "./quickActions";
+
 const COLOR_ERROR_MAIN = "error.main";
 const COLOR_TEXT_PRIMARY = "text.primary";
 const COLOR_TEXT_SECONDARY = "text.secondary";
@@ -1129,6 +1131,7 @@ function ExplorerNodeTextBlock({
 
 interface ExplorerNodeActionsProps {
   hasActions: boolean;
+  quickActions: ExplorerAction[];
   node: ExplorerNode;
   menuOpen: boolean;
   menuPosition: { x: number; y: number } | null;
@@ -1137,10 +1140,12 @@ interface ExplorerNodeActionsProps {
   handleMenuOpen: (event: MouseEvent<HTMLElement>) => void;
   handleMenuClose: () => void;
   handleBackdropContextMenu: (event: MouseEvent) => void;
+  onInvokeAction: (action: ExplorerAction) => void;
 }
 
 function ExplorerNodeActions({
   hasActions,
+  quickActions,
   node,
   menuOpen,
   menuPosition,
@@ -1148,23 +1153,47 @@ function ExplorerNodeActions({
   menuOpenToLeft,
   handleMenuOpen,
   handleMenuClose,
-  handleBackdropContextMenu
+  handleBackdropContextMenu,
+  onInvokeAction
 }: Readonly<ExplorerNodeActionsProps>) {
-  if (!hasActions) {
+  if (!hasActions && quickActions.length === 0) {
     return null;
   }
 
   return (
     <>
-      <IconButton
-        size="small"
-        onClick={handleMenuOpen}
-        aria-label={`Actions for ${node.label}`}
-        data-node-actions-trigger="true"
-        sx={{ width: 22, height: 22, p: 0.25, color: COLOR_TEXT_PRIMARY }}
-      >
-        <MoreVertIcon fontSize="small" />
-      </IconButton>
+      <Stack direction="row" spacing={0.25} alignItems="center">
+        {quickActions.map((action) => {
+          const IconComponent = actionIcon(action);
+          return (
+            <Tooltip key={action.id} title={action.label}>
+              <IconButton
+                size="small"
+                className="explorer-node-inline-icon-button"
+                aria-label={action.label}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onInvokeAction(action);
+                }}
+              >
+                <IconComponent fontSize="inherit" className="explorer-node-inline-icon" />
+              </IconButton>
+            </Tooltip>
+          );
+        })}
+        {hasActions && (
+          <IconButton
+            size="small"
+            onClick={handleMenuOpen}
+            aria-label={`Actions for ${node.label}`}
+            data-node-actions-trigger="true"
+            sx={{ width: 22, height: 22, p: 0.25, color: COLOR_TEXT_PRIMARY }}
+          >
+            <MoreVertIcon fontSize="small" />
+          </IconButton>
+        )}
+      </Stack>
       <ContextMenu
         isVisible={menuOpen}
         position={menuPosition ?? { x: 0, y: 0 }}
@@ -1185,6 +1214,10 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
   const menuActions = useMemo(
     () => filterNodeMenuActions(node.actions, nodeKind),
     [node.actions, nodeKind]
+  );
+  const quickActions = useMemo(
+    () => resolveQuickActionsForNode(node.contextValue, menuActions),
+    [node.contextValue, menuActions]
   );
   const hasActions = menuActions.length > 0;
   const contextMenuItems = useMemo<ContextMenuItem[]>(
@@ -1248,6 +1281,7 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
       />
       <ExplorerNodeActions
         hasActions={hasActions}
+        quickActions={quickActions}
         node={node}
         menuOpen={menuOpen}
         menuPosition={menuPosition}
@@ -1256,6 +1290,7 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
         handleMenuOpen={handleMenuOpen}
         handleMenuClose={handleMenuClose}
         handleBackdropContextMenu={handleBackdropContextMenu}
+        onInvokeAction={onInvokeAction}
       />
     </Stack>
   );
