@@ -1,4 +1,4 @@
-import type * as vscode from "vscode";
+import * as vscode from "vscode";
 
 import type {
   HelpFeedbackProvider,
@@ -134,6 +134,289 @@ const DESTRUCTIVE_COMMANDS = new Set<string>([
 ]);
 const SECTION_BUILD_TIMEOUT_MS = 4000;
 const TREE_ITEM_COLLAPSIBLE_NONE = 0;
+const CONTAINER_NODE_CONTEXT_MENU_ID = "containerlab/node/context";
+const LEGACY_VIEW_ITEM_CONTEXT_MENU_ID = "view/item/context";
+const LEGACY_NODE_CONTEXT_WHEN_REGEX =
+  /\bviewItem\s*==\s*["']?containerlabContainer(?:Group)?["']?\b/;
+const BUILTIN_CONTAINER_ACTION_COMMANDS: readonly string[] = [
+  "containerlab.node.showLogs",
+  "containerlab.node.attachShell",
+  "containerlab.node.ssh",
+  "containerlab.node.telnet",
+  "containerlab.node.openBrowser",
+  "containerlab.node.start",
+  "containerlab.node.stop",
+  "containerlab.node.pause",
+  "containerlab.node.unpause",
+  "containerlab.node.save",
+  "containerlab.node.manageImpairments",
+  "containerlab.node.copyName",
+  "containerlab.node.copyID",
+  "containerlab.node.copyIPv4Address",
+  "containerlab.node.copyIPv6Address",
+  "containerlab.node.copyKind",
+  "containerlab.node.copyImage"
+];
+
+interface ContributedMenuItem {
+  commandId: string;
+  when?: string;
+  label?: string;
+}
+
+interface ContributedContainerActions {
+  commands: ContributedMenuItem[];
+  commandLabels: Map<string, string>;
+}
+
+interface ExtensionContributes {
+  menus?: unknown;
+  commands?: unknown;
+}
+
+let contributedContainerActionsCache: ContributedContainerActions | undefined;
+let contributedContainerActionsCachePromise: Promise<ContributedContainerActions> | undefined;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function asNonEmptyString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function extractCommandId(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const id = asNonEmptyString(value.id);
+  if (id !== undefined) {
+    return id;
+  }
+
+  return asNonEmptyString(value.command);
+}
+
+function extractCommandLabel(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const title = asNonEmptyString(value.title);
+  if (title !== undefined) {
+    return title;
+  }
+
+  return asNonEmptyString(value.value);
+}
+
+function parseContributedMenuItem(value: unknown): ContributedMenuItem | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const commandField = value.command;
+  const commandId = extractCommandId(commandField);
+  if (commandId === undefined) {
+    return undefined;
+  }
+
+  let label = extractCommandLabel(value.title);
+  if (label === undefined && isRecord(commandField)) {
+    label = extractCommandLabel(commandField.title);
+  }
+
+  return {
+    commandId,
+    when: asNonEmptyString(value.when),
+    label
+  };
+}
+
+function parseContributedMenuItems(value: unknown): ContributedMenuItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const items: ContributedMenuItem[] = [];
+  for (const candidate of value) {
+    const item = parseContributedMenuItem(candidate);
+    if (item !== undefined) {
+      items.push(item);
+    }
+  }
+  return items;
+}
+
+function getExtensionContributes(
+  extension: vscode.Extension<unknown>
+): ExtensionContributes | undefined {
+  const packageJson: unknown = extension.packageJSON;
+  if (!isRecord(packageJson)) {
+    return undefined;
+  }
+
+  const contributes = packageJson.contributes;
+  if (!isRecord(contributes)) {
+    return undefined;
+  }
+
+  return contributes as ExtensionContributes;
+}
+
+function getPackageContributionItems(menuId: string): ContributedMenuItem[] {
+  const items: ContributedMenuItem[] = [];
+
+  for (const extension of vscode.extensions.all) {
+    const contributes = getExtensionContributes(extension);
+    if (contributes === undefined || !isRecord(contributes.menus)) {
+      continue;
+    }
+
+    const menuItems = parseContributedMenuItems(contributes.menus[menuId]);
+    if (menuItems.length > 0) {
+      items.push(...menuItems);
+    }
+  }
+
+  return items;
+}
+
+async function getContributedMenuItems(menuId: string): Promise<ContributedMenuItem[]> {
+  try {
+    const result = await vscode.commands.executeCommand<unknown>(
+      "_builtin.getContributedMenuItems",
+      menuId
+    );
+    const parsed = parseContributedMenuItems(result);
+    if (parsed.length > 0) {
+      return parsed;
+    }
+  } catch {
+    // Fall back to extension package contributions when the internal command is unavailable.
+  }
+
+  return getPackageContributionItems(menuId);
+}
+
+function buildCommandLabelMap(): Map<string, string> {
+  const labels = new Map<string, string>();
+
+  for (const extension of vscode.extensions.all) {
+    const contributes = getExtensionContributes(extension);
+    if (contributes === undefined) {
+      continue;
+    }
+
+    let commands: unknown[] = [];
+    const commandsContribution = contributes.commands;
+    if (Array.isArray(commandsContribution)) {
+      commands = commandsContribution;
+    } else if (commandsContribution !== undefined) {
+      commands = [commandsContribution];
+    }
+
+    for (const commandContribution of commands) {
+      if (!isRecord(commandContribution)) {
+        continue;
+      }
+
+      const commandId = asNonEmptyString(commandContribution.command);
+      if (commandId === undefined) {
+        continue;
+      }
+
+      const label = extractCommandLabel(commandContribution.title);
+      if (label !== undefined && !labels.has(commandId)) {
+        labels.set(commandId, label);
+      }
+    }
+  }
+
+  return labels;
+}
+
+function dedupeMenuItems(items: ContributedMenuItem[]): ContributedMenuItem[] {
+  const deduped: ContributedMenuItem[] = [];
+  const seen = new Set<string>();
+
+  for (const item of items) {
+    if (seen.has(item.commandId)) {
+      continue;
+    }
+    seen.add(item.commandId);
+    deduped.push(item);
+  }
+
+  return deduped;
+}
+
+function legacyViewItemMatchesContainer(when: string | undefined): boolean {
+  if (when === undefined) {
+    return false;
+  }
+
+  return LEGACY_NODE_CONTEXT_WHEN_REGEX.test(when);
+}
+
+async function computeContributedContainerActions(): Promise<ContributedContainerActions> {
+  const commandLabels = buildCommandLabelMap();
+  const menuItems = await getContributedMenuItems(CONTAINER_NODE_CONTEXT_MENU_ID);
+  const legacyMenuItems = (await getContributedMenuItems(LEGACY_VIEW_ITEM_CONTEXT_MENU_ID)).filter(
+    (item) => legacyViewItemMatchesContainer(item.when)
+  );
+  const commands = dedupeMenuItems([...menuItems, ...legacyMenuItems]);
+
+  for (const item of commands) {
+    if (item.label !== undefined && !commandLabels.has(item.commandId)) {
+      commandLabels.set(item.commandId, item.label);
+    }
+  }
+
+  return {
+    commands,
+    commandLabels
+  };
+}
+
+async function getContributedContainerActions(): Promise<ContributedContainerActions> {
+  if (contributedContainerActionsCache !== undefined) {
+    return contributedContainerActionsCache;
+  }
+
+  contributedContainerActionsCachePromise ??= computeContributedContainerActions()
+    .catch((error: unknown) => {
+      console.error("[containerlab explorer] failed to resolve contributed node actions", error);
+      return {
+        commands: [],
+        commandLabels: new Map<string, string>()
+      };
+    })
+    .finally(() => {
+      contributedContainerActionsCachePromise = undefined;
+    });
+
+  contributedContainerActionsCache = await contributedContainerActionsCachePromise;
+  return contributedContainerActionsCache;
+}
+
+export function invalidateExplorerContributionCache(): void {
+  contributedContainerActionsCache = undefined;
+  contributedContainerActionsCachePromise = undefined;
+}
 
 function labelToText(label: string | vscode.TreeItemLabel | undefined): string {
   if (label === undefined) {
@@ -440,25 +723,30 @@ function appendContainerActions(
   actions: ExplorerAction[],
   seen: Set<string>,
   registry: ExplorerActionRegistry,
-  item: ExplorerTreeItemLike
+  item: ExplorerTreeItemLike,
+  contributedActions: ContributedMenuItem[],
+  commandLabels: ReadonlyMap<string, string>
 ): void {
-  pushAction(actions, seen, registry, "containerlab.node.showLogs", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.attachShell", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.ssh", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.telnet", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.openBrowser", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.start", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.stop", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.pause", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.unpause", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.save", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.manageImpairments", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.copyName", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.copyID", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.copyIPv4Address", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.copyIPv6Address", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.copyKind", [item]);
-  pushAction(actions, seen, registry, "containerlab.node.copyImage", [item]);
+  for (const commandId of BUILTIN_CONTAINER_ACTION_COMMANDS) {
+    pushAction(actions, seen, registry, commandId, [item]);
+  }
+
+  const existingCommands = new Set(actions.map((action) => action.commandId));
+  for (const contributedAction of contributedActions) {
+    if (existingCommands.has(contributedAction.commandId)) {
+      continue;
+    }
+
+    pushAction(
+      actions,
+      seen,
+      registry,
+      contributedAction.commandId,
+      [item],
+      commandLabels.get(contributedAction.commandId)
+    );
+    existingCommands.add(contributedAction.commandId);
+  }
 }
 
 function appendInterfaceActions(
@@ -516,7 +804,9 @@ function getNodeActions(
   sectionId: ExplorerSectionId,
   item: ExplorerTreeItemLike,
   registry: ExplorerActionRegistry,
-  options: ExplorerSnapshotOptions
+  options: ExplorerSnapshotOptions,
+  contributedActions: ContributedMenuItem[],
+  commandLabels: ReadonlyMap<string, string>
 ): ExplorerAction[] {
   const actions: ExplorerAction[] = [];
   const seen = new Set<string>();
@@ -533,7 +823,7 @@ function getNodeActions(
   }
 
   if (contextValue === "containerlabContainer" || contextValue === "containerlabContainerGroup") {
-    appendContainerActions(actions, seen, registry, item);
+    appendContainerActions(actions, seen, registry, item, contributedActions, commandLabels);
     return actions;
   }
 
@@ -591,6 +881,8 @@ async function buildNode(
   sectionId: ExplorerSectionId,
   options: ExplorerSnapshotOptions,
   registry: ExplorerActionRegistry,
+  contributedActions: ContributedMenuItem[],
+  commandLabels: ReadonlyMap<string, string>,
   pathId: string
 ): Promise<ExplorerNode> {
   const contextValue = item.contextValue;
@@ -609,10 +901,26 @@ async function buildNode(
     : rawChildrenItems;
   const children = await Promise.all(
     childrenItems.map((child, index) =>
-      buildNode(provider, child, sectionId, options, registry, `${pathId}/${index}`)
+      buildNode(
+        provider,
+        child,
+        sectionId,
+        options,
+        registry,
+        contributedActions,
+        commandLabels,
+        `${pathId}/${index}`
+      )
     )
   );
-  const nodeActions = getNodeActions(sectionId, item, registry, options);
+  const nodeActions = getNodeActions(
+    sectionId,
+    item,
+    registry,
+    options,
+    contributedActions,
+    commandLabels
+  );
   if (shareInfo) {
     const copyCommandId =
       shareInfo.kind === "sshx"
@@ -662,12 +970,23 @@ async function buildSectionNodes(
   provider: ExplorerTreeProvider,
   sectionId: ExplorerSectionId,
   options: ExplorerSnapshotOptions,
-  registry: ExplorerActionRegistry
+  registry: ExplorerActionRegistry,
+  contributedActions: ContributedMenuItem[],
+  commandLabels: ReadonlyMap<string, string>
 ): Promise<ExplorerNode[]> {
   const roots = await getProviderChildren(provider);
   return Promise.all(
     roots.map((item, index) =>
-      buildNode(provider, item, sectionId, options, registry, `${sectionId}/${index}`)
+      buildNode(
+        provider,
+        item,
+        sectionId,
+        options,
+        registry,
+        contributedActions,
+        commandLabels,
+        `${sectionId}/${index}`
+      )
     )
   );
 }
@@ -724,9 +1043,18 @@ async function buildSectionSnapshot(
   sectionId: ExplorerSectionId,
   provider: ExplorerTreeProvider,
   options: ExplorerSnapshotOptions,
-  registry: ExplorerActionRegistry
+  registry: ExplorerActionRegistry,
+  contributedActions: ContributedMenuItem[],
+  commandLabels: ReadonlyMap<string, string>
 ): Promise<ExplorerSectionSnapshot> {
-  const nodes = await buildSectionNodes(provider, sectionId, options, registry);
+  const nodes = await buildSectionNodes(
+    provider,
+    sectionId,
+    options,
+    registry,
+    contributedActions,
+    commandLabels
+  );
   return {
     id: sectionId,
     label: EXPLORER_SECTION_LABELS[sectionId],
@@ -763,11 +1091,20 @@ async function buildSectionSnapshotSafe(
   sectionId: ExplorerSectionId,
   provider: ExplorerTreeProvider,
   options: ExplorerSnapshotOptions,
-  registry: ExplorerActionRegistry
+  registry: ExplorerActionRegistry,
+  contributedActions: ContributedMenuItem[],
+  commandLabels: ReadonlyMap<string, string>
 ): Promise<ExplorerSectionSnapshot> {
   try {
     return await withTimeout(
-      buildSectionSnapshot(sectionId, provider, options, registry),
+      buildSectionSnapshot(
+        sectionId,
+        provider,
+        options,
+        registry,
+        contributedActions,
+        commandLabels
+      ),
       SECTION_BUILD_TIMEOUT_MS,
       `Timed out while building section '${sectionId}'`
     );
@@ -789,6 +1126,7 @@ export async function buildExplorerSnapshot(
   options: ExplorerSnapshotOptions
 ): Promise<ExplorerSnapshotBuildResult> {
   const registry = new ExplorerActionRegistry();
+  const { commands: contributedActions, commandLabels } = await getContributedContainerActions();
   const providersBySection: Record<ExplorerSectionId, ExplorerTreeProvider> = {
     runningLabs: providers.runningProvider,
     localLabs: providers.localProvider,
@@ -797,7 +1135,14 @@ export async function buildExplorerSnapshot(
 
   const sections = await Promise.all(
     EXPLORER_SECTION_ORDER.map((sectionId) =>
-      buildSectionSnapshotSafe(sectionId, providersBySection[sectionId], options, registry)
+      buildSectionSnapshotSafe(
+        sectionId,
+        providersBySection[sectionId],
+        options,
+        registry,
+        contributedActions,
+        commandLabels
+      )
     )
   );
 
