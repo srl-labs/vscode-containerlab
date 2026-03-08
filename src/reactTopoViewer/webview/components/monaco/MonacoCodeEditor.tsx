@@ -757,7 +757,7 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
 
     const handlePaste = (event: ClipboardEvent) => {
       const text = event.clipboardData?.getData("text/plain");
-      if (!text) return;
+      if (text === undefined || text.length === 0) return;
       if (editor.getOption(monaco.editor.EditorOption.readOnly)) return;
 
       event.preventDefault();
@@ -766,7 +766,7 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
     };
 
     if (editorDomNode) {
-      editorDomNode.addEventListener("paste", handlePaste as EventListener);
+      editorDomNode.addEventListener("paste", handlePaste);
     }
 
     // Override Monaco's context-menu "Paste" action so it also works in the
@@ -798,7 +798,7 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
 
     return () => {
       if (editorDomNode) {
-        editorDomNode.removeEventListener("paste", handlePaste as EventListener);
+        editorDomNode.removeEventListener("paste", handlePaste);
       }
       pasteActionDisposable.dispose();
       disposable.dispose();

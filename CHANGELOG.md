@@ -1,5 +1,26 @@
 # Change Log
 
+## [0.24.0] - 2026-03-08
+
+- TopoViewer/editor:
+  - Traffic annotations on canvas with better rendering responsiveness and rate-label UX.
+  - Live preview of panel edits on the canvas.
+  - Restored Shift+Click node link creation.
+  - Improved editor panel UX (show Apply only for real changes, standardized number steppers).
+  - Allow editing node icon and label in unlocked running labs.
+  - Better Monaco behavior in webviews, including a VS Code sandbox paste workaround.
+  - Better stability for large labs and live YAML edits.
+- Grafana export:
+  - Expanded export capabilities and improved rate label styling/options (including hover/hide behavior).
+  - Improved legend and SVG export handling.
+- Deploy/runtime and connectivity:
+  - Added timer to deploy/destroy lifecycle modal.
+  - Improved SSH hostname handling for distributed SR-SIM nodes.
+  - Improved running-labs uptime parsing for long Docker uptime units.
+- Tooling and schema:
+  - Migrated linting from ESLint to Oxlint with stricter rules.
+  - Synced `clab` schema from upstream.
+
 ## [0.23.0] - 2026-02-19
 
 - Major TopoViewer/editor architecture refresh:
