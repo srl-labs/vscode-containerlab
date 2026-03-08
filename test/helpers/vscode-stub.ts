@@ -115,6 +115,10 @@ export const env = {
 };
 
 export const extensions = {
+  all: [] as any[],
+  onDidChange(_listener: () => void) {
+    return { dispose() {} };
+  },
   getExtension(_extensionId: string) {
     if (_extensionId) {
       // no-op

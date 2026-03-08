@@ -19,7 +19,10 @@ import type {
   RunningLabTreeDataProvider
 } from "../../treeView";
 
-import { buildExplorerSnapshot } from "./explorerSnapshotAdapter";
+import {
+  buildExplorerSnapshot,
+  invalidateExplorerContributionCache
+} from "./explorerSnapshotAdapter";
 import type {
   ExplorerActionInvocation,
   ExplorerSnapshotOptions,
@@ -102,6 +105,12 @@ export class ContainerlabExplorerViewProvider
     }
 
     this.registerDataListeners();
+    this.disposables.push(
+      vscode.extensions.onDidChange(() => {
+        invalidateExplorerContributionCache();
+        this.scheduleSnapshot(0);
+      })
+    );
   }
 
   private registerDataListeners(): void {
