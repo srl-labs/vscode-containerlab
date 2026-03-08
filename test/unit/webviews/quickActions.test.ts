@@ -29,6 +29,23 @@ describe("resolveQuickActionsForNode", () => {
     ]);
   });
 
+  it("includes first contributed container action as an inline quick action", () => {
+    const actions = [
+      createAction("containerlab.node.showLogs", "Show Logs"),
+      createAction("containerlab.node.ssh", "SSH"),
+      createAction("netconf.clabConnect", "NETCONF: Connect"),
+      createAction("vendor.otherAction", "Other Action")
+    ];
+
+    const quickActions = resolveQuickActionsForNode("containerlabContainer", actions);
+
+    expect(quickActions.map((action) => action.commandId)).to.deep.equal([
+      "containerlab.node.ssh",
+      "containerlab.node.showLogs",
+      "netconf.clabConnect"
+    ]);
+  });
+
   it("does not add container quick actions for container groups", () => {
     const actions = [
       createAction("containerlab.node.showLogs", "Show Logs"),

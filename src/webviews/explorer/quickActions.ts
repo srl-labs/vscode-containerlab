@@ -19,14 +19,31 @@ function isInterfaceContext(contextValue: string | undefined): boolean {
   return contextValue === "containerlabInterfaceUp" || contextValue === "containerlabInterfaceDown";
 }
 
+function isContainerlabCommand(commandId: string): boolean {
+  return commandId.toLowerCase().startsWith("containerlab.");
+}
+
+function resolveContainerQuickActions(actions: ExplorerAction[]): ExplorerAction[] {
+  const quickActions = CONTAINER_QUICK_ACTION_COMMANDS.map((commandId) =>
+    actionByCommandId(actions, commandId)
+  ).filter((action): action is ExplorerAction => action !== undefined);
+  const usedCommandIds = new Set(quickActions.map((action) => action.commandId.toLowerCase()));
+  const contributedQuickAction = actions.find((action) => {
+    const commandId = action.commandId.toLowerCase();
+    return !isContainerlabCommand(commandId) && !usedCommandIds.has(commandId);
+  });
+  if (contributedQuickAction !== undefined) {
+    quickActions.push(contributedQuickAction);
+  }
+  return quickActions;
+}
+
 export function resolveQuickActionsForNode(
   contextValue: string | undefined,
   actions: ExplorerAction[]
 ): ExplorerAction[] {
   if (contextValue === "containerlabContainer") {
-    return CONTAINER_QUICK_ACTION_COMMANDS.map((commandId) =>
-      actionByCommandId(actions, commandId)
-    ).filter((action): action is ExplorerAction => action !== undefined);
+    return resolveContainerQuickActions(actions);
   }
 
   if (isInterfaceContext(contextValue)) {

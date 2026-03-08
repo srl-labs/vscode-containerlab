@@ -65,7 +65,7 @@ describe("explorerSnapshotAdapter contributed container actions", () => {
         packageJSON: {
           contributes: {
             commands: [
-              { command: "acme.node.custom", title: "ACME: Custom Action" },
+              { command: "acme.node.custom", title: "ACME: Custom Action", icon: "$(vm-connect)" },
               { command: "acme.node.legacy", title: "ACME: Legacy Action" },
               { command: "acme.node.ignore", title: "ACME: Ignore Action" }
             ]
@@ -115,9 +115,9 @@ describe("explorerSnapshotAdapter contributed container actions", () => {
     expect(commandIds).to.include("acme.node.custom");
     expect(commandIds).to.include("acme.node.legacy");
     expect(commandIds).to.not.include("acme.node.ignore");
-    expect(actions.find((action) => action.commandId === "acme.node.custom")?.label).to.equal(
-      "ACME: Custom Action"
-    );
+    const customAction = actions.find((action) => action.commandId === "acme.node.custom");
+    expect(customAction?.label).to.equal("ACME: Custom Action");
+    expect(customAction?.iconId).to.equal("vm-connect");
   });
 
   it("falls back to extension package contributions when builtin menu query is unavailable", async () => {
@@ -126,7 +126,7 @@ describe("explorerSnapshotAdapter contributed container actions", () => {
         packageJSON: {
           contributes: {
             commands: [
-              { command: "acme.node.pkg", title: "ACME: Package Action" },
+              { command: "acme.node.pkg", title: "ACME: Package Action", icon: "$(plug)" },
               { command: "acme.node.pkgLegacy", title: "ACME: Package Legacy" },
               { command: "acme.node.skip", title: "ACME: Skip" }
             ],
@@ -169,5 +169,6 @@ describe("explorerSnapshotAdapter contributed container actions", () => {
     expect(commandIds).to.include("acme.node.pkg");
     expect(commandIds).to.include("acme.node.pkgLegacy");
     expect(commandIds).to.not.include("acme.node.skip");
+    expect(actions.find((action) => action.commandId === "acme.node.pkg")?.iconId).to.equal("plug");
   });
 });

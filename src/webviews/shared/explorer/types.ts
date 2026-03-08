@@ -17,6 +17,7 @@ export interface ExplorerAction {
   actionRef: string;
   label: string;
   commandId: string;
+  iconId?: string;
   destructive?: boolean;
 }
 

@@ -162,11 +162,13 @@ interface ContributedMenuItem {
   commandId: string;
   when?: string;
   label?: string;
+  iconId?: string;
 }
 
 interface ContributedContainerActions {
   commands: ContributedMenuItem[];
   commandLabels: Map<string, string>;
+  commandIcons: Map<string, string>;
 }
 
 interface ExtensionContributes {
@@ -223,6 +225,47 @@ function extractCommandLabel(value: unknown): string | undefined {
   return asNonEmptyString(value.value);
 }
 
+function parseThemeIconId(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  const match = /^\$\(([^)]+)\)$/u.exec(trimmed);
+  if (!match) {
+    return undefined;
+  }
+
+  const iconWithModifiers = match[1];
+  if (iconWithModifiers.length === 0) {
+    return undefined;
+  }
+
+  const [iconId] = iconWithModifiers.split("~");
+  return iconId.length > 0 ? iconId : undefined;
+}
+
+function extractCommandIconId(value: unknown): string | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const icon = value.icon;
+  if (typeof icon === "string") {
+    return parseThemeIconId(icon);
+  }
+
+  if (isRecord(icon)) {
+    return asNonEmptyString(icon.id);
+  }
+
+  return undefined;
+}
+
 function parseContributedMenuItem(value: unknown): ContributedMenuItem | undefined {
   if (!isRecord(value)) {
     return undefined;
@@ -238,11 +281,15 @@ function parseContributedMenuItem(value: unknown): ContributedMenuItem | undefin
   if (label === undefined && isRecord(commandField)) {
     label = extractCommandLabel(commandField.title);
   }
+  const iconId = isRecord(commandField)
+    ? (extractCommandIconId(commandField) ?? extractCommandIconId(value))
+    : extractCommandIconId(value);
 
   return {
     commandId,
     when: asNonEmptyString(value.when),
-    label
+    label,
+    iconId
   };
 }
 
@@ -312,8 +359,9 @@ async function getContributedMenuItems(menuId: string): Promise<ContributedMenuI
   return getPackageContributionItems(menuId);
 }
 
-function buildCommandLabelMap(): Map<string, string> {
+function buildCommandMetadataMaps(): { labels: Map<string, string>; icons: Map<string, string> } {
   const labels = new Map<string, string>();
+  const icons = new Map<string, string>();
 
   for (const extension of vscode.extensions.all) {
     const contributes = getExtensionContributes(extension);
@@ -343,10 +391,15 @@ function buildCommandLabelMap(): Map<string, string> {
       if (label !== undefined && !labels.has(commandId)) {
         labels.set(commandId, label);
       }
+
+      const iconId = extractCommandIconId(commandContribution);
+      if (iconId !== undefined && !icons.has(commandId)) {
+        icons.set(commandId, iconId);
+      }
     }
   }
 
-  return labels;
+  return { labels, icons };
 }
 
 function dedupeMenuItems(items: ContributedMenuItem[]): ContributedMenuItem[] {
@@ -373,7 +426,7 @@ function legacyViewItemMatchesContainer(when: string | undefined): boolean {
 }
 
 async function computeContributedContainerActions(): Promise<ContributedContainerActions> {
-  const commandLabels = buildCommandLabelMap();
+  const { labels: commandLabels, icons: commandIcons } = buildCommandMetadataMaps();
   const menuItems = await getContributedMenuItems(CONTAINER_NODE_CONTEXT_MENU_ID);
   const legacyMenuItems = (await getContributedMenuItems(LEGACY_VIEW_ITEM_CONTEXT_MENU_ID)).filter(
     (item) => legacyViewItemMatchesContainer(item.when)
@@ -384,11 +437,15 @@ async function computeContributedContainerActions(): Promise<ContributedContaine
     if (item.label !== undefined && !commandLabels.has(item.commandId)) {
       commandLabels.set(item.commandId, item.label);
     }
+    if (item.iconId !== undefined && !commandIcons.has(item.commandId)) {
+      commandIcons.set(item.commandId, item.iconId);
+    }
   }
 
   return {
     commands,
-    commandLabels
+    commandLabels,
+    commandIcons
   };
 }
 
@@ -402,7 +459,8 @@ async function getContributedContainerActions(): Promise<ContributedContainerAct
       console.error("[containerlab explorer] failed to resolve contributed node actions", error);
       return {
         commands: [],
-        commandLabels: new Map<string, string>()
+        commandLabels: new Map<string, string>(),
+        commandIcons: new Map<string, string>()
       };
     })
     .finally(() => {
@@ -549,7 +607,8 @@ class ExplorerActionRegistry {
     commandId: string,
     label: string,
     args: unknown[] = [],
-    destructive = false
+    destructive = false,
+    iconId?: string
   ): ExplorerAction {
     const actionRef = `action:${this.counter++}`;
     this.bindings.set(actionRef, { commandId, args });
@@ -558,6 +617,7 @@ class ExplorerActionRegistry {
       actionRef,
       label,
       commandId,
+      iconId,
       destructive
     };
   }
@@ -574,7 +634,8 @@ function pushAction(
   commandId: string,
   args: unknown[] = [],
   label?: string,
-  destructive?: boolean
+  destructive?: boolean,
+  iconId?: string
 ): void {
   const resolvedLabel = commandLabel(commandId, label);
   const key = `${commandId}:${resolvedLabel}`;
@@ -588,7 +649,8 @@ function pushAction(
       commandId,
       resolvedLabel,
       args,
-      destructive ?? DESTRUCTIVE_COMMANDS.has(commandId)
+      destructive ?? DESTRUCTIVE_COMMANDS.has(commandId),
+      iconId
     )
   );
 }
@@ -725,7 +787,8 @@ function appendContainerActions(
   registry: ExplorerActionRegistry,
   item: ExplorerTreeItemLike,
   contributedActions: ContributedMenuItem[],
-  commandLabels: ReadonlyMap<string, string>
+  commandLabels: ReadonlyMap<string, string>,
+  commandIcons: ReadonlyMap<string, string>
 ): void {
   for (const commandId of BUILTIN_CONTAINER_ACTION_COMMANDS) {
     pushAction(actions, seen, registry, commandId, [item]);
@@ -743,7 +806,9 @@ function appendContainerActions(
       registry,
       contributedAction.commandId,
       [item],
-      commandLabels.get(contributedAction.commandId)
+      commandLabels.get(contributedAction.commandId),
+      undefined,
+      commandIcons.get(contributedAction.commandId)
     );
     existingCommands.add(contributedAction.commandId);
   }
@@ -806,7 +871,8 @@ function getNodeActions(
   registry: ExplorerActionRegistry,
   options: ExplorerSnapshotOptions,
   contributedActions: ContributedMenuItem[],
-  commandLabels: ReadonlyMap<string, string>
+  commandLabels: ReadonlyMap<string, string>,
+  commandIcons: ReadonlyMap<string, string>
 ): ExplorerAction[] {
   const actions: ExplorerAction[] = [];
   const seen = new Set<string>();
@@ -823,7 +889,15 @@ function getNodeActions(
   }
 
   if (contextValue === "containerlabContainer" || contextValue === "containerlabContainerGroup") {
-    appendContainerActions(actions, seen, registry, item, contributedActions, commandLabels);
+    appendContainerActions(
+      actions,
+      seen,
+      registry,
+      item,
+      contributedActions,
+      commandLabels,
+      commandIcons
+    );
     return actions;
   }
 
@@ -883,6 +957,7 @@ async function buildNode(
   registry: ExplorerActionRegistry,
   contributedActions: ContributedMenuItem[],
   commandLabels: ReadonlyMap<string, string>,
+  commandIcons: ReadonlyMap<string, string>,
   pathId: string
 ): Promise<ExplorerNode> {
   const contextValue = item.contextValue;
@@ -909,6 +984,7 @@ async function buildNode(
         registry,
         contributedActions,
         commandLabels,
+        commandIcons,
         `${pathId}/${index}`
       )
     )
@@ -919,7 +995,8 @@ async function buildNode(
     registry,
     options,
     contributedActions,
-    commandLabels
+    commandLabels,
+    commandIcons
   );
   if (shareInfo) {
     const copyCommandId =
@@ -972,7 +1049,8 @@ async function buildSectionNodes(
   options: ExplorerSnapshotOptions,
   registry: ExplorerActionRegistry,
   contributedActions: ContributedMenuItem[],
-  commandLabels: ReadonlyMap<string, string>
+  commandLabels: ReadonlyMap<string, string>,
+  commandIcons: ReadonlyMap<string, string>
 ): Promise<ExplorerNode[]> {
   const roots = await getProviderChildren(provider);
   return Promise.all(
@@ -985,6 +1063,7 @@ async function buildSectionNodes(
         registry,
         contributedActions,
         commandLabels,
+        commandIcons,
         `${sectionId}/${index}`
       )
     )
@@ -1045,7 +1124,8 @@ async function buildSectionSnapshot(
   options: ExplorerSnapshotOptions,
   registry: ExplorerActionRegistry,
   contributedActions: ContributedMenuItem[],
-  commandLabels: ReadonlyMap<string, string>
+  commandLabels: ReadonlyMap<string, string>,
+  commandIcons: ReadonlyMap<string, string>
 ): Promise<ExplorerSectionSnapshot> {
   const nodes = await buildSectionNodes(
     provider,
@@ -1053,7 +1133,8 @@ async function buildSectionSnapshot(
     options,
     registry,
     contributedActions,
-    commandLabels
+    commandLabels,
+    commandIcons
   );
   return {
     id: sectionId,
@@ -1093,7 +1174,8 @@ async function buildSectionSnapshotSafe(
   options: ExplorerSnapshotOptions,
   registry: ExplorerActionRegistry,
   contributedActions: ContributedMenuItem[],
-  commandLabels: ReadonlyMap<string, string>
+  commandLabels: ReadonlyMap<string, string>,
+  commandIcons: ReadonlyMap<string, string>
 ): Promise<ExplorerSectionSnapshot> {
   try {
     return await withTimeout(
@@ -1103,7 +1185,8 @@ async function buildSectionSnapshotSafe(
         options,
         registry,
         contributedActions,
-        commandLabels
+        commandLabels,
+        commandIcons
       ),
       SECTION_BUILD_TIMEOUT_MS,
       `Timed out while building section '${sectionId}'`
@@ -1126,7 +1209,11 @@ export async function buildExplorerSnapshot(
   options: ExplorerSnapshotOptions
 ): Promise<ExplorerSnapshotBuildResult> {
   const registry = new ExplorerActionRegistry();
-  const { commands: contributedActions, commandLabels } = await getContributedContainerActions();
+  const {
+    commands: contributedActions,
+    commandLabels,
+    commandIcons
+  } = await getContributedContainerActions();
   const providersBySection: Record<ExplorerSectionId, ExplorerTreeProvider> = {
     runningLabs: providers.runningProvider,
     localLabs: providers.localProvider,
@@ -1141,7 +1228,8 @@ export async function buildExplorerSnapshot(
         options,
         registry,
         contributedActions,
-        commandLabels
+        commandLabels,
+        commandIcons
       )
     )
   );

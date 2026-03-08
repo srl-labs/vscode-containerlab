@@ -253,6 +253,27 @@ const ACTION_ICON_BY_COMMAND: Partial<Record<string, SvgIconComponent>> = {
   "containerlab.lab.gotty.copylink": OpenInBrowserIcon
 };
 
+const ACTION_ICON_BY_THEME_ICON_ID: Partial<Record<string, SvgIconComponent>> = {
+  "vm-connect": LinkIcon,
+  remote: TerminalIcon,
+  terminal: TerminalIcon,
+  globe: OpenInBrowserIcon,
+  "open-preview": OpenInBrowserIcon,
+  "open-external": OpenInNewIcon,
+  "list-unordered": ArticleOutlinedIcon,
+  "graph-line": AccountTreeIcon,
+  copy: ContentCopyIcon,
+  save: SaveOutlinedIcon,
+  trash: DeleteOutlineIcon,
+  star: StarIcon,
+  play: PlayArrowIcon,
+  refresh: RefreshIcon,
+  pause: PauseCircleOutlineIcon,
+  "debug-pause": PauseCircleOutlineIcon,
+  "debug-continue": PlayCircleOutlineIcon,
+  "repo-clone": SourceIcon
+};
+
 const ACTION_ICON_RULES: ReadonlyArray<CommandIconRule> = [
   { match: (command) => command.includes("copy"), icon: ContentCopyIcon },
   {
@@ -543,6 +564,14 @@ function isSharedLabNode(node: ExplorerNode): boolean {
 }
 
 function actionIcon(action: ExplorerAction): SvgIconComponent {
+  const iconId = action.iconId?.toLowerCase();
+  if (iconId !== undefined && iconId.length > 0) {
+    const iconFromThemeIcon = ACTION_ICON_BY_THEME_ICON_ID[iconId];
+    if (iconFromThemeIcon !== undefined) {
+      return iconFromThemeIcon;
+    }
+  }
+
   const command = action.commandId.toLowerCase();
   const commandIcon = ACTION_ICON_BY_COMMAND[command];
   if (commandIcon !== undefined) {
