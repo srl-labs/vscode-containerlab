@@ -19,7 +19,9 @@ import { useAnnotationUIStore } from "./annotationUIStore";
 // ============================================================================
 
 export type DeploymentState = "deployed" | "undeployed" | "unknown";
-export type LinkLabelMode = "show-all" | "on-select" | "hide";
+export type LinkLabelMode = "show-all" | "on-select" | "hide" | "telemetry-style";
+export type NonTelemetryLinkLabelMode = Exclude<LinkLabelMode, "telemetry-style">;
+export type GridStyle = "dotted" | "quadratic";
 export type ProcessingMode = "deploy" | "destroy" | null;
 export type LifecycleLogStream = "stdout" | "stderr";
 export type LifecycleStatus = "running" | "success" | "error" | null;
@@ -48,9 +50,16 @@ export interface TopoViewerState {
   editingNetwork: string | null;
   isLocked: boolean;
   linkLabelMode: LinkLabelMode;
+  lastNonTelemetryLinkLabelMode: NonTelemetryLinkLabelMode;
   showDummyLinks: boolean;
   endpointLabelOffsetEnabled: boolean;
   endpointLabelOffset: number;
+  telemetryNodeSizePx: number;
+  telemetryInterfaceSizePercent: number;
+  telemetryGlobalInterfaceOverrideSelection: string;
+  telemetryInterfaceLabelOverrides: Record<string, string>;
+  gridLineWidth: number;
+  gridStyle: GridStyle;
   gridColor: string | null;
   gridBgColor: string | null;
   edgeAnnotations: EdgeAnnotation[];
@@ -91,6 +100,13 @@ export interface TopoViewerActions {
   toggleDummyLinks: () => void;
   toggleEndpointLabelOffset: () => void;
   setEndpointLabelOffset: (value: number) => void;
+  setTelemetryNodeSizePx: (value: number) => void;
+  setTelemetryInterfaceSizePercent: (value: number) => void;
+  setTelemetryGlobalInterfaceOverrideSelection: (value: string) => void;
+  setTelemetryInterfaceLabelOverrides: (overrides: Record<string, string>) => void;
+  setTelemetryInterfaceLabelOverride: (endpoint: string, override: string | null) => void;
+  setGridLineWidth: (width: number) => void;
+  setGridStyle: (style: GridStyle) => void;
   setGridColor: (color: string | null) => void;
   setGridBgColor: (color: string | null) => void;
 
@@ -146,9 +162,16 @@ const initialState: TopoViewerState = {
   editingNetwork: null,
   isLocked: true,
   linkLabelMode: "show-all",
+  lastNonTelemetryLinkLabelMode: "show-all",
   showDummyLinks: true,
   endpointLabelOffsetEnabled: true,
   endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
+  telemetryNodeSizePx: 40,
+  telemetryInterfaceSizePercent: 100,
+  telemetryGlobalInterfaceOverrideSelection: "__auto__",
+  telemetryInterfaceLabelOverrides: {},
+  gridLineWidth: 0.5,
+  gridStyle: "dotted",
   gridColor: null,
   gridBgColor: null,
   edgeAnnotations: [],
@@ -305,7 +328,11 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
 
   // Rendering settings
   setLinkLabelMode: (linkLabelMode) => {
-    set({ linkLabelMode });
+    set((state) => ({
+      linkLabelMode,
+      lastNonTelemetryLinkLabelMode:
+        linkLabelMode === "telemetry-style" ? state.lastNonTelemetryLinkLabelMode : linkLabelMode
+    }));
   },
 
   toggleDummyLinks: () => {
@@ -321,6 +348,44 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       ? clampEndpointLabelOffset(value)
       : DEFAULT_ENDPOINT_LABEL_OFFSET;
     set({ endpointLabelOffset: next });
+  },
+
+  setTelemetryNodeSizePx: (value) => {
+    const next = Number.isFinite(value) ? value : 40;
+    set({ telemetryNodeSizePx: next });
+  },
+
+  setTelemetryInterfaceSizePercent: (value) => {
+    const next = Number.isFinite(value) ? value : 100;
+    set({ telemetryInterfaceSizePercent: next });
+  },
+
+  setTelemetryGlobalInterfaceOverrideSelection: (value) => {
+    set({ telemetryGlobalInterfaceOverrideSelection: value });
+  },
+
+  setTelemetryInterfaceLabelOverrides: (overrides) => {
+    set({ telemetryInterfaceLabelOverrides: { ...overrides } });
+  },
+
+  setTelemetryInterfaceLabelOverride: (endpoint, override) => {
+    set((state) => {
+      const next = { ...state.telemetryInterfaceLabelOverrides };
+      if (override === null || override.trim().length === 0) {
+        delete next[endpoint];
+      } else {
+        next[endpoint] = override.trim();
+      }
+      return { telemetryInterfaceLabelOverrides: next };
+    });
+  },
+
+  setGridLineWidth: (gridLineWidth) => {
+    set({ gridLineWidth });
+  },
+
+  setGridStyle: (gridStyle) => {
+    set({ gridStyle });
   },
 
   setGridColor: (color) => {
@@ -520,6 +585,18 @@ export const useShowDummyLinks = () => useTopoViewerStore((state) => state.showD
 export const useEndpointLabelOffset = () =>
   useTopoViewerStore((state) => state.endpointLabelOffset);
 
+/** Get Telemetry label rendering settings */
+export const useTelemetryLabelSettings = () =>
+  useTopoViewerStore(
+    (state) => ({
+      nodeSizePx: state.telemetryNodeSizePx,
+      interfaceSizePercent: state.telemetryInterfaceSizePercent,
+      globalInterfaceOverrideSelection: state.telemetryGlobalInterfaceOverrideSelection,
+      interfaceLabelOverrides: state.telemetryInterfaceLabelOverrides
+    }),
+    shallow
+  );
+
 export const useGridColor = () => useTopoViewerStore((state) => state.gridColor);
 export const useGridBgColor = () => useTopoViewerStore((state) => state.gridBgColor);
 
@@ -560,9 +637,16 @@ export const useTopoViewerState = () =>
       editingNetwork: state.editingNetwork,
       isLocked: state.isLocked,
       linkLabelMode: state.linkLabelMode,
+      lastNonTelemetryLinkLabelMode: state.lastNonTelemetryLinkLabelMode,
       showDummyLinks: state.showDummyLinks,
       endpointLabelOffsetEnabled: state.endpointLabelOffsetEnabled,
       endpointLabelOffset: state.endpointLabelOffset,
+      telemetryNodeSizePx: state.telemetryNodeSizePx,
+      telemetryInterfaceSizePercent: state.telemetryInterfaceSizePercent,
+      telemetryGlobalInterfaceOverrideSelection: state.telemetryGlobalInterfaceOverrideSelection,
+      telemetryInterfaceLabelOverrides: state.telemetryInterfaceLabelOverrides,
+      gridLineWidth: state.gridLineWidth,
+      gridStyle: state.gridStyle,
       edgeAnnotations: state.edgeAnnotations,
       customNodes: state.customNodes,
       defaultNode: state.defaultNode,
@@ -597,6 +681,14 @@ export const useTopoViewerActions = () =>
       toggleDummyLinks: state.toggleDummyLinks,
       toggleEndpointLabelOffset: state.toggleEndpointLabelOffset,
       setEndpointLabelOffset: state.setEndpointLabelOffset,
+      setTelemetryNodeSizePx: state.setTelemetryNodeSizePx,
+      setTelemetryInterfaceSizePercent: state.setTelemetryInterfaceSizePercent,
+      setTelemetryGlobalInterfaceOverrideSelection:
+        state.setTelemetryGlobalInterfaceOverrideSelection,
+      setTelemetryInterfaceLabelOverrides: state.setTelemetryInterfaceLabelOverrides,
+      setTelemetryInterfaceLabelOverride: state.setTelemetryInterfaceLabelOverride,
+      setGridLineWidth: state.setGridLineWidth,
+      setGridStyle: state.setGridStyle,
       setEdgeAnnotations: state.setEdgeAnnotations,
       upsertEdgeAnnotation: state.upsertEdgeAnnotation,
       setCustomNodes: state.setCustomNodes,

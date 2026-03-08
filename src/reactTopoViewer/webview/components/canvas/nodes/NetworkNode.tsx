@@ -11,11 +11,11 @@ import {
   useNodeRenderConfig,
   useEasterEggGlow
 } from "../../../stores/canvasStore";
+import { useTopoViewerStore } from "../../../stores/topoViewerStore";
+import { clampTelemetryNodeSizePx } from "../../../utils/telemetryInterfaceLabels";
 
 import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE, getNodeDirectionRotation } from "./nodeStyles";
 import { getNetworkNodeTypeColor, toNetworkNodeData } from "./networkNodeShared";
-
-const ICON_SIZE = 40;
 
 const HANDLE_POSITIONS = [
   { position: Position.Top, id: "top" },
@@ -33,8 +33,13 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const { linkSourceNode } = useLinkCreationContext();
   const { suppressLabels } = useNodeRenderConfig();
   const easterEggGlow = useEasterEggGlow();
+  const telemetryNodeSizePx = useTopoViewerStore((state) => state.telemetryNodeSizePx);
   const [isHovered, setIsHovered] = useState(false);
   const directionRotation = useMemo(() => getNodeDirectionRotation(direction), [direction]);
+  const iconSize = useMemo(
+    () => clampTelemetryNodeSizePx(telemetryNodeSizePx),
+    [telemetryNodeSizePx]
+  );
   const handleMouseEnter = useCallback(() => {
     setIsHovered(true);
   }, []);
@@ -59,8 +64,8 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     flexDirection: "column",
     alignItems: "center",
     position: "relative",
-    width: ICON_SIZE,
-    height: ICON_SIZE,
+    width: iconSize,
+    height: iconSize,
     overflow: "visible",
     cursor: isLinkTarget ? "crosshair" : undefined
   };
@@ -98,8 +103,8 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
 
   // Icon styles
   const iconStyle: React.CSSProperties = {
-    width: ICON_SIZE,
-    height: ICON_SIZE,
+    width: iconSize,
+    height: iconSize,
     flexShrink: 0,
     backgroundImage: `url(${svgUrl})`,
     backgroundSize: "cover",
@@ -117,11 +122,11 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
         position: labelPosition,
         direction,
         backgroundColor: labelBackgroundColor,
-        iconSize: ICON_SIZE,
+        iconSize,
         fontSize: "0.65rem",
         maxWidth: 110
       }),
-    [labelPosition, direction, labelBackgroundColor]
+    [labelPosition, direction, labelBackgroundColor, iconSize]
   );
 
   return (

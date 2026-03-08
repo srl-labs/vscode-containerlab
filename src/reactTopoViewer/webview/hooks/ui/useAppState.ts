@@ -3,10 +3,8 @@
  * Manages layout controls and context menu handlers for React TopoViewer
  */
 import type React from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { saveViewerSettings } from "../../services/annotationSaveHelpers";
-import type { TopologyAnnotations } from "../../../shared/types/topology";
 import { useTopoViewerStore } from "../../stores/topoViewerStore";
 
 /**
@@ -133,68 +131,61 @@ export function useLayoutControls(canvasRef: React.RefObject<CanvasRef | null>):
   resetGridColors: () => void;
 } {
   const [layout, setLayoutState] = useState<LayoutOption>("preset");
-  const [gridLineWidth, setGridLineWidthState] = useState<number>(() => getStoredGridLineWidth());
-  const [gridStyle, setGridStyleState] = useState<GridStyle>(() => getStoredGridStyle());
 
+  const gridLineWidth = useTopoViewerStore((s) => s.gridLineWidth);
+  const gridStyle = useTopoViewerStore((s) => s.gridStyle);
+  const storeSetGridLineWidth = useTopoViewerStore((s) => s.setGridLineWidth);
+  const storeSetGridStyle = useTopoViewerStore((s) => s.setGridStyle);
   const gridColor = useTopoViewerStore((s) => s.gridColor);
   const gridBgColor = useTopoViewerStore((s) => s.gridBgColor);
   const storeSetGridColor = useTopoViewerStore((s) => s.setGridColor);
   const storeSetGridBgColor = useTopoViewerStore((s) => s.setGridBgColor);
 
-  const colorSaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const pendingColorSave = useRef<NonNullable<TopologyAnnotations["viewerSettings"]>>({});
+  useEffect(() => {
+    storeSetGridLineWidth(getStoredGridLineWidth());
+    storeSetGridStyle(getStoredGridStyle());
+  }, [storeSetGridLineWidth, storeSetGridStyle]);
 
-  const flushColorSave = useCallback(() => {
-    clearTimeout(colorSaveTimer.current);
-    const payload = pendingColorSave.current;
-    pendingColorSave.current = {};
-    if (Object.keys(payload).length > 0) {
-      void saveViewerSettings(payload);
-    }
-  }, []);
+  useEffect(() => {
+    storeGridLineWidth(gridLineWidth);
+  }, [gridLineWidth]);
 
-  const debouncedColorSave = useCallback(
-    (patch: NonNullable<TopologyAnnotations["viewerSettings"]>) => {
-      Object.assign(pendingColorSave.current, patch);
-      clearTimeout(colorSaveTimer.current);
-      colorSaveTimer.current = setTimeout(flushColorSave, 300);
+  useEffect(() => {
+    storeGridStyle(gridStyle);
+  }, [gridStyle]);
+
+  const setGridLineWidth = useCallback(
+    (width: number) => {
+      const clamped = clampLineWidth(width);
+      storeSetGridLineWidth(clamped);
     },
-    [flushColorSave]
+    [storeSetGridLineWidth]
   );
 
-  const setGridLineWidth = useCallback((width: number) => {
-    const clamped = clampLineWidth(width);
-    setGridLineWidthState(clamped);
-    storeGridLineWidth(clamped);
-  }, []);
-
-  const setGridStyle = useCallback((style: GridStyle) => {
-    setGridStyleState(style);
-    storeGridStyle(style);
-  }, []);
+  const setGridStyle = useCallback(
+    (style: GridStyle) => {
+      storeSetGridStyle(style);
+    },
+    [storeSetGridStyle]
+  );
 
   const setGridColor = useCallback(
     (color: string | null) => {
       storeSetGridColor(color);
-      debouncedColorSave({ gridColor: color });
     },
-    [storeSetGridColor, debouncedColorSave]
+    [storeSetGridColor]
   );
 
   const setGridBgColor = useCallback(
     (color: string | null) => {
       storeSetGridBgColor(color);
-      debouncedColorSave({ gridBgColor: color });
     },
-    [storeSetGridBgColor, debouncedColorSave]
+    [storeSetGridBgColor]
   );
 
   const resetGridColors = useCallback(() => {
     storeSetGridColor(null);
     storeSetGridBgColor(null);
-    clearTimeout(colorSaveTimer.current);
-    pendingColorSave.current = {};
-    void saveViewerSettings({ gridColor: null, gridBgColor: null });
   }, [storeSetGridColor, storeSetGridBgColor]);
 
   const setLayout = useCallback(

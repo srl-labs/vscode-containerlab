@@ -31,6 +31,7 @@ test.describe("Endpoint Label Offset", () => {
     await expect(page.locator('[data-testid="navbar-link-label-show-all"]')).toBeVisible();
     await expect(page.locator('[data-testid="navbar-link-label-on-select"]')).toBeVisible();
     await expect(page.locator('[data-testid="navbar-link-label-hide"]')).toBeVisible();
+    await expect(page.locator('[data-testid="navbar-link-label-grafana"]')).toHaveCount(0);
   });
 
   test("per-link endpoint offset override persists after apply", async ({
@@ -91,9 +92,7 @@ test.describe("Endpoint Label Offset", () => {
     await page.waitForTimeout(300);
 
     // Verify persisted
-    await expect
-      .poll(readState, { timeout: 5000 })
-      .toEqual({ enabled: true, offset: newValue });
+    await expect.poll(readState, { timeout: 5000 }).toEqual({ enabled: true, offset: newValue });
 
     // Reload and verify the per-link override remains.
     await topoViewerPage.gotoFile(SIMPLE_FILE);

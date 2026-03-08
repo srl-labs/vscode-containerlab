@@ -19,7 +19,6 @@ import {
   Check as CheckIcon,
   CleaningServices as CleaningServicesIcon,
   FitScreen as FitScreenIcon,
-  GridOn as GridOnIcon,
   Info as InfoIcon,
   Keyboard as KeyboardIcon,
   Label as LabelIcon,
@@ -92,7 +91,6 @@ export interface NavbarProps {
   isPartyMode?: boolean;
   /** Easter egg logo click handler and state */
   onLogoClick?: () => void;
-  onShowGridSettings?: (position: { top: number; left: number }) => void;
   linkLabelMode: LinkLabelMode;
   onLinkLabelModeChange: (mode: LinkLabelMode) => void;
 }
@@ -119,7 +117,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogoClick,
   logoClickProgress = 0,
   isPartyMode = false,
-  onShowGridSettings,
   linkLabelMode,
   onLinkLabelModeChange
 }) => {
@@ -243,16 +240,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       setLayoutMenuPosition(null);
     },
     [onLayoutChange]
-  );
-
-  const handleGridSettingsClick = React.useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      const anchorPosition = getToolbarAnchorPosition(appBarRef.current, event.currentTarget);
-      if (anchorPosition) {
-        onShowGridSettings?.(anchorPosition);
-      }
-    },
-    [onShowGridSettings]
   );
 
   const handleFindNodeClick = React.useCallback(
@@ -506,13 +493,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <ListItemText>Geo</ListItemText>
           </MenuItem>
         </Menu>
-
-        {/* Grid line width */}
-        <Tooltip title="Grid Settings">
-          <IconButton size="small" onClick={handleGridSettingsClick} data-testid="navbar-grid">
-            <GridOnIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
 
         {/* Find Node */}
         <Tooltip title="Find Node">

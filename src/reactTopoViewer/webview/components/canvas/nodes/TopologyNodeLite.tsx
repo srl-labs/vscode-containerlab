@@ -1,13 +1,15 @@
 /**
  * TopologyNodeLite - Lightweight node renderer for large/zoomed-out graphs
  */
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import type { NodeProps } from "@xyflow/react";
 
 import type { TopologyNodeData } from "../types";
 import { SELECTION_COLOR, DEFAULT_ICON_COLOR } from "../types";
+import { useTopoViewerStore } from "../../../stores/topoViewerStore";
+import { clampTelemetryNodeSizePx } from "../../../utils/telemetryInterfaceLabels";
 
-import { ICON_SIZE, LiteNodeShell } from "./NodeLiteBase";
+import { LiteNodeShell } from "./NodeLiteBase";
 import { getNodeDirectionRotation } from "./nodeStyles";
 
 function toTopologyNodeData(data: NodeProps["data"]): TopologyNodeData {
@@ -20,13 +22,18 @@ function toTopologyNodeData(data: NodeProps["data"]): TopologyNodeData {
 
 const TopologyNodeLiteComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const nodeData = toTopologyNodeData(data);
+  const telemetryNodeSizePx = useTopoViewerStore((state) => state.telemetryNodeSizePx);
+  const iconSize = useMemo(
+    () => clampTelemetryNodeSizePx(telemetryNodeSizePx),
+    [telemetryNodeSizePx]
+  );
   const color = nodeData.iconColor ?? DEFAULT_ICON_COLOR;
   const corner = nodeData.iconCornerRadius ?? 4;
   const rotation = getNodeDirectionRotation(nodeData.direction);
 
   const iconStyle: React.CSSProperties = {
-    width: ICON_SIZE,
-    height: ICON_SIZE,
+    width: iconSize,
+    height: iconSize,
     backgroundColor: color,
     borderRadius: corner,
     transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
@@ -34,7 +41,7 @@ const TopologyNodeLiteComponent: React.FC<NodeProps> = ({ data, selected }) => {
     outlineOffset: 1
   };
 
-  return <LiteNodeShell className="topology-node-lite" iconStyle={iconStyle} />;
+  return <LiteNodeShell className="topology-node-lite" iconStyle={iconStyle} size={iconSize} />;
 };
 
 function areTopologyNodeLitePropsEqual(prev: NodeProps, next: NodeProps): boolean {

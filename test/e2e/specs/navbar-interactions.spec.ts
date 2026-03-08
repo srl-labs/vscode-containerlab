@@ -11,7 +11,7 @@ const ATTR_DATA_TESTID = "data-testid";
  * - Fit to viewport
  * - Layout dropdown (MUI Menu)
  * - Link labels dropdown (MUI Menu)
- * - Grid settings (MUI Popover)
+ * - Grid settings (Lab Settings > Appearance)
  * - Shortcuts/About modals (MUI Dialog)
  * - Shortcut display toggle
  */
@@ -19,6 +19,8 @@ test.describe("Navbar Interactions", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.gotoFile("simple.clab.yml");
     await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
   });
 
   test.describe("Basic Button Visibility", () => {
@@ -28,7 +30,6 @@ test.describe("Navbar Interactions", () => {
         "navbar-fit-viewport",
         "navbar-split-view",
         "navbar-layout",
-        "navbar-grid",
         "navbar-find-node",
         "navbar-link-labels",
         "navbar-capture",
@@ -110,9 +111,7 @@ test.describe("Navbar Interactions", () => {
   });
 
   test.describe("Link Labels Dropdown", () => {
-    test("link labels dropdown has Show All, On Select, and Hide options", async ({
-      page
-    }) => {
+    test("link labels dropdown has Show All, On Select, and Hide options", async ({ page }) => {
       const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
       await linkLabelsBtn.click();
       await page.waitForTimeout(200);
@@ -121,25 +120,73 @@ test.describe("Navbar Interactions", () => {
       await expect(page.locator('[data-testid="navbar-link-label-show-all"]')).toBeVisible();
       await expect(page.locator('[data-testid="navbar-link-label-on-select"]')).toBeVisible();
       await expect(page.locator('[data-testid="navbar-link-label-hide"]')).toBeVisible();
+      await expect(page.locator('[data-testid="navbar-link-label-grafana"]')).toHaveCount(0);
+    });
+
+    test("Telemetry Style node size setting resizes node icons from Lab Settings", async ({
+      page
+    }) => {
+      const nodeIcon = page.locator(".topology-node-icon, .network-node-icon").first();
+      await expect(nodeIcon).toBeVisible();
+      const beforeBox = await nodeIcon.boundingBox();
+      expect(beforeBox).not.toBeNull();
+      const beforeWidth = beforeBox?.width ?? 0;
+      expect(beforeWidth).toBeGreaterThan(0);
+
+      await page.locator('[data-testid="navbar-lab-settings"]').click();
+      await page.waitForTimeout(200);
+      const modal = page.locator('[data-testid="lab-settings-modal"]');
+      await expect(modal).toBeVisible();
+
+      await modal.locator('[data-testid="lab-settings-tab-appearance"]').click();
+      await page.waitForTimeout(200);
+
+      const styleSelect = modal
+        .locator('[data-testid="lab-settings-telemetry-style"] [role="combobox"]')
+        .first();
+      await styleSelect.click();
+      await page.getByRole("option", { name: /^Telemetry Style$/ }).click();
+      await page.waitForTimeout(100);
+
+      const nodeSizeInput = modal.getByLabel("Node size");
+      await nodeSizeInput.fill("80");
+      await page.waitForTimeout(200);
+      await page.locator('[data-testid="lab-settings-close-btn"]').click();
+      await expect(modal).not.toBeVisible();
+
+      await expect
+        .poll(
+          async () => {
+            const afterBox = await nodeIcon.boundingBox();
+            return afterBox?.width ?? 0;
+          },
+          { timeout: 4000 }
+        )
+        .toBeGreaterThan(beforeWidth + 10);
     });
   });
 
-  test.describe("Grid Settings Popover", () => {
-    test("grid popover opens with slider and style toggles", async ({ page }) => {
-      const gridBtn = page.locator('[data-testid="navbar-grid"]');
-      await gridBtn.click();
+  test.describe("Grid Settings", () => {
+    test("grid settings are available in Lab Settings > Appearance", async ({ page }) => {
+      await page.locator('[data-testid="navbar-lab-settings"]').click();
+      await page.waitForTimeout(200);
+      const modal = page.locator('[data-testid="lab-settings-modal"]');
+      await expect(modal).toBeVisible();
+
+      await modal.locator('[data-testid="lab-settings-tab-appearance"]').click();
+      await page.waitForTimeout(200);
+      await modal.locator('[data-testid="lab-settings-appearance-subtab-grid"]').click();
       await page.waitForTimeout(200);
 
-      // MUI Popover should appear
-      const gridPopover = page.locator('[data-testid="grid-settings-popover"]');
-      await expect(gridPopover).toBeVisible();
+      const gridSection = modal.locator('[data-testid="lab-settings-grid-settings"]');
+      await expect(gridSection).toBeVisible();
 
       // Verify slider exists (MUI Slider)
-      const slider = gridPopover.locator(".MuiSlider-root");
+      const slider = gridSection.locator('[data-testid="lab-settings-grid-line-width"]');
       await expect(slider).toBeVisible();
 
       // Verify toggle buttons exist (Dotted/Quadratic)
-      const toggleGroup = gridPopover.locator(".MuiToggleButtonGroup-root");
+      const toggleGroup = gridSection.locator('[data-testid="lab-settings-grid-style"]');
       await expect(toggleGroup).toBeVisible();
     });
   });

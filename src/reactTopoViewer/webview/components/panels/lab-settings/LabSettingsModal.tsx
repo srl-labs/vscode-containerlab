@@ -9,10 +9,11 @@ import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 
 import { LabSettingsSection } from "../lab-drawer/LabSettingsSection";
+import type { GridSettingsControlsProps } from "../GridSettingsPopover";
 
 import type { LabSettings } from "./types";
 
-interface LabSettingsModalProps {
+interface LabSettingsModalProps extends GridSettingsControlsProps {
   isOpen: boolean;
   onClose: () => void;
   mode: "view" | "edit";
@@ -25,7 +26,16 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
   onClose,
   mode,
   isLocked,
-  labSettings
+  labSettings,
+  gridLineWidth,
+  onGridLineWidthChange,
+  gridStyle,
+  onGridStyleChange,
+  gridColor,
+  onGridColorChange,
+  gridBgColor,
+  onGridBgColorChange,
+  onResetGridColors
 }) => {
   const saveRef = useRef<(() => Promise<void>) | null>(null);
   const isReadOnly = mode === "view" || isLocked;
@@ -63,6 +73,15 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
           labSettings={labSettings}
           onClose={onClose}
           saveRef={saveRef}
+          gridLineWidth={gridLineWidth}
+          onGridLineWidthChange={onGridLineWidthChange}
+          gridStyle={gridStyle}
+          onGridStyleChange={onGridStyleChange}
+          gridColor={gridColor}
+          onGridColorChange={onGridColorChange}
+          gridBgColor={gridBgColor}
+          onGridBgColorChange={onGridBgColorChange}
+          onResetGridColors={onResetGridColors}
         />
       </DialogContent>
       {!isReadOnly && (

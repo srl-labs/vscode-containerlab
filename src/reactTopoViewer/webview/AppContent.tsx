@@ -33,7 +33,6 @@ import { LifecycleProgressModal } from "./components/panels/LifecycleProgressMod
 import { ShortcutsModal } from "./components/panels/ShortcutsModal";
 import { SvgExportModal } from "./components/panels/SvgExportModal";
 import { BulkLinkModal } from "./components/panels/BulkLinkModal";
-import { GridSettingsPopover } from "./components/panels/GridSettingsPopover";
 import { FindNodePopover } from "./components/panels/FindNodePopover";
 import { ShortcutDisplay, ToastContainer } from "./components/ui";
 import { EasterEggRenderer, useEasterEgg } from "./easter-eggs";
@@ -70,7 +69,12 @@ import {
   useTopoViewerState
 } from "./stores";
 import { sendCancelLabLifecycle } from "./messaging/extensionMessaging";
-import { executeTopologyCommand, toLinkSaveData, getCustomIconMap } from "./services";
+import {
+  executeTopologyCommand,
+  toLinkSaveData,
+  getCustomIconMap,
+  saveViewerSettings
+} from "./services";
 import {
   PENDING_NETEM_KEY,
   areNetemEquivalent,
@@ -1388,6 +1392,21 @@ export const AppContent: React.FC<AppContentProps> = ({
     isProcessing
   );
 
+  const handleLinkLabelModeChange = React.useCallback(
+    (mode: Parameters<typeof topoActions.setLinkLabelMode>[0]) => {
+      topoActions.setLinkLabelMode(mode);
+      const nextLastNonTelemetryMode =
+        mode === "telemetry-style" ? state.lastNonTelemetryLinkLabelMode : mode;
+      const style = mode === "telemetry-style" ? "telemetry-style" : "default";
+      void saveViewerSettings({
+        style,
+        linkLabelMode: mode,
+        lastNonTelemetryLinkLabelMode: nextLastNonTelemetryMode
+      });
+    },
+    [topoActions, state.lastNonTelemetryLinkLabelMode]
+  );
+
   return (
     <MuiThemeProvider>
       <Box
@@ -1414,9 +1433,8 @@ export const AppContent: React.FC<AppContentProps> = ({
           onShowShortcuts={panelVisibility.handleShowShortcuts}
           onShowAbout={panelVisibility.handleShowAbout}
           onShowBulkLink={panelVisibility.handleShowBulkLink}
-          onShowGridSettings={panelVisibility.handleOpenGridPopover}
           linkLabelMode={state.linkLabelMode}
-          onLinkLabelModeChange={topoActions.setLinkLabelMode}
+          onLinkLabelModeChange={handleLinkLabelModeChange}
           shortcutDisplayEnabled={shortcutDisplay.isEnabled}
           onToggleShortcutDisplay={shortcutDisplay.toggle}
           canUndo={undoRedo.canUndo}
@@ -1626,6 +1644,15 @@ export const AppContent: React.FC<AppContentProps> = ({
           mode={state.mode}
           isLocked={isInteractionLocked}
           labSettings={state.labSettings ?? { name: state.labName }}
+          gridLineWidth={layoutControls.gridLineWidth}
+          onGridLineWidthChange={layoutControls.setGridLineWidth}
+          gridStyle={layoutControls.gridStyle}
+          onGridStyleChange={layoutControls.setGridStyle}
+          gridColor={layoutControls.gridColor}
+          onGridColorChange={layoutControls.setGridColor}
+          gridBgColor={layoutControls.gridBgColor}
+          onGridBgColorChange={layoutControls.setGridBgColor}
+          onResetGridColors={layoutControls.resetGridColors}
         />
         <ShortcutsModal
           isOpen={panelVisibility.showShortcutsModal}
@@ -1651,19 +1678,6 @@ export const AppContent: React.FC<AppContentProps> = ({
         />
 
         {/* Popovers */}
-        <GridSettingsPopover
-          anchorPosition={panelVisibility.gridPopoverPosition}
-          onClose={panelVisibility.handleCloseGridPopover}
-          gridLineWidth={layoutControls.gridLineWidth}
-          onGridLineWidthChange={layoutControls.setGridLineWidth}
-          gridStyle={layoutControls.gridStyle}
-          onGridStyleChange={layoutControls.setGridStyle}
-          gridColor={layoutControls.gridColor}
-          onGridColorChange={layoutControls.setGridColor}
-          gridBgColor={layoutControls.gridBgColor}
-          onGridBgColorChange={layoutControls.setGridBgColor}
-          onResetColors={layoutControls.resetGridColors}
-        />
         <FindNodePopover
           anchorPosition={panelVisibility.findPopoverPosition}
           onClose={panelVisibility.handleCloseFindPopover}
