@@ -20,6 +20,8 @@ export default defineConfig({
       // CRITICAL: Force single React instance by explicit paths
       react: path.resolve(nodeModules, "react"),
       "react-dom": path.resolve(nodeModules, "react-dom"),
+      // Browser/dev builds do not have VS Code extension host APIs available.
+      vscode: path.resolve(__dirname, "./stubs/vscode.ts"),
       // Allow importing from the actual webview source
       "@webview": path.resolve(__dirname, "../src/reactTopoViewer/webview"),
       "@shared": path.resolve(__dirname, "../src/reactTopoViewer/shared")
