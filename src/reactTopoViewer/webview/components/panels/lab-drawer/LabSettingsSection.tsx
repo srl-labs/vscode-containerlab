@@ -39,7 +39,8 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
   onResetGridColors
 }) => {
   const [activeTab, setActiveTab] = useState("basic");
-  const isReadOnly = mode === "view" || isLocked;
+  const areTopologySettingsReadOnly = mode === "view" || isLocked;
+  const isAppearanceReadOnly = isLocked;
 
   const state = useLabSettingsState(labSettings);
   const linkLabelMode = useTopoViewerStore((store) => store.linkLabelMode);
@@ -52,7 +53,9 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
   );
 
   const handleSave = async () => {
-    await state.handleSave();
+    if (!areTopologySettingsReadOnly) {
+      await state.handleSave();
+    }
     const style = linkLabelMode === "telemetry-style" ? "telemetry-style" : "default";
     const nextLastNonTelemetryLinkLabelMode =
       linkLabelMode === "telemetry-style" ? lastNonTelemetryLinkLabelMode : linkLabelMode;
@@ -95,7 +98,7 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
             labName={state.basic.labName}
             prefixType={state.basic.prefixType}
             customPrefix={state.basic.customPrefix}
-            isViewMode={isReadOnly}
+            isViewMode={areTopologySettingsReadOnly}
             onLabNameChange={state.setBasic.setLabName}
             onPrefixTypeChange={state.setBasic.setPrefixType}
             onCustomPrefixChange={state.setBasic.setCustomPrefix}
@@ -117,7 +120,7 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
           bridge={state.mgmt.bridge}
           externalAccess={state.mgmt.externalAccess}
           driverOptions={state.mgmt.driverOptions}
-          isViewMode={isReadOnly}
+          isViewMode={areTopologySettingsReadOnly}
           onNetworkNameChange={state.setMgmt.setNetworkName}
           onIpv4TypeChange={state.setMgmt.setIpv4Type}
           onIpv4SubnetChange={state.setMgmt.setIpv4Subnet}
@@ -146,7 +149,7 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
             gridBgColor={gridBgColor}
             onGridBgColorChange={onGridBgColorChange}
             onResetGridColors={onResetGridColors}
-            isReadOnly={isReadOnly}
+            isReadOnly={isAppearanceReadOnly}
           />
         </Box>
       )}
