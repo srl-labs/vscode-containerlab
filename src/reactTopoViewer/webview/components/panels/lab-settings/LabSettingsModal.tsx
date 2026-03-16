@@ -38,7 +38,7 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
   onResetGridColors
 }) => {
   const saveRef = useRef<(() => Promise<void>) | null>(null);
-  const isReadOnly = mode === "view" || isLocked;
+  const canSave = !isLocked;
   const handleSaveClick = useCallback(() => {
     const save = saveRef.current;
     if (!save) {
@@ -84,7 +84,7 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
           onResetGridColors={onResetGridColors}
         />
       </DialogContent>
-      {!isReadOnly && (
+      {canSave && (
         <DialogActions>
           <Button size="small" onClick={handleSaveClick} data-testid="lab-settings-save-btn">
             Apply

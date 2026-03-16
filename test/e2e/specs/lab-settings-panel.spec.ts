@@ -301,16 +301,46 @@ test.describe("Lab Settings Modal", () => {
     ).toBeDisabled();
   });
 
-  test("Save button is hidden in view mode", async ({ page, topoViewerPage }) => {
+  test("view mode keeps topology settings read-only and can still save appearance", async ({
+    page,
+    topoViewerPage
+  }) => {
     await topoViewerPage.setViewMode();
 
     const modal = await openModal(page);
 
     const saveBtn = page.locator(SEL_LAB_SETTINGS_SAVE_BTN);
-    await expect(saveBtn).not.toBeVisible();
+    await expect(saveBtn).toBeVisible();
 
     await expect(modal.getByRole("textbox", { name: "Lab Name" })).toBeDisabled();
     await expectMuiSelectDisabled(modal, LABEL_CONTAINER_NAME_PREFIX);
+
+    await modal.locator(SEL_LAB_SETTINGS_TAB_APPEARANCE).click();
+    await page.waitForTimeout(150);
+
+    const styleSelect = modal
+      .locator('[data-testid="lab-settings-telemetry-style"] [role="combobox"]')
+      .first();
+    await styleSelect.click();
+    await chooseOption(page, /^Telemetry Style$/);
+
+    await modal.getByLabel("Node size").fill("72");
+
+    await saveBtn.click();
+    await expect(modal).not.toBeVisible({ timeout: 3000 });
+
+    await expect
+      .poll(
+        async () => {
+          const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
+          return annotations.viewerSettings ?? {};
+        },
+        { timeout: 5000 }
+      )
+      .toMatchObject({
+        style: "telemetry-style",
+        telemetryNodeSizePx: 72
+      });
   });
 
   test("can change prefix type to custom and enter custom prefix", async ({ page }) => {
