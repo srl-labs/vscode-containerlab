@@ -555,30 +555,93 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
     // Initialize session with default files using request fixture
     await request.post(withSession("/api/reset"));
 
+    const ensureAppReady = async (): Promise<void> => {
+      await page.waitForFunction(
+        () => (window as { __DEV__?: BrowserDevApi }).__DEV__ !== undefined,
+        undefined,
+        { timeout: 60000 }
+      );
+
+      await page.waitForFunction(
+        () => {
+          const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
+          const rf = dev?.rfInstance;
+          return rf !== undefined && rf !== null && typeof rf.getNodes === "function";
+        },
+        undefined,
+        { timeout: 45000 }
+      );
+    };
+
+    const canReuseCurrentAppPage = async (): Promise<boolean> => {
+      try {
+        const currentUrl = new URL(page.url());
+        if (currentUrl.origin !== API_BASE_URL) return false;
+        if (currentUrl.pathname !== "/") return false;
+        if (currentUrl.searchParams.get("sessionId") !== sessionId) return false;
+
+        return await page
+          .evaluate(() => {
+            const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
+            return dev !== undefined && typeof dev.loadTopologyFile === "function";
+          })
+          .catch(() => false);
+      } catch {
+        return false;
+      }
+    };
+
+    const waitForViewportStable = async (): Promise<void> => {
+      await page.waitForFunction(
+        () => {
+          const win = window as any;
+          const rf = win.__DEV__?.rfInstance;
+          if (!rf?.getViewport) return false;
+
+          const vp = rf.getViewport();
+          const now = performance.now();
+          const prev = win.__E2E_LAST_VIEWPORT__;
+
+          if (!prev) {
+            win.__E2E_LAST_VIEWPORT__ = { ...vp, ts: now };
+            return false;
+          }
+
+          const unchanged =
+            Math.abs(prev.x - vp.x) < 0.5 &&
+            Math.abs(prev.y - vp.y) < 0.5 &&
+            Math.abs(prev.zoom - vp.zoom) < 0.001;
+
+          if (!unchanged) {
+            win.__E2E_LAST_VIEWPORT__ = { ...vp, ts: now };
+            return false;
+          }
+
+          return now - prev.ts >= 120;
+        },
+        undefined,
+        { timeout: 4000, polling: 50 }
+      );
+
+      await page.evaluate(() => {
+        delete (window as any).__E2E_LAST_VIEWPORT__;
+      });
+    };
+
     const topoViewerPage: TopoViewerPage = {
       gotoFile: async (filename: string) => {
         const resolvedFilePath = path.join(TOPOLOGIES_DIR, filename);
-        // Pass session ID via URL so auto-load uses correct session
-        await page.goto(`${API_BASE_URL}/?sessionId=${sessionId}&devExplorer=0`, {
-          waitUntil: "domcontentloaded",
-          timeout: 60000
-        });
-        // Wait for dev hooks to be injected; app shell visibility can lag on cold startup.
-        await page.waitForFunction(
-          () => (window as { __DEV__?: BrowserDevApi }).__DEV__ !== undefined,
-          undefined,
-          { timeout: 60000 }
-        );
+        const targetUrl = `${API_BASE_URL}/?sessionId=${sessionId}&devExplorer=0`;
 
-        // Wait for React Flow instance to be ready.
-        await page.waitForFunction(
-          () => (window as { __DEV__?: BrowserDevApi }).__DEV__?.rfInstance !== undefined,
-          undefined,
-          { timeout: 45000 }
-        );
+        // Reuse current page/session when possible to avoid full app reloads.
+        if (!(await canReuseCurrentAppPage())) {
+          await page.goto(targetUrl, {
+            waitUntil: "domcontentloaded",
+            timeout: 60000
+          });
+        }
 
-        // Wait a bit for any auto-load to settle
-        await page.waitForTimeout(300);
+        await ensureAppReady();
 
         // Load file-based topology via dev API with session ID
         // Retry up to 3 times if loading fails
@@ -659,8 +722,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           }
         }
 
-        // Small additional wait for React effects to settle (useEffect for __DEV__.cy)
-        await page.waitForTimeout(100);
+        // Ensure any fitView/layout side-effects triggered by loading have settled.
+        await waitForViewportStable();
       },
 
       getCurrentFile: async () => {
@@ -840,8 +903,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
             dev?.setLayout?.("force");
           });
-          // Wait for layout animation
-          await page.waitForTimeout(500);
+          await waitForViewportStable();
         }
 
         // Call fitView to ensure proper viewport
@@ -849,9 +911,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           const dev = (window as { __DEV__?: BrowserDevApi }).__DEV__;
           dev?.rfInstance?.fitView?.({ padding: 0.2, maxZoom: 1.2 });
         });
-
-        // Wait for fitView animation
-        await page.waitForTimeout(300);
+        await waitForViewportStable();
       },
 
       getCanvasCenter: async () => {
@@ -1544,8 +1604,6 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               : "Failed to reset files";
           throw new Error(errorMessage);
         }
-        // Wait for session reset to settle
-        await page.waitForTimeout(100);
       },
 
       selectGroup: async (groupId: string) => {
