@@ -7,7 +7,7 @@ import * as vscode from "vscode";
 import type { CustomIconInfo } from "../../shared/types/icons";
 import {
   TOPOVIEWER_FONT_SCALE_DEFAULT,
-  resolveTopoViewerFontScale
+  resolveTopoViewerFontScale as normalizeTopoViewerFontScale
 } from "../../shared/constants/topoViewerFontScale";
 import { getDockerImages } from "../../../utils/docker/images";
 import type { CustomNodeTemplate, SchemaData } from "../../shared/schema";
@@ -48,7 +48,7 @@ function getConfiguredTopoViewerFontScale(): number {
     return TOPOVIEWER_FONT_SCALE_DEFAULT;
   }
 
-  return resolveTopoViewerFontScale(configuredValue);
+  return normalizeTopoViewerFontScale(configuredValue);
 }
 
 /**

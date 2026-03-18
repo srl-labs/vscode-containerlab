@@ -1,9 +1,11 @@
 // VS Code MUI theme config.
 // Palette values are CSS var() references — VS Code swaps them for light/dark.
 import { createTheme, type ThemeOptions } from "@mui/material/styles";
+import { TOPOVIEWER_FONT_SCALE_DEFAULT } from "../../shared/constants/topoViewerFontScale";
 
 import {
   TOPOVIEWER_FONT_FAMILY_CSS_VAR,
+  TOPOVIEWER_FONT_SCALE_CSS_VAR,
   TOPOVIEWER_FONT_SIZE_CSS_VARS,
   topoViewerTypography
 } from "./topoViewerTypography";
@@ -97,7 +99,8 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
       "*::-webkit-scrollbar-corner": { background: "transparent" },
       [topoviewerScopedSelector("")]: {
         [TOPOVIEWER_FONT_FAMILY_CSS_VAR]: EXPLORER_FONT_FAMILY,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.base]: EXPLORER_FONT_SIZE,
+        [TOPOVIEWER_FONT_SCALE_CSS_VAR]: String(TOPOVIEWER_FONT_SCALE_DEFAULT),
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.base]: `calc(${EXPLORER_FONT_SIZE} * var(${TOPOVIEWER_FONT_SCALE_CSS_VAR}, ${TOPOVIEWER_FONT_SCALE_DEFAULT}))`,
         [TOPOVIEWER_FONT_SIZE_CSS_VARS.body]: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base})`,
         [TOPOVIEWER_FONT_SIZE_CSS_VARS.bodySmall]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.95)`,
         [TOPOVIEWER_FONT_SIZE_CSS_VARS.caption]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.92)`,

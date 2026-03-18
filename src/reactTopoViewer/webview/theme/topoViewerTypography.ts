@@ -3,6 +3,7 @@
 // align to the same VS Code-derived baseline.
 
 export const TOPOVIEWER_FONT_FAMILY_CSS_VAR = "--topoviewer-font-family" as const;
+export const TOPOVIEWER_FONT_SCALE_CSS_VAR = "--topoviewer-font-scale" as const;
 
 export const TOPOVIEWER_FONT_SIZE_CSS_VARS = {
   base: "--topoviewer-font-size-base",
@@ -51,9 +52,42 @@ function cssVarWithFallback(cssVar: string, fallback: string): string {
 
 function readCssVarValue(cssVar: string): string {
   if (typeof window === "undefined") return "";
-  const bodyValue = window.getComputedStyle(document.body).getPropertyValue(cssVar).trim();
-  if (bodyValue.length > 0) return bodyValue;
+  const body = document.body;
+  if (body) {
+    const bodyValue = window.getComputedStyle(body).getPropertyValue(cssVar).trim();
+    if (bodyValue.length > 0) return bodyValue;
+  }
   return window.getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+}
+
+function resolveCssLengthPx(value: string): number | null {
+  const trimmedValue = value.trim();
+  const parsed = Number.parseFloat(value);
+  if (Number.isFinite(parsed) && /^-?\d*\.?\d+px$/.test(trimmedValue)) {
+    return parsed;
+  }
+
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return null;
+  }
+
+  const target = document.body ?? document.documentElement;
+  if (!target) {
+    return null;
+  }
+
+  const probe = document.createElement("div");
+  probe.style.position = "absolute";
+  probe.style.visibility = "hidden";
+  probe.style.pointerEvents = "none";
+  probe.style.overflow = "hidden";
+  probe.style.height = "0";
+  probe.style.width = value;
+  target.appendChild(probe);
+  const resolved = Number.parseFloat(window.getComputedStyle(probe).width);
+  target.removeChild(probe);
+
+  return Number.isFinite(resolved) ? resolved : null;
 }
 
 export function getTopoViewerFontSizeVar(token: TopoViewerFontSizeToken): string {
@@ -71,8 +105,8 @@ export function readTopoViewerFontSizePx(
   token: TopoViewerFontSizeToken,
   fallback = TOPOVIEWER_FONT_SIZE_FALLBACK_PX[token]
 ): number {
-  const parsed = Number.parseFloat(readCssVarValue(getTopoViewerFontSizeVar(token)));
-  return Number.isFinite(parsed) ? parsed : fallback;
+  const resolved = resolveCssLengthPx(readCssVarValue(getTopoViewerFontSizeVar(token)));
+  return resolved ?? fallback;
 }
 
 export const topoViewerTypography = {
