@@ -802,6 +802,13 @@
             "type": "boolean",
             "default": true,
             "markdownDescription": "Lock the lab canvas by default to prevent accidental modifications. Disable to start new sessions unlocked."
+          },
+          "containerlab.ui.fontScale": {
+            "type": "number",
+            "default": 1,
+            "minimum": 0.85,
+            "maximum": 1.4,
+            "markdownDescription": "Scale TopoViewer UI font sizes globally. `1` keeps the default VS Code-aligned size."
           }
         }
       },
