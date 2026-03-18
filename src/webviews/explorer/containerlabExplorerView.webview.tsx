@@ -7,8 +7,10 @@ import {
   DescriptionOutlined as DescriptionOutlinedIcon,
   DeleteOutline as DeleteOutlineIcon,
   DownloadOutlined as DownloadOutlinedIcon,
+  EditOutlined as EditOutlinedIcon,
   ExpandMore as ExpandMoreIcon,
   FilterAlt as FilterAltIcon,
+  FormatListBulleted as FormatListBulletedIcon,
   Folder as FolderIcon,
   FolderOpen as FolderOpenIcon,
   ForumOutlined as ForumOutlinedIcon,
@@ -29,12 +31,14 @@ import {
   Source as SourceIcon,
   Star as StarIcon,
   StarBorder as StarBorderIcon,
+  SettingsRemote as SettingsRemoteIcon,
   Stop as StopIcon,
   Terminal as TerminalIcon,
   Tune as TuneIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
-  type SvgIconComponent
+  type SvgIconComponent,
+  Dvr
 } from "@mui/icons-material";
 import {
   Alert,
@@ -93,7 +97,8 @@ const DEFAULT_EXPANDED_SECTIONS = new Set<ExplorerSectionId>([
 ]);
 const TREE_DEPTH_INDENT = 1.6;
 const TREE_DISCLOSURE_SLOT_PX = 14;
-const TREE_ROW_GAP = 0.3;
+const TREE_ROW_GAP = 0.2;
+const TREE_ROW_MIN_HEIGHT_PX = 20;
 const NODE_MARKER_SLOT_PX = 14;
 const RESIZE_DIVIDER_HEIGHT_PX = 4;
 const MIN_SECTION_BODY_HEIGHT_PX = 40;
@@ -229,12 +234,15 @@ const ACTION_ICON_BY_COMMAND: Partial<Record<string, SvgIconComponent>> = {
   "containerlab.treeview.runninglabs.hidenonownedlabs": VisibilityOffIcon,
   "containerlab.treeview.runninglabs.shownonownedlabs": VisibilityIcon,
   "containerlab.editor.topoviewereditor": NoteAddIcon,
+  "containerlab.lab.openfile": EditOutlinedIcon,
   "containerlab.lab.clonerepo": SourceIcon,
   "containerlab.lab.togglefavorite": StarBorderIcon,
   "containerlab.lab.addtoworkspace": FolderOpenIcon,
   "containerlab.lab.save": SaveOutlinedIcon,
   "containerlab.node.save": SaveOutlinedIcon,
-  "containerlab.node.showlogs": ArticleOutlinedIcon,
+  "containerlab.node.attachshell": Dvr,
+  "containerlab.node.ssh": TerminalIcon,
+  "containerlab.node.showlogs": FormatListBulletedIcon,
   "containerlab.node.stop": StopIcon,
   "containerlab.node.pause": PauseCircleOutlineIcon,
   "containerlab.node.unpause": PlayCircleOutlineIcon,
@@ -255,12 +263,13 @@ const ACTION_ICON_BY_COMMAND: Partial<Record<string, SvgIconComponent>> = {
 
 const ACTION_ICON_BY_THEME_ICON_ID: Partial<Record<string, SvgIconComponent>> = {
   "vm-connect": LinkIcon,
-  remote: TerminalIcon,
+  remote: SettingsRemoteIcon,
   terminal: TerminalIcon,
   globe: OpenInBrowserIcon,
   "open-preview": OpenInBrowserIcon,
   "open-external": OpenInNewIcon,
-  "list-unordered": ArticleOutlinedIcon,
+  "list-unordered": FormatListBulletedIcon,
+  pencil: EditOutlinedIcon,
   "graph-line": AccountTreeIcon,
   copy: ContentCopyIcon,
   save: SaveOutlinedIcon,
@@ -288,16 +297,16 @@ const ACTION_ICON_RULES: ReadonlyArray<CommandIconRule> = [
   { match: (command) => command.includes("stop"), icon: StopIcon },
   { match: (command) => command.includes("unpause"), icon: PlayCircleOutlineIcon },
   { match: (command) => command.includes("pause"), icon: PauseCircleOutlineIcon },
+  { match: (command) => command.includes("ssh"), icon: SettingsRemoteIcon },
   {
-    match: (command) =>
-      command.includes("ssh") || command.includes("shell") || command.includes("telnet"),
+    match: (command) => command.includes("shell") || command.includes("telnet"),
     icon: TerminalIcon
   },
   { match: (command) => command.includes("filter"), icon: FilterAltIcon },
   { match: (command) => command.includes(".save"), icon: SaveOutlinedIcon },
   {
     match: (command) => command.includes("showlogs") || command.includes("logs"),
-    icon: ArticleOutlinedIcon
+    icon: FormatListBulletedIcon
   },
   { match: (command) => command.startsWith("containerlab.lab.fcli."), icon: BuildIcon },
   { match: (command) => command.includes(".gotty."), icon: OpenInBrowserIcon },
@@ -1143,9 +1152,22 @@ function ExplorerNodeTextBlock({
             </IconButton>
           )}
           {inlineContainerStatus !== undefined && inlineContainerStatus.length > 0 && (
-            <Typography variant="caption" color="text.secondary" noWrap>
-              {inlineContainerStatus}
-            </Typography>
+            <>
+              <Box
+                component="span"
+                sx={{ color: COLOR_TEXT_DISABLED, ml: 0.35, fontSize: "0.7rem" }}
+              >
+                •
+              </Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                noWrap
+                sx={{ ml: 0.2, lineHeight: 1.1, fontSize: "0.72rem" }}
+              >
+                {inlineContainerStatus}
+              </Typography>
+            </>
           )}
         </Stack>
       </Tooltip>
@@ -1284,7 +1306,7 @@ function ExplorerNodeLabel({ node, sectionId, onInvokeAction }: Readonly<Explore
     <Stack
       direction="row"
       alignItems="center"
-      spacing={0.75}
+      spacing={0.5}
       onContextMenu={handleRowContextMenu}
       data-explorer-node-row="true"
       sx={{
@@ -1351,7 +1373,7 @@ function SectionTreeNode({
         direction="row"
         alignItems="center"
         spacing={TREE_ROW_GAP}
-        sx={{ minHeight: 22, pl: depth * TREE_DEPTH_INDENT }}
+        sx={{ minHeight: TREE_ROW_MIN_HEIGHT_PX, pl: depth * TREE_DEPTH_INDENT }}
       >
         <Box
           sx={{
@@ -1393,7 +1415,7 @@ function SectionTreeNode({
       </Stack>
 
       {hasChildren && isExpanded && (
-        <Stack spacing={0.1}>
+        <Stack spacing={0.05}>
           {node.children.map((child) => (
             <SectionTreeNode
               key={child.id}
@@ -1437,7 +1459,7 @@ function SectionTree({
   }
 
   return (
-    <Stack spacing={0.15} sx={{ minHeight: 0 }}>
+    <Stack spacing={0.05} sx={{ minHeight: 0 }}>
       {section.nodes.map((node) => (
         <SectionTreeNode
           key={node.id}
@@ -1741,7 +1763,7 @@ function ExplorerSectionCard({
       </Box>
 
       {!isCollapsed && (
-        <Box sx={{ p: 1, flex: 1, minHeight: 0, overflowY: "auto" }}>
+        <Box sx={{ p: 0.75, flex: 1, minHeight: 0, overflowY: "auto" }}>
           <SectionTree
             section={section}
             expandedItems={expandedItems}
