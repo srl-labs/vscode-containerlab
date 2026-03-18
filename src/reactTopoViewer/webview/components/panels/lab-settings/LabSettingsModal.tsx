@@ -85,11 +85,13 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
           onResetGridColors={onResetGridColors}
         />
       </DialogContent>
-      <DialogActions>
-        <Button size="small" onClick={handleSaveClick} data-testid="lab-settings-save-btn">
-          Apply
-        </Button>
-      </DialogActions>
+      {!isLocked ? (
+        <DialogActions>
+          <Button size="small" onClick={handleSaveClick} data-testid="lab-settings-save-btn">
+            Apply
+          </Button>
+        </DialogActions>
+      ) : null}
     </Dialog>
   );
 };
