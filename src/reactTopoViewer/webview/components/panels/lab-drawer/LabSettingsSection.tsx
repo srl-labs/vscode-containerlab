@@ -7,7 +7,11 @@ import Tab from "@mui/material/Tab";
 
 import { clampTopoViewerFontScale } from "../../../../shared/constants/topoViewerFontScale";
 import { useLabSettingsState } from "../../../hooks/editor";
-import { sendSetTopoViewerFontScale } from "../../../messaging/extensionMessaging";
+import {
+  sendPreviewTopoViewerFontScale,
+  sendResetTopoViewerFontScalePreview,
+  sendSetTopoViewerFontScale
+} from "../../../messaging/extensionMessaging";
 import { saveViewerSettings } from "../../../services";
 import { useTopoViewerStore } from "../../../stores/topoViewerStore";
 import type { GridSettingsControlsProps } from "../GridSettingsPopover";
@@ -74,12 +78,14 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
     const nextFontScale = clampTopoViewerFontScale(value);
     setFontScaleDraft(nextFontScale);
     setFontScale(nextFontScale);
+    sendPreviewTopoViewerFontScale(nextFontScale);
   };
 
   const handleCancel = () => {
     const savedFontScale = savedFontScaleRef.current;
     setFontScaleDraft(savedFontScale);
     setFontScale(savedFontScale);
+    sendResetTopoViewerFontScalePreview();
   };
 
   const handleSave = async () => {

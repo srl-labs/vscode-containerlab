@@ -47,7 +47,11 @@ import {
 } from "../../shared/messages/extension";
 import { resolveTopoViewerFontScale } from "../../shared/constants/topoViewerFontScale";
 import { cancelActiveCommand } from "../../../commands/command";
-import { setStoredTopoViewerFontScale } from "../services/TopoViewerUiSettings";
+import {
+  previewTopoViewerFontScale,
+  resetTopoViewerFontScalePreview,
+  setStoredTopoViewerFontScale
+} from "../services/TopoViewerUiSettings";
 
 type WebviewMessage = Record<string, unknown> & {
   type?: unknown;
@@ -639,10 +643,32 @@ export class MessageRouter {
 
   private async handleUiCommand(command: UiCommand, message: WebviewMessage): Promise<void> {
     switch (command) {
+      case UI_COMMANDS.PREVIEW_TOPOVIEWER_FONT_SCALE:
+        this.handlePreviewTopoViewerFontScale(message);
+        return;
+      case UI_COMMANDS.RESET_TOPOVIEWER_FONT_SCALE_PREVIEW:
+        this.handleResetTopoViewerFontScalePreview();
+        return;
       case UI_COMMANDS.SET_TOPOVIEWER_FONT_SCALE:
         await this.handleSetTopoViewerFontScale(message);
         return;
     }
+  }
+
+  private handlePreviewTopoViewerFontScale(message: WebviewMessage): void {
+    const rawFontScale = message.fontScale;
+    if (typeof rawFontScale !== "number" || !Number.isFinite(rawFontScale)) {
+      log.warn(`[MessageRouter] Invalid font scale preview payload: ${JSON.stringify(message)}`);
+      return;
+    }
+
+    const fontScale = previewTopoViewerFontScale(rawFontScale);
+    log.debug(`[MessageRouter] Previewed TopoViewer font scale at ${fontScale}`);
+  }
+
+  private handleResetTopoViewerFontScalePreview(): void {
+    const fontScale = resetTopoViewerFontScalePreview();
+    log.debug(`[MessageRouter] Reset TopoViewer font scale preview to ${fontScale}`);
   }
 
   private async handleSetTopoViewerFontScale(message: WebviewMessage): Promise<void> {

@@ -66,6 +66,11 @@ export interface ExplorerUiStateMessage {
   state: ExplorerUiState;
 }
 
+export interface ExplorerFontScaleStateMessage {
+  command: "fontScaleState";
+  fontScale: number;
+}
+
 export interface ExplorerErrorMessage {
   command: "error";
   message: string;
@@ -75,6 +80,7 @@ export type ExplorerIncomingMessage =
   | ExplorerSnapshotMessage
   | ExplorerFilterStateMessage
   | ExplorerUiStateMessage
+  | ExplorerFontScaleStateMessage
   | ExplorerErrorMessage;
 
 export interface ExplorerReadyMessage {

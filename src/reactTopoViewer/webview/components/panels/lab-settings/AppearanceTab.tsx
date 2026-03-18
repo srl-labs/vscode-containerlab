@@ -510,8 +510,8 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
         >
           <Paper variant="outlined" sx={{ p: 1.5 }}>
             <Typography variant="body2">
-              Adjust the global TopoViewer font scale. This is stored in VS Code settings and
-              applies to all TopoViewer panels.
+              Adjust the global VS Code Containerlab font scale. This applies to TopoViewer
+              panels and the Containerlab Explorer sidebar.
             </Typography>
           </Paper>
 
@@ -541,7 +541,7 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
               Current Selection
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {fontScalePercent}% of the VS Code sidebar/treeview font size baseline.
+              {fontScalePercent}% where 100% matches the VS Code sidebar/treeview font size.
             </Typography>
           </Paper>
 

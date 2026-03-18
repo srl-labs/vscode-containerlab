@@ -105,6 +105,8 @@ interface InitialData {
 }
 
 const DEV_TOPOVIEWER_FONT_SCALE_STORAGE_KEY = "reactTopoViewer.fontScale";
+let devStoredFontScale = getStoredDevTopoViewerFontScale();
+let devPreviewFontScale: number | null = null;
 
 function getStoredDevTopoViewerFontScale(): number {
   try {
@@ -119,13 +121,17 @@ function getStoredDevTopoViewerFontScale(): number {
   }
 }
 
+function getEffectiveDevTopoViewerFontScale(): number {
+  return devPreviewFontScale ?? devStoredFontScale;
+}
+
 const initialData: InitialData = {
   schemaData,
   dockerImages,
   customNodes: sampleCustomNodes as CustomNodeTemplate[],
   defaultNode: stateManager.getDefaultCustomNode(),
   customIcons: sampleCustomIcons as CustomIconInfo[],
-  fontScale: getStoredDevTopoViewerFontScale()
+  fontScale: devStoredFontScale
 };
 
 // Render App
@@ -1153,6 +1159,7 @@ function setupDevModeCommandInterceptor(): void {
     level?: string;
     message?: string;
     fileLine?: string;
+    fontScale?: number;
     actionRef?: string;
     value?: string;
     state?: ExplorerUiState;
@@ -1267,6 +1274,8 @@ function setupDevModeCommandInterceptor(): void {
     }
 
     const fontScale = resolveTopoViewerFontScale(rawFontScale);
+    devStoredFontScale = fontScale;
+    devPreviewFontScale = null;
     initialData.fontScale = fontScale;
 
     try {
@@ -1279,6 +1288,35 @@ function setupDevModeCommandInterceptor(): void {
       type: MSG_TOPOVIEWER_FONT_SCALE_UPDATED,
       data: { fontScale }
     });
+    sendExplorerMessage({ command: "fontScaleState", fontScale });
+  };
+
+  const handlePreviewTopoViewerFontScale = (msg: DevVscodeMessage) => {
+    const rawFontScale = msg.fontScale;
+    if (typeof rawFontScale !== "number" || !Number.isFinite(rawFontScale)) {
+      console.warn("[Dev] Invalid font scale preview payload", msg);
+      return;
+    }
+
+    const fontScale = resolveTopoViewerFontScale(rawFontScale);
+    devPreviewFontScale = fontScale;
+
+    postToWebview({
+      type: MSG_TOPOVIEWER_FONT_SCALE_UPDATED,
+      data: { fontScale }
+    });
+    sendExplorerMessage({ command: "fontScaleState", fontScale });
+  };
+
+  const handleResetTopoViewerFontScalePreview = () => {
+    devPreviewFontScale = null;
+    const fontScale = getEffectiveDevTopoViewerFontScale();
+
+    postToWebview({
+      type: MSG_TOPOVIEWER_FONT_SCALE_UPDATED,
+      data: { fontScale }
+    });
+    sendExplorerMessage({ command: "fontScaleState", fontScale });
   };
 
   const isExplorerOutgoingMessage = (
@@ -1297,6 +1335,10 @@ function setupDevModeCommandInterceptor(): void {
     if (message.command === "ready") {
       postExplorerFilterState();
       postExplorerUiState();
+      sendExplorerMessage({
+        command: "fontScaleState",
+        fontScale: getEffectiveDevTopoViewerFontScale()
+      });
       scheduleExplorerSnapshot(0);
       return;
     }
@@ -1340,6 +1382,10 @@ function setupDevModeCommandInterceptor(): void {
     reactTopoViewerLog: handleViewerLog,
     topoViewerLog: handleViewerLog,
     [EXPORT_COMMANDS.EXPORT_SVG_GRAFANA_BUNDLE]: handleGrafanaBundleExport,
+    [UI_COMMANDS.PREVIEW_TOPOVIEWER_FONT_SCALE]: handlePreviewTopoViewerFontScale,
+    [UI_COMMANDS.RESET_TOPOVIEWER_FONT_SCALE_PREVIEW]: () => {
+      handleResetTopoViewerFontScalePreview();
+    },
     [UI_COMMANDS.SET_TOPOVIEWER_FONT_SCALE]: handleSetTopoViewerFontScale
   };
 

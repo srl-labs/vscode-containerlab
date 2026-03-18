@@ -107,7 +107,21 @@ export function sendCancelLabLifecycle(): void {
 }
 
 /**
- * Persist the global TopoViewer font scale to VS Code settings.
+ * Preview the global TopoViewer font scale across open webviews.
+ */
+export function sendPreviewTopoViewerFontScale(fontScale: number): void {
+  sendCommandToExtension(UI_COMMANDS.PREVIEW_TOPOVIEWER_FONT_SCALE, { fontScale });
+}
+
+/**
+ * Clear the temporary global TopoViewer font scale preview.
+ */
+export function sendResetTopoViewerFontScalePreview(): void {
+  sendCommandToExtension(UI_COMMANDS.RESET_TOPOVIEWER_FONT_SCALE_PREVIEW);
+}
+
+/**
+ * Persist the global TopoViewer font scale to extension state.
  */
 export function sendSetTopoViewerFontScale(fontScale: number): void {
   sendCommandToExtension(UI_COMMANDS.SET_TOPOVIEWER_FONT_SCALE, { fontScale });

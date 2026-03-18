@@ -3,8 +3,14 @@ import { randomBytes } from "crypto";
 import * as vscode from "vscode";
 
 import { hideNonOwnedLabsState } from "../../globals";
+import { TOPOVIEWER_FONT_SCALE_DEFAULT } from "../../reactTopoViewer/shared/constants/topoViewerFontScale";
+import {
+  getEffectiveTopoViewerFontScale,
+  onDidChangeTopoViewerFontScale
+} from "../../reactTopoViewer/extension/services/TopoViewerUiSettings";
 import { EXPLORER_SECTION_LABELS, EXPLORER_SECTION_ORDER } from "../shared/explorer/types";
 import type {
+  ExplorerFontScaleStateMessage,
   ExplorerIncomingMessage,
   ExplorerInvokeActionMessage,
   ExplorerOutgoingMessage,
@@ -32,6 +38,7 @@ import type {
 const REFRESH_DEBOUNCE_MS = 120;
 const UI_STATE_KEY = "containerlabExplorer.uiState";
 const FILTER_STATE_KEY = "containerlabExplorer.filterText";
+const TOPOVIEWER_FONT_SCALE_CSS_VAR = "--topoviewer-font-scale";
 
 interface FilterableTreeProvider {
   setTreeFilter(filterText: string): void;
@@ -109,6 +116,11 @@ export class ContainerlabExplorerViewProvider
       vscode.extensions.onDidChange(() => {
         invalidateExplorerContributionCache();
         this.scheduleSnapshot(0);
+      })
+    );
+    this.disposables.push(
+      onDidChangeTopoViewerFontScale((fontScale) => {
+        this.postFontScale(fontScale);
       })
     );
   }
@@ -209,6 +221,7 @@ export class ContainerlabExplorerViewProvider
       this.isReady = true;
       this.postFilterState();
       this.postUiState();
+      this.postFontScale();
       this.scheduleSnapshot(0);
       return;
     }
@@ -282,6 +295,18 @@ export class ContainerlabExplorerViewProvider
     void this.webviewView.webview.postMessage(payload);
   }
 
+  private postFontScale(fontScale: number = getEffectiveTopoViewerFontScale()): void {
+    if (!this.webviewView || !this.isReady) {
+      return;
+    }
+
+    const message: ExplorerFontScaleStateMessage = {
+      command: "fontScaleState",
+      fontScale
+    };
+    void this.webviewView.webview.postMessage(message);
+  }
+
   private scheduleSnapshot(delay: number = REFRESH_DEBOUNCE_MS): void {
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
@@ -353,6 +378,7 @@ export class ContainerlabExplorerViewProvider
       vscode.Uri.joinPath(this.context.extensionUri, "dist", "containerlabExplorerView.js")
     );
     const csp = webview.cspSource;
+    const fontScale = getEffectiveTopoViewerFontScale();
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -373,7 +399,7 @@ export class ContainerlabExplorerViewProvider
     }
   </style>
 </head>
-<body data-webview-kind="containerlab-explorer">
+<body data-webview-kind="containerlab-explorer" style="${TOPOVIEWER_FONT_SCALE_CSS_VAR}: ${fontScale ?? TOPOVIEWER_FONT_SCALE_DEFAULT};">
   <div id="root"></div>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

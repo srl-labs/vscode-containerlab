@@ -98,6 +98,8 @@ export function isExportCommand(command: string): command is ExportCommand {
 
 /** UI settings commands */
 export const UI_COMMANDS = {
+  PREVIEW_TOPOVIEWER_FONT_SCALE: "preview-topoviewer-font-scale",
+  RESET_TOPOVIEWER_FONT_SCALE_PREVIEW: "reset-topoviewer-font-scale-preview",
   SET_TOPOVIEWER_FONT_SCALE: "set-topoviewer-font-scale"
 } as const;
 
