@@ -6,10 +6,11 @@
  */
 import { useEffect, useRef } from "react";
 
+import type { InitialGraphData } from "./useInitialGraphData";
 import { useTopoViewerStore, parseInitialData } from "../../stores/topoViewerStore";
 
 export interface StoreInitializationData {
-  initialData?: unknown;
+  initialData?: InitialGraphData;
 }
 
 /**
