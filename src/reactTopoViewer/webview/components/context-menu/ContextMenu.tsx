@@ -9,6 +9,8 @@ import Divider from "@mui/material/Divider";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
+import { topoViewerTypography } from "../../theme";
+
 export interface ContextMenuItem {
   id: string;
   label: string;
@@ -252,7 +254,7 @@ function compactPrimarySlotProps(compact: boolean) {
     primary: {
       noWrap: true,
       sx: {
-        fontSize: 12.5,
+        fontSize: topoViewerTypography.menu,
         lineHeight: 1.25
       }
     }

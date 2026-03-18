@@ -5,6 +5,8 @@
 import React from "react";
 import Box from "@mui/material/Box";
 
+import { topoViewerTypography } from "../../theme";
+
 interface ShortcutDisplayItem {
   id: number;
   text: string;
@@ -41,8 +43,8 @@ export const ShortcutDisplay: React.FC<ShortcutDisplayProps> = ({ shortcuts }) =
             py: 0.75,
             borderRadius: 2,
             boxShadow: 3,
-            fontFamily: "sans-serif",
-            fontSize: "0.875rem",
+            fontFamily: topoViewerTypography.fontFamily,
+            fontSize: topoViewerTypography.body,
             letterSpacing: "0.025em",
             animation: "shortcutFade 2s ease-in-out forwards"
           }}

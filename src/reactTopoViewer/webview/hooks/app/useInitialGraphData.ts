@@ -13,4 +13,5 @@ export interface InitialGraphData {
   customNodes?: CustomNodeTemplate[];
   defaultNode?: string;
   customIcons?: CustomIconInfo[];
+  fontScale?: number;
 }

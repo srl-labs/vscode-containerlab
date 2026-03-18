@@ -6,6 +6,7 @@ import type { SxProps, Theme } from "@mui/material/styles";
 import { LineChart } from "@mui/x-charts/LineChart";
 
 import type { InterfaceStatsPayload, EndpointStatsHistory } from "../../../shared/types/topology";
+import { readTopoViewerFontSizePx, topoViewerTypography } from "../../theme";
 
 const MAX_GRAPH_POINTS = 60;
 const MIN_TIMESTAMP_STEP_SECONDS = 0.001;
@@ -91,7 +92,9 @@ function resolveChartMargin(compact: boolean, showLegend: boolean, scale: number
   }
 
   // The legend is rendered inside the SVG bottom margin.
-  const legendHeight = showLegend ? Math.round(14 * scale) : 0;
+  const legendHeight = showLegend
+    ? Math.round(readTopoViewerFontSizePx("caption") * 1.2 * scale)
+    : 0;
   return { top: 6, right: 2, bottom: legendHeight, left: 0 };
 }
 
@@ -109,14 +112,15 @@ function resolveLegendSlotProps(compact: boolean, showLegend: boolean, scale: nu
     };
   }
 
-  const fontSize = `${(0.6 * scale).toFixed(3)}rem`;
-  const markSize = `${(0.65 * scale).toFixed(2)}em`;
+  const fontSize = `${Math.round(readTopoViewerFontSizePx("caption") * 0.8 * scale * 100) / 100}px`;
+  const markSize = "0.65em";
 
   return {
     legend: {
       direction: "horizontal" as const,
       position: { vertical: "bottom" as const, horizontal: "center" as const },
       sx: {
+        fontFamily: topoViewerTypography.fontFamily,
         fontSize,
         lineHeight: 1,
         padding: 0,
@@ -247,6 +251,7 @@ function buildXAxis(
   xMin: Date | undefined,
   xMax: Date | undefined
 ) {
+  const axisTickFontSizePx = readTopoViewerFontSizePx("caption");
   const baseAxis = {
     data: xData,
     scaleType: "time" as const,
@@ -260,17 +265,34 @@ function buildXAxis(
   if (compact) {
     return [{ ...baseAxis, position: "none" as const, height: 0 }];
   }
-  return [{ ...baseAxis, tickLabelStyle: { fontSize: 10, fill: "#cccccc" }, height: 20 }];
+  return [
+    {
+      ...baseAxis,
+      tickLabelStyle: {
+        fontSize: axisTickFontSizePx,
+        fill: "#cccccc",
+        fontFamily: topoViewerTypography.fontFamily
+      },
+      height: 20
+    }
+  ];
 }
 
 function buildYAxis(compact: boolean, scale: number, unitLabel: string) {
+  const compactTickFontSizePx = Math.round(readTopoViewerFontSizePx("caption") * 0.8 * scale);
+  const axisLabelFontSizePx = readTopoViewerFontSizePx("bodySmall");
+  const axisTickFontSizePx = readTopoViewerFontSizePx("caption");
   if (compact) {
     return [
       {
         id: "bps",
         position: "left" as const,
         disableTicks: true,
-        tickLabelStyle: { fontSize: Math.round(8 * scale), fill: "#9aa0a6" },
+        tickLabelStyle: {
+          fontSize: compactTickFontSizePx,
+          fill: "#9aa0a6",
+          fontFamily: topoViewerTypography.fontFamily
+        },
         valueFormatter: (value: number) => `${value} ${unitLabel}`
       },
       {
@@ -285,14 +307,22 @@ function buildYAxis(compact: boolean, scale: number, unitLabel: string) {
     {
       id: "bps",
       label: unitLabel,
-      labelStyle: { fontSize: 11 },
-      tickLabelStyle: { fontSize: 10, fill: "#cccccc" }
+      labelStyle: { fontSize: axisLabelFontSizePx, fontFamily: topoViewerTypography.fontFamily },
+      tickLabelStyle: {
+        fontSize: axisTickFontSizePx,
+        fill: "#cccccc",
+        fontFamily: topoViewerTypography.fontFamily
+      }
     },
     {
       id: "pps",
       label: "PPS",
-      labelStyle: { fontSize: 11 },
-      tickLabelStyle: { fontSize: 10, fill: "#cccccc" }
+      labelStyle: { fontSize: axisLabelFontSizePx, fontFamily: topoViewerTypography.fontFamily },
+      tickLabelStyle: {
+        fontSize: axisTickFontSizePx,
+        fill: "#cccccc",
+        fontFamily: topoViewerTypography.fontFamily
+      }
     }
   ];
 }
@@ -398,10 +428,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
   if (xData.length === 0) {
     if (emptyMessage === null) return null;
     return (
-      <Typography
-        variant="body2"
-        sx={{ textAlign: "center", color: "text.secondary", fontSize: "0.875rem", mt: 1 }}
-      >
+      <Typography variant="body2" sx={{ textAlign: "center", color: "text.secondary", mt: 1 }}>
         {emptyMessage}
       </Typography>
     );

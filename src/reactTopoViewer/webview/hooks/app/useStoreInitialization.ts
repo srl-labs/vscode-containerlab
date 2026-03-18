@@ -6,10 +6,11 @@
  */
 import { useEffect, useRef } from "react";
 
+import type { InitialGraphData } from "./useInitialGraphData";
 import { useTopoViewerStore, parseInitialData } from "../../stores/topoViewerStore";
 
 export interface StoreInitializationData {
-  initialData?: unknown;
+  initialData?: InitialGraphData;
 }
 
 /**
@@ -24,7 +25,7 @@ export function useStoreInitialization({ initialData }: StoreInitializationData)
     initializedRef.current = true;
 
     // Initialize topoViewer store with parsed initial data
-    if (initialData !== undefined && initialData !== null) {
+    if (initialData !== undefined) {
       const parsedData = parseInitialData(initialData);
       useTopoViewerStore.getState().setInitialData(parsedData);
     }

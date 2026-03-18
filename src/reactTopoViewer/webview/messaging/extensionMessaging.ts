@@ -4,7 +4,7 @@
  * through the host command pipeline, not these messages.
  */
 import type { ExtensionCommandType } from "../../shared/messages/extension";
-import { MSG_CANCEL_LAB_LIFECYCLE } from "../../shared/messages/extension";
+import { MSG_CANCEL_LAB_LIFECYCLE, UI_COMMANDS } from "../../shared/messages/extension";
 import type { SaveCustomNodeData } from "../../shared/utilities/customNodeConversions";
 import { log } from "../utils/logger";
 
@@ -104,4 +104,25 @@ export function sendIconReconcile(usedIcons: string[]): void {
  */
 export function sendCancelLabLifecycle(): void {
   sendCommandToExtension(MSG_CANCEL_LAB_LIFECYCLE);
+}
+
+/**
+ * Preview the global TopoViewer font scale across open webviews.
+ */
+export function sendPreviewTopoViewerFontScale(fontScale: number): void {
+  sendCommandToExtension(UI_COMMANDS.PREVIEW_TOPOVIEWER_FONT_SCALE, { fontScale });
+}
+
+/**
+ * Clear the temporary global TopoViewer font scale preview.
+ */
+export function sendResetTopoViewerFontScalePreview(): void {
+  sendCommandToExtension(UI_COMMANDS.RESET_TOPOVIEWER_FONT_SCALE_PREVIEW);
+}
+
+/**
+ * Persist the global TopoViewer font scale to extension state.
+ */
+export function sendSetTopoViewerFontScale(fontScale: number): void {
+  sendCommandToExtension(UI_COMMANDS.SET_TOPOVIEWER_FONT_SCALE, { fontScale });
 }

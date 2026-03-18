@@ -22,14 +22,15 @@ import {
   useDeploymentState,
   useTopoViewerStore
 } from "../../../stores/topoViewerStore";
+import { topoViewerTypography } from "../../../theme";
 import { getCustomIconMap } from "../../../utils/iconUtils";
 import { clampTelemetryNodeSizePx } from "../../../utils/telemetryInterfaceLabels";
 
 import {
-  buildNodeLabelStyle,
   HIDDEN_HANDLE_STYLE,
   getNodeDirectionRotation,
   getNodeRuntimeBadgeState,
+  useStandardNodeLabelStyle,
   type NodeRuntimeBadgeState
 } from "./nodeStyles";
 
@@ -111,6 +112,8 @@ const BADGE_STYLE_BASE: React.CSSProperties = {
   zIndex: 4
 };
 
+const RUNTIME_BADGE_ICON_SIZE = `calc(${topoViewerTypography.caption} * 0.7)`;
+
 function getRuntimeBadgeColors(state: NodeRuntimeBadgeState): {
   bg: string;
   border: string;
@@ -131,13 +134,13 @@ function getRuntimeBadgeColors(state: NodeRuntimeBadgeState): {
 function getRuntimeBadgeIcon(state: NodeRuntimeBadgeState, iconColor: string): React.ReactElement {
   switch (state) {
     case "running":
-      return <PlayArrowRoundedIcon sx={{ fontSize: "0.52rem", color: iconColor }} />;
+      return <PlayArrowRoundedIcon sx={{ fontSize: RUNTIME_BADGE_ICON_SIZE, color: iconColor }} />;
     case "paused":
-      return <PauseRoundedIcon sx={{ fontSize: "0.52rem", color: iconColor }} />;
+      return <PauseRoundedIcon sx={{ fontSize: RUNTIME_BADGE_ICON_SIZE, color: iconColor }} />;
     case "undeployed":
-      return <BlockRoundedIcon sx={{ fontSize: "0.52rem", color: iconColor }} />;
+      return <BlockRoundedIcon sx={{ fontSize: RUNTIME_BADGE_ICON_SIZE, color: iconColor }} />;
     default:
-      return <StopRoundedIcon sx={{ fontSize: "0.52rem", color: iconColor }} />;
+      return <StopRoundedIcon sx={{ fontSize: RUNTIME_BADGE_ICON_SIZE, color: iconColor }} />;
   }
 }
 
@@ -249,18 +252,13 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
     }),
     [runtimeBadgeColors.bg, runtimeBadgeColors.border]
   );
-  const labelStyle = useMemo(
-    () =>
-      buildNodeLabelStyle({
-        position: labelPosition,
-        direction,
-        backgroundColor: labelBackgroundColor,
-        iconSize,
-        fontSize: "0.7rem",
-        maxWidth: 110
-      }),
-    [labelPosition, direction, labelBackgroundColor, iconSize]
-  );
+  const labelStyle = useStandardNodeLabelStyle({
+    position: labelPosition,
+    direction,
+    backgroundColor: labelBackgroundColor,
+    iconSize,
+    maxWidth: 110
+  });
 
   return (
     <div style={containerStyle} className="topology-node">

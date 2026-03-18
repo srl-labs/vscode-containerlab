@@ -9,6 +9,7 @@ import { getDockerImages } from "../../../utils/docker/images";
 import type { CustomNodeTemplate, SchemaData } from "../../shared/schema";
 import { getCustomNodesFromConfig, loadSchemaData } from "../services/schema";
 import { iconService } from "../services/IconService";
+import { getEffectiveTopoViewerFontScale } from "../services/TopoViewerUiSettings";
 
 /**
  * Bootstrap data sent to the webview on initialization
@@ -19,6 +20,7 @@ export interface BootstrapData {
   schemaData: SchemaData;
   dockerImages: string[];
   customIcons: CustomIconInfo[];
+  fontScale: number;
 }
 
 /**
@@ -47,12 +49,14 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
 
   // Load custom icons from workspace and global directories
   const customIcons = await iconService.loadAllIcons(yamlFilePath);
+  const fontScale = getEffectiveTopoViewerFontScale();
 
   return {
     customNodes,
     defaultNode,
     schemaData,
     dockerImages,
-    customIcons
+    customIcons,
+    fontScale
   };
 }

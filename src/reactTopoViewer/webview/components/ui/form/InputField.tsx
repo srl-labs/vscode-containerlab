@@ -12,6 +12,8 @@ import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import type { SxProps, Theme } from "@mui/material/styles";
 
+import { topoViewerTypography } from "../../../theme";
+
 interface InputFieldProps {
   id: string;
   value: string;
@@ -60,7 +62,7 @@ const STEPPER_BUTTON_SX: SxProps<Theme> = {
   }
 };
 
-const STEPPER_ICON_SX: SxProps<Theme> = { fontSize: 12 };
+const STEPPER_ICON_SX: SxProps<Theme> = { fontSize: topoViewerTypography.caption };
 
 const parseNumericValue = (value: string): number | undefined => {
   const numericValue = Number(value);
@@ -268,7 +270,10 @@ const InputEndAdornment: React.FC<InputEndAdornmentProps> = ({
       </Box>
     ) : null}
     {hasSuffix ? (
-      <Typography color="text.secondary" sx={{ mr: suffixRightGap }}>
+      <Typography
+        color="text.secondary"
+        sx={{ mr: suffixRightGap, fontSize: topoViewerTypography.bodySmall }}
+      >
         {suffix}
       </Typography>
     ) : null}
@@ -280,7 +285,7 @@ const InputEndAdornment: React.FC<InputEndAdornmentProps> = ({
     {hasTooltip ? (
       <Tooltip title={tooltipText} arrow>
         <IconButton size="small" edge="end" tabIndex={-1}>
-          <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+          <InfoOutlinedIcon sx={{ fontSize: topoViewerTypography.iconInline }} />
         </IconButton>
       </Tooltip>
     ) : null}

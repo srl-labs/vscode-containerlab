@@ -65,7 +65,7 @@ import {
   useState
 } from "react";
 
-import { MuiThemeProvider } from "../../reactTopoViewer/webview/theme";
+import { MuiThemeProvider, topoViewerTypography } from "../../reactTopoViewer/webview/theme";
 import {
   ContextMenu,
   type ContextMenuItem
@@ -102,6 +102,8 @@ const NODE_MARKER_SLOT_PX = 14;
 const RESIZE_DIVIDER_HEIGHT_PX = 4;
 const MIN_SECTION_BODY_HEIGHT_PX = 40;
 const FIXED_HEIGHT_SECTIONS: ReadonlySet<ExplorerSectionId> = new Set(["helpFeedback"]);
+const TOPOVIEWER_FONT_SCALE_CSS_VAR = "--topoviewer-font-scale";
+const EXPLORER_ROOT_SELECTOR = ".containerlab-explorer-root";
 
 const STATUS_COLOR_MAP: Record<string, string> = {
   green: "success.main",
@@ -464,6 +466,7 @@ interface ExplorerSectionCardProps {
 type SnapshotExplorerMessage = Extract<ExplorerIncomingMessage, { command: "snapshot" }>;
 type FilterStateExplorerMessage = Extract<ExplorerIncomingMessage, { command: "filterState" }>;
 type UiStateExplorerMessage = Extract<ExplorerIncomingMessage, { command: "uiState" }>;
+type FontScaleExplorerMessage = Extract<ExplorerIncomingMessage, { command: "fontScaleState" }>;
 type ErrorExplorerMessage = Extract<ExplorerIncomingMessage, { command: "error" }>;
 
 function statusColor(indicator: string | undefined): string {
@@ -1111,7 +1114,11 @@ function ExplorerNodeTextBlock({
             {leadingIcon && (
               <leadingIcon.Icon
                 fontSize="inherit"
-                sx={{ fontSize: 13, color: leadingIcon.color, flex: "0 0 auto" }}
+                sx={{
+                  fontSize: topoViewerTypography.iconInline,
+                  color: leadingIcon.color,
+                  flex: "0 0 auto"
+                }}
               />
             )}
             {!leadingIcon && showStatusDot && (
@@ -1154,7 +1161,11 @@ function ExplorerNodeTextBlock({
             <>
               <Box
                 component="span"
-                sx={{ color: COLOR_TEXT_DISABLED, ml: 0.35, fontSize: "0.7rem" }}
+                sx={{
+                  color: COLOR_TEXT_DISABLED,
+                  ml: 0.35,
+                  fontSize: topoViewerTypography.caption
+                }}
               >
                 •
               </Box>
@@ -1162,7 +1173,7 @@ function ExplorerNodeTextBlock({
                 variant="caption"
                 color="text.secondary"
                 noWrap
-                sx={{ ml: 0.2, lineHeight: 1.1, fontSize: "0.72rem" }}
+                sx={{ ml: 0.2, lineHeight: 1.1 }}
               >
                 {inlineContainerStatus}
               </Typography>
@@ -1887,6 +1898,13 @@ export function ContainerlabExplorerView() {
     setErrorMessage(message.message);
   }, []);
 
+  const handleFontScaleMessage = useCallback((message: FontScaleExplorerMessage) => {
+    document.body.style.setProperty(TOPOVIEWER_FONT_SCALE_CSS_VAR, String(message.fontScale));
+    document
+      .querySelector<HTMLElement>(EXPLORER_ROOT_SELECTOR)
+      ?.style.setProperty(TOPOVIEWER_FONT_SCALE_CSS_VAR, String(message.fontScale));
+  }, []);
+
   useMessageListener<ExplorerIncomingMessage>(
     useCallback(
       (message) => {
@@ -1900,6 +1918,9 @@ export function ContainerlabExplorerView() {
           case "uiState":
             handleUiStateMessage(message);
             return;
+          case "fontScaleState":
+            handleFontScaleMessage(message);
+            return;
           case "error":
             handleErrorMessage(message);
             return;
@@ -1907,7 +1928,13 @@ export function ContainerlabExplorerView() {
             break;
         }
       },
-      [handleErrorMessage, handleFilterStateMessage, handleSnapshotMessage, handleUiStateMessage]
+      [
+        handleErrorMessage,
+        handleFilterStateMessage,
+        handleFontScaleMessage,
+        handleSnapshotMessage,
+        handleUiStateMessage
+      ]
     )
   );
 

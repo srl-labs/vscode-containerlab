@@ -13,6 +13,7 @@
  */
 import { useEffect } from "react";
 
+import { MSG_TOPOVIEWER_FONT_SCALE_UPDATED } from "../../../shared/messages/webview";
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
 import type { CustomIconInfo } from "../../../shared/types/icons";
 import {
@@ -161,6 +162,17 @@ function handleFitViewport(): void {
   requestFitView();
 }
 
+function handleFontScaleUpdated(msg: WebviewMessageBase): void {
+  const { setFontScale } = useTopoViewerStore.getState();
+  const data = getMessageData(msg);
+
+  if (typeof data?.fontScale !== "number" || !Number.isFinite(data.fontScale)) {
+    return;
+  }
+
+  setFontScale(data.fontScale);
+}
+
 const MESSAGE_HANDLERS: Partial<Record<string, (message: WebviewMessageBase) => void>> = {
   "topo-mode-changed": handleTopoModeChanged,
   "panel-action": handlePanelAction,
@@ -171,7 +183,8 @@ const MESSAGE_HANDLERS: Partial<Record<string, (message: WebviewMessageBase) => 
   "lab-lifecycle-status": handleLabLifecycleStatus,
   "fit-viewport": () => {
     handleFitViewport();
-  }
+  },
+  [MSG_TOPOVIEWER_FONT_SCALE_UPDATED]: handleFontScaleUpdated
 };
 
 // ============================================================================

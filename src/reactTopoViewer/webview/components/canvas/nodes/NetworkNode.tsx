@@ -14,7 +14,11 @@ import {
 import { useTopoViewerStore } from "../../../stores/topoViewerStore";
 import { clampTelemetryNodeSizePx } from "../../../utils/telemetryInterfaceLabels";
 
-import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE, getNodeDirectionRotation } from "./nodeStyles";
+import {
+  HIDDEN_HANDLE_STYLE,
+  getNodeDirectionRotation,
+  useStandardNodeLabelStyle
+} from "./nodeStyles";
 import { getNetworkNodeTypeColor, toNetworkNodeData } from "./networkNodeShared";
 
 const HANDLE_POSITIONS = [
@@ -116,18 +120,13 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     ...getOutlineStyle()
   };
 
-  const labelStyle = useMemo(
-    () =>
-      buildNodeLabelStyle({
-        position: labelPosition,
-        direction,
-        backgroundColor: labelBackgroundColor,
-        iconSize,
-        fontSize: "0.65rem",
-        maxWidth: 110
-      }),
-    [labelPosition, direction, labelBackgroundColor, iconSize]
-  );
+  const labelStyle = useStandardNodeLabelStyle({
+    position: labelPosition,
+    direction,
+    backgroundColor: labelBackgroundColor,
+    iconSize,
+    maxWidth: 110
+  });
 
   return (
     <div

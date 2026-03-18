@@ -96,6 +96,21 @@ export function isExportCommand(command: string): command is ExportCommand {
   return EXPORT_COMMANDS_SET.has(command);
 }
 
+/** UI settings commands */
+export const UI_COMMANDS = {
+  PREVIEW_TOPOVIEWER_FONT_SCALE: "preview-topoviewer-font-scale",
+  RESET_TOPOVIEWER_FONT_SCALE_PREVIEW: "reset-topoviewer-font-scale-preview",
+  SET_TOPOVIEWER_FONT_SCALE: "set-topoviewer-font-scale"
+} as const;
+
+const UI_COMMANDS_SET: ReadonlySet<string> = new Set(Object.values(UI_COMMANDS));
+
+export type UiCommand = (typeof UI_COMMANDS)[keyof typeof UI_COMMANDS];
+
+export function isUiCommand(command: string): command is UiCommand {
+  return UI_COMMANDS_SET.has(command);
+}
+
 export const MSG_TOGGLE_SPLIT_VIEW = "topo-toggle-split-view" as const;
 
 export type ExtensionCommandType =
@@ -105,5 +120,6 @@ export type ExtensionCommandType =
   | CustomNodeCommand
   | IconCommand
   | ExportCommand
+  | UiCommand
   | typeof MSG_TOGGLE_SPLIT_VIEW
   | typeof MSG_CANCEL_LAB_LIFECYCLE;

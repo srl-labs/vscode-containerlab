@@ -1,13 +1,15 @@
-import type React from "react";
+import { useMemo, type CSSProperties } from "react";
 
-export const HIDDEN_HANDLE_STYLE: React.CSSProperties = {
+import { topoViewerTypography } from "../../../theme";
+
+export const HIDDEN_HANDLE_STYLE: CSSProperties = {
   opacity: 0,
   pointerEvents: "none",
   width: 1,
   height: 1
 };
 
-const LABEL_STYLE_BASE: React.CSSProperties = {
+const LABEL_STYLE_BASE: CSSProperties = {
   fontWeight: 500,
   color: "#F5F5F5",
   textAlign: "center",
@@ -67,7 +69,7 @@ export function buildNodeLabelStyle(params: {
   fontSize: string;
   maxWidth?: number;
   gap?: number;
-}): React.CSSProperties {
+}): CSSProperties {
   const gap = params.gap ?? 2;
   const normalizedDirection = normalizeNodeDirection(params.direction);
   const isVerticalText = normalizedDirection === "up" || normalizedDirection === "down";
@@ -79,7 +81,7 @@ export function buildNodeLabelStyle(params: {
     typeof params.backgroundColor === "string" && params.backgroundColor.trim().length > 0
       ? params.backgroundColor.trim()
       : undefined;
-  const baseStyle: React.CSSProperties = {
+  const baseStyle: CSSProperties = {
     ...LABEL_STYLE_BASE,
     position: "absolute",
     fontSize: params.fontSize,
@@ -120,6 +122,31 @@ export function buildNodeLabelStyle(params: {
         transform: `translateX(-50%)${rotateTransform}`
       };
   }
+}
+
+export function useStandardNodeLabelStyle(params: {
+  position: unknown;
+  direction?: unknown;
+  backgroundColor?: unknown;
+  iconSize: number;
+  maxWidth?: number;
+  gap?: number;
+}): CSSProperties {
+  const { position, direction, backgroundColor, iconSize, maxWidth, gap } = params;
+
+  return useMemo(
+    () =>
+      buildNodeLabelStyle({
+        position,
+        direction,
+        backgroundColor,
+        iconSize,
+        fontSize: topoViewerTypography.nodeLabel,
+        maxWidth,
+        gap
+      }),
+    [position, direction, backgroundColor, iconSize, maxWidth, gap]
+  );
 }
 
 export type NodeRuntimeBadgeState = "running" | "stopped" | "paused" | "undeployed";

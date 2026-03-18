@@ -3,6 +3,7 @@ import { useStore } from "@xyflow/react";
 import type { ConnectionLineComponentProps, Edge, Node } from "@xyflow/react";
 
 import { useEdges } from "../../stores/graphStore";
+import { readTopoViewerFontSizePx, topoViewerTypography } from "../../theme";
 import { allocateEndpointsForLink } from "../../utils/endpointAllocator";
 import { buildEdgeId } from "../../utils/edgeId";
 
@@ -44,7 +45,6 @@ const LINK_PREVIEW_CONTROL_POINT_STEP_SIZE = 40;
 const LINK_PREVIEW_LOOP_EDGE_SIZE = 50;
 const LINK_PREVIEW_LOOP_EDGE_OFFSET = 10;
 const LINK_LABEL_OFFSET = 30;
-const LINK_LABEL_FONT_SIZE = 10;
 const LINK_LABEL_BG_COLOR = "var(--topoviewer-edge-label-background)";
 const LINK_LABEL_TEXT_COLOR = "var(--topoviewer-edge-label-foreground)";
 const LINK_LABEL_OUTLINE_COLOR = "var(--topoviewer-edge-label-outline)";
@@ -55,7 +55,7 @@ const LINK_LABEL_SHADOW_SMALL = 2;
 const LINK_LABEL_SHADOW_LARGE = 3;
 
 function buildLinkLabelStyle(zoom: number): React.CSSProperties {
-  const scaledFont = Math.max(1, LINK_LABEL_FONT_SIZE * zoom);
+  const scaledFont = Math.max(1, readTopoViewerFontSizePx("edgeLabel") * zoom);
   const padX = LINK_LABEL_PADDING_X * zoom;
   const padY = LINK_LABEL_PADDING_Y * zoom;
   const radius = LINK_LABEL_BORDER_RADIUS * zoom;
@@ -67,7 +67,7 @@ function buildLinkLabelStyle(zoom: number): React.CSSProperties {
     top: 0,
     left: 0,
     fontSize: `${scaledFont}px`,
-    fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+    fontFamily: topoViewerTypography.fontFamily,
     color: LINK_LABEL_TEXT_COLOR,
     backgroundColor: LINK_LABEL_BG_COLOR,
     padding: `${padY}px ${padX}px`,
