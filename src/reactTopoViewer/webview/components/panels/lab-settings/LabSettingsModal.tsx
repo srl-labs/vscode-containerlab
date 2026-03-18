@@ -3,13 +3,11 @@ import React, { useCallback, useRef } from "react";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
-import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
-import IconButton from "@mui/material/IconButton";
-import CloseIcon from "@mui/icons-material/Close";
 
 import { LabSettingsSection } from "../lab-drawer/LabSettingsSection";
 import type { GridSettingsControlsProps } from "../GridSettingsPopover";
+import { DialogTitleWithClose } from "../../ui/dialog/DialogChrome";
 
 import type { LabSettings } from "./types";
 
@@ -58,14 +56,11 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
       data-testid="lab-settings-modal"
       slotProps={{ paper: { sx: { height: "80vh", maxHeight: "80vh" } } }}
     >
-      <DialogTitle
-        sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
-      >
-        Lab Settings
-        <IconButton size="small" onClick={onClose} data-testid="lab-settings-close-btn">
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </DialogTitle>
+      <DialogTitleWithClose
+        title="Lab Settings"
+        onClose={onClose}
+        closeButtonTestId="lab-settings-close-btn"
+      />
       <DialogContent dividers sx={{ p: 0, overflow: "auto" }}>
         <LabSettingsSection
           mode={mode}

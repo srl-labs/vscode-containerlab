@@ -16,6 +16,7 @@ import {
   getNodeIntersection
 } from "../edgeGeometry";
 import { DEFAULT_ENDPOINT_LABEL_OFFSET } from "../../../annotations/endpointLabelOffset";
+import { readTopoViewerFontSizePx, topoViewerTypography } from "../../../theme";
 import {
   clampTelemetryInterfaceSizePercent,
   clampTelemetryNodeSizePx,
@@ -32,15 +33,10 @@ const EDGE_OPACITY_NORMAL = 0.5;
 const EDGE_OPACITY_SELECTED = 1;
 
 // Label style constants
-const LABEL_FONT_SIZE = "10px";
 const LABEL_BG_COLOR = "var(--topoviewer-edge-label-background)";
 const LABEL_TEXT_COLOR = "var(--topoviewer-edge-label-foreground)";
 const LABEL_OUTLINE_COLOR = "var(--topoviewer-edge-label-outline)";
 const LABEL_PADDING = "0px 2px";
-const LABEL_FONT_FAMILY = '"Helvetica Neue", Helvetica, Arial, sans-serif';
-const TELEMETRY_LABEL_FONT_FAMILY = "Helvetica, Arial, sans-serif";
-
-const TELEMETRY_LABEL_FONT_SIZE_PX = 10;
 const TELEMETRY_LABEL_TEXT_COLOR = "#FFFFFF";
 const TELEMETRY_LABEL_BG_COLOR = "#bec8d2";
 const TELEMETRY_LABEL_STROKE_COLOR = "rgba(0, 0, 0, 0.95)";
@@ -111,6 +107,7 @@ type NodeInterfaceAnchorMap = Map<string, Map<string, InterfaceAnchor>>;
 interface TelemetryLabelRenderConfig {
   nodeIconSize: number;
   interfaceScale: number;
+  labelFontSizePx: number;
   globalInterfaceOverrideSelection: string;
   interfaceLabelOverrides: Record<string, string>;
 }
@@ -209,6 +206,7 @@ function getRectCenter(rect: { x: number; y: number; width: number; height: numb
 
 function getTelemetryLabelMetrics(
   labelText: string,
+  labelFontSizePx: number,
   interfaceScale = 1
 ): {
   text: string;
@@ -217,7 +215,7 @@ function getTelemetryLabelMetrics(
   textStrokeWidth: number;
 } {
   const text = labelText.trim();
-  const fontSize = TELEMETRY_LABEL_FONT_SIZE_PX * interfaceScale;
+  const fontSize = labelFontSizePx * interfaceScale;
   const textWidth = Math.max(
     fontSize * 0.8,
     text.length * fontSize * TELEMETRY_LABEL_CHAR_WIDTH_RATIO
@@ -304,7 +302,11 @@ function buildNodeSideAssignments(
       telemetryConfig.globalInterfaceOverrideSelection,
       telemetryConfig.interfaceLabelOverrides
     );
-    const { radius } = getTelemetryLabelMetrics(labelText, telemetryConfig.interfaceScale);
+    const { radius } = getTelemetryLabelMetrics(
+      labelText,
+      telemetryConfig.labelFontSizePx,
+      telemetryConfig.interfaceScale
+    );
     buckets[side].push({ endpoint, sortKey, radius });
   }
   return buckets;
@@ -448,6 +450,7 @@ let interfaceAnchorMapCache: {
   nodesRef: Node[] | null;
   nodeIconSize: number | null;
   interfaceScale: number | null;
+  labelFontSizePx: number | null;
   globalInterfaceOverrideSelection: string | null;
   interfaceLabelOverridesRef: Record<string, string> | null;
   anchorsByNode: NodeInterfaceAnchorMap | null;
@@ -456,6 +459,7 @@ let interfaceAnchorMapCache: {
   nodesRef: null,
   nodeIconSize: null,
   interfaceScale: null,
+  labelFontSizePx: null,
   globalInterfaceOverrideSelection: null,
   interfaceLabelOverridesRef: null,
   anchorsByNode: null
@@ -471,6 +475,7 @@ function getCachedInterfaceAnchorMap(
     interfaceAnchorMapCache.nodesRef === nodes &&
     interfaceAnchorMapCache.nodeIconSize === telemetryConfig.nodeIconSize &&
     interfaceAnchorMapCache.interfaceScale === telemetryConfig.interfaceScale &&
+    interfaceAnchorMapCache.labelFontSizePx === telemetryConfig.labelFontSizePx &&
     interfaceAnchorMapCache.globalInterfaceOverrideSelection ===
       telemetryConfig.globalInterfaceOverrideSelection &&
     interfaceAnchorMapCache.interfaceLabelOverridesRef ===
@@ -486,6 +491,7 @@ function getCachedInterfaceAnchorMap(
     nodesRef: nodes,
     nodeIconSize: telemetryConfig.nodeIconSize,
     interfaceScale: telemetryConfig.interfaceScale,
+    labelFontSizePx: telemetryConfig.labelFontSizePx,
     globalInterfaceOverrideSelection: telemetryConfig.globalInterfaceOverrideSelection,
     interfaceLabelOverridesRef: telemetryConfig.interfaceLabelOverrides,
     anchorsByNode
@@ -497,6 +503,7 @@ function resolveEdgeLabelOffsets(
   edgeData: EdgeDataLike | undefined,
   labelMode: EdgeLabelMode,
   interfaceScale = 1,
+  labelFontSizePx = readTopoViewerFontSizePx("edgeLabel"),
   sourceLabel?: string,
   targetLabel?: string
 ): EdgeLabelOffsets {
@@ -508,11 +515,11 @@ function resolveEdgeLabelOffsets(
     const hasSourceLabel = typeof sourceLabel === "string" && sourceLabel.length > 0;
     const hasTargetLabel = typeof targetLabel === "string" && targetLabel.length > 0;
     const sourceOffset = hasSourceLabel
-      ? getTelemetryLabelMetrics(sourceLabel, interfaceScale).radius +
+      ? getTelemetryLabelMetrics(sourceLabel, labelFontSizePx, interfaceScale).radius +
         TELEMETRY_LABEL_OFFSET_PADDING_PX * interfaceScale
       : DEFAULT_ENDPOINT_LABEL_OFFSET;
     const targetOffset = hasTargetLabel
-      ? getTelemetryLabelMetrics(targetLabel, interfaceScale).radius +
+      ? getTelemetryLabelMetrics(targetLabel, labelFontSizePx, interfaceScale).radius +
         TELEMETRY_LABEL_OFFSET_PADDING_PX * interfaceScale
       : DEFAULT_ENDPOINT_LABEL_OFFSET;
     return {
@@ -640,8 +647,7 @@ function calculateLoopEdgeGeometry(
 // Constant label style (extracted for performance - avoids object creation per render)
 const LABEL_STYLE_BASE: React.CSSProperties = {
   position: "absolute",
-  fontSize: LABEL_FONT_SIZE,
-  fontFamily: LABEL_FONT_FAMILY,
+  fontFamily: topoViewerTypography.fontFamily,
   color: LABEL_TEXT_COLOR,
   backgroundColor: LABEL_BG_COLOR,
   padding: LABEL_PADDING,
@@ -658,7 +664,7 @@ const TELEMETRY_LABEL_STYLE_BASE: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontFamily: TELEMETRY_LABEL_FONT_FAMILY,
+  fontFamily: topoViewerTypography.fontFamily,
   fontWeight: 600,
   color: TELEMETRY_LABEL_TEXT_COLOR,
   backgroundColor: TELEMETRY_LABEL_BG_COLOR,
@@ -692,12 +698,13 @@ const EndpointLabel = memo(function EndpointLabel({
   colorByInterfaceState: boolean;
   telemetryInterfaceScale: number;
 }>) {
+  const edgeLabelFontSizePx = readTopoViewerFontSizePx("edgeLabel");
   const telemetryMetrics = useMemo(
     () =>
       variant === "telemetry-style"
-        ? getTelemetryLabelMetrics(text, telemetryInterfaceScale)
+        ? getTelemetryLabelMetrics(text, edgeLabelFontSizePx, telemetryInterfaceScale)
         : null,
-    [text, variant, telemetryInterfaceScale]
+    [text, variant, edgeLabelFontSizePx, telemetryInterfaceScale]
   );
   const telemetryBackgroundColor = useMemo(
     () => getTelemetryInterfaceBackgroundColor(interfaceState, colorByInterfaceState),
@@ -719,7 +726,10 @@ const EndpointLabel = memo(function EndpointLabel({
         transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`
       };
     }
-    const scaledFontSize = Math.max(8, TELEMETRY_LABEL_FONT_SIZE_PX * telemetryInterfaceScale);
+    const scaledFontSize = Math.max(
+      edgeLabelFontSizePx * 0.8,
+      edgeLabelFontSizePx * telemetryInterfaceScale
+    );
     const scaledHorizontalPadding = Math.max(
       2,
       TELEMETRY_LABEL_HORIZONTAL_PADDING_PX * telemetryInterfaceScale
@@ -730,7 +740,15 @@ const EndpointLabel = memo(function EndpointLabel({
       padding: `0px ${scaledHorizontalPadding}px`,
       transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`
     };
-  }, [variant, telemetryMetrics, telemetryBackgroundColor, telemetryInterfaceScale, x, y]);
+  }, [
+    variant,
+    telemetryMetrics,
+    telemetryBackgroundColor,
+    edgeLabelFontSizePx,
+    telemetryInterfaceScale,
+    x,
+    y
+  ]);
 
   if (renderedText.length === 0) {
     return null;
@@ -1051,6 +1069,7 @@ const TopologyEdgeComponent: React.FC<EdgeProps> = ({ id, source, target, data, 
       nodeIconSize: clampTelemetryNodeSizePx(telemetryLabelSettings.nodeSizePx),
       interfaceScale:
         clampTelemetryInterfaceSizePercent(telemetryLabelSettings.interfaceSizePercent) / 100,
+      labelFontSizePx: readTopoViewerFontSizePx("edgeLabel"),
       globalInterfaceOverrideSelection: telemetryLabelSettings.globalInterfaceOverrideSelection,
       interfaceLabelOverrides: telemetryLabelSettings.interfaceLabelOverrides
     }),
@@ -1097,10 +1116,18 @@ const TopologyEdgeComponent: React.FC<EdgeProps> = ({ id, source, target, data, 
         edgeData,
         labelMode,
         telemetryConfig.interfaceScale,
+        telemetryConfig.labelFontSizePx,
         sourceRenderedLabel ?? undefined,
         targetRenderedLabel ?? undefined
       ),
-    [edgeData, labelMode, telemetryConfig.interfaceScale, sourceRenderedLabel, targetRenderedLabel]
+    [
+      edgeData,
+      labelMode,
+      telemetryConfig.interfaceScale,
+      telemetryConfig.labelFontSizePx,
+      sourceRenderedLabel,
+      targetRenderedLabel
+    ]
   );
   const geometry = useEdgeGeometry(
     id,

@@ -2,6 +2,12 @@
 // Palette values are CSS var() references — VS Code swaps them for light/dark.
 import { createTheme, type ThemeOptions } from "@mui/material/styles";
 
+import {
+  TOPOVIEWER_FONT_FAMILY_CSS_VAR,
+  TOPOVIEWER_FONT_SIZE_CSS_VARS,
+  topoViewerTypography
+} from "./topoViewerTypography";
+
 const BUTTON_BACKGROUND = "var(--vscode-button-background)";
 const BUTTON_SECONDARY_BACKGROUND = "var(--vscode-button-secondaryBackground)";
 const EDITOR_ERROR_FOREGROUND = "var(--vscode-editorError-foreground)";
@@ -16,9 +22,12 @@ const EXPLORER_SCOPE_SELECTORS = [
   "body[data-webview-kind='containerlab-explorer']",
   ".containerlab-explorer-root"
 ] as const;
+const TOPOVIEWER_SCOPE_SELECTORS = ["body[data-webview-kind='containerlab-topoviewer']"] as const;
 
 const explorerScopedSelector = (suffix: string) =>
   EXPLORER_SCOPE_SELECTORS.map((selector) => `${selector}${suffix}`).join(", ");
+const topoviewerScopedSelector = (suffix: string) =>
+  TOPOVIEWER_SCOPE_SELECTORS.map((selector) => `${selector}${suffix}`).join(", ");
 
 const buildPaletteColor = (main: string, contrastText: string) => ({
   main,
@@ -86,6 +95,59 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
       "*::-webkit-scrollbar-track": { background: "transparent" },
       "*::-webkit-scrollbar-thumb": { borderRadius: 4 },
       "*::-webkit-scrollbar-corner": { background: "transparent" },
+      [topoviewerScopedSelector("")]: {
+        [TOPOVIEWER_FONT_FAMILY_CSS_VAR]: EXPLORER_FONT_FAMILY,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.base]: EXPLORER_FONT_SIZE,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.body]: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base})`,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.bodySmall]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.95)`,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.caption]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.92)`,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.label]: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base})`,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.sectionTitle]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.08)`,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.dialogTitle]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.15)`,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.menu]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.96)`,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.nodeLabel]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.95)`,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.edgeLabel]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.95)`,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.iconInline]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.15)`,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.overline]: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.caption})`,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.h6]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.46)`,
+        [TOPOVIEWER_FONT_SIZE_CSS_VARS.h5]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.69)`,
+        fontFamily: topoViewerTypography.fontFamily,
+        fontSize: topoViewerTypography.base
+      },
+      [topoviewerScopedSelector(" .MuiTypography-root")]: {
+        fontFamily: topoViewerTypography.fontFamily
+      },
+      [topoviewerScopedSelector(" .MuiDialogTitle-root")]: {
+        fontFamily: topoViewerTypography.fontFamily,
+        fontSize: topoViewerTypography.dialogTitle,
+        lineHeight: 1.2
+      },
+      [topoviewerScopedSelector(" .MuiButton-root")]: {
+        fontFamily: topoViewerTypography.fontFamily
+      },
+      [topoviewerScopedSelector(" .MuiTab-root")]: {
+        fontSize: topoViewerTypography.label
+      },
+      [topoviewerScopedSelector(" .MuiMenuItem-root")]: {
+        fontSize: topoViewerTypography.menu
+      },
+      [topoviewerScopedSelector(" .MuiInputBase-root")]: {
+        fontFamily: topoViewerTypography.fontFamily,
+        fontSize: topoViewerTypography.base
+      },
+      [topoviewerScopedSelector(" .MuiInputBase-input")]: {
+        fontSize: topoViewerTypography.base
+      },
+      [topoviewerScopedSelector(" .MuiFormLabel-root")]: {
+        fontFamily: topoViewerTypography.fontFamily,
+        fontSize: topoViewerTypography.label
+      },
+      [topoviewerScopedSelector(" .MuiFormHelperText-root")]: {
+        fontSize: topoViewerTypography.caption
+      },
+      [topoviewerScopedSelector(" .MuiTooltip-tooltip")]: {
+        fontSize: topoViewerTypography.caption
+      },
       [explorerScopedSelector("")]: {
         fontFamily: EXPLORER_FONT_FAMILY
       },
@@ -214,8 +276,20 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
 const baseTheme = createTheme({
   palette: { ...vscodePalette },
   typography: {
-    fontFamily: "'Roboto', sans-serif",
-    overline: { fontWeight: 500, letterSpacing: "0.5px" }
+    fontFamily: topoViewerTypography.fontFamily,
+    body1: { fontSize: topoViewerTypography.body },
+    body2: { fontSize: topoViewerTypography.bodySmall },
+    button: { fontSize: topoViewerTypography.label },
+    caption: { fontSize: topoViewerTypography.caption },
+    h5: { fontSize: topoViewerTypography.h5 },
+    h6: { fontSize: topoViewerTypography.h6 },
+    overline: {
+      fontSize: topoViewerTypography.overline,
+      fontWeight: 500,
+      letterSpacing: "0.5px"
+    },
+    subtitle1: { fontSize: topoViewerTypography.sectionTitle },
+    subtitle2: { fontSize: topoViewerTypography.label }
   },
   shape: { borderRadius: 4 },
   components: structuralOverrides

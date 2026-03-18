@@ -8,14 +8,19 @@ import IconButton from "@mui/material/IconButton";
 interface DialogTitleWithCloseProps {
   title: React.ReactNode;
   onClose: () => void;
+  closeButtonTestId?: string;
 }
 
-export const DialogTitleWithClose: React.FC<DialogTitleWithCloseProps> = ({ title, onClose }) => (
+export const DialogTitleWithClose: React.FC<DialogTitleWithCloseProps> = ({
+  title,
+  onClose,
+  closeButtonTestId
+}) => (
   <DialogTitle
     sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
   >
     {title}
-    <IconButton size="small" onClick={onClose}>
+    <IconButton size="small" onClick={onClose} data-testid={closeButtonTestId}>
       <CloseIcon fontSize="small" />
     </IconButton>
   </DialogTitle>

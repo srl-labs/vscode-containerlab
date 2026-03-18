@@ -21,6 +21,7 @@ import { useCustomIcons } from "../../stores/topoViewerStore";
 import { postCommand } from "../../messaging/extensionMessaging";
 import { isBuiltInIcon } from "../../../shared/types/icons";
 
+import { topoViewerTypography } from "../../theme";
 import { DialogCancelSaveActions, DialogTitleWithClose } from "./dialog/DialogChrome";
 import { ColorField, IconPreview, InputField } from "./form";
 
@@ -231,7 +232,7 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            fontSize: "10px"
+            fontSize: topoViewerTypography.caption
           }}
         >
           {ICON_LABELS[icon] || icon}
@@ -259,7 +260,7 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
           }}
           className="icon-delete-btn"
         >
-          <CloseIcon sx={{ fontSize: 12 }} />
+          <CloseIcon sx={{ fontSize: topoViewerTypography.caption }} />
         </MuiIconButton>
       )}
     </Box>
