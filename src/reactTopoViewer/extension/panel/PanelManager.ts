@@ -115,7 +115,7 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
   <link href="${styleUri}" rel="stylesheet">
   <title>TopoViewer (React)</title>
 </head>
-<body>
+<body data-webview-kind="containerlab-topoviewer">
   <div id="root"></div>
   <script nonce="${nonce}">
     // Acquire VS Code API for webview communication

@@ -99,6 +99,7 @@ export interface WebviewInitialData {
   customNodes?: CustomNodeTemplate[];
   defaultNode?: string;
   customIcons?: CustomIconInfo[];
+  fontScale?: number;
   [key: string]: unknown;
 }
 

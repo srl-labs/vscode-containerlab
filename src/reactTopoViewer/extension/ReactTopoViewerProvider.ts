@@ -18,7 +18,8 @@ import {
   MSG_EDGE_STATS_UPDATE,
   MSG_FIT_VIEWPORT,
   MSG_NODE_DATA_UPDATED,
-  MSG_TOPO_MODE_CHANGE
+  MSG_TOPO_MODE_CHANGE,
+  MSG_TOPOVIEWER_FONT_SCALE_UPDATED
 } from "../shared/messages/webview";
 import type { TopoEdge } from "../shared/types/graph";
 import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../shared/types/messages";
@@ -28,6 +29,7 @@ import { ContainerDataAdapter } from "./services/ContainerDataAdapter";
 import { deploymentStateChecker } from "./services/DeploymentStateChecker";
 import { buildEdgeStatsUpdates, buildNodeRuntimeUpdates } from "./services/EdgeStatsBuilder";
 import { SplitViewManager } from "./services/SplitViewManager";
+import { onDidChangeTopoViewerFontScale } from "./services/TopoViewerUiSettings";
 import {
   createPanel,
   generateWebviewHtml,
@@ -475,6 +477,17 @@ export class ReactTopoViewer {
     }
     this.currentPanel.webview.postMessage({ type: MSG_FIT_VIEWPORT });
   }
+
+  public updateFontScale(fontScale: number): void {
+    if (!this.currentPanel) {
+      return;
+    }
+
+    this.currentPanel.webview.postMessage({
+      type: MSG_TOPOVIEWER_FONT_SCALE_UPDATED,
+      data: { fontScale }
+    });
+  }
 }
 
 /**
@@ -487,6 +500,11 @@ export class ReactTopoViewerProvider {
 
   private constructor(context: vscode.ExtensionContext) {
     this.context = context;
+    context.subscriptions.push(
+      onDidChangeTopoViewerFontScale((fontScale) => {
+        this.updateFontScale(fontScale);
+      })
+    );
   }
 
   public static getInstance(context: vscode.ExtensionContext): ReactTopoViewerProvider {
@@ -529,5 +547,11 @@ export class ReactTopoViewerProvider {
     }
 
     return viewer;
+  }
+
+  public updateFontScale(fontScale: number): void {
+    for (const viewer of this.viewers.values()) {
+      viewer.updateFontScale(fontScale);
+    }
   }
 }

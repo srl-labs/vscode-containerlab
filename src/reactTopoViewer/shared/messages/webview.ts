@@ -36,6 +36,8 @@ export const MSG_LAB_LIFECYCLE_LOG = "lab-lifecycle-log";
 
 export const MSG_SVG_EXPORT_RESULT = "svg-export-result";
 
+export const MSG_TOPOVIEWER_FONT_SCALE_UPDATED = "topoviewer-font-scale-updated";
+
 export type WebviewMessageType =
   | typeof MSG_TOPOLOGY_DATA
   | typeof MSG_EDGE_STATS_UPDATE
@@ -50,4 +52,5 @@ export type WebviewMessageType =
   | typeof MSG_ICON_LIST_RESPONSE
   | typeof MSG_LAB_LIFECYCLE_STATUS
   | typeof MSG_LAB_LIFECYCLE_LOG
-  | typeof MSG_SVG_EXPORT_RESULT;
+  | typeof MSG_SVG_EXPORT_RESULT
+  | typeof MSG_TOPOVIEWER_FONT_SCALE_UPDATED;

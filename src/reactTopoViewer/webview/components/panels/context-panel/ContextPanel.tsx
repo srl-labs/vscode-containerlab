@@ -10,6 +10,7 @@ import {
 } from "@mui/icons-material";
 import { Box, Button, Divider, Drawer, Tooltip, Typography } from "@mui/material";
 
+import { topoViewerTypography } from "../../../theme";
 import { useIsLocked } from "../../../stores/topoViewerStore";
 import type { NodeData, LinkData } from "../../../hooks/ui";
 import { useContextPanelContent } from "../../../hooks/ui/useContextPanelContent";
@@ -168,7 +169,7 @@ const ToggleHandle: React.FC<{
           data-testid="panel-toggle-btn"
           sx={{ ...handleStyle, height: 48 }}
         >
-          <ActiveIcon sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
+          <ActiveIcon sx={{ fontSize: topoViewerTypography.iconInline, color: TEXT_SECONDARY }} />
         </Box>
       </Tooltip>
       {isOpen && (
@@ -177,7 +178,9 @@ const ToggleHandle: React.FC<{
           placement={sideConfig.tooltipPlacement}
         >
           <Box onClick={onToggleSide} sx={{ ...handleStyle, height: 24 }}>
-            <SwapHorizIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
+            <SwapHorizIcon
+              sx={{ fontSize: topoViewerTypography.iconInline, color: TEXT_SECONDARY }}
+            />
           </Box>
         </Tooltip>
       )}
@@ -344,7 +347,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                 color: "text.secondary"
               }}
             >
-              <LockIcon sx={{ fontSize: 14 }} />
+              <LockIcon sx={{ fontSize: topoViewerTypography.iconInline }} />
               <Typography variant="caption">Read-only — unlock lab to edit</Typography>
             </Box>
             <Divider />
@@ -365,7 +368,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                   color: "error.main"
                 }}
               >
-                <ErrorOutlineIcon sx={{ fontSize: 14 }} />
+                <ErrorOutlineIcon sx={{ fontSize: topoViewerTypography.iconInline }} />
                 <Typography variant="caption">{err}</Typography>
               </Box>
               <Divider />

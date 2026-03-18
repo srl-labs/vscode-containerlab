@@ -6,6 +6,10 @@ import type { CustomNodeTemplate, CustomTemplateEditorData } from "../../shared/
 import type { EdgeAnnotation } from "../../shared/types/topology";
 import type { CustomIconInfo } from "../../shared/types/icons";
 import type { LabSettings } from "../../shared/types/labSettings";
+import {
+  TOPOVIEWER_FONT_SCALE_DEFAULT,
+  resolveTopoViewerFontScale
+} from "../../shared/constants/topoViewerFontScale";
 import { upsertEdgeAnnotation } from "../annotations/edgeAnnotations";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
@@ -58,6 +62,7 @@ export interface TopoViewerState {
   telemetryInterfaceSizePercent: number;
   telemetryGlobalInterfaceOverrideSelection: string;
   telemetryInterfaceLabelOverrides: Record<string, string>;
+  fontScale: number;
   gridLineWidth: number;
   gridStyle: GridStyle;
   gridColor: string | null;
@@ -105,6 +110,7 @@ export interface TopoViewerActions {
   setTelemetryGlobalInterfaceOverrideSelection: (value: string) => void;
   setTelemetryInterfaceLabelOverrides: (overrides: Record<string, string>) => void;
   setTelemetryInterfaceLabelOverride: (endpoint: string, override: string | null) => void;
+  setFontScale: (value: number) => void;
   setGridLineWidth: (width: number) => void;
   setGridStyle: (style: GridStyle) => void;
   setGridColor: (color: string | null) => void;
@@ -170,6 +176,7 @@ const initialState: TopoViewerState = {
   telemetryInterfaceSizePercent: 100,
   telemetryGlobalInterfaceOverrideSelection: "__auto__",
   telemetryInterfaceLabelOverrides: {},
+  fontScale: TOPOVIEWER_FONT_SCALE_DEFAULT,
   gridLineWidth: 0.5,
   gridStyle: "dotted",
   gridColor: null,
@@ -233,7 +240,8 @@ export function parseInitialData(data: unknown): Partial<TopoViewerState> {
   return {
     customNodes: parseCustomNodeTemplates(obj.customNodes),
     defaultNode,
-    customIcons: parseCustomIconInfos(obj.customIcons)
+    customIcons: parseCustomIconInfos(obj.customIcons),
+    fontScale: resolveTopoViewerFontScale(obj.fontScale)
   };
 }
 
@@ -378,6 +386,10 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       }
       return { telemetryInterfaceLabelOverrides: next };
     });
+  },
+
+  setFontScale: (value) => {
+    set({ fontScale: resolveTopoViewerFontScale(value) });
   },
 
   setGridLineWidth: (gridLineWidth) => {
@@ -597,6 +609,8 @@ export const useTelemetryLabelSettings = () =>
     shallow
   );
 
+export const useFontScale = () => useTopoViewerStore((state) => state.fontScale);
+
 export const useGridColor = () => useTopoViewerStore((state) => state.gridColor);
 export const useGridBgColor = () => useTopoViewerStore((state) => state.gridBgColor);
 
@@ -645,6 +659,7 @@ export const useTopoViewerState = () =>
       telemetryInterfaceSizePercent: state.telemetryInterfaceSizePercent,
       telemetryGlobalInterfaceOverrideSelection: state.telemetryGlobalInterfaceOverrideSelection,
       telemetryInterfaceLabelOverrides: state.telemetryInterfaceLabelOverrides,
+      fontScale: state.fontScale,
       gridLineWidth: state.gridLineWidth,
       gridStyle: state.gridStyle,
       edgeAnnotations: state.edgeAnnotations,
@@ -687,6 +702,7 @@ export const useTopoViewerActions = () =>
         state.setTelemetryGlobalInterfaceOverrideSelection,
       setTelemetryInterfaceLabelOverrides: state.setTelemetryInterfaceLabelOverrides,
       setTelemetryInterfaceLabelOverride: state.setTelemetryInterfaceLabelOverride,
+      setFontScale: state.setFontScale,
       setGridLineWidth: state.setGridLineWidth,
       setGridStyle: state.setGridStyle,
       setEdgeAnnotations: state.setEdgeAnnotations,

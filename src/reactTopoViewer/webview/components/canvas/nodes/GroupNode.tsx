@@ -3,6 +3,7 @@ import React, { memo, useCallback } from "react";
 import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 
 import { SELECTION_COLOR } from "../types";
+import { readTopoViewerFontSizePx, topoViewerTypography } from "../../../theme";
 import { vscodePalette } from "../../../theme/vscodeTheme";
 import { useIsLocked } from "../../../stores/topoViewerStore";
 import { useAnnotationHandlers } from "../../../stores/canvasStore";
@@ -70,10 +71,14 @@ function getBackgroundWithOpacity(color: string, opacity?: number): string {
 }
 
 /** Get label position CSS */
-function getLabelPositionStyle(position: string | undefined): React.CSSProperties {
+function getLabelPositionStyle(
+  position: string | undefined,
+  fontSizePx: number
+): React.CSSProperties {
+  const labelOffset = Math.max(20, Math.round(fontSizePx * 1.6));
   const baseStyle: React.CSSProperties = {
     position: "absolute",
-    fontSize: 12,
+    fontSize: topoViewerTypography.nodeLabel,
     fontWeight: 500,
     whiteSpace: "nowrap",
     padding: "2px 6px"
@@ -81,19 +86,19 @@ function getLabelPositionStyle(position: string | undefined): React.CSSPropertie
 
   switch (position) {
     case "top-left":
-      return { ...baseStyle, top: -20, left: 8 };
+      return { ...baseStyle, top: -labelOffset, left: 8 };
     case "top-center":
-      return { ...baseStyle, top: -20, left: "50%", transform: "translateX(-50%)" };
+      return { ...baseStyle, top: -labelOffset, left: "50%", transform: "translateX(-50%)" };
     case "top-right":
-      return { ...baseStyle, top: -20, right: 8 };
+      return { ...baseStyle, top: -labelOffset, right: 8 };
     case "bottom-left":
-      return { ...baseStyle, bottom: -20, left: 8 };
+      return { ...baseStyle, bottom: -labelOffset, left: 8 };
     case "bottom-center":
-      return { ...baseStyle, bottom: -20, left: "50%", transform: "translateX(-50%)" };
+      return { ...baseStyle, bottom: -labelOffset, left: "50%", transform: "translateX(-50%)" };
     case "bottom-right":
-      return { ...baseStyle, bottom: -20, right: 8 };
+      return { ...baseStyle, bottom: -labelOffset, right: 8 };
     default:
-      return { ...baseStyle, top: -20, left: 8 };
+      return { ...baseStyle, top: -labelOffset, left: 8 };
   }
 }
 
@@ -137,6 +142,7 @@ const GroupNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const borderRadius = nodeData.borderRadius ?? DEFAULT_BORDER_RADIUS;
   const labelColor = nodeData.labelColor ?? DEFAULT_LABEL_COLOR;
   const labelPosition = nodeData.labelPosition;
+  const labelFontSizePx = readTopoViewerFontSizePx("nodeLabel");
 
   // Use 100% dimensions - React Flow controls actual size via node's width/height props
   const containerStyle: React.CSSProperties = {
@@ -153,7 +159,7 @@ const GroupNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   };
 
   const labelStyle: React.CSSProperties = {
-    ...getLabelPositionStyle(labelPosition),
+    ...getLabelPositionStyle(labelPosition, labelFontSizePx),
     color: labelColor
   };
 

@@ -50,6 +50,8 @@ log.info(
  * Bootstrap the application.
  */
 function bootstrap(): void {
+  document.body.dataset.webviewKind = "containerlab-topoviewer";
+
   // Find the root element
   const container = document.getElementById("root");
   if (!container) {

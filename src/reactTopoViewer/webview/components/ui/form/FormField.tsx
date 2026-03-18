@@ -6,6 +6,7 @@ import Tooltip from "@mui/material/Tooltip";
 import IconButton from "@mui/material/IconButton";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
+import { topoViewerTypography } from "../../../theme";
 import { InheritanceBadge } from "./Badge";
 
 interface FormFieldProps {
@@ -39,6 +40,7 @@ export const FormField: React.FC<FormFieldProps> = ({
           component="label"
           variant="body2"
           sx={{
+            fontSize: topoViewerTypography.label,
             fontWeight: (theme) => theme.typography.fontWeightMedium,
             textTransform: "uppercase",
             letterSpacing: 0.5
@@ -46,7 +48,15 @@ export const FormField: React.FC<FormFieldProps> = ({
         >
           {label}
           {hasUnit && (
-            <Typography component="span" sx={{ ml: 0.5, textTransform: "none", fontWeight: 400 }}>
+            <Typography
+              component="span"
+              sx={{
+                ml: 0.5,
+                fontSize: topoViewerTypography.bodySmall,
+                textTransform: "none",
+                fontWeight: 400
+              }}
+            >
               ({unit})
             </Typography>
           )}
@@ -60,7 +70,7 @@ export const FormField: React.FC<FormFieldProps> = ({
         {hasTooltip && (
           <Tooltip title={tooltip} arrow placement="top">
             <IconButton size="small" sx={{ ml: 0.5, p: 0.25 }}>
-              <InfoOutlinedIcon sx={{ fontSize: 14 }} />
+              <InfoOutlinedIcon sx={{ fontSize: topoViewerTypography.iconInline }} />
             </IconButton>
           </Tooltip>
         )}

@@ -6,6 +6,8 @@ import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 
+import { topoViewerFontFamilies } from "../../../theme";
+
 export interface ReadOnlyCopyFieldProps {
   label: string;
   value: string;
@@ -46,7 +48,7 @@ export const ReadOnlyCopyField: React.FC<ReadOnlyCopyFieldProps> = ({
             WebkitUserSelect: "none",
             caretColor: "transparent",
             cursor: "default",
-            ...(mono ? { fontFamily: "monospace" } : undefined)
+            ...(mono ? { fontFamily: topoViewerFontFamilies.mono } : undefined)
           }
         }
       }}
