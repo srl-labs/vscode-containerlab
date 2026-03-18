@@ -4,7 +4,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
 
-import { topoViewerTypography } from "../../../theme";
+import { topoViewerFontFamilies, topoViewerTypography } from "../../../theme";
 
 /** Platform detection for keyboard symbols */
 const isMac =
@@ -30,7 +30,7 @@ const ShortcutRow: React.FC<ShortcutRowProps> = ({ label, shortcut }) => (
       label={formatKey(shortcut)}
       size="small"
       sx={{
-        fontFamily: "monospace",
+        fontFamily: topoViewerFontFamilies.mono,
         fontSize: topoViewerTypography.caption,
         height: 22
       }}

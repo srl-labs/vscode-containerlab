@@ -22,6 +22,7 @@ import type {
   LifecycleStatus,
   ProcessingMode
 } from "../../stores/topoViewerStore";
+import { topoViewerFontFamilies } from "../../theme";
 import { calculateElapsedSeconds, formatElapsedSeconds } from "../../utils/lifecycleTimer";
 
 interface LifecycleProgressModalProps {
@@ -237,8 +238,7 @@ export const LifecycleProgressModal: React.FC<LifecycleProgressModalProps> = ({
               component="div"
               variant="body2"
               sx={{
-                fontFamily:
-                  "SFMono-Regular, Consolas, 'Liberation Mono', Menlo, Courier, monospace",
+                fontFamily: topoViewerFontFamilies.mono,
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
                 lineHeight: 1.4

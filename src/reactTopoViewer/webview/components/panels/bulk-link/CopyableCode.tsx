@@ -2,6 +2,7 @@
 import React from "react";
 import Box from "@mui/material/Box";
 
+import { topoViewerFontFamilies } from "../../../theme";
 import { copyToClipboard } from "../../../utils/clipboard";
 
 interface CopyableCodeProps {
@@ -30,7 +31,7 @@ export const CopyableCode: React.FC<CopyableCodeProps> = ({ children }) => {
         borderRadius: 0.5,
         px: 0.5,
         py: 0.25,
-        fontFamily: "monospace",
+        fontFamily: topoViewerFontFamilies.mono,
         transition: (theme) => theme.transitions.create("backgroundColor"),
         ...(copied ? { outline: "1px solid" } : {})
       }}

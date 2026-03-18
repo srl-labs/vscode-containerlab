@@ -109,8 +109,13 @@ export function readTopoViewerFontSizePx(
   return resolved ?? fallback;
 }
 
+export const topoViewerFontFamilies = {
+  ui: cssVarWithFallback(TOPOVIEWER_FONT_FAMILY_CSS_VAR, "'Roboto', sans-serif"),
+  mono: "var(--vscode-editor-font-family, Consolas, Monaco, 'Courier New', monospace)"
+} as const;
+
 export const topoViewerTypography = {
-  fontFamily: cssVarWithFallback(TOPOVIEWER_FONT_FAMILY_CSS_VAR, "'Roboto', sans-serif"),
+  fontFamily: topoViewerFontFamilies.ui,
   base: getTopoViewerFontSizeCssValue("base"),
   body: getTopoViewerFontSizeCssValue("body"),
   bodySmall: getTopoViewerFontSizeCssValue("bodySmall"),

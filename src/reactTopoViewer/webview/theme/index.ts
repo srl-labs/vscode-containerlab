@@ -6,6 +6,7 @@ export {
   TOPOVIEWER_FONT_SCALE_CSS_VAR,
   TOPOVIEWER_FONT_SIZE_CSS_VARS,
   TOPOVIEWER_FONT_SIZE_FALLBACK_PX,
+  topoViewerFontFamilies,
   topoViewerTypography,
   getTopoViewerFontSizeVar,
   getTopoViewerFontSizeCssValue,
