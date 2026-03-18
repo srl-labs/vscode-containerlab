@@ -71,7 +71,10 @@ function getBackgroundWithOpacity(color: string, opacity?: number): string {
 }
 
 /** Get label position CSS */
-function getLabelPositionStyle(position: string | undefined, fontSizePx: number): React.CSSProperties {
+function getLabelPositionStyle(
+  position: string | undefined,
+  fontSizePx: number
+): React.CSSProperties {
   const labelOffset = Math.max(20, Math.round(fontSizePx * 1.6));
   const baseStyle: React.CSSProperties = {
     position: "absolute",

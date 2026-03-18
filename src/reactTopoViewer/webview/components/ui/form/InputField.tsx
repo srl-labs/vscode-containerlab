@@ -270,7 +270,10 @@ const InputEndAdornment: React.FC<InputEndAdornmentProps> = ({
       </Box>
     ) : null}
     {hasSuffix ? (
-      <Typography color="text.secondary" sx={{ mr: suffixRightGap, fontSize: topoViewerTypography.bodySmall }}>
+      <Typography
+        color="text.secondary"
+        sx={{ mr: suffixRightGap, fontSize: topoViewerTypography.bodySmall }}
+      >
         {suffix}
       </Typography>
     ) : null}

@@ -92,7 +92,9 @@ function resolveChartMargin(compact: boolean, showLegend: boolean, scale: number
   }
 
   // The legend is rendered inside the SVG bottom margin.
-  const legendHeight = showLegend ? Math.round(readTopoViewerFontSizePx("caption") * 1.2 * scale) : 0;
+  const legendHeight = showLegend
+    ? Math.round(readTopoViewerFontSizePx("caption") * 1.2 * scale)
+    : 0;
   return { top: 6, right: 2, bottom: legendHeight, left: 0 };
 }
 
@@ -426,10 +428,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
   if (xData.length === 0) {
     if (emptyMessage === null) return null;
     return (
-      <Typography
-        variant="body2"
-        sx={{ textAlign: "center", color: "text.secondary", mt: 1 }}
-      >
+      <Typography variant="body2" sx={{ textAlign: "center", color: "text.secondary", mt: 1 }}>
         {emptyMessage}
       </Typography>
     );
