@@ -5,17 +5,11 @@
 import * as vscode from "vscode";
 
 import type { CustomIconInfo } from "../../shared/types/icons";
-import {
-  TOPOVIEWER_FONT_SCALE_DEFAULT,
-  resolveTopoViewerFontScale as normalizeTopoViewerFontScale
-} from "../../shared/constants/topoViewerFontScale";
 import { getDockerImages } from "../../../utils/docker/images";
 import type { CustomNodeTemplate, SchemaData } from "../../shared/schema";
 import { getCustomNodesFromConfig, loadSchemaData } from "../services/schema";
 import { iconService } from "../services/IconService";
-
-const TOPOVIEWER_FONT_SCALE_CONFIG_SECTION = "containerlab.ui";
-const TOPOVIEWER_FONT_SCALE_CONFIG_KEY = "fontScale";
+import { getStoredTopoViewerFontScale } from "../services/TopoViewerUiSettings";
 
 /**
  * Bootstrap data sent to the webview on initialization
@@ -37,20 +31,6 @@ export interface BootstrapDataInput {
   yamlFilePath: string;
 }
 
-function getConfiguredTopoViewerFontScale(): number {
-  const config = vscode.workspace.getConfiguration(TOPOVIEWER_FONT_SCALE_CONFIG_SECTION);
-  const configuredValue = config.get<number>(
-    TOPOVIEWER_FONT_SCALE_CONFIG_KEY,
-    TOPOVIEWER_FONT_SCALE_DEFAULT
-  );
-
-  if (typeof configuredValue !== "number" || !Number.isFinite(configuredValue)) {
-    return TOPOVIEWER_FONT_SCALE_DEFAULT;
-  }
-
-  return normalizeTopoViewerFontScale(configuredValue);
-}
-
 /**
  * Assembles bootstrap data for the webview from various sources
  */
@@ -69,7 +49,7 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
 
   // Load custom icons from workspace and global directories
   const customIcons = await iconService.loadAllIcons(yamlFilePath);
-  const fontScale = getConfiguredTopoViewerFontScale();
+  const fontScale = getStoredTopoViewerFontScale();
 
   return {
     customNodes,

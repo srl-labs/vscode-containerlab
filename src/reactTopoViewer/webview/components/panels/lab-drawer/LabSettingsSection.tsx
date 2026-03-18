@@ -1,11 +1,13 @@
 // Lab settings with Basic and Management tabs.
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 
+import { clampTopoViewerFontScale } from "../../../../shared/constants/topoViewerFontScale";
 import { useLabSettingsState } from "../../../hooks/editor";
+import { sendSetTopoViewerFontScale } from "../../../messaging/extensionMessaging";
 import { saveViewerSettings } from "../../../services";
 import { useTopoViewerStore } from "../../../stores/topoViewerStore";
 import type { GridSettingsControlsProps } from "../GridSettingsPopover";
@@ -15,19 +17,23 @@ import { AppearanceTab } from "../lab-settings/AppearanceTab";
 import type { LabSettings } from "../lab-settings/types";
 
 export interface LabSettingsSectionProps extends GridSettingsControlsProps {
+  isOpen: boolean;
   mode: "view" | "edit";
   isLocked: boolean;
   labSettings?: LabSettings;
   onClose: () => void;
   saveRef?: React.RefObject<(() => Promise<void>) | null>;
+  cancelRef?: React.RefObject<(() => void) | null>;
 }
 
 export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
+  isOpen,
   mode,
   isLocked,
   labSettings,
   onClose,
   saveRef,
+  cancelRef,
   gridLineWidth,
   onGridLineWidthChange,
   gridStyle,
@@ -51,10 +57,39 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
   const telemetryInterfaceSizePercent = useTopoViewerStore(
     (store) => store.telemetryInterfaceSizePercent
   );
+  const fontScale = useTopoViewerStore((store) => store.fontScale);
+  const setFontScale = useTopoViewerStore((store) => store.setFontScale);
+  const [fontScaleDraft, setFontScaleDraft] = useState(fontScale);
+  const savedFontScaleRef = useRef(fontScale);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    savedFontScaleRef.current = fontScale;
+    setFontScaleDraft(fontScale);
+  }, [isOpen]);
+
+  const handleFontScaleChange = (value: number) => {
+    const nextFontScale = clampTopoViewerFontScale(value);
+    setFontScaleDraft(nextFontScale);
+    setFontScale(nextFontScale);
+  };
+
+  const handleCancel = () => {
+    const savedFontScale = savedFontScaleRef.current;
+    setFontScaleDraft(savedFontScale);
+    setFontScale(savedFontScale);
+  };
 
   const handleSave = async () => {
     if (!areTopologySettingsReadOnly) {
       await state.handleSave();
+    }
+    const nextFontScale = clampTopoViewerFontScale(fontScaleDraft);
+    if (nextFontScale !== savedFontScaleRef.current) {
+      sendSetTopoViewerFontScale(nextFontScale);
+      savedFontScaleRef.current = nextFontScale;
     }
     const style = linkLabelMode === "telemetry-style" ? "telemetry-style" : "default";
     const nextLastNonTelemetryLinkLabelMode =
@@ -74,6 +109,7 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
   };
 
   if (saveRef) saveRef.current = handleSave;
+  if (cancelRef) cancelRef.current = handleCancel;
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
     setActiveTab(newValue);
@@ -150,6 +186,8 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
             onGridBgColorChange={onGridBgColorChange}
             onResetGridColors={onResetGridColors}
             isReadOnly={isAppearanceReadOnly}
+            fontScale={fontScaleDraft}
+            onFontScaleChange={handleFontScaleChange}
           />
         </Box>
       )}

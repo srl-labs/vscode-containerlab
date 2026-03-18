@@ -15,8 +15,18 @@ import { refreshTopologySnapshot } from "@webview/services/topologyHostCommands"
 import { useGraphStore, useTopoViewerStore } from "@webview/stores";
 import { applyDevVars } from "@webview/theme/devTheme";
 import { vscodeTheme } from "@webview/theme/vscodeTheme";
-import { EXPORT_COMMANDS } from "@shared/messages/extension";
-import { MSG_SVG_EXPORT_RESULT } from "@shared/messages/webview";
+import {
+  EXPORT_COMMANDS,
+  UI_COMMANDS
+} from "@shared/messages/extension";
+import {
+  MSG_SVG_EXPORT_RESULT,
+  MSG_TOPOVIEWER_FONT_SCALE_UPDATED
+} from "@shared/messages/webview";
+import {
+  TOPOVIEWER_FONT_SCALE_DEFAULT,
+  resolveTopoViewerFontScale
+} from "@shared/constants/topoViewerFontScale";
 
 import { DevStateManager } from "./mock/DevState";
 import { DevSettingsOverlay } from "./components/DevSettingsOverlay";
@@ -91,6 +101,22 @@ interface InitialData {
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
   customIcons: CustomIconInfo[];
+  fontScale: number;
+}
+
+const DEV_TOPOVIEWER_FONT_SCALE_STORAGE_KEY = "reactTopoViewer.fontScale";
+
+function getStoredDevTopoViewerFontScale(): number {
+  try {
+    const rawValue = window.localStorage.getItem(DEV_TOPOVIEWER_FONT_SCALE_STORAGE_KEY);
+    if (rawValue === null) {
+      return TOPOVIEWER_FONT_SCALE_DEFAULT;
+    }
+
+    return resolveTopoViewerFontScale(Number(rawValue));
+  } catch {
+    return TOPOVIEWER_FONT_SCALE_DEFAULT;
+  }
 }
 
 const initialData: InitialData = {
@@ -98,7 +124,8 @@ const initialData: InitialData = {
   dockerImages,
   customNodes: sampleCustomNodes as CustomNodeTemplate[],
   defaultNode: stateManager.getDefaultCustomNode(),
-  customIcons: sampleCustomIcons as CustomIconInfo[]
+  customIcons: sampleCustomIcons as CustomIconInfo[],
+  fontScale: getStoredDevTopoViewerFontScale()
 };
 
 // Render App
@@ -110,6 +137,9 @@ function renderApp(): void {
   (window as unknown as Record<string, unknown>).__INITIAL_DATA__ = initialData;
   (window as unknown as Record<string, unknown>).__SCHEMA_DATA__ = initialData.schemaData;
   (window as unknown as Record<string, unknown>).__DOCKER_IMAGES__ = initialData.dockerImages;
+  if (document.body) {
+    document.body.dataset.webviewKind = "containerlab-topoviewer";
+  }
 
   const container = document.getElementById("root");
   if (!container) {
@@ -1229,6 +1259,28 @@ function setupDevModeCommandInterceptor(): void {
     logger(`${prefix}${message}`);
   };
 
+  const handleSetTopoViewerFontScale = (msg: DevVscodeMessage) => {
+    const rawFontScale = msg.fontScale;
+    if (typeof rawFontScale !== "number" || !Number.isFinite(rawFontScale)) {
+      console.warn("[Dev] Invalid font scale payload", msg);
+      return;
+    }
+
+    const fontScale = resolveTopoViewerFontScale(rawFontScale);
+    initialData.fontScale = fontScale;
+
+    try {
+      window.localStorage.setItem(DEV_TOPOVIEWER_FONT_SCALE_STORAGE_KEY, String(fontScale));
+    } catch {
+      // Ignore storage failures in dev mode.
+    }
+
+    postToWebview({
+      type: MSG_TOPOVIEWER_FONT_SCALE_UPDATED,
+      data: { fontScale }
+    });
+  };
+
   const isExplorerOutgoingMessage = (
     message: DevVscodeMessage
   ): message is ExplorerOutgoingMessage => {
@@ -1287,7 +1339,8 @@ function setupDevModeCommandInterceptor(): void {
   const commandHandlers: Record<string, (msg: DevVscodeMessage) => void> = {
     reactTopoViewerLog: handleViewerLog,
     topoViewerLog: handleViewerLog,
-    [EXPORT_COMMANDS.EXPORT_SVG_GRAFANA_BUNDLE]: handleGrafanaBundleExport
+    [EXPORT_COMMANDS.EXPORT_SVG_GRAFANA_BUNDLE]: handleGrafanaBundleExport,
+    [UI_COMMANDS.SET_TOPOVIEWER_FONT_SCALE]: handleSetTopoViewerFontScale
   };
 
   // Create a mock vscode API that intercepts postMessage calls

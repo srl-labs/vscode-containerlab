@@ -18,6 +18,8 @@ import {
   useTopologyHostInitialization
 } from "./hooks/app";
 import { AppContent } from "./AppContent";
+import { useFontScale } from "./stores/topoViewerStore";
+import { TOPOVIEWER_FONT_SCALE_CSS_VAR } from "./theme";
 
 /** Main App component - initializes stores and subscriptions */
 export const App: React.FC<{ initialData?: InitialGraphData }> = ({ initialData }) => {
@@ -28,6 +30,20 @@ export const App: React.FC<{ initialData?: InitialGraphData }> = ({ initialData 
 
   // Initialize stores with initial data
   useStoreInitialization({ initialData });
+  const fontScale = useFontScale();
+
+  React.useLayoutEffect(() => {
+    const target = document.body ?? document.documentElement;
+    if (!target) {
+      return;
+    }
+
+    target.style.setProperty(TOPOVIEWER_FONT_SCALE_CSS_VAR, String(fontScale));
+
+    return () => {
+      target.style.removeProperty(TOPOVIEWER_FONT_SCALE_CSS_VAR);
+    };
+  }, [fontScale]);
 
   // Set up message subscriptions (side effects)
   useGraphMessageSubscription();

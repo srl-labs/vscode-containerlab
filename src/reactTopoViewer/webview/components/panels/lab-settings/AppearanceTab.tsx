@@ -19,6 +19,12 @@ import {
 import { useEdges } from "../../../stores/graphStore";
 import { useTopoViewerStore } from "../../../stores/topoViewerStore";
 import {
+  TOPOVIEWER_FONT_SCALE_DEFAULT,
+  TOPOVIEWER_FONT_SCALE_MAX,
+  TOPOVIEWER_FONT_SCALE_MIN,
+  clampTopoViewerFontScale
+} from "../../../../shared/constants/topoViewerFontScale";
+import {
   DEFAULT_TELEMETRY_INTERFACE_SIZE_PERCENT,
   DEFAULT_TELEMETRY_NODE_SIZE_PX,
   GLOBAL_INTERFACE_PART_INDEX_PREFIX,
@@ -46,10 +52,21 @@ interface EdgeInterfaceRow {
 
 interface AppearanceTabProps extends GridSettingsControlsProps {
   isReadOnly: boolean;
+  fontScale: number;
+  onFontScaleChange: (value: number) => void;
 }
 
 type TelemetryStyleValue = "default" | "telemetry-style";
-type AppearanceSubTab = "style" | "grid";
+type AppearanceSubTab = "style" | "grid" | "font-size";
+
+const FONT_SCALE_MIN_PERCENT = Math.round(TOPOVIEWER_FONT_SCALE_MIN * 100);
+const FONT_SCALE_MAX_PERCENT = Math.round(TOPOVIEWER_FONT_SCALE_MAX * 100);
+const FONT_SCALE_DEFAULT_PERCENT = Math.round(TOPOVIEWER_FONT_SCALE_DEFAULT * 100);
+const FONT_SCALE_MARKS = [
+  { value: FONT_SCALE_MIN_PERCENT, label: `${FONT_SCALE_MIN_PERCENT}%` },
+  { value: FONT_SCALE_DEFAULT_PERCENT, label: "100%" },
+  { value: FONT_SCALE_MAX_PERCENT, label: `${FONT_SCALE_MAX_PERCENT}%` }
+];
 
 function asNonEmptyString(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -89,7 +106,9 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
   gridBgColor,
   onGridBgColorChange,
   onResetGridColors,
-  isReadOnly
+  isReadOnly,
+  fontScale,
+  onFontScaleChange
 }) => {
   const edges = useEdges();
   const [activeSubTab, setActiveSubTab] = useState<AppearanceSubTab>("style");
@@ -165,16 +184,26 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
 
   const effectiveGridBgColor = gridBgColor ?? themeBgColor;
   const defaultGridColor = invertHexColor(effectiveGridBgColor);
+  const fontScalePercent = Math.round(fontScale * 100);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Tabs
         value={activeSubTab}
-        onChange={(_event, value) => setActiveSubTab(value === "grid" ? "grid" : "style")}
+        onChange={(_event, value) =>
+          setActiveSubTab(
+            value === "grid" || value === "font-size" ? value : "style"
+          )
+        }
         variant="fullWidth"
       >
         <Tab label="Style" value="style" data-testid="lab-settings-appearance-subtab-style" />
         <Tab label="Grid Settings" value="grid" data-testid="lab-settings-appearance-subtab-grid" />
+        <Tab
+          label="Font Size"
+          value="font-size"
+          data-testid="lab-settings-appearance-subtab-font-size"
+        />
       </Tabs>
 
       {activeSubTab === "style" ? (
@@ -471,6 +500,61 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
               Reset to theme colors
             </Button>
           ) : null}
+        </Box>
+      ) : null}
+
+      {activeSubTab === "font-size" ? (
+        <Box
+          data-testid="lab-settings-font-size-settings"
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+        >
+          <Paper variant="outlined" sx={{ p: 1.5 }}>
+            <Typography variant="body2">
+              Adjust the global TopoViewer font scale. This is stored in VS Code settings and
+              applies to all TopoViewer panels.
+            </Typography>
+          </Paper>
+
+          <Box sx={{ px: 1 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Font Scale
+            </Typography>
+            <Slider
+              data-testid="lab-settings-font-size-slider"
+              size="small"
+              value={fontScalePercent}
+              min={FONT_SCALE_MIN_PERCENT}
+              max={FONT_SCALE_MAX_PERCENT}
+              step={5}
+              marks={FONT_SCALE_MARKS}
+              valueLabelDisplay="auto"
+              valueLabelFormat={(value) => `${value}%`}
+              onChange={(_event, value) => {
+                const sliderValue = Array.isArray(value) ? value[0] : value;
+                onFontScaleChange(clampTopoViewerFontScale(sliderValue / 100));
+              }}
+            />
+          </Box>
+
+          <Paper variant="outlined" sx={{ p: 1.5 }}>
+            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+              Current Selection
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {fontScalePercent}% of the VS Code sidebar/treeview font size baseline.
+            </Typography>
+          </Paper>
+
+          <Button
+            size="small"
+            variant="text"
+            startIcon={<RestartAltIcon />}
+            disabled={fontScale === TOPOVIEWER_FONT_SCALE_DEFAULT}
+            onClick={() => onFontScaleChange(TOPOVIEWER_FONT_SCALE_DEFAULT)}
+            data-testid="lab-settings-font-size-reset"
+          >
+            Reset to 100%
+          </Button>
         </Box>
       ) : null}
     </Box>

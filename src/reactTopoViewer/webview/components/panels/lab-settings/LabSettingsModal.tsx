@@ -36,7 +36,11 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
   onResetGridColors
 }) => {
   const saveRef = useRef<(() => Promise<void>) | null>(null);
-  const canSave = !isLocked;
+  const cancelRef = useRef<(() => void) | null>(null);
+  const handleCloseClick = useCallback(() => {
+    cancelRef.current?.();
+    onClose();
+  }, [onClose]);
   const handleSaveClick = useCallback(() => {
     const save = saveRef.current;
     if (!save) {
@@ -50,7 +54,7 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
   return (
     <Dialog
       open={isOpen}
-      onClose={onClose}
+      onClose={handleCloseClick}
       maxWidth="sm"
       fullWidth
       data-testid="lab-settings-modal"
@@ -58,16 +62,18 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
     >
       <DialogTitleWithClose
         title="Lab Settings"
-        onClose={onClose}
+        onClose={handleCloseClick}
         closeButtonTestId="lab-settings-close-btn"
       />
       <DialogContent dividers sx={{ p: 0, overflow: "auto" }}>
         <LabSettingsSection
+          isOpen={isOpen}
           mode={mode}
           isLocked={isLocked}
           labSettings={labSettings}
           onClose={onClose}
           saveRef={saveRef}
+          cancelRef={cancelRef}
           gridLineWidth={gridLineWidth}
           onGridLineWidthChange={onGridLineWidthChange}
           gridStyle={gridStyle}
@@ -79,13 +85,11 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
           onResetGridColors={onResetGridColors}
         />
       </DialogContent>
-      {canSave && (
-        <DialogActions>
-          <Button size="small" onClick={handleSaveClick} data-testid="lab-settings-save-btn">
-            Apply
-          </Button>
-        </DialogActions>
-      )}
+      <DialogActions>
+        <Button size="small" onClick={handleSaveClick} data-testid="lab-settings-save-btn">
+          Apply
+        </Button>
+      </DialogActions>
     </Dialog>
   );
 };
