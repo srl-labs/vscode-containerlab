@@ -31,14 +31,13 @@ import {
   Source as SourceIcon,
   Star as StarIcon,
   StarBorder as StarBorderIcon,
-  SettingsRemote as SettingsRemoteIcon,
   Stop as StopIcon,
   Terminal as TerminalIcon,
   Tune as TuneIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
   type SvgIconComponent,
-  Dvr
+  Dvr as DvrIcon
 } from "@mui/icons-material";
 import {
   Alert,
@@ -240,7 +239,7 @@ const ACTION_ICON_BY_COMMAND: Partial<Record<string, SvgIconComponent>> = {
   "containerlab.lab.addtoworkspace": FolderOpenIcon,
   "containerlab.lab.save": SaveOutlinedIcon,
   "containerlab.node.save": SaveOutlinedIcon,
-  "containerlab.node.attachshell": Dvr,
+  "containerlab.node.attachshell": DvrIcon,
   "containerlab.node.ssh": TerminalIcon,
   "containerlab.node.showlogs": FormatListBulletedIcon,
   "containerlab.node.stop": StopIcon,
@@ -263,8 +262,8 @@ const ACTION_ICON_BY_COMMAND: Partial<Record<string, SvgIconComponent>> = {
 
 const ACTION_ICON_BY_THEME_ICON_ID: Partial<Record<string, SvgIconComponent>> = {
   "vm-connect": LinkIcon,
-  remote: SettingsRemoteIcon,
-  terminal: TerminalIcon,
+  remote: TerminalIcon,
+  terminal: DvrIcon,
   globe: OpenInBrowserIcon,
   "open-preview": OpenInBrowserIcon,
   "open-external": OpenInNewIcon,
@@ -297,10 +296,10 @@ const ACTION_ICON_RULES: ReadonlyArray<CommandIconRule> = [
   { match: (command) => command.includes("stop"), icon: StopIcon },
   { match: (command) => command.includes("unpause"), icon: PlayCircleOutlineIcon },
   { match: (command) => command.includes("pause"), icon: PauseCircleOutlineIcon },
-  { match: (command) => command.includes("ssh"), icon: SettingsRemoteIcon },
+  { match: (command) => command.includes("ssh"), icon: TerminalIcon },
   {
     match: (command) => command.includes("shell") || command.includes("telnet"),
-    icon: TerminalIcon
+    icon: DvrIcon
   },
   { match: (command) => command.includes("filter"), icon: FilterAltIcon },
   { match: (command) => command.includes(".save"), icon: SaveOutlinedIcon },
