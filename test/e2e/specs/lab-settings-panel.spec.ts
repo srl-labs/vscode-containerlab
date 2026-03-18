@@ -10,6 +10,11 @@ const SEL_LAB_SETTINGS_TAB_BASIC = '[data-testid="lab-settings-tab-basic"]';
 const SEL_LAB_SETTINGS_TAB_MGMT = '[data-testid="lab-settings-tab-mgmt"]';
 const SEL_LAB_SETTINGS_TAB_APPEARANCE = '[data-testid="lab-settings-tab-appearance"]';
 const SEL_LAB_SETTINGS_SAVE_BTN = '[data-testid="lab-settings-save-btn"]';
+const SEL_APPEARANCE_SUBTAB_FONT_SIZE = '[data-testid="lab-settings-appearance-subtab-font-size"]';
+const SEL_FONT_SIZE_SLIDER = '[data-testid="lab-settings-font-size-slider"] input[type="range"]';
+const SEL_DEV_EXPLORER_ROOT = ".containerlab-explorer-root";
+const SEL_DEV_EXPLORER_SECTION_TITLE = `${SEL_DEV_EXPLORER_ROOT} .explorer-section-title`;
+const SEL_TOPOVIEWER_NODE_LABEL = ".topology-node-label, .network-node-label";
 
 const LABEL_CONTAINER_NAME_PREFIX = "Container Name Prefix";
 
@@ -38,6 +43,82 @@ test.describe("Lab Settings Modal", () => {
     const modal = page.locator(SEL_LAB_SETTINGS_MODAL);
     await expect(modal).toBeVisible();
     return modal;
+  }
+
+  async function openFontSizeSettings(page: any) {
+    const modal = await openModal(page);
+    await modal.locator(SEL_LAB_SETTINGS_TAB_APPEARANCE).click();
+    await page.waitForTimeout(150);
+    await modal.locator(SEL_APPEARANCE_SUBTAB_FONT_SIZE).click();
+    await expect(modal.locator('[data-testid="lab-settings-font-size-settings"]')).toBeVisible();
+    return { modal, slider: modal.locator(SEL_FONT_SIZE_SLIDER) };
+  }
+
+  async function enableDevExplorer(page: any, topoViewerPage: any) {
+    const currentUrl = new URL(page.url());
+    const sessionId = currentUrl.searchParams.get("sessionId");
+    if (!sessionId) {
+      throw new Error("Missing sessionId in test URL");
+    }
+
+    await page.goto(`http://localhost:5173/?sessionId=${sessionId}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 60000
+    });
+    await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+
+    const explorerRoot = page.locator(SEL_DEV_EXPLORER_ROOT);
+    await expect(explorerRoot).toBeVisible();
+    await expect(page.locator(SEL_DEV_EXPLORER_SECTION_TITLE).first()).toBeVisible();
+  }
+
+  async function getSliderValue(slider: any): Promise<number> {
+    const value = await slider.getAttribute("aria-valuenow");
+    if (value == null) {
+      throw new Error("Slider aria-valuenow is missing");
+    }
+    return Number(value);
+  }
+
+  async function setSliderValue(page: any, slider: any, targetValue: number): Promise<void> {
+    await slider.focus();
+    let currentValue = await getSliderValue(slider);
+    if (currentValue === targetValue) {
+      return;
+    }
+
+    const key = targetValue > currentValue ? "ArrowRight" : "ArrowLeft";
+    for (let i = 0; i < 20 && currentValue !== targetValue; i++) {
+      await slider.press(key);
+      await page.waitForTimeout(50);
+      currentValue = await getSliderValue(slider);
+    }
+
+    expect(currentValue).toBe(targetValue);
+  }
+
+  async function getExplorerSectionTitleFontSize(page: any): Promise<number> {
+    return await page.evaluate((selector: string) => {
+      const element = document.querySelector(selector);
+      if (!(element instanceof HTMLElement)) {
+        throw new Error(`Explorer section title not found for selector: ${selector}`);
+      }
+
+      return Number.parseFloat(window.getComputedStyle(element).fontSize);
+    }, SEL_DEV_EXPLORER_SECTION_TITLE);
+  }
+
+  async function getTopoViewerNodeLabelFontSize(page: any): Promise<number> {
+    return await page.evaluate((selector: string) => {
+      const element = document.querySelector(selector);
+      if (!(element instanceof HTMLElement)) {
+        throw new Error(`TopoViewer node label not found for selector: ${selector}`);
+      }
+
+      return Number.parseFloat(window.getComputedStyle(element).fontSize);
+    }, SEL_TOPOVIEWER_NODE_LABEL);
   }
 
   function formControlByLabel(modal: any, labelText: string) {
@@ -210,6 +291,40 @@ test.describe("Lab Settings Modal", () => {
     await expect(
       reloadedModal.locator('[data-testid="lab-settings-grid-style"] button[value="quadratic"]')
     ).toHaveAttribute("aria-pressed", ARIA_TRUE);
+  });
+
+  test("font scale slider updates explorer and TopoViewer font sizes live", async ({
+    page,
+    topoViewerPage
+  }) => {
+    await enableDevExplorer(page, topoViewerPage);
+    await expect(page.locator(SEL_TOPOVIEWER_NODE_LABEL).first()).toBeVisible();
+
+    const explorerBaselineFontSize = await getExplorerSectionTitleFontSize(page);
+    const topoviewerBaselineFontSize = await getTopoViewerNodeLabelFontSize(page);
+
+    const { slider } = await openFontSizeSettings(page);
+    const initialSliderValue = await getSliderValue(slider);
+    const targetSliderValue =
+      initialSliderValue >= 125 ? initialSliderValue - 15 : initialSliderValue + 15;
+
+    await setSliderValue(page, slider, targetSliderValue);
+
+    if (targetSliderValue > initialSliderValue) {
+      await expect
+        .poll(async () => await getExplorerSectionTitleFontSize(page))
+        .toBeGreaterThan(explorerBaselineFontSize + 0.5);
+      await expect
+        .poll(async () => await getTopoViewerNodeLabelFontSize(page))
+        .toBeGreaterThan(topoviewerBaselineFontSize + 0.5);
+    } else {
+      await expect
+        .poll(async () => await getExplorerSectionTitleFontSize(page))
+        .toBeLessThan(explorerBaselineFontSize - 0.5);
+      await expect
+        .poll(async () => await getTopoViewerNodeLabelFontSize(page))
+        .toBeLessThan(topoviewerBaselineFontSize - 0.5);
+    }
   });
 
   test("shows current lab name in Basic tab", async ({ page }) => {
