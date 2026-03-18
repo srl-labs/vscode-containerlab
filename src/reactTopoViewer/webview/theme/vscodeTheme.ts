@@ -42,6 +42,23 @@ const buildPaletteColor = (main: string, contrastText: string) => ({
   contrastText
 });
 
+const buildScopedFontSizeVars = (baseSize: string) => ({
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.base]: baseSize,
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.body]: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base})`,
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.bodySmall]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.95)`,
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.caption]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.92)`,
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.label]: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base})`,
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.sectionTitle]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.08)`,
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.dialogTitle]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.15)`,
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.menu]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.96)`,
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.nodeLabel]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.95)`,
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.edgeLabel]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.95)`,
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.iconInline]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.15)`,
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.overline]: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.caption})`,
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.h6]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.46)`,
+  [TOPOVIEWER_FONT_SIZE_CSS_VARS.h5]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.69)`
+});
+
 // Palette — single source of truth for all colors.
 // dark/light repeat main to prevent createTheme from deriving them (crashes on CSS vars).
 export const vscodePalette = {
@@ -104,20 +121,9 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
       [topoviewerScopedSelector("")]: {
         [TOPOVIEWER_FONT_FAMILY_CSS_VAR]: EXPLORER_FONT_FAMILY,
         [TOPOVIEWER_FONT_SCALE_CSS_VAR]: String(TOPOVIEWER_FONT_SCALE_DEFAULT),
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.base]: `calc(${EXPLORER_FONT_SIZE_BASE} * var(${TOPOVIEWER_FONT_SCALE_CSS_VAR}, ${TOPOVIEWER_FONT_SCALE_DEFAULT}))`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.body]: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base})`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.bodySmall]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.95)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.caption]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.92)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.label]: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base})`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.sectionTitle]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.08)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.dialogTitle]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.15)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.menu]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.96)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.nodeLabel]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.95)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.edgeLabel]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.95)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.iconInline]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.15)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.overline]: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.caption})`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.h6]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.46)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.h5]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.69)`,
+        ...buildScopedFontSizeVars(
+          `calc(${EXPLORER_FONT_SIZE_BASE} * var(${TOPOVIEWER_FONT_SCALE_CSS_VAR}, ${TOPOVIEWER_FONT_SCALE_DEFAULT}))`
+        ),
         fontFamily: topoViewerTypography.fontFamily,
         fontSize: topoViewerTypography.base
       },
@@ -157,20 +163,7 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
       },
       [explorerScopedSelector("")]: {
         [TOPOVIEWER_FONT_FAMILY_CSS_VAR]: EXPLORER_FONT_FAMILY,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.base]: EXPLORER_FONT_SIZE_SCALED,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.body]: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base})`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.bodySmall]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.95)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.caption]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.92)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.label]: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base})`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.sectionTitle]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.08)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.dialogTitle]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.15)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.menu]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.96)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.nodeLabel]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.95)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.edgeLabel]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 0.95)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.iconInline]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.15)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.overline]: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.caption})`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.h6]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.46)`,
-        [TOPOVIEWER_FONT_SIZE_CSS_VARS.h5]: `calc(var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base}) * 1.69)`,
+        ...buildScopedFontSizeVars(EXPLORER_FONT_SIZE_SCALED),
         fontFamily: EXPLORER_FONT_FAMILY,
         fontSize: `var(${TOPOVIEWER_FONT_SIZE_CSS_VARS.base})`
       },

@@ -3,7 +3,6 @@ import { randomBytes } from "crypto";
 import * as vscode from "vscode";
 
 import { hideNonOwnedLabsState } from "../../globals";
-import { TOPOVIEWER_FONT_SCALE_DEFAULT } from "../../reactTopoViewer/shared/constants/topoViewerFontScale";
 import {
   getEffectiveTopoViewerFontScale,
   onDidChangeTopoViewerFontScale
@@ -399,7 +398,7 @@ export class ContainerlabExplorerViewProvider
     }
   </style>
 </head>
-<body data-webview-kind="containerlab-explorer" style="${TOPOVIEWER_FONT_SCALE_CSS_VAR}: ${fontScale ?? TOPOVIEWER_FONT_SCALE_DEFAULT};">
+<body data-webview-kind="containerlab-explorer" style="${TOPOVIEWER_FONT_SCALE_CSS_VAR}: ${fontScale};">
   <div id="root"></div>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

@@ -2,7 +2,7 @@
  * BootstrapDataBuilder - Assembles initial data for React TopoViewer webview
  */
 
-import * as vscode from "vscode";
+import type * as vscode from "vscode";
 
 import type { CustomIconInfo } from "../../shared/types/icons";
 import { getDockerImages } from "../../../utils/docker/images";

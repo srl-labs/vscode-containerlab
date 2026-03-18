@@ -24,28 +24,25 @@ import {
   MSG_LAB_LIFECYCLE_STATUS,
   MSG_SVG_EXPORT_RESULT
 } from "../../shared/messages/webview";
-import type {
-  CustomNodeCommand,
-  ExportCommand,
-  IconCommand,
-  InterfaceCommand,
-  LifecycleCommand,
-  NodeCommand
-} from "../../shared/messages/extension";
 import {
+  MSG_CANCEL_LAB_LIFECYCLE,
+  MSG_TOGGLE_SPLIT_VIEW,
+  UI_COMMANDS,
   isCustomNodeCommand,
   isExportCommand,
   isIconCommand,
   isInterfaceCommand,
-  isUiCommand,
   isLifecycleCommand,
-  MSG_CANCEL_LAB_LIFECYCLE,
   isNodeCommand,
-  MSG_TOGGLE_SPLIT_VIEW,
-  UI_COMMANDS,
+  isUiCommand,
+  type CustomNodeCommand,
+  type ExportCommand,
+  type IconCommand,
+  type InterfaceCommand,
+  type LifecycleCommand,
+  type NodeCommand,
   type UiCommand
 } from "../../shared/messages/extension";
-import { resolveTopoViewerFontScale } from "../../shared/constants/topoViewerFontScale";
 import { cancelActiveCommand } from "../../../commands/command";
 import {
   previewTopoViewerFontScale,
@@ -645,13 +642,13 @@ export class MessageRouter {
     switch (command) {
       case UI_COMMANDS.PREVIEW_TOPOVIEWER_FONT_SCALE:
         this.handlePreviewTopoViewerFontScale(message);
-        return;
+        break;
       case UI_COMMANDS.RESET_TOPOVIEWER_FONT_SCALE_PREVIEW:
         this.handleResetTopoViewerFontScalePreview();
-        return;
+        break;
       case UI_COMMANDS.SET_TOPOVIEWER_FONT_SCALE:
         await this.handleSetTopoViewerFontScale(message);
-        return;
+        break;
     }
   }
 
@@ -678,7 +675,7 @@ export class MessageRouter {
       return;
     }
 
-    const fontScale = await setStoredTopoViewerFontScale(resolveTopoViewerFontScale(rawFontScale));
+    const fontScale = await setStoredTopoViewerFontScale(rawFontScale);
     log.info(`[MessageRouter] Updated TopoViewer font scale to ${fontScale}`);
   }
 

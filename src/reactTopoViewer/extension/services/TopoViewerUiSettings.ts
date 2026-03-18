@@ -22,7 +22,7 @@ function getLegacyTopoViewerFontScale(): number {
 }
 
 export function getStoredTopoViewerFontScale(): number {
-  const storedValue = extensionContext?.globalState.get<number>(TOPOVIEWER_FONT_SCALE_STATE_KEY);
+  const storedValue = extensionContext.globalState.get<number>(TOPOVIEWER_FONT_SCALE_STATE_KEY);
   if (typeof storedValue === "number" && Number.isFinite(storedValue)) {
     return resolveTopoViewerFontScale(storedValue);
   }

@@ -33,10 +33,7 @@ export const App: React.FC<{ initialData?: InitialGraphData }> = ({ initialData 
   const fontScale = useFontScale();
 
   React.useLayoutEffect(() => {
-    const target = document.body ?? document.documentElement;
-    if (!target) {
-      return;
-    }
+    const target = document.body;
 
     target.style.setProperty(TOPOVIEWER_FONT_SCALE_CSS_VAR, String(fontScale));
 

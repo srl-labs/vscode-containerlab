@@ -78,6 +78,10 @@ function isGridStyle(value: unknown): value is GridSettingsControlsProps["gridSt
   return value === "dotted" || value === "quadratic";
 }
 
+function isAppearanceSubTab(value: unknown): value is AppearanceSubTab {
+  return value === "style" || value === "grid" || value === "font-size";
+}
+
 function extractEdgeInterfaceRows(edges: Edge[]): EdgeInterfaceRow[] {
   const rows: EdgeInterfaceRow[] = [];
   for (const edge of edges) {
@@ -190,10 +194,8 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Tabs
         value={activeSubTab}
-        onChange={(_event, value) =>
-          setActiveSubTab(
-            value === "grid" || value === "font-size" ? value : "style"
-          )
+        onChange={(_event, value: unknown) =>
+          setActiveSubTab(isAppearanceSubTab(value) ? value : "style")
         }
         variant="fullWidth"
       >
@@ -510,8 +512,8 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
         >
           <Paper variant="outlined" sx={{ p: 1.5 }}>
             <Typography variant="body2">
-              Adjust the global VS Code Containerlab font scale. This applies to TopoViewer
-              panels and the Containerlab Explorer sidebar.
+              Adjust the global VS Code Containerlab font scale. This applies to TopoViewer panels
+              and the Containerlab Explorer sidebar.
             </Typography>
           </Paper>
 
@@ -529,8 +531,9 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
               marks={FONT_SCALE_MARKS}
               valueLabelDisplay="auto"
               valueLabelFormat={(value) => `${value}%`}
-              onChange={(_event, value) => {
-                const sliderValue = Array.isArray(value) ? value[0] : value;
+              onChange={(_event, value: number | number[]) => {
+                const sliderValue =
+                  typeof value === "number" ? value : (value[0] ?? FONT_SCALE_DEFAULT_PERCENT);
                 onFontScaleChange(clampTopoViewerFontScale(sliderValue / 100));
               }}
             />

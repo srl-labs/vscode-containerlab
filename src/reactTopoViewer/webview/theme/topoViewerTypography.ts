@@ -52,11 +52,8 @@ function cssVarWithFallback(cssVar: string, fallback: string): string {
 
 function readCssVarValue(cssVar: string): string {
   if (typeof window === "undefined") return "";
-  const body = document.body;
-  if (body) {
-    const bodyValue = window.getComputedStyle(body).getPropertyValue(cssVar).trim();
-    if (bodyValue.length > 0) return bodyValue;
-  }
+  const bodyValue = window.getComputedStyle(document.body).getPropertyValue(cssVar).trim();
+  if (bodyValue.length > 0) return bodyValue;
   return window.getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
 }
 
@@ -71,10 +68,7 @@ function resolveCssLengthPx(value: string): number | null {
     return null;
   }
 
-  const target = document.body ?? document.documentElement;
-  if (!target) {
-    return null;
-  }
+  const target = document.body;
 
   const probe = document.createElement("div");
   probe.style.position = "absolute";

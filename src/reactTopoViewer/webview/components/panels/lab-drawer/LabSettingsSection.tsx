@@ -70,8 +70,9 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
     if (!isOpen) {
       return;
     }
-    savedFontScaleRef.current = fontScale;
-    setFontScaleDraft(fontScale);
+    const currentFontScale = useTopoViewerStore.getState().fontScale;
+    savedFontScaleRef.current = currentFontScale;
+    setFontScaleDraft(currentFontScale);
   }, [isOpen]);
 
   const handleFontScaleChange = (value: number) => {

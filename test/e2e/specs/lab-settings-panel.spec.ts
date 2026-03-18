@@ -57,7 +57,7 @@ test.describe("Lab Settings Modal", () => {
   async function enableDevExplorer(page: any, topoViewerPage: any) {
     const currentUrl = new URL(page.url());
     const sessionId = currentUrl.searchParams.get("sessionId");
-    if (!sessionId) {
+    if (sessionId == null || sessionId.length === 0) {
       throw new Error("Missing sessionId in test URL");
     }
 

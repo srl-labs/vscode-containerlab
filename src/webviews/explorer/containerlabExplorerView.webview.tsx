@@ -65,10 +65,7 @@ import {
   useState
 } from "react";
 
-import {
-  MuiThemeProvider,
-  topoViewerTypography
-} from "../../reactTopoViewer/webview/theme";
+import { MuiThemeProvider, topoViewerTypography } from "../../reactTopoViewer/webview/theme";
 import {
   ContextMenu,
   type ContextMenuItem
