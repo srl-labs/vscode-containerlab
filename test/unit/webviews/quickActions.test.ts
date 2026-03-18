@@ -14,8 +14,9 @@ function createAction(commandId: string, label?: string): ExplorerAction {
 }
 
 describe("resolveQuickActionsForNode", () => {
-  it("returns SSH and Logs quick actions for container nodes", () => {
+  it("returns Attach shell and SSH quick actions for container nodes", () => {
     const actions = [
+      createAction("containerlab.node.attachShell", "Attach shell"),
       createAction("containerlab.node.showLogs", "Show Logs"),
       createAction("containerlab.node.ssh", "SSH"),
       createAction("containerlab.node.stop", "Stop")
@@ -24,13 +25,14 @@ describe("resolveQuickActionsForNode", () => {
     const quickActions = resolveQuickActionsForNode("containerlabContainer", actions);
 
     expect(quickActions.map((action) => action.commandId)).to.deep.equal([
-      "containerlab.node.ssh",
-      "containerlab.node.showLogs"
+      "containerlab.node.attachShell",
+      "containerlab.node.ssh"
     ]);
   });
 
   it("includes first contributed container action as an inline quick action", () => {
     const actions = [
+      createAction("containerlab.node.attachShell", "Attach shell"),
       createAction("containerlab.node.showLogs", "Show Logs"),
       createAction("containerlab.node.ssh", "SSH"),
       createAction("netconf.clabConnect", "NETCONF: Connect"),
@@ -40,8 +42,8 @@ describe("resolveQuickActionsForNode", () => {
     const quickActions = resolveQuickActionsForNode("containerlabContainer", actions);
 
     expect(quickActions.map((action) => action.commandId)).to.deep.equal([
+      "containerlab.node.attachShell",
       "containerlab.node.ssh",
-      "containerlab.node.showLogs",
       "netconf.clabConnect"
     ]);
   });
@@ -55,6 +57,19 @@ describe("resolveQuickActionsForNode", () => {
     const quickActions = resolveQuickActionsForNode("containerlabContainerGroup", actions);
 
     expect(quickActions).to.deep.equal([]);
+  });
+
+  it("returns Edit Topology quick action for lab nodes", () => {
+    const actions = [
+      createAction("containerlab.lab.openFile", "Edit Topology"),
+      createAction("containerlab.lab.deploy", "Deploy")
+    ];
+
+    const quickActions = resolveQuickActionsForNode("containerlabLabUndeployed", actions);
+
+    expect(quickActions.map((action) => action.commandId)).to.deep.equal([
+      "containerlab.lab.openFile"
+    ]);
   });
 
   it("prefers local capture command for interfaces", () => {

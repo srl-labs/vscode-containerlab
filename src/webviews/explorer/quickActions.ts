@@ -1,6 +1,7 @@
 import type { ExplorerAction } from "../shared/explorer/types";
 
-const CONTAINER_QUICK_ACTION_COMMANDS = ["containerlab.node.ssh", "containerlab.node.showLogs"];
+const CONTAINER_QUICK_ACTION_COMMANDS = ["containerlab.node.attachShell", "containerlab.node.ssh"];
+const LAB_QUICK_ACTION_COMMANDS = ["containerlab.lab.openFile"];
 const INTERFACE_CAPTURE_COMMANDS = [
   "containerlab.interface.capture",
   "containerlab.interface.captureWithEdgeshark",
@@ -17,6 +18,10 @@ function actionByCommandId(
 
 function isInterfaceContext(contextValue: string | undefined): boolean {
   return contextValue === "containerlabInterfaceUp" || contextValue === "containerlabInterfaceDown";
+}
+
+function isLabContext(contextValue: string | undefined): boolean {
+  return typeof contextValue === "string" && contextValue.includes("containerlabLab");
 }
 
 function isContainerlabCommand(commandId: string): boolean {
@@ -38,10 +43,20 @@ function resolveContainerQuickActions(actions: ExplorerAction[]): ExplorerAction
   return quickActions;
 }
 
+function resolveLabQuickActions(actions: ExplorerAction[]): ExplorerAction[] {
+  return LAB_QUICK_ACTION_COMMANDS.map((commandId) => actionByCommandId(actions, commandId)).filter(
+    (action): action is ExplorerAction => action !== undefined
+  );
+}
+
 export function resolveQuickActionsForNode(
   contextValue: string | undefined,
   actions: ExplorerAction[]
 ): ExplorerAction[] {
+  if (isLabContext(contextValue)) {
+    return resolveLabQuickActions(actions);
+  }
+
   if (contextValue === "containerlabContainer") {
     return resolveContainerQuickActions(actions);
   }

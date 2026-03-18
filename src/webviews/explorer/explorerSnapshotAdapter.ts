@@ -655,6 +655,22 @@ function pushAction(
   );
 }
 
+function applyCommandIcons(
+  actions: ExplorerAction[],
+  commandIcons: ReadonlyMap<string, string>
+): ExplorerAction[] {
+  for (const action of actions) {
+    if (action.iconId !== undefined) {
+      continue;
+    }
+    const iconId = commandIcons.get(action.commandId);
+    if (iconId !== undefined && iconId.length > 0) {
+      action.iconId = iconId;
+    }
+  }
+  return actions;
+}
+
 function getLinkArgument(item: ExplorerTreeItemLike): string | undefined {
   const link = item.link;
   if (typeof link === "string" && link.length > 0) {
@@ -880,15 +896,12 @@ function getNodeActions(
   const contextValue = item.contextValue;
   if (sectionId === "helpFeedback") {
     appendHelpFeedbackActions(actions, seen, registry, item);
-    return actions;
-  }
-
-  if (isLabContext(contextValue)) {
+  } else if (isLabContext(contextValue)) {
     appendLabActions(actions, seen, registry, sectionId, item);
-    return actions;
-  }
-
-  if (contextValue === "containerlabContainer" || contextValue === "containerlabContainerGroup") {
+  } else if (
+    contextValue === "containerlabContainer" ||
+    contextValue === "containerlabContainerGroup"
+  ) {
     appendContainerActions(
       actions,
       seen,
@@ -898,19 +911,13 @@ function getNodeActions(
       commandLabels,
       commandIcons
     );
-    return actions;
-  }
-
-  if (contextValue === "containerlabInterfaceUp") {
+  } else if (contextValue === "containerlabInterfaceUp") {
     appendInterfaceActions(actions, seen, registry, item, options.isLocalCaptureAllowed);
-    return actions;
-  }
-
-  if (contextValue === "containerlabSSHXLink" || contextValue === "containerlabGottyLink") {
+  } else if (contextValue === "containerlabSSHXLink" || contextValue === "containerlabGottyLink") {
     appendLinkActions(actions, seen, registry, item);
   }
 
-  return actions;
+  return applyCommandIcons(actions, commandIcons);
 }
 
 function resolvePrimaryAction(
