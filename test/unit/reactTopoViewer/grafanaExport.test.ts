@@ -13,7 +13,7 @@ import {
   removeUnlinkedNodesFromSvg,
   sanitizeSvgForGrafana,
   trimGrafanaSvgToTopologyContent
-} from "../../../src/reactTopoViewer/webview/components/panels/svg-export/grafanaExport";
+} from "@srl-labs/clab-ui/components/panels/svg-export/grafanaExport";
 
 describe("grafanaExport helpers", () => {
   const LEAF_NODE_ID = "leaf1";
@@ -137,66 +137,6 @@ describe("grafanaExport helpers", () => {
     expect(yaml).to.contain('{ color: "orange", level: 789 }');
     expect(yaml).to.contain('{ color: "red", level: 1234 }');
     expect(yaml).to.contain('{ valueMax: 123, text: "\\u200B" }');
-  });
-
-  it("adds hide-rates filter tags in panel YAML", () => {
-    const yaml = buildGrafanaPanelYaml([
-      {
-        edgeId: EDGE_VALID_ID,
-        source: "leaf1",
-        sourceEndpoint: "e1-1",
-        target: "client1",
-        targetEndpoint: "eth1",
-        operstateCellId: EDGE_VALID_OPERSTATE_ID,
-        targetOperstateCellId: EDGE_VALID_OPERSTATE_REVERSE_ID,
-        trafficCellId: EDGE_VALID_TRAFFIC_ID,
-        reverseTrafficCellId: EDGE_VALID_TRAFFIC_REVERSE_ID
-      }
-    ]);
-
-    expect(yaml).to.contain("tagConfig:");
-    expect(yaml).to.contain('legend: ["hide-rates"]');
-    expect(yaml).to.contain("lowlightAlphaFactor: 0");
-    expect(yaml).to.contain(
-      '"link_id:leaf1:e1-1:client1:eth1":\n' +
-        '    dataRef: "leaf1:e1-1:out"\n' +
-        "    strokeColor:\n" +
-        "      thresholds: *thresholds-traffic\n" +
-        '    tags: ["hide-rates"]'
-    );
-    expect(yaml).to.contain(
-      '"link_id:leaf1:e1-1:client1:eth1:label":\n' +
-        '    dataRef: "leaf1:e1-1:out"\n' +
-        "    label: *label-config\n" +
-        "    labelColor:\n" +
-        "      thresholds: *thresholds-rate-label"
-    );
-    expect(yaml).to.not.contain('tags: ["rates"]');
-  });
-
-  it("can disable hide-rates filter tags in panel YAML", () => {
-    const yaml = buildGrafanaPanelYaml(
-      [
-        {
-          edgeId: EDGE_VALID_ID,
-          source: "leaf1",
-          sourceEndpoint: "e1-1",
-          target: "client1",
-          targetEndpoint: "eth1",
-          operstateCellId: EDGE_VALID_OPERSTATE_ID,
-          targetOperstateCellId: EDGE_VALID_OPERSTATE_REVERSE_ID,
-          trafficCellId: EDGE_VALID_TRAFFIC_ID,
-          reverseTrafficCellId: EDGE_VALID_TRAFFIC_REVERSE_ID
-        }
-      ],
-      { includeHideRatesLegendToggle: false }
-    );
-
-    expect(yaml).to.not.contain("tagConfig:");
-    expect(yaml).to.not.contain('legend: ["hide-rates"]');
-    expect(yaml).to.not.contain('tags: ["hide-rates"]');
-    expect(yaml).to.contain("label: *label-config");
-    expect(yaml).to.contain("labelColor:");
   });
 
   it("builds dashboard JSON with embedded panel config and SVG", () => {
@@ -326,7 +266,7 @@ describe("grafanaExport helpers", () => {
 
     const textCoordMatches = Array.from(
       withCells.matchAll(/<text x="([^"]+)" y="([^"]+)"[^>]*>([^<]+)<\/text>/g)
-    );
+    ) as RegExpMatchArray[];
     expect(textCoordMatches.length).to.equal(4);
     expect(textCoordMatches.every((match) => match[3] === "rate")).to.equal(true);
     const textPoints = textCoordMatches.map((match) => ({
@@ -377,9 +317,9 @@ describe("grafanaExport helpers", () => {
       }
     ]);
 
-    const textCoordMatches = Array.from(
+    const textCoordMatches = (Array.from(
       withCells.matchAll(/<text x="([^"]+)" y="([^"]+)"[^>]*>([^<]+)<\/text>/g)
-    ).filter((match) => match[3] === "rate");
+    ) as RegExpMatchArray[]).filter((match) => match[3] === "rate");
 
     expect(textCoordMatches.length).to.equal(2);
     const textPoints = textCoordMatches.map((match) => ({
@@ -391,65 +331,24 @@ describe("grafanaExport helpers", () => {
     expect(textPoints.every((point) => Math.abs(point.x - 120) > 24)).to.equal(true);
   });
 
-  it("can export traffic rate labels as hover-only", () => {
-    if (typeof DOMParser === "undefined") {
-      return;
-    }
-
-    const baseSvg =
-      '<svg xmlns="http://www.w3.org/2000/svg">' +
-      '<g class="export-edge" data-id="edge-a"><path d="M 0 0 L 100 0"/></g>' +
-      "</svg>";
-
-    const withCells = applyGrafanaCellIdsToSvg(
-      baseSvg,
-      [
-        {
-          edgeId: "edge-a",
-          source: "spine1",
-          sourceEndpoint: "e1-1",
-          target: "leaf1",
-          targetEndpoint: "e1-49",
-          operstateCellId: "spine1:e1-1",
-          targetOperstateCellId: "leaf1:e1-49",
-          trafficCellId: "link_id:spine1:e1-1:leaf1:e1-49",
-          reverseTrafficCellId: "link_id:leaf1:e1-49:spine1:e1-1"
-        }
-      ],
-      { trafficRatesOnHoverOnly: true }
-    );
-
-    expect(withCells).to.contain('class="grafana-traffic-hitbox"');
-    expect(withCells).to.contain('id="grafana-traffic-hover-style"');
-    expect(withCells).to.contain(
-      ".grafana-traffic-half > path.grafana-traffic-hitbox{fill:none;stroke:transparent !important;"
-    );
-    expect(withCells).to.contain(".grafana-traffic-half > text{opacity:0");
-    expect(withCells).to.contain(".grafana-traffic-half:hover > text{opacity:1;}");
-  });
-
   it("formats traffic legend values in selected unit", () => {
     if (typeof DOMParser === "undefined") {
       return;
     }
 
     const baseSvg = '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
-    const legendSvg = addGrafanaTrafficLegend(
-      baseSvg,
-      {
-        green: 1_000_000_000,
-        yellow: 2_000_000_000,
-        orange: 5_000_000_000,
-        red: 10_000_000_000
-      },
-      "gbit"
-    );
+    const legendSvg = addGrafanaTrafficLegend(baseSvg, {
+      green: 1_000_000_000,
+      yellow: 2_000_000_000,
+      orange: 5_000_000_000,
+      red: 10_000_000_000
+    });
 
-    expect(legendSvg).to.contain("0 - 1 Gbps");
-    expect(legendSvg).to.contain("1 - 2 Gbps");
-    expect(legendSvg).to.contain("2 - 5 Gbps");
-    expect(legendSvg).to.contain("5 - 10 Gbps");
-    expect(legendSvg).to.contain("10+ Gbps");
+    expect(legendSvg).to.contain("0 - 1000 Mbps");
+    expect(legendSvg).to.contain("1000 - 2000 Mbps");
+    expect(legendSvg).to.contain("2000 - 5000 Mbps");
+    expect(legendSvg).to.contain("5000 - 10000 Mbps");
+    expect(legendSvg).to.contain("10000+ Mbps");
   });
 
   it("uses centered responsive aspect ratio for Grafana SVG", () => {

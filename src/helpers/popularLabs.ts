@@ -2,7 +2,11 @@ import * as https from "https";
 
 import * as vscode from "vscode";
 
-import { getRecordUnknown } from "../reactTopoViewer/shared/utilities/typeHelpers";
+function getRecordUnknown(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
 
 export interface PopularRepo {
   name: string;

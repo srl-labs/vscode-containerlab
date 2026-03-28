@@ -3,9 +3,13 @@
  */
 
 import { type ClabLabTreeNode, flattenContainers } from "../../../treeView/common";
-import type { ClabTopology } from "../../shared/types/topology";
-import type { TopoEdge, TopologyEdgeData } from "../../shared/types/graph";
-import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from "../../shared/parsing";
+import {
+  computeEdgeClassFromStates,
+  extractEdgeInterfaceStats,
+  type ClabTopology,
+  type TopoEdge,
+  type TopologyEdgeData
+} from "@srl-labs/clab-ui/core";
 
 import { findInterfaceNode } from "./TreeUtils";
 

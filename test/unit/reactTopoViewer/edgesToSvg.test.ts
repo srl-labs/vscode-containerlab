@@ -2,7 +2,7 @@
 import { expect } from "chai";
 import type { Edge, Node } from "@xyflow/react";
 
-import { renderEdgesToSvg } from "../../../src/reactTopoViewer/webview/components/panels/svg-export/edgesToSvg";
+import { renderEdgesToSvg } from "@srl-labs/clab-ui/components/panels/svg-export/edgesToSvg";
 
 describe("edgesToSvg", () => {
   const TOPOLOGY_NODE_TYPE = "topology-node";
@@ -66,7 +66,7 @@ describe("edgesToSvg", () => {
     const pathMatch = /<path d="([^"]+)"/.exec(proximateSvg);
     const circleMatches = Array.from(
       proximateSvg.matchAll(/<circle cx="([^"]+)" cy="([^"]+)"/g)
-    );
+    ) as RegExpMatchArray[];
 
     expect(pathMatch).to.not.equal(null);
     expect(circleMatches.length).to.equal(2);
@@ -116,7 +116,7 @@ describe("edgesToSvg", () => {
     const proximateSvg = renderEdgesToSvg(edges, nodes, true, undefined, true);
     const circleMatches = Array.from(
       proximateSvg.matchAll(/<circle cx="([^"]+)" cy="([^"]+)"/g)
-    );
+    ) as RegExpMatchArray[];
 
     expect(circleMatches.length).to.equal(2);
 

@@ -6,9 +6,7 @@ import * as path from "path";
 import { expect } from "chai";
 import * as YAML from "yaml";
 
-import { TopologyHostCore } from "../../../src/reactTopoViewer/shared/host/TopologyHostCore";
-import { NodeFsAdapter } from "../../../src/reactTopoViewer/shared/io/NodeFsAdapter";
-import { TopologyParser } from "../../../src/reactTopoViewer/shared/parsing/TopologyParser";
+import { NodeFsAdapter, TopologyHostCore, TopologyParser } from "@srl-labs/clab-ui/core";
 
 describe("TopologyParser empty YAML handling", () => {
   it("parses empty YAML content without throwing", () => {
@@ -26,7 +24,7 @@ topology:
       kind: nokia_srlinux
     partial:
 `);
-    const nodeIds = result.topology.nodes.map((node) => node.id);
+    const nodeIds = result.topology.nodes.map((node: { id: string }) => node.id);
     expect(nodeIds).to.include("srl1");
     expect(nodeIds).to.not.include("partial");
   });
@@ -43,7 +41,7 @@ topology:
   links:
     - endpoints: ["n1:eth1", "n2:eth1"]
 `);
-    const nodeIds = result.topology.nodes.map((node) => node.id);
+    const nodeIds = result.topology.nodes.map((node: { id: string }) => node.id);
     expect(nodeIds).to.include("n1");
     expect(nodeIds).to.include("n2");
     expect(result.topology.nodes).to.have.length(2);

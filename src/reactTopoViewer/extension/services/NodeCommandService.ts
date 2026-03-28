@@ -12,7 +12,7 @@ import {
   flattenContainers
 } from "../../../treeView/common";
 import { runningLabsProvider } from "../../../globals";
-import type { EndpointResult } from "../../shared/types/endpoint";
+import type { EndpointResult } from "@srl-labs/clab-ui/core";
 
 import { log } from "./logger";
 

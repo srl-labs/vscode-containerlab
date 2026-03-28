@@ -3,10 +3,10 @@
 import type { Plugin } from "vite";
 import * as fs from "fs";
 import * as path from "path";
-import { TopologyHostCore } from "../../src/reactTopoViewer/shared/host/TopologyHostCore";
-import { nodeFsAdapter } from "../../src/reactTopoViewer/shared/io";
-import type { TopologyHostCommand } from "../../src/reactTopoViewer/shared/types/messages";
-import type { DeploymentState } from "../../src/reactTopoViewer/shared/types/topology";
+import { TopologyHostCore } from "../../../containerlab-gui/packages/core/src/host/TopologyHostCore";
+import { nodeFsAdapter } from "../../../containerlab-gui/packages/core/src/io";
+import type { TopologyHostCommand } from "../../../containerlab-gui/packages/core/src/types/messages";
+import type { DeploymentState } from "../../../containerlab-gui/packages/core/src/types/topology";
 import { SessionFsAdapter, SessionMaps, createSessionMaps, resetSession } from "./SessionFsAdapter";
 import { addClient, broadcastFileChange, startFileWatcher } from "./sseManager";
 import { beginInternalUpdate, endInternalUpdate } from "./internalUpdateTracker";

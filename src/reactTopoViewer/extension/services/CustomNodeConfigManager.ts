@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 
-import type { EndpointResult } from "../../shared/types/endpoint";
-import type { CustomNodeTemplate } from "../../shared/types/editors";
+import type { CustomNodeTemplate, EndpointResult } from "@srl-labs/clab-ui/core";
 
 import { log } from "./logger";
 

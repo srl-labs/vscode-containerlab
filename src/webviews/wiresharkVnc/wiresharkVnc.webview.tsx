@@ -2,7 +2,7 @@ import { Alert, Box, CircularProgress, Paper, Stack, Typography } from "@mui/mat
 import React from "react";
 import { createRoot } from "react-dom/client";
 
-import { MuiThemeProvider } from "../../reactTopoViewer/webview/theme";
+import { MuiThemeProvider } from "@srl-labs/clab-ui/theme";
 import { usePostMessage } from "../shared/hooks";
 
 import type { WiresharkVncInitialData } from "./types";

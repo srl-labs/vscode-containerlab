@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 
 import type { ClabInterfaceStats } from "../types/containerlab";
-import type { NetemState } from "../reactTopoViewer/shared/parsing/types";
+import type { NetemState } from "@srl-labs/clab-ui/core";
 
 // LabPath interface
 export interface LabPath {

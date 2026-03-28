@@ -2,14 +2,17 @@
  * Schema utilities (VS Code extension host)
  *
  * VS Code-specific schema loading and configuration helpers.
- * Pure schema parsing is implemented in `src/reactTopoViewer/shared/schema`.
+ * Pure schema parsing is implemented in `@srl-labs/clab-ui/core`.
  */
 
 import * as vscode from "vscode";
 
-import { nodeFsAdapter } from "../../shared/io";
-import type { CustomNodeTemplate, SchemaData } from "../../shared/schema";
-import { parseSchemaData } from "../../shared/schema";
+import {
+  nodeFsAdapter,
+  parseSchemaData,
+  type CustomNodeTemplate,
+  type SchemaData
+} from "@srl-labs/clab-ui/core";
 
 import { log } from "./logger";
 

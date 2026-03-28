@@ -3,28 +3,28 @@ import React from "react";
 import { createRoot, type Root as ReactRoot } from "react-dom/client";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import { App } from "@webview/App";
-import type { CustomNodeTemplate } from "@shared/types/editors";
-import type { CustomIconInfo } from "@shared/types/icons";
-import "@webview/styles/global.css";
+import { App } from "@srl-labs/clab-ui/App";
+import type { CustomNodeTemplate } from "@srl-labs/clab-ui/core";
+import type { CustomIconInfo } from "@srl-labs/clab-ui/core";
+import "@srl-labs/clab-ui/styles/global.css";
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 
-import { setHostContext } from "@webview/services/topologyHostClient";
-import { refreshTopologySnapshot } from "@webview/services/topologyHostCommands";
-import { useGraphStore, useTopoViewerStore } from "@webview/stores";
-import { applyDevVars } from "@webview/theme/devTheme";
-import { vscodeTheme } from "@webview/theme/vscodeTheme";
-import { EXPORT_COMMANDS } from "@shared/messages/extension";
-import { MSG_SVG_EXPORT_RESULT } from "@shared/messages/webview";
+import { setHostContext } from "@srl-labs/clab-ui/services/topologyHostClient";
+import { refreshTopologySnapshot } from "@srl-labs/clab-ui/services/topologyHostCommands";
+import { useGraphStore, useTopoViewerStore } from "@srl-labs/clab-ui/stores";
+import { applyDevVars } from "@srl-labs/clab-ui/theme/devTheme";
+import { vscodeTheme } from "@srl-labs/clab-ui/theme/vscodeTheme";
+import { EXPORT_COMMANDS } from "@srl-labs/clab-ui/core";
+import { MSG_SVG_EXPORT_RESULT } from "@srl-labs/clab-ui/core";
 
 import { DevStateManager } from "./mock/DevState";
 import { DevSettingsOverlay } from "./components/DevSettingsOverlay";
 import { sampleCustomNodes, sampleCustomIcons } from "./mockData";
 
 import clabSchema from "../schema/clab.schema.json";
-import { parseSchemaData } from "@shared/schema";
-import type { SchemaData } from "@shared/schema";
+import { parseSchemaData } from "@srl-labs/clab-ui/core";
+import type { SchemaData } from "@srl-labs/clab-ui/core";
 import {
   buildExplorerSnapshot,
   type ExplorerActionInvocation,

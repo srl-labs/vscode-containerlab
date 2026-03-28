@@ -12,16 +12,16 @@ import * as vscode from "vscode";
 
 import { runningLabsProvider } from "../../globals";
 import type { ClabLabTreeNode } from "../../treeView/common";
-import { TopologyHostCore } from "../shared/host/TopologyHostCore";
-import { nodeFsAdapter } from "../shared/io";
 import {
   MSG_EDGE_STATS_UPDATE,
   MSG_FIT_VIEWPORT,
   MSG_NODE_DATA_UPDATED,
-  MSG_TOPO_MODE_CHANGE
-} from "../shared/messages/webview";
-import type { TopoEdge } from "../shared/types/graph";
-import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../shared/types/messages";
+  MSG_TOPO_MODE_CHANGE,
+  TOPOLOGY_HOST_PROTOCOL_VERSION,
+  TopologyHostCore,
+  nodeFsAdapter,
+  type TopoEdge
+} from "@srl-labs/clab-ui/core";
 
 import { log } from "./services/logger";
 import { ContainerDataAdapter } from "./services/ContainerDataAdapter";

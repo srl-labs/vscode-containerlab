@@ -21,7 +21,7 @@ import {
 import React from "react";
 import { createRoot } from "react-dom/client";
 
-import { MuiThemeProvider } from "../../reactTopoViewer/webview/theme";
+import { MuiThemeProvider } from "@srl-labs/clab-ui/theme";
 import { useMessageListener, usePostMessage } from "../shared/hooks";
 import containerlabLogo from "../../../resources/containerlab.svg";
 

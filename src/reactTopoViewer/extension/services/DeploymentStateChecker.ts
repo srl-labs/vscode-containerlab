@@ -4,7 +4,7 @@
  */
 
 import * as inspector from "../../../treeView/inspector";
-import type { DeploymentState } from "../../shared/types/topology";
+import type { DeploymentState } from "@srl-labs/clab-ui/core";
 
 import { log } from "./logger";
 

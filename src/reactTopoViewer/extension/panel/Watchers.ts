@@ -5,7 +5,7 @@
 import * as vscode from "vscode";
 
 import { log } from "../services/logger";
-import { nodeFsAdapter } from "../../shared/io";
+import { nodeFsAdapter } from "@srl-labs/clab-ui/core";
 import { onDockerImagesUpdated } from "../../../utils/docker/images";
 
 /**

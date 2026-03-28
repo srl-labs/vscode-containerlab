@@ -10,7 +10,7 @@ import {
   formatMessage,
   getCallerFileLine,
   createLogger
-} from "../../shared/utilities/loggerUtils";
+} from "@srl-labs/clab-ui/core";
 
 let outputChannel: vscode.LogOutputChannel | undefined;
 

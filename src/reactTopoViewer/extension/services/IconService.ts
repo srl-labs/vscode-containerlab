@@ -12,13 +12,13 @@ import * as path from "path";
 
 import * as vscode from "vscode";
 
-import type { CustomIconInfo } from "../../shared/types/icons";
+import type { CustomIconInfo } from "@srl-labs/clab-ui/core";
 import {
   getIconFormat,
   getIconMimeType,
   isBuiltInIcon,
   isSupportedIconExtension
-} from "../../shared/types/icons";
+} from "@srl-labs/clab-ui/core";
 
 import { log } from "./logger";
 

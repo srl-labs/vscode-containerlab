@@ -12,7 +12,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import { FileSystemAdapter } from "../../src/reactTopoViewer/shared/io/types";
+import type { FileSystemAdapter } from "../../../containerlab-gui/packages/core/src/io/types";
 
 /** Session storage maps */
 export interface SessionMaps {

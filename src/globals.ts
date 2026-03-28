@@ -6,7 +6,12 @@
  */
 import * as vscode from "vscode";
 import type Docker from "dockerode";
-import { getRecordUnknown } from "./reactTopoViewer/shared/utilities/typeHelpers";
+
+function getRecordUnknown(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
 
 /**
  * Minimal interfaces for providers to avoid circular imports.

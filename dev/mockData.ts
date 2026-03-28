@@ -2,8 +2,8 @@
  * Mock data for standalone development of React TopoViewer.
  */
 
-import type { CustomNodeTemplate } from "@shared/types/editors";
-import type { CustomIconInfo } from "@shared/types/icons";
+import type { CustomNodeTemplate } from "@srl-labs/clab-ui/core";
+import type { CustomIconInfo } from "@srl-labs/clab-ui/core";
 
 /**
  * Sample custom node templates (from VS Code settings)

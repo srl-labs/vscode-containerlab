@@ -8,40 +8,37 @@ import * as vscode from "vscode";
 
 import { log, logWithLocation } from "../services/logger";
 import { labLifecycleService } from "../services/LabLifecycleService";
-import { nodeFsAdapter } from "../../shared/io";
 import { nodeCommandService } from "../services/NodeCommandService";
 import type { SplitViewManager } from "../services/SplitViewManager";
 import { customNodeConfigManager } from "../services/CustomNodeConfigManager";
 import type { CustomNodeConfig } from "../services/CustomNodeConfigManager";
 import { iconService } from "../services/IconService";
-import type { TopologyHost } from "../../shared/types/topologyHost";
-import type { TopologySnapshot, TopologyHostCommand } from "../../shared/types/messages";
-import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../../shared/types/messages";
 import {
+  MSG_CANCEL_LAB_LIFECYCLE,
   MSG_CUSTOM_NODE_ERROR,
   MSG_CUSTOM_NODE_UPDATED,
   MSG_ICON_LIST_RESPONSE,
   MSG_LAB_LIFECYCLE_STATUS,
-  MSG_SVG_EXPORT_RESULT
-} from "../../shared/messages/webview";
-import type {
-  CustomNodeCommand,
-  ExportCommand,
-  IconCommand,
-  InterfaceCommand,
-  LifecycleCommand,
-  NodeCommand
-} from "../../shared/messages/extension";
-import {
+  MSG_SVG_EXPORT_RESULT,
+  MSG_TOGGLE_SPLIT_VIEW,
+  TOPOLOGY_HOST_PROTOCOL_VERSION,
   isCustomNodeCommand,
   isExportCommand,
   isIconCommand,
   isInterfaceCommand,
   isLifecycleCommand,
-  MSG_CANCEL_LAB_LIFECYCLE,
   isNodeCommand,
-  MSG_TOGGLE_SPLIT_VIEW
-} from "../../shared/messages/extension";
+  nodeFsAdapter,
+  type CustomNodeCommand,
+  type ExportCommand,
+  type IconCommand,
+  type InterfaceCommand,
+  type LifecycleCommand,
+  type NodeCommand,
+  type TopologyHost,
+  type TopologyHostCommand,
+  type TopologySnapshot
+} from "@srl-labs/clab-ui/core";
 import { cancelActiveCommand } from "../../../commands/command";
 
 type WebviewMessage = Record<string, unknown> & {
@@ -366,6 +363,8 @@ export class MessageRouter {
         const name = this.getCustomNodeName(message);
         return customNodeConfigManager.setDefaultCustomNode(name);
       }
+      default:
+        return undefined;
     }
   }
 

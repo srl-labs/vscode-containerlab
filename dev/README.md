@@ -59,7 +59,7 @@ __DEV__.setDeploymentState("unknown");
 
 ```
 dev/
-├── vite.config.ts    # Vite configuration with path aliases
+├── vite.config.ts    # Vite configuration
 ├── tsconfig.json     # TypeScript config for the dev environment
 ├── index.html        # Entry HTML with VS Code CSS variables
 ├── main.tsx          # Bootstrap with mocked VS Code API
@@ -70,14 +70,14 @@ dev/
 ## How It Works
 
 1. **Vite** serves the dev environment with hot module replacement
-2. **Path aliases** (`@webview/*`, `@shared/*`) point to the actual source files
+2. The dev app imports TopoViewer modules from `@srl-labs/clab-ui` and `@srl-labs/clab-ui/core`
 3. **Mock VS Code API** intercepts `postMessage` calls and logs them
 4. **CSS variables** simulate VS Code's theme system
 
 ## Workflow
 
 1. Run `npm run dev`
-2. Make changes to components in `src/reactTopoViewer/webview/`
+2. Make changes in `../containerlab-gui/packages/ui/src/` (and core logic in `../containerlab-gui/packages/core/src/` when needed)
 3. Browser reloads automatically
 4. Test UI behavior with different topologies/states
 5. When ready, test in VS Code with `npm run package`
@@ -105,4 +105,4 @@ Check browser console - all `postMessage` calls are logged with green `[postMess
 
 - Fast Refresh is disabled to avoid React hook order issues with the complex hook structure
 - The dev server runs independently of VS Code - no extension debugging needed
-- Changes to `src/reactTopoViewer/` files are picked up automatically
+- Changes to `@srl-labs/clab-ui` / `@srl-labs/clab-ui/core` package sources are picked up automatically

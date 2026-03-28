@@ -40,7 +40,7 @@ async function copyFonts() {
   // Copy wireshark SVG
   const wiresharkSrc = path.join(
     __dirname,
-    "src/reactTopoViewer/webview/assets/images/wireshark_bold.svg"
+    "node_modules/@srl-labs/clab-ui/src/assets/images/wireshark_bold.svg"
   );
   if (fs.existsSync(wiresharkSrc)) {
     await fs.promises.copyFile(wiresharkSrc, path.join(fontDir, "wireshark_bold.svg"));
@@ -68,7 +68,7 @@ async function copyMapLibreWorker() {
 async function buildCss() {
   console.log("Building CSS with PostCSS...");
   execSync(
-    "npx postcss src/reactTopoViewer/webview/styles/global.css -o dist/reactTopoViewerStyles.css",
+    "npx postcss node_modules/@srl-labs/clab-ui/src/styles/global.css -o dist/reactTopoViewerStyles.css",
     { stdio: "inherit" }
   );
 
@@ -121,7 +121,7 @@ async function build() {
   // Build webview (Browser) - CSS handled separately
   const webviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["src/reactTopoViewer/webview/index.tsx"],
+    entryPoints: ["node_modules/@srl-labs/clab-ui/src/entry.tsx"],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
@@ -141,7 +141,7 @@ async function build() {
 
   const explorerWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["src/webviews/explorer/containerlabExplorerView.webview.tsx"],
+    entryPoints: ["node_modules/@srl-labs/clab-ui/src/explorer/entry.tsx"],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
@@ -181,7 +181,7 @@ async function build() {
 
   const inspectWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["src/webviews/inspect/inspect.webview.tsx"],
+    entryPoints: ["node_modules/@srl-labs/clab-ui/src/inspect/entry.tsx"],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
@@ -287,7 +287,7 @@ async function build() {
 
     const webCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["src/reactTopoViewer/webview/index.tsx"],
+      entryPoints: ["node_modules/@srl-labs/clab-ui/src/entry.tsx"],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
@@ -304,7 +304,7 @@ async function build() {
 
     const explorerWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["src/webviews/explorer/containerlabExplorerView.webview.tsx"],
+      entryPoints: ["node_modules/@srl-labs/clab-ui/src/explorer/entry.tsx"],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
@@ -338,7 +338,7 @@ async function build() {
 
     const inspectWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["src/webviews/inspect/inspect.webview.tsx"],
+      entryPoints: ["node_modules/@srl-labs/clab-ui/src/inspect/entry.tsx"],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
@@ -412,7 +412,7 @@ async function build() {
     ]);
 
     // Watch CSS files and rebuild
-    const cssWatcher = watch("src/reactTopoViewer/webview/styles/**/*.css", {
+    const cssWatcher = watch("node_modules/@srl-labs/clab-ui/src/styles/**/*.css", {
       ignoreInitial: true
     });
     cssWatcher.on("change", () => {

@@ -21,10 +21,7 @@ export default defineConfig({
       react: path.resolve(nodeModules, "react"),
       "react-dom": path.resolve(nodeModules, "react-dom"),
       // Browser/dev builds do not have VS Code extension host APIs available.
-      vscode: path.resolve(__dirname, "./stubs/vscode.ts"),
-      // Allow importing from the actual webview source
-      "@webview": path.resolve(__dirname, "../src/reactTopoViewer/webview"),
-      "@shared": path.resolve(__dirname, "../src/reactTopoViewer/shared")
+      vscode: path.resolve(__dirname, "./stubs/vscode.ts")
     },
     dedupe: ["react", "react-dom"]
   },
@@ -39,7 +36,15 @@ export default defineConfig({
   server: {
     port: 5173,
     // Don't attempt to open a browser in CI.
-    open: !process.env.CI
+    open: !process.env.CI,
+    fs: {
+      allow: [
+        path.resolve(__dirname, ".."),
+        path.resolve(__dirname, "../node_modules"),
+        path.resolve(__dirname, "../../containerlab-gui"),
+        path.resolve(__dirname, "../../containerlab-gui/node_modules")
+      ]
+    }
   },
   build: {
     outDir: path.resolve(__dirname, "../dist-dev")

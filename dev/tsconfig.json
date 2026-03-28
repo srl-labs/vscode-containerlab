@@ -11,15 +11,15 @@
     "jsx": "react-jsx",
     "strict": true,
     "skipLibCheck": true,
+    "baseUrl": ".",
+    "preserveSymlinks": false,
     "paths": {
-      "@webview/*": ["../src/reactTopoViewer/webview/*"],
-      "@shared/*": ["../src/reactTopoViewer/shared/*"]
+      "@srl-labs/clab-ui": ["../node_modules/@srl-labs/clab-ui/src/index.ts"],
+      "@srl-labs/clab-ui/*": ["../node_modules/@srl-labs/clab-ui/src/*"]
     }
   },
   "include": [
     "./**/*.ts",
-    "./**/*.tsx",
-    "../src/reactTopoViewer/**/*.ts",
-    "../src/reactTopoViewer/**/*.tsx"
+    "./**/*.tsx"
   ]
 }
