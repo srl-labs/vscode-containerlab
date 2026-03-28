@@ -77,10 +77,11 @@ dev/
 ## Workflow
 
 1. Run `npm run dev`
-2. Make changes in `../containerlab-gui/packages/ui/src/` (and core logic in `../containerlab-gui/packages/core/src/` when needed)
-3. Browser reloads automatically
-4. Test UI behavior with different topologies/states
-5. When ready, test in VS Code with `npm run package`
+2. Make UI changes in `containerlab-gui` and publish a new `@srl-labs/clab-ui` package version
+3. Update the dependency version in this repository and run `npm install`
+4. Browser reloads automatically
+5. Test UI behavior with different topologies/states
+6. When ready, test in VS Code with `npm run package`
 
 ## Troubleshooting
 
@@ -105,4 +106,4 @@ Check browser console - all `postMessage` calls are logged with green `[postMess
 
 - Fast Refresh is disabled to avoid React hook order issues with the complex hook structure
 - The dev server runs independently of VS Code - no extension debugging needed
-- Changes to `@srl-labs/clab-ui` / `@srl-labs/clab-ui/core` package sources are picked up automatically
+- This dev harness consumes published `@srl-labs/clab-ui` packages from the configured registry
