@@ -939,7 +939,7 @@
     "@mui/x-charts": "^8.27.5",
     "@mui/x-tree-view": "^8.27.2",
     "@playwright/test": "^1.58.2",
-    "@srl-labs/clab-ui": "0.0.7",
+    "@srl-labs/clab-ui": "0.0.8",
     "@types/chai": "^5.2.3",
     "@types/d3-force": "^3.0.10",
     "@types/dockerode": "^4.0.1",
