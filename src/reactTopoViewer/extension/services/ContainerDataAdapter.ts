@@ -9,7 +9,7 @@ import {
   type ClabInterfaceTreeNode,
   flattenContainers
 } from "../../../treeView/common";
-import { mapSrosInterfaceName } from "@srl-labs/clab-ui/core";
+import { mapSrosInterfaceName } from "@srl-labs/clab-ui/core/parsing/DistributedSrosMapper";
 import type { ContainerDataProvider, ContainerInfo, InterfaceInfo } from "@srl-labs/clab-ui/core";
 
 import { sortContainersByInterfacePriority } from "./TreeUtils";

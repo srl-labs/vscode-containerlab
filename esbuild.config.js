@@ -3,6 +3,13 @@ const path = require("path");
 const fs = require("fs");
 const { execSync } = require("child_process");
 
+const clabUiRoot = path.dirname(path.dirname(require.resolve("@srl-labs/clab-ui")));
+const clabUiMainEntry = require.resolve("@srl-labs/clab-ui/entry.tsx");
+const clabUiExplorerEntry = require.resolve("@srl-labs/clab-ui/explorer/entry.tsx");
+const clabUiInspectEntry = require.resolve("@srl-labs/clab-ui/inspect/entry.tsx");
+const clabUiGlobalCss = require.resolve("@srl-labs/clab-ui/styles/global.css");
+const clabUiWiresharkSvg = require.resolve("@srl-labs/clab-ui/assets/images/wireshark_bold.svg");
+
 // Plugin to stub native .node files - ssh2 has JS fallbacks
 const nativeNodeModulesPlugin = {
   name: "native-node-modules",
@@ -32,16 +39,27 @@ const ignoreCssPlugin = {
   }
 };
 
+// clab-ui v0.0.9 has a schema import path that resolves to node_modules/schema.
+// Redirect it to this repository's schema file during bundling.
+const clabUiPathCompatPlugin = {
+  name: "clab-ui-path-compat",
+  setup(build) {
+    build.onResolve({ filter: /schema\/clab\.schema\.json$/ }, (args) => {
+      if (!args.importer.startsWith(clabUiRoot)) {
+        return null;
+      }
+      return { path: path.join(__dirname, "schema/clab.schema.json") };
+    });
+  }
+};
+
 // Copy font files to dist
 async function copyFonts() {
   const fontDir = path.join(__dirname, "dist/webfonts");
   await fs.promises.mkdir(fontDir, { recursive: true });
 
   // Copy wireshark SVG
-  const wiresharkSrc = path.join(
-    __dirname,
-    "node_modules/@srl-labs/clab-ui/src/assets/images/wireshark_bold.svg"
-  );
+  const wiresharkSrc = clabUiWiresharkSvg;
   if (fs.existsSync(wiresharkSrc)) {
     await fs.promises.copyFile(wiresharkSrc, path.join(fontDir, "wireshark_bold.svg"));
   }
@@ -67,10 +85,9 @@ async function copyMapLibreWorker() {
 // Build CSS with PostCSS
 async function buildCss() {
   console.log("Building CSS with PostCSS...");
-  execSync(
-    "npx postcss node_modules/@srl-labs/clab-ui/src/styles/global.css -o dist/reactTopoViewerStyles.css",
-    { stdio: "inherit" }
-  );
+  execSync(`npx postcss "${clabUiGlobalCss}" -o dist/reactTopoViewerStyles.css`, {
+    stdio: "inherit"
+  });
 
   // Fix font paths - rewrite node_modules paths to webfonts/
   const cssPath = path.join(__dirname, "dist/reactTopoViewerStyles.css");
@@ -121,12 +138,12 @@ async function build() {
   // Build webview (Browser) - CSS handled separately
   const webviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["node_modules/@srl-labs/clab-ui/src/entry.tsx"],
+    entryPoints: [clabUiMainEntry],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/reactTopoViewerWebview.js",
-    plugins: [ignoreCssPlugin],
+    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -141,12 +158,12 @@ async function build() {
 
   const explorerWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["node_modules/@srl-labs/clab-ui/src/explorer/entry.tsx"],
+    entryPoints: [clabUiExplorerEntry],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/containerlabExplorerView.js",
-    plugins: [ignoreCssPlugin],
+    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -166,7 +183,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/welcomePageWebview.js",
-    plugins: [ignoreCssPlugin],
+    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -181,12 +198,12 @@ async function build() {
 
   const inspectWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["node_modules/@srl-labs/clab-ui/src/inspect/entry.tsx"],
+    entryPoints: [clabUiInspectEntry],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/inspectWebview.js",
-    plugins: [ignoreCssPlugin],
+    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -206,7 +223,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/nodeImpairmentsWebview.js",
-    plugins: [ignoreCssPlugin],
+    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -226,7 +243,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/wiresharkVncWebview.js",
-    plugins: [ignoreCssPlugin],
+    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -250,7 +267,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outdir: "dist",
-    plugins: [ignoreCssPlugin]
+    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin]
   });
 
   // Run all builds in parallel
@@ -287,12 +304,12 @@ async function build() {
 
     const webCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["node_modules/@srl-labs/clab-ui/src/entry.tsx"],
+      entryPoints: [clabUiMainEntry],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outfile: "dist/reactTopoViewerWebview.js",
-      plugins: [ignoreCssPlugin],
+      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
       jsx: "automatic",
       loader: {
         ".svg": "dataurl",
@@ -304,12 +321,12 @@ async function build() {
 
     const explorerWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["node_modules/@srl-labs/clab-ui/src/explorer/entry.tsx"],
+      entryPoints: [clabUiExplorerEntry],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outfile: "dist/containerlabExplorerView.js",
-      plugins: [ignoreCssPlugin],
+      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
       jsx: "automatic",
       loader: {
         ".svg": "dataurl",
@@ -326,7 +343,7 @@ async function build() {
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outfile: "dist/welcomePageWebview.js",
-      plugins: [ignoreCssPlugin],
+      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
       jsx: "automatic",
       loader: {
         ".svg": "dataurl",
@@ -338,12 +355,12 @@ async function build() {
 
     const inspectWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["node_modules/@srl-labs/clab-ui/src/inspect/entry.tsx"],
+      entryPoints: [clabUiInspectEntry],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outfile: "dist/inspectWebview.js",
-      plugins: [ignoreCssPlugin],
+      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
       jsx: "automatic",
       loader: {
         ".svg": "dataurl",
@@ -360,7 +377,7 @@ async function build() {
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outfile: "dist/nodeImpairmentsWebview.js",
-      plugins: [ignoreCssPlugin],
+      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
       jsx: "automatic",
       loader: {
         ".svg": "dataurl",
@@ -377,7 +394,7 @@ async function build() {
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outfile: "dist/wiresharkVncWebview.js",
-      plugins: [ignoreCssPlugin],
+      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
       jsx: "automatic",
       loader: {
         ".svg": "dataurl",
@@ -397,7 +414,7 @@ async function build() {
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outdir: "dist",
-      plugins: [ignoreCssPlugin]
+      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin]
     });
 
     await Promise.all([
@@ -412,7 +429,7 @@ async function build() {
     ]);
 
     // Watch CSS files and rebuild
-    const cssWatcher = watch("node_modules/@srl-labs/clab-ui/src/styles/**/*.css", {
+    const cssWatcher = watch(path.join(clabUiRoot, "src/styles/**/*.css"), {
       ignoreInitial: true
     });
     cssWatcher.on("change", () => {
