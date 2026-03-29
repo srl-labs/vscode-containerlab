@@ -35,7 +35,7 @@ import type {
   ExplorerIncomingMessage,
   ExplorerOutgoingMessage,
   ExplorerUiState
-} from "../src/webviews/shared/explorer/types";
+} from "@srl-labs/clab-ui/explorer/shared/explorer/types";
 
 const monacoGlobal = self as typeof self & {
   MonacoEnvironment?: {

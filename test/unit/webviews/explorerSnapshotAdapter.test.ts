@@ -115,7 +115,9 @@ describe("explorerSnapshotAdapter contributed container actions", () => {
     expect(commandIds).to.include("acme.node.custom");
     expect(commandIds).to.include("acme.node.legacy");
     expect(commandIds).to.not.include("acme.node.ignore");
-    const customAction = actions.find((action) => action.commandId === "acme.node.custom");
+    const customAction = actions.find((action) => action.commandId === "acme.node.custom") as
+      | ({ iconId?: string } & (typeof actions)[number])
+      | undefined;
     expect(customAction?.label).to.equal("ACME: Custom Action");
     expect(customAction?.iconId).to.equal("vm-connect");
   });
@@ -169,6 +171,9 @@ describe("explorerSnapshotAdapter contributed container actions", () => {
     expect(commandIds).to.include("acme.node.pkg");
     expect(commandIds).to.include("acme.node.pkgLegacy");
     expect(commandIds).to.not.include("acme.node.skip");
-    expect(actions.find((action) => action.commandId === "acme.node.pkg")?.iconId).to.equal("plug");
+    const packageAction = actions.find((action) => action.commandId === "acme.node.pkg") as
+      | ({ iconId?: string } & (typeof actions)[number])
+      | undefined;
+    expect(packageAction?.iconId).to.equal("plug");
   });
 });

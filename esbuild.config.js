@@ -7,6 +7,9 @@ const clabUiRoot = path.dirname(path.dirname(require.resolve("@srl-labs/clab-ui"
 const clabUiMainEntry = require.resolve("@srl-labs/clab-ui/entry.tsx");
 const clabUiExplorerEntry = require.resolve("@srl-labs/clab-ui/explorer/entry.tsx");
 const clabUiInspectEntry = require.resolve("@srl-labs/clab-ui/inspect/entry.tsx");
+const clabUiWelcomeEntry = require.resolve("@srl-labs/clab-ui/welcome/entry.tsx");
+const clabUiNodeImpairmentsEntry = require.resolve("@srl-labs/clab-ui/node-impairments/entry.tsx");
+const clabUiWiresharkVncEntry = require.resolve("@srl-labs/clab-ui/wireshark-vnc/entry.tsx");
 const clabUiGlobalCss = require.resolve("@srl-labs/clab-ui/styles/global.css");
 const clabUiWiresharkSvg = require.resolve("@srl-labs/clab-ui/assets/images/wireshark_bold.svg");
 
@@ -178,7 +181,7 @@ async function build() {
 
   const welcomeWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["src/webviews/welcome/welcomePage.webview.tsx"],
+    entryPoints: [clabUiWelcomeEntry],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
@@ -218,7 +221,7 @@ async function build() {
 
   const nodeImpairmentsWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["src/webviews/nodeImpairments/nodeImpairments.webview.tsx"],
+    entryPoints: [clabUiNodeImpairmentsEntry],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
@@ -238,7 +241,7 @@ async function build() {
 
   const wiresharkVncWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["src/webviews/wiresharkVnc/wiresharkVnc.webview.tsx"],
+    entryPoints: [clabUiWiresharkVncEntry],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
@@ -338,7 +341,7 @@ async function build() {
 
     const welcomeWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["src/webviews/welcome/welcomePage.webview.tsx"],
+      entryPoints: [clabUiWelcomeEntry],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
@@ -372,7 +375,7 @@ async function build() {
 
     const nodeImpairmentsWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["src/webviews/nodeImpairments/nodeImpairments.webview.tsx"],
+      entryPoints: [clabUiNodeImpairmentsEntry],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
@@ -389,7 +392,7 @@ async function build() {
 
     const wiresharkVncWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["src/webviews/wiresharkVnc/wiresharkVnc.webview.tsx"],
+      entryPoints: [clabUiWiresharkVncEntry],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],

@@ -1,10 +1,4 @@
 import * as vscode from "vscode";
-
-import type {
-  HelpFeedbackProvider,
-  LocalLabTreeDataProvider,
-  RunningLabTreeDataProvider
-} from "../../treeView";
 import {
   EXPLORER_SECTION_LABELS,
   EXPLORER_SECTION_ORDER,
@@ -14,6 +8,12 @@ import {
   type ExplorerSectionSnapshot,
   type ExplorerSnapshotMessage
 } from "../shared/explorer/types";
+
+import type {
+  HelpFeedbackProvider,
+  LocalLabTreeDataProvider,
+  RunningLabTreeDataProvider
+} from "../../treeView";
 
 interface ExplorerTreeProvider {
   getChildren(element?: unknown): vscode.ProviderResult<vscode.TreeItem[] | undefined>;

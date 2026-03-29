@@ -1,10 +1,10 @@
 import * as vscode from "vscode";
+import type { NetemFields } from "@srl-labs/clab-ui/node-impairments/types";
 
 import type { ClabContainerTreeNode } from "../treeView/common";
 import { outputChannel, containerlabBinaryPath } from "../globals";
 import { runCommand } from "../utils/utils";
 import { getNodeImpairmentsWebviewHtml } from "../webviews/nodeImpairments/nodeImpairmentsWebviewHtml";
-import type { NetemFields } from "../webviews/nodeImpairments/types";
 
 /**
  * Raw netem item from CLI JSON output

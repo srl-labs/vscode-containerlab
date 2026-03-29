@@ -1,18 +1,19 @@
 import { randomBytes } from "crypto";
 
 import * as vscode from "vscode";
+import {
+  EXPLORER_SECTION_LABELS,
+  EXPLORER_SECTION_ORDER,
+  type ExplorerIncomingMessage,
+  type ExplorerInvokeActionMessage,
+  type ExplorerOutgoingMessage,
+  type ExplorerPersistUiStateMessage,
+  type ExplorerSetFilterMessage,
+  type ExplorerSnapshotMessage,
+  type ExplorerUiState
+} from "../shared/explorer/types";
 
 import { hideNonOwnedLabsState } from "../../globals";
-import { EXPLORER_SECTION_LABELS, EXPLORER_SECTION_ORDER } from "../shared/explorer/types";
-import type {
-  ExplorerIncomingMessage,
-  ExplorerInvokeActionMessage,
-  ExplorerOutgoingMessage,
-  ExplorerPersistUiStateMessage,
-  ExplorerSetFilterMessage,
-  ExplorerSnapshotMessage,
-  ExplorerUiState
-} from "../shared/explorer/types";
 import type {
   HelpFeedbackProvider,
   LocalLabTreeDataProvider,

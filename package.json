@@ -928,7 +928,7 @@
   "devDependencies": {
     "@mui/icons-material": "^7.3.9",
     "@mui/material": "^7.3.9",
-    "@srl-labs/clab-ui": "0.0.10",
+    "@srl-labs/clab-ui": "^0.0.11",
     "@types/chai": "^5.2.3",
     "@types/dockerode": "^4.0.1",
     "@types/mocha": "^10.0.10",
