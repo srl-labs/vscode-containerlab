@@ -92,15 +92,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check E2E support
+        id: e2e
+        run: |
+          HAS_E2E_SCRIPT="$(node -p "Boolean(require('./package.json').scripts?.['test:e2e'])")"
+          echo "has_script=${HAS_E2E_SCRIPT}" >> "$GITHUB_OUTPUT"
+          if [ "$HAS_E2E_SCRIPT" != "true" ]; then
+            echo "No test:e2e script configured; skipping E2E job."
+          fi
+
       - name: Install Playwright browsers and dependencies
+        if: steps.e2e.outputs.has_script == 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
+        if: steps.e2e.outputs.has_script == 'true'
         run: npm run test:e2e -- --workers=3
 
       - name: Upload Playwright report
+        if: ${{ !cancelled() && steps.e2e.outputs.has_script == 'true' }}
         uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
         with:
           name: playwright-report-${{ github.run_number }}
           path: playwright-report/
