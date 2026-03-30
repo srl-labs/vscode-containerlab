@@ -2,14 +2,12 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "@srl-labs/clab-ui";
-import { setClabUiHost } from "@srl-labs/clab-ui/host";
+import { createWindowClabUiHost, setClabUiHost } from "@srl-labs/clab-ui/host";
 import { subscribeToWebviewMessages } from "@srl-labs/clab-ui/messaging/webviewMessageBus";
 import { log } from "@srl-labs/clab-ui/utils/logger";
 import "@srl-labs/clab-ui/styles/global.css";
 
-import { createVsCodeClabUiHost } from "../shared/clabUiHost";
-
-setClabUiHost(createVsCodeClabUiHost());
+setClabUiHost(createWindowClabUiHost());
 
 const initialData = (window.__INITIAL_DATA__ ?? {}) as Record<string, unknown>;
 

@@ -1,8 +1,6 @@
 import { bootstrapInspectWebview } from "@srl-labs/clab-ui/inspect";
-import { setClabUiHost } from "@srl-labs/clab-ui/host";
+import { createWindowClabUiHost, setClabUiHost } from "@srl-labs/clab-ui/host";
 
-import { createVsCodeClabUiHost } from "../shared/clabUiHost";
-
-setClabUiHost(createVsCodeClabUiHost());
+setClabUiHost(createWindowClabUiHost());
 
 bootstrapInspectWebview();

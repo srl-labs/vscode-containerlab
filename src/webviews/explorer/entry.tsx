@@ -2,12 +2,10 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 
 import { ContainerlabExplorerView } from "@srl-labs/clab-ui/explorer";
-import { setClabUiHost } from "@srl-labs/clab-ui/host";
+import { createWindowClabUiHost, setClabUiHost } from "@srl-labs/clab-ui/host";
 import { MuiThemeProvider } from "@srl-labs/clab-ui/theme";
 
-import { createVsCodeClabUiHost } from "../shared/clabUiHost";
-
-setClabUiHost(createVsCodeClabUiHost());
+setClabUiHost(createWindowClabUiHost());
 
 function bootstrap(): void {
   const container = document.getElementById("root");
