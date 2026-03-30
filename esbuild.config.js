@@ -15,18 +15,12 @@ const clabUiEntry = (relativePath, packageSubpath) =>
     ? path.join(localClabUiRoot, "src", relativePath)
     : require.resolve(packageSubpath);
 
-const clabUiMainEntry = clabUiEntry("entry.tsx", "@srl-labs/clab-ui/entry.tsx");
-const clabUiExplorerEntry = clabUiEntry("explorer/entry.tsx", "@srl-labs/clab-ui/explorer/entry.tsx");
-const clabUiInspectEntry = clabUiEntry("inspect/entry.tsx", "@srl-labs/clab-ui/inspect/entry.tsx");
-const clabUiWelcomeEntry = clabUiEntry("welcome/entry.tsx", "@srl-labs/clab-ui/welcome/entry.tsx");
-const clabUiNodeImpairmentsEntry = clabUiEntry(
-  "node-impairments/entry.tsx",
-  "@srl-labs/clab-ui/node-impairments/entry.tsx"
-);
-const clabUiWiresharkVncEntry = clabUiEntry(
-  "wireshark-vnc/entry.tsx",
-  "@srl-labs/clab-ui/wireshark-vnc/entry.tsx"
-);
+const reactTopoViewerEntry = path.join(__dirname, "src/webviews/reactTopoViewer/entry.tsx");
+const explorerWebviewEntry = path.join(__dirname, "src/webviews/explorer/entry.tsx");
+const inspectWebviewEntry = path.join(__dirname, "src/webviews/inspect/entry.tsx");
+const welcomeWebviewEntry = path.join(__dirname, "src/webviews/welcome/entry.tsx");
+const nodeImpairmentsWebviewEntry = path.join(__dirname, "src/webviews/nodeImpairments/entry.tsx");
+const wiresharkVncWebviewEntry = path.join(__dirname, "src/webviews/wiresharkVnc/entry.tsx");
 const clabUiGlobalCss = clabUiEntry("styles/global.css", "@srl-labs/clab-ui/styles/global.css");
 const clabUiWiresharkSvg = clabUiEntry(
   "assets/images/wireshark_bold.svg",
@@ -34,7 +28,8 @@ const clabUiWiresharkSvg = clabUiEntry(
 );
 
 function resolveLocalClabUiImport(importPath) {
-  const subpath = importPath === "@srl-labs/clab-ui" ? "index" : importPath.slice("@srl-labs/clab-ui/".length);
+  const subpath =
+    importPath === "@srl-labs/clab-ui" ? "index" : importPath.slice("@srl-labs/clab-ui/".length);
   const candidateBases = [
     path.join(localClabUiRoot, "src", subpath),
     path.join(localClabUiRoot, "src", subpath, "index")
@@ -67,6 +62,27 @@ const clabUiLocalAliasPlugin = {
       }
       return { path: resolved };
     });
+  }
+};
+
+const reactSingletonAliasPlugin = {
+  name: "react-singleton-alias",
+  setup(build) {
+    const aliasTargets = new Map([
+      ["react", require.resolve("react")],
+      ["react/jsx-runtime", require.resolve("react/jsx-runtime")],
+      ["react/jsx-dev-runtime", require.resolve("react/jsx-dev-runtime")],
+      ["react-dom", require.resolve("react-dom")],
+      ["react-dom/client", require.resolve("react-dom/client")]
+    ]);
+
+    build.onResolve(
+      { filter: /^(react|react\/jsx-runtime|react\/jsx-dev-runtime|react-dom|react-dom\/client)$/ },
+      (args) => {
+        const resolved = aliasTargets.get(args.path);
+        return resolved ? { path: resolved } : null;
+      }
+    );
   }
 };
 
@@ -192,18 +208,23 @@ async function build() {
     format: "cjs",
     external: ["vscode"],
     outfile: "dist/extension.js",
-    plugins: [nativeNodeModulesPlugin, clabUiLocalAliasPlugin]
+    plugins: [nativeNodeModulesPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin]
   });
 
   // Build webview (Browser) - CSS handled separately
   const webviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: [clabUiMainEntry],
+    entryPoints: [reactTopoViewerEntry],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/reactTopoViewerWebview.js",
-    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin, clabUiLocalAliasPlugin],
+    plugins: [
+      ignoreCssPlugin,
+      clabUiPathCompatPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -218,12 +239,17 @@ async function build() {
 
   const explorerWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: [clabUiExplorerEntry],
+    entryPoints: [explorerWebviewEntry],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/containerlabExplorerView.js",
-    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin, clabUiLocalAliasPlugin],
+    plugins: [
+      ignoreCssPlugin,
+      clabUiPathCompatPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -238,12 +264,17 @@ async function build() {
 
   const welcomeWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: [clabUiWelcomeEntry],
+    entryPoints: [welcomeWebviewEntry],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/welcomePageWebview.js",
-    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin, clabUiLocalAliasPlugin],
+    plugins: [
+      ignoreCssPlugin,
+      clabUiPathCompatPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -258,12 +289,17 @@ async function build() {
 
   const inspectWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: [clabUiInspectEntry],
+    entryPoints: [inspectWebviewEntry],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/inspectWebview.js",
-    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin, clabUiLocalAliasPlugin],
+    plugins: [
+      ignoreCssPlugin,
+      clabUiPathCompatPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -278,12 +314,17 @@ async function build() {
 
   const nodeImpairmentsWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: [clabUiNodeImpairmentsEntry],
+    entryPoints: [nodeImpairmentsWebviewEntry],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/nodeImpairmentsWebview.js",
-    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin, clabUiLocalAliasPlugin],
+    plugins: [
+      ignoreCssPlugin,
+      clabUiPathCompatPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -298,12 +339,17 @@ async function build() {
 
   const wiresharkVncWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: [clabUiWiresharkVncEntry],
+    entryPoints: [wiresharkVncWebviewEntry],
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/wiresharkVncWebview.js",
-    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
+    plugins: [
+      ignoreCssPlugin,
+      clabUiPathCompatPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -359,17 +405,22 @@ async function build() {
       format: "cjs",
       external: ["vscode"],
       outfile: "dist/extension.js",
-      plugins: [nativeNodeModulesPlugin]
+      plugins: [nativeNodeModulesPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin]
     });
 
     const webCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: [clabUiMainEntry],
+      entryPoints: [reactTopoViewerEntry],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outfile: "dist/reactTopoViewerWebview.js",
-      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
+      plugins: [
+        ignoreCssPlugin,
+        clabUiPathCompatPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
       jsx: "automatic",
       loader: {
         ".svg": "dataurl",
@@ -381,12 +432,17 @@ async function build() {
 
     const explorerWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: [clabUiExplorerEntry],
+      entryPoints: [explorerWebviewEntry],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outfile: "dist/containerlabExplorerView.js",
-      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
+      plugins: [
+        ignoreCssPlugin,
+        clabUiPathCompatPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
       jsx: "automatic",
       loader: {
         ".svg": "dataurl",
@@ -398,12 +454,17 @@ async function build() {
 
     const welcomeWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: [clabUiWelcomeEntry],
+      entryPoints: [welcomeWebviewEntry],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outfile: "dist/welcomePageWebview.js",
-      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
+      plugins: [
+        ignoreCssPlugin,
+        clabUiPathCompatPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
       jsx: "automatic",
       loader: {
         ".svg": "dataurl",
@@ -415,12 +476,17 @@ async function build() {
 
     const inspectWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: [clabUiInspectEntry],
+      entryPoints: [inspectWebviewEntry],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outfile: "dist/inspectWebview.js",
-      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
+      plugins: [
+        ignoreCssPlugin,
+        clabUiPathCompatPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
       jsx: "automatic",
       loader: {
         ".svg": "dataurl",
@@ -432,12 +498,17 @@ async function build() {
 
     const nodeImpairmentsWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: [clabUiNodeImpairmentsEntry],
+      entryPoints: [nodeImpairmentsWebviewEntry],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outfile: "dist/nodeImpairmentsWebview.js",
-      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
+      plugins: [
+        ignoreCssPlugin,
+        clabUiPathCompatPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
       jsx: "automatic",
       loader: {
         ".svg": "dataurl",
@@ -449,12 +520,17 @@ async function build() {
 
     const wiresharkVncWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: [clabUiWiresharkVncEntry],
+      entryPoints: [wiresharkVncWebviewEntry],
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outfile: "dist/wiresharkVncWebview.js",
-      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
+      plugins: [
+        ignoreCssPlugin,
+        clabUiPathCompatPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
       jsx: "automatic",
       loader: {
         ".svg": "dataurl",
@@ -474,7 +550,7 @@ async function build() {
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14"],
       outdir: "dist",
-      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin]
+      plugins: [ignoreCssPlugin, clabUiPathCompatPlugin, clabUiLocalAliasPlugin]
     });
 
     await Promise.all([
