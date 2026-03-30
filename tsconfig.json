@@ -34,7 +34,6 @@
     ".vscode-test",
     "test/**/*",
     "legacy-backup/**/*",
-    "labs/**/*",
-    "dev/**/*"
+    "labs/**/*"
   ]
 }

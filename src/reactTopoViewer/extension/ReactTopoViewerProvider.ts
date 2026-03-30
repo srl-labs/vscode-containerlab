@@ -17,17 +17,23 @@ import {
   MSG_FIT_VIEWPORT,
   MSG_NODE_DATA_UPDATED,
   MSG_TOPO_MODE_CHANGE,
-  TOPOLOGY_HOST_PROTOCOL_VERSION,
   TopologyHostCore,
   nodeFsAdapter,
-  type TopoEdge
+  type TopoEdge,
+  type TopologySnapshot
 } from "@srl-labs/clab-ui/core";
+import {
+  buildRuntimeEdgeStatsUpdates,
+  buildRuntimeNodeUpdates,
+  createRuntimeContainerDataProvider
+} from "@srl-labs/clab-ui/topology/runtime";
+import type { HostRuntimeContainer } from "@srl-labs/clab-ui/host";
+import { buildTopologySnapshotMessage } from "@srl-labs/clab-ui/topology/host-protocol";
 
 import { log } from "./services/logger";
-import { ContainerDataAdapter } from "./services/ContainerDataAdapter";
 import { deploymentStateChecker } from "./services/DeploymentStateChecker";
-import { buildEdgeStatsUpdates, buildNodeRuntimeUpdates } from "./services/EdgeStatsBuilder";
 import { SplitViewManager } from "./services/SplitViewManager";
+import { labsToRuntimeContainers } from "./services/runtimeContainers";
 import {
   createPanel,
   generateWebviewHtml,
@@ -71,7 +77,7 @@ export class ReactTopoViewer {
   public currentLabName: string = "";
   public isViewMode: boolean = false;
   public deploymentState: "deployed" | "undeployed" | "unknown" = "unknown";
-  private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
+  private runtimeContainers: HostRuntimeContainer[] = [];
   private lastTopologyEdges: TopoEdge[] = [];
   private watcherManager: WatcherManager;
   private messageRouter: MessageRouter | undefined;
@@ -130,13 +136,13 @@ export class ReactTopoViewer {
     }, INTERNAL_UPDATE_CACHE_SYNC_DELAY_MS);
   }
 
-  private async loadRunningLabsData(): Promise<Record<string, ClabLabTreeNode> | undefined> {
+  private async loadRunningLabRuntimeContainers(): Promise<HostRuntimeContainer[]> {
     try {
       const labsData = await runningLabsProvider.discoverInspectLabs();
-      return toClabLabNodeRecord(labsData);
+      return labsToRuntimeContainers(toClabLabNodeRecord(labsData));
     } catch (err) {
       log.warn(`Failed to load running lab data: ${err}`);
-      return undefined;
+      return [];
     }
   }
 
@@ -149,12 +155,12 @@ export class ReactTopoViewer {
         this.internalUpdateDepth > 0 || Date.now() < this.internalUpdateGraceUntil
     };
     const postSnapshot = (snapshot: unknown) => {
-      panel.webview.postMessage({
-        type: "topology-host:snapshot",
-        protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
-        snapshot,
-        reason: "external-change"
-      });
+      if (!snapshot || typeof snapshot !== "object") {
+        return;
+      }
+      panel.webview.postMessage(
+        buildTopologySnapshotMessage(snapshot as TopologySnapshot, "external-change")
+      );
     };
 
     this.watcherManager.setupFileWatcher(
@@ -191,6 +197,7 @@ export class ReactTopoViewer {
         }
         this.topologyHost?.dispose();
         this.topologyHost = undefined;
+        this.runtimeContainers = [];
         this.watcherManager.dispose();
       },
       null,
@@ -220,7 +227,7 @@ export class ReactTopoViewer {
     }
 
     if (this.isViewMode) {
-      this.cacheClabTreeDataToTopoviewer = await this.loadRunningLabsData();
+      this.runtimeContainers = await this.loadRunningLabRuntimeContainers();
     }
   }
 
@@ -258,16 +265,14 @@ export class ReactTopoViewer {
 
     await this.initializeLabState(labName);
 
-    const containerDataProvider = this.isViewMode
-      ? new ContainerDataAdapter(this.cacheClabTreeDataToTopoviewer)
-      : undefined;
-
     this.topologyHost = new TopologyHostCore({
       fs: nodeFsAdapter,
       yamlFilePath: this.lastYamlFilePath,
       mode: this.isViewMode ? "view" : "edit",
       deploymentState: this.deploymentState,
-      containerDataProvider,
+      containerDataProvider: this.isViewMode
+        ? createRuntimeContainerDataProvider(this.runtimeContainers)
+        : undefined,
       setInternalUpdate: (updating: boolean) => this.setInternalUpdate(updating),
       logger: log
     });
@@ -364,27 +369,19 @@ export class ReactTopoViewer {
       }
 
       // Reload running lab data if switching to view mode
-      this.cacheClabTreeDataToTopoviewer = this.isViewMode
-        ? await this.loadRunningLabsData()
-        : undefined;
+      this.runtimeContainers = this.isViewMode ? await this.loadRunningLabRuntimeContainers() : [];
 
       if (this.topologyHost) {
-        const containerDataProvider = this.isViewMode
-          ? new ContainerDataAdapter(this.cacheClabTreeDataToTopoviewer)
-          : undefined;
         this.topologyHost.updateContext({
           mode: this.isViewMode ? "view" : "edit",
           deploymentState: this.deploymentState,
-          containerDataProvider
+          containerDataProvider: this.isViewMode
+            ? createRuntimeContainerDataProvider(this.runtimeContainers)
+            : undefined
         });
         const snapshot = await this.topologyHost.getSnapshot();
         this.lastTopologyEdges = snapshot.edges;
-        this.currentPanel.webview.postMessage({
-          type: "topology-host:snapshot",
-          protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
-          snapshot,
-          reason: "resync"
-        });
+        this.currentPanel.webview.postMessage(buildTopologySnapshotMessage(snapshot, "resync"));
       }
 
       // Notify webview of mode change
@@ -435,20 +432,19 @@ export class ReactTopoViewer {
     }
 
     try {
-      // Update cached labs data
-      this.cacheClabTreeDataToTopoviewer = labsData;
+      const runtimeContainers = labsToRuntimeContainers(labsData);
+      this.runtimeContainers = runtimeContainers;
       if (this.topologyHost) {
         this.topologyHost.updateContext({
-          containerDataProvider: new ContainerDataAdapter(labsData)
+          containerDataProvider: createRuntimeContainerDataProvider(runtimeContainers)
         });
       }
 
-      // Build edge stats updates from cached edges using extracted builder
-      const edgeUpdates = buildEdgeStatsUpdates(this.lastTopologyEdges, labsData, {
+      const edgeUpdates = buildRuntimeEdgeStatsUpdates(this.lastTopologyEdges, runtimeContainers, {
         currentLabName: this.currentLabName,
         topology: this.topologyHost?.currentClabTopology?.topology
       });
-      const nodeUpdates = buildNodeRuntimeUpdates(labsData, this.currentLabName);
+      const nodeUpdates = buildRuntimeNodeUpdates(runtimeContainers, this.currentLabName);
 
       if (edgeUpdates.length > 0) {
         // Send only edge stats updates (not full topology)

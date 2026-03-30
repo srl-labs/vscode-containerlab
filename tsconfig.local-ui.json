@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "paths": {
+      "@srl-labs/clab-ui": ["../containerlab-gui/packages/ui/src/index.ts"],
+      "@srl-labs/clab-ui/*": ["../containerlab-gui/packages/ui/src/*"]
+    }
+  }
+}

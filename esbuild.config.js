@@ -3,15 +3,72 @@ const path = require("path");
 const fs = require("fs");
 const { execSync } = require("child_process");
 
-const clabUiRoot = path.dirname(path.dirname(require.resolve("@srl-labs/clab-ui")));
-const clabUiMainEntry = require.resolve("@srl-labs/clab-ui/entry.tsx");
-const clabUiExplorerEntry = require.resolve("@srl-labs/clab-ui/explorer/entry.tsx");
-const clabUiInspectEntry = require.resolve("@srl-labs/clab-ui/inspect/entry.tsx");
-const clabUiWelcomeEntry = require.resolve("@srl-labs/clab-ui/welcome/entry.tsx");
-const clabUiNodeImpairmentsEntry = require.resolve("@srl-labs/clab-ui/node-impairments/entry.tsx");
-const clabUiWiresharkVncEntry = require.resolve("@srl-labs/clab-ui/wireshark-vnc/entry.tsx");
-const clabUiGlobalCss = require.resolve("@srl-labs/clab-ui/styles/global.css");
-const clabUiWiresharkSvg = require.resolve("@srl-labs/clab-ui/assets/images/wireshark_bold.svg");
+const localClabUiRoot = path.resolve(__dirname, "../containerlab-gui/packages/ui");
+const useLocalClabUi =
+  process.env.CLAB_UI_SOURCE === "local" &&
+  fs.existsSync(path.join(localClabUiRoot, "src", "index.ts"));
+const clabUiRoot = useLocalClabUi
+  ? localClabUiRoot
+  : path.dirname(path.dirname(require.resolve("@srl-labs/clab-ui")));
+const clabUiEntry = (relativePath, packageSubpath) =>
+  useLocalClabUi
+    ? path.join(localClabUiRoot, "src", relativePath)
+    : require.resolve(packageSubpath);
+
+const clabUiMainEntry = clabUiEntry("entry.tsx", "@srl-labs/clab-ui/entry.tsx");
+const clabUiExplorerEntry = clabUiEntry("explorer/entry.tsx", "@srl-labs/clab-ui/explorer/entry.tsx");
+const clabUiInspectEntry = clabUiEntry("inspect/entry.tsx", "@srl-labs/clab-ui/inspect/entry.tsx");
+const clabUiWelcomeEntry = clabUiEntry("welcome/entry.tsx", "@srl-labs/clab-ui/welcome/entry.tsx");
+const clabUiNodeImpairmentsEntry = clabUiEntry(
+  "node-impairments/entry.tsx",
+  "@srl-labs/clab-ui/node-impairments/entry.tsx"
+);
+const clabUiWiresharkVncEntry = clabUiEntry(
+  "wireshark-vnc/entry.tsx",
+  "@srl-labs/clab-ui/wireshark-vnc/entry.tsx"
+);
+const clabUiGlobalCss = clabUiEntry("styles/global.css", "@srl-labs/clab-ui/styles/global.css");
+const clabUiWiresharkSvg = clabUiEntry(
+  "assets/images/wireshark_bold.svg",
+  "@srl-labs/clab-ui/assets/images/wireshark_bold.svg"
+);
+
+function resolveLocalClabUiImport(importPath) {
+  const subpath = importPath === "@srl-labs/clab-ui" ? "index" : importPath.slice("@srl-labs/clab-ui/".length);
+  const candidateBases = [
+    path.join(localClabUiRoot, "src", subpath),
+    path.join(localClabUiRoot, "src", subpath, "index")
+  ];
+  const candidateExts = ["", ".ts", ".tsx", ".js", ".jsx", ".json"];
+
+  for (const base of candidateBases) {
+    for (const ext of candidateExts) {
+      const candidate = `${base}${ext}`;
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
+const clabUiLocalAliasPlugin = {
+  name: "clab-ui-local-alias",
+  setup(build) {
+    if (!useLocalClabUi) {
+      return;
+    }
+
+    build.onResolve({ filter: /^@srl-labs\/clab-ui(?:\/.*)?$/ }, (args) => {
+      const resolved = resolveLocalClabUiImport(args.path);
+      if (!resolved) {
+        return null;
+      }
+      return { path: resolved };
+    });
+  }
+};
 
 // Plugin to stub native .node files - ssh2 has JS fallbacks
 const nativeNodeModulesPlugin = {
@@ -135,7 +192,7 @@ async function build() {
     format: "cjs",
     external: ["vscode"],
     outfile: "dist/extension.js",
-    plugins: [nativeNodeModulesPlugin]
+    plugins: [nativeNodeModulesPlugin, clabUiLocalAliasPlugin]
   });
 
   // Build webview (Browser) - CSS handled separately
@@ -146,7 +203,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/reactTopoViewerWebview.js",
-    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
+    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin, clabUiLocalAliasPlugin],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -166,7 +223,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/containerlabExplorerView.js",
-    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
+    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin, clabUiLocalAliasPlugin],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -186,7 +243,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/welcomePageWebview.js",
-    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
+    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin, clabUiLocalAliasPlugin],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -206,7 +263,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/inspectWebview.js",
-    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
+    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin, clabUiLocalAliasPlugin],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",
@@ -226,7 +283,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14"],
     outfile: "dist/nodeImpairmentsWebview.js",
-    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin],
+    plugins: [ignoreCssPlugin, clabUiPathCompatPlugin, clabUiLocalAliasPlugin],
     jsx: "automatic",
     loader: {
       ".svg": "dataurl",

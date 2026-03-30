@@ -1,6 +1,10 @@
-import { randomBytes } from "crypto";
-
 import * as vscode from "vscode";
+import {
+  buildExplorerSnapshot,
+  type ExplorerActionInvocation,
+  type ExplorerSnapshotOptions,
+  type ExplorerSnapshotProviders
+} from "@srl-labs/clab-ui/explorer/snapshot";
 import {
   EXPLORER_SECTION_LABELS,
   EXPLORER_SECTION_ORDER,
@@ -21,14 +25,11 @@ import type {
 } from "../../treeView";
 
 import {
-  buildExplorerSnapshot,
+  type ExplorerCommandMetadata,
+  getExplorerCommandMetadata,
   invalidateExplorerContributionCache
 } from "./explorerSnapshotAdapter";
-import type {
-  ExplorerActionInvocation,
-  ExplorerSnapshotOptions,
-  ExplorerSnapshotProviders
-} from "./explorerSnapshotAdapter";
+import { createReactWebviewHtml } from "../shared/reactWebviewHtml";
 
 const REFRESH_DEBOUNCE_MS = 120;
 const UI_STATE_KEY = "containerlabExplorer.uiState";
@@ -69,9 +70,11 @@ export class ContainerlabExplorerViewProvider
   public static readonly viewType = "containerlabExplorerWebview";
 
   private readonly context: vscode.ExtensionContext;
-  private readonly providers: ExplorerSnapshotProviders;
+  private readonly providers: ContainerlabExplorerProviderArgs;
   private readonly filterableProviders: FilterableTreeProvider[];
-  private readonly options: ExplorerSnapshotOptions;
+  private readonly options: ExplorerSnapshotOptions & {
+    commandMetadata?: ExplorerCommandMetadata;
+  };
   private readonly disposables: vscode.Disposable[] = [];
   private readonly visibilityEmitter = new vscode.EventEmitter<boolean>();
 
@@ -87,11 +90,7 @@ export class ContainerlabExplorerViewProvider
 
   constructor(context: vscode.ExtensionContext, args: ContainerlabExplorerProviderArgs) {
     this.context = context;
-    this.providers = {
-      runningProvider: args.runningProvider,
-      localProvider: args.localProvider,
-      helpProvider: args.helpProvider
-    };
+    this.providers = args;
     this.options = {
       hideNonOwnedLabs: hideNonOwnedLabsState,
       isLocalCaptureAllowed: args.isLocalCaptureAllowed
@@ -115,7 +114,7 @@ export class ContainerlabExplorerViewProvider
   }
 
   private registerDataListeners(): void {
-    const allProviders = [
+    const allProviders: Array<{ onDidChangeTreeData: vscode.Event<unknown> }> = [
       this.providers.runningProvider,
       this.providers.localProvider,
       this.providers.helpProvider
@@ -307,8 +306,9 @@ export class ContainerlabExplorerViewProvider
     this.snapshotInFlight = true;
     try {
       this.options.hideNonOwnedLabs = hideNonOwnedLabsState;
+      this.options.commandMetadata = await getExplorerCommandMetadata();
       const { snapshot, actionBindings } = await buildExplorerSnapshot(
-        this.providers,
+        this.providers as ExplorerSnapshotProviders,
         this.filterText,
         this.options
       );
@@ -349,36 +349,13 @@ export class ContainerlabExplorerViewProvider
   }
 
   private getWebviewHtml(webview: vscode.Webview): string {
-    const nonce = randomBytes(16).toString("hex");
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.context.extensionUri, "dist", "containerlabExplorerView.js")
-    );
-    const csp = webview.cspSource;
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${csp} 'unsafe-inline'; img-src ${csp} https: data:; font-src ${csp}; script-src 'nonce-${nonce}' ${csp};">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    html, body, #root {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-    }
-    *, *::before, *::after {
-      box-sizing: border-box;
-    }
-  </style>
-</head>
-<body data-webview-kind="containerlab-explorer">
-  <div id="root"></div>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
-</body>
-</html>`;
+    return createReactWebviewHtml({
+      webview,
+      extensionUri: this.context.extensionUri,
+      scriptFile: "containerlabExplorerView.js",
+      title: "Containerlab Explorer",
+      webviewKind: "containerlab-explorer"
+    });
   }
 
   public dispose(): void {
