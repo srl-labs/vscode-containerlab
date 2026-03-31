@@ -959,7 +959,7 @@
     "mochawesome": "^7.1.4",
     "monaco-editor": "^0.55.1",
     "oxlint": "^1.55.0",
-    "oxlint-tsgolint": "^0.17.0",
+    "oxlint-tsgolint": "^0.18.1",
     "postcss": "^8.5.8",
     "postcss-cli": "^11.0.1",
     "postcss-import": "^16.1.1",
