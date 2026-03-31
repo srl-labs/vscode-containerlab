@@ -927,7 +927,7 @@
     "lint:cpd": "jscpd src/",
     "lint:barrels": "node scripts/check-barrel-exports.js",
     "test": "npm run test:compile && mocha --exit --extension js --reporter mochawesome \"out/test/**/*.test.js\"",
-    "test:compile": "tsc -p test/tsconfig.json"
+    "test:compile": "tsc -p test/tsconfig.mocha.json"
   },
   "devDependencies": {
     "@mui/icons-material": "^7.3.9",
