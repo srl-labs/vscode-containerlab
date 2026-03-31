@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import type { CustomNodeTemplate, EndpointResult } from "@srl-labs/clab-ui/core";
+import type { CustomNodeTemplate, EndpointResult } from "@srl-labs/clab-ui/session";
 
 import { log } from "./logger";
 

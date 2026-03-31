@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import type { InspectContainerData } from "@srl-labs/clab-ui/inspect/types";
+import type { InspectContainerData } from "@srl-labs/clab-ui/inspect";
 
 import type { ClabLabTreeNode } from "../treeView/common";
 import { outputChannel } from "../globals";

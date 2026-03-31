@@ -4,7 +4,7 @@ import {
   type ExplorerSnapshotOptions,
   type ExplorerSnapshotProviders,
   type ExplorerUiState
-} from "@srl-labs/clab-ui/explorer/snapshot";
+} from "@srl-labs/clab-ui/explorer";
 import { createExplorerController } from "@srl-labs/clab-ui/host";
 
 import { hideNonOwnedLabsState } from "../../globals";

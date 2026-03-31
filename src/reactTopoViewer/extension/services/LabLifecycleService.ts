@@ -5,7 +5,7 @@
 
 import * as vscode from "vscode";
 
-import type { EndpointResult } from "@srl-labs/clab-ui/core";
+import type { EndpointResult } from "@srl-labs/clab-ui/session";
 import { createLifecycleCommandController } from "@srl-labs/clab-ui/host";
 
 import { log } from "./logger";

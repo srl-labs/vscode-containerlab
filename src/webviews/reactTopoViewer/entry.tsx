@@ -1,35 +1,44 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 
-import { App } from "@srl-labs/clab-ui";
-import { createWindowClabUiHost, setClabUiHost } from "@srl-labs/clab-ui/host";
-import { subscribeToWebviewMessages } from "@srl-labs/clab-ui/messaging/webviewMessageBus";
-import { log } from "@srl-labs/clab-ui/utils/logger";
+import { App, subscribeToWebviewMessages, log } from "@srl-labs/clab-ui";
+import { createClabUiRuntime, createWindowClabUiHost } from "@srl-labs/clab-ui/host";
 import "@srl-labs/clab-ui/styles/global.css";
 
-setClabUiHost(createWindowClabUiHost());
+type TopoViewerWindow = Window & {
+  __SCHEMA_DATA__?: unknown;
+  __DOCKER_IMAGES__?: string[];
+};
 
-const initialData = (window.__INITIAL_DATA__ ?? {}) as Record<string, unknown>;
+const topoViewerWindow = window as TopoViewerWindow;
+
+const runtime = createClabUiRuntime({ host: createWindowClabUiHost() });
+
+const initialData = (topoViewerWindow.__INITIAL_DATA__ ?? {}) as Record<string, unknown>;
 
 if (initialData.schemaData) {
-  window.__SCHEMA_DATA__ = initialData.schemaData as typeof window.__SCHEMA_DATA__;
+  topoViewerWindow.__SCHEMA_DATA__ = initialData.schemaData;
 }
 
 if (initialData.dockerImages) {
-  window.__DOCKER_IMAGES__ = initialData.dockerImages as typeof window.__DOCKER_IMAGES__;
+  topoViewerWindow.__DOCKER_IMAGES__ = initialData.dockerImages as string[];
 }
 
-subscribeToWebviewMessages((event) => {
-  const message = event.data as { type?: string; dockerImages?: string[] } | undefined;
-  if (message?.type === "docker-images-updated" && message.dockerImages) {
-    window.__DOCKER_IMAGES__ = message.dockerImages;
-    window.dispatchEvent(
-      new CustomEvent("docker-images-updated", {
-        detail: message.dockerImages
-      })
-    );
-  }
-});
+subscribeToWebviewMessages(
+  (event) => {
+    const message = event.data as { type?: string; dockerImages?: string[] } | undefined;
+    if (message?.type === "docker-images-updated" && message.dockerImages) {
+      topoViewerWindow.__DOCKER_IMAGES__ = message.dockerImages;
+      topoViewerWindow.dispatchEvent(
+        new CustomEvent("docker-images-updated", {
+          detail: message.dockerImages
+        })
+      );
+    }
+  },
+  undefined,
+  runtime.host
+);
 
 const customNodeCount = Array.isArray(initialData.customNodes) ? initialData.customNodes.length : 0;
 const iconCount = Array.isArray(initialData.customIcons) ? initialData.customIcons.length : 0;
@@ -46,7 +55,7 @@ function bootstrap(): void {
   const root = createRoot(container);
   root.render(
     <React.StrictMode>
-      <App initialData={initialData} />
+      <App initialData={initialData} runtime={runtime} />
     </React.StrictMode>
   );
 }

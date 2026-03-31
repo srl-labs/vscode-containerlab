@@ -5,7 +5,8 @@
     "esModuleInterop": true,
     "jsx": "react-jsx",
     "lib": ["ES2024", "dom"],
-    "module": "commonjs",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
     "noImplicitReturns": true,
@@ -22,10 +23,6 @@
     "strictNullChecks": true,
     "target": "ES2024",
     "preserveSymlinks": false,
-    "paths": {
-      "@srl-labs/clab-ui": ["./node_modules/@srl-labs/clab-ui/src/index.ts"],
-      "@srl-labs/clab-ui/*": ["./node_modules/@srl-labs/clab-ui/src/*"]
-    },
     "typeRoots": ["src/topoViewer/common/types", "./node_modules/@types"],
     "types": ["mocha", "node"]
   },

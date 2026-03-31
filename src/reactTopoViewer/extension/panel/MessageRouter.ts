@@ -27,7 +27,7 @@ import {
   isInterfaceCommand,
   isLifecycleCommand,
   isNodeCommand,
-  nodeFsAdapter,
+  handleTopologyHostProtocolMessage,
   type CustomNodeCommand,
   type ExportCommand,
   type IconCommand,
@@ -37,8 +37,8 @@ import {
   type TopologyHost,
   type TopologyHostResponseMessage,
   type TopologySnapshot
-} from "@srl-labs/clab-ui/core";
-import { handleTopologyHostProtocolMessage } from "@srl-labs/clab-ui/topology/host-protocol";
+} from "@srl-labs/clab-ui/session";
+import { nodeFsAdapter } from "../shared/io";
 import { cancelActiveCommand } from "../../../commands/command";
 
 type WebviewMessage = Record<string, unknown> & {

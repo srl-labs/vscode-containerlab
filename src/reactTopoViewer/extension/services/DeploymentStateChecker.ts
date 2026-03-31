@@ -4,7 +4,7 @@
  */
 
 import * as inspector from "../../../treeView/inspector";
-import type { DeploymentState } from "@srl-labs/clab-ui/core";
+import type { DeploymentState } from "@srl-labs/clab-ui/session";
 
 import { log } from "./logger";
 

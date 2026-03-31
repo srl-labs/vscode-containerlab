@@ -2,17 +2,17 @@
  * Schema utilities (VS Code extension host)
  *
  * VS Code-specific schema loading and configuration helpers.
- * Pure schema parsing is implemented in `@srl-labs/clab-ui/core`.
+ * Pure schema parsing is implemented in `@srl-labs/clab-ui/session`.
  */
 
 import * as vscode from "vscode";
 
 import {
-  nodeFsAdapter,
   parseSchemaData,
   type CustomNodeTemplate,
   type SchemaData
-} from "@srl-labs/clab-ui/core";
+} from "@srl-labs/clab-ui/session";
+import { nodeFsAdapter } from "../shared/io";
 
 import { log } from "./logger";
 

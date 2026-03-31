@@ -5,12 +5,7 @@
 
 import * as vscode from "vscode";
 
-import {
-  type LogLevel,
-  formatMessage,
-  getCallerFileLine,
-  createLogger
-} from "@srl-labs/clab-ui/core/utilities/loggerUtils";
+type LogLevel = "info" | "debug" | "warn" | "error";
 
 let outputChannel: vscode.LogOutputChannel | undefined;
 
@@ -52,6 +47,60 @@ function toLogLevel(level: string): LogLevel {
     default:
       return "info";
   }
+}
+
+function formatMessage(message: unknown): string {
+  if (typeof message === "string") {
+    return message;
+  }
+  if (message instanceof Error) {
+    return message.stack ?? message.message;
+  }
+  if (message === undefined) {
+    return "undefined";
+  }
+  if (message === null) {
+    return "null";
+  }
+  try {
+    return JSON.stringify(message);
+  } catch {
+    return String(message);
+  }
+}
+
+function getCallerFileLine(skipFrames: number = 0): string {
+  const stack = new Error().stack;
+  if (!stack) {
+    return "";
+  }
+
+  const lines = stack.split("\n").slice(1);
+  const targetLine = lines[3 + skipFrames] ?? "";
+  const match = targetLine.match(/(?:\/|\\)([^/\\]+:\d+:\d+)/);
+  return match?.[1] ?? "";
+}
+
+function createLogger(logFn: (level: LogLevel, message: unknown) => void): {
+  info(msg: unknown): void;
+  debug(msg: unknown): void;
+  warn(msg: unknown): void;
+  error(msg: unknown): void;
+} {
+  return {
+    info: (message: unknown) => {
+      logFn("info", message);
+    },
+    debug: (message: unknown) => {
+      logFn("debug", message);
+    },
+    warn: (message: unknown) => {
+      logFn("warn", message);
+    },
+    error: (message: unknown) => {
+      logFn("error", message);
+    }
+  };
 }
 
 /**

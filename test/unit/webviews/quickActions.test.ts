@@ -1,6 +1,6 @@
 /* global describe, it */
 import { expect } from "chai";
-import type { ExplorerAction } from "@srl-labs/clab-ui/explorer/shared/explorer/types";
+import type { ExplorerAction } from "@srl-labs/clab-ui/explorer";
 
 import { resolveQuickActionsForNode } from "../../../src/webviews/explorer/quickActions";
 

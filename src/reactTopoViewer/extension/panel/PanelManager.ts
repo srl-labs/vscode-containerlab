@@ -119,7 +119,13 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
   <div id="root"></div>
   <script nonce="${nonce}">
     // Acquire VS Code API for webview communication
-    window.vscode = acquireVsCodeApi();
+    if (!window.vscode) {
+      try {
+        window.vscode = acquireVsCodeApi();
+      } catch {
+        // Ignore duplicate-acquire errors and keep using the cached instance.
+      }
+    }
     window.__INITIAL_DATA__ = ${initialDataJson};
     window.maplibreWorkerUrl = "${maplibreWorkerUri.toString()}";
     window.maplibreWorkerSourceBase64 = "${maplibreWorkerSourceBase64}";

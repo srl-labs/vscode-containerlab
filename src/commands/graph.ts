@@ -8,7 +8,7 @@ import type { ReactTopoViewer } from "../reactTopoViewer";
 import { ReactTopoViewerProvider } from "../reactTopoViewer";
 import { getSelectedLabNode } from "../utils/utils";
 import * as ins from "../treeView/inspector";
-import { MSG_LAB_LIFECYCLE_LOG, MSG_LAB_LIFECYCLE_STATUS } from "@srl-labs/clab-ui/core";
+import { MSG_LAB_LIFECYCLE_LOG, MSG_LAB_LIFECYCLE_STATUS } from "@srl-labs/clab-ui/session";
 
 import { ClabCommand } from "./clabCommand";
 

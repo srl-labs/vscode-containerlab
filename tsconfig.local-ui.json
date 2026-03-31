@@ -1,10 +1,17 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "..",
     "paths": {
-      "@srl-labs/clab-ui": ["../containerlab-gui/packages/ui/src/index.ts"],
-      "@srl-labs/clab-ui/*": ["../containerlab-gui/packages/ui/src/*"]
+      "@srl-labs/clab-ui": ["../containerlab-gui/packages/ui/dist/index.d.ts"],
+      "@srl-labs/clab-ui/host": ["../containerlab-gui/packages/ui/dist/host/index.d.ts"],
+      "@srl-labs/clab-ui/session": ["../containerlab-gui/packages/ui/dist/session/index.d.ts"],
+      "@srl-labs/clab-ui/theme": ["../containerlab-gui/packages/ui/dist/theme/index.d.ts"],
+      "@srl-labs/clab-ui/explorer": ["../containerlab-gui/packages/ui/dist/explorer/index.d.ts"],
+      "@srl-labs/clab-ui/inspect": ["../containerlab-gui/packages/ui/dist/inspect/index.d.ts"],
+      "@srl-labs/clab-ui/welcome": ["../containerlab-gui/packages/ui/dist/welcome/index.d.ts"],
+      "@srl-labs/clab-ui/node-impairments": ["../containerlab-gui/packages/ui/dist/node-impairments/index.d.ts"],
+      "@srl-labs/clab-ui/wireshark-vnc": ["../containerlab-gui/packages/ui/dist/wireshark-vnc/index.d.ts"],
+      "@srl-labs/clab-ui/styles/global.css": ["../containerlab-gui/packages/ui/dist/styles/global.css"]
     }
   }
 }

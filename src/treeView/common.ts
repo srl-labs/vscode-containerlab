@@ -1,7 +1,14 @@
 import * as vscode from "vscode";
 
 import type { ClabInterfaceStats } from "../types/containerlab";
-import type { NetemState } from "@srl-labs/clab-ui/core";
+
+export interface NetemState {
+  delay?: string;
+  jitter?: string;
+  loss?: string;
+  rate?: string;
+  corruption?: string;
+}
 
 // LabPath interface
 export interface LabPath {

@@ -1,5 +1,5 @@
 import type { Uri, Webview } from "vscode";
-import type { WiresharkVncInitialData } from "@srl-labs/clab-ui/wireshark-vnc/types";
+import type { WiresharkVncInitialData } from "@srl-labs/clab-ui/wireshark-vnc";
 
 import { createReactWebviewHtml } from "../shared/reactWebviewHtml";
 

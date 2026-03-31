@@ -17,18 +17,16 @@ import {
   MSG_FIT_VIEWPORT,
   MSG_NODE_DATA_UPDATED,
   MSG_TOPO_MODE_CHANGE,
-  TopologyHostCore,
-  nodeFsAdapter,
-  type TopoEdge,
-  type TopologySnapshot
-} from "@srl-labs/clab-ui/core";
-import {
+  TopologySessionCore as TopologyHostCore,
   buildRuntimeEdgeStatsUpdates,
   buildRuntimeNodeUpdates,
-  createRuntimeContainerDataProvider
-} from "@srl-labs/clab-ui/topology/runtime";
+  createRuntimeContainerDataProvider,
+  buildTopologySnapshotMessage,
+  type TopoEdge,
+  type TopologySnapshot
+} from "@srl-labs/clab-ui/session";
 import type { HostRuntimeContainer } from "@srl-labs/clab-ui/host";
-import { buildTopologySnapshotMessage } from "@srl-labs/clab-ui/topology/host-protocol";
+import { nodeFsAdapter } from "./shared/io";
 
 import { log } from "./services/logger";
 import { deploymentStateChecker } from "./services/DeploymentStateChecker";

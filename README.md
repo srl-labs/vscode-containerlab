@@ -219,6 +219,8 @@ npm run build:local-ui
 npm run package:local-ui
 ```
 
+The local override resolves against `../containerlab-gui/packages/ui/dist`, so make sure that UI package is built before running the local override scripts.
+
 The local override affects only bundling/runtime resolution. The default install path remains the published npm package.
 
 ---
