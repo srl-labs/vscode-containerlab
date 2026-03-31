@@ -28,4 +28,4 @@ class DockerStub {
   }
 }
 
-export = DockerStub;
+export default DockerStub;

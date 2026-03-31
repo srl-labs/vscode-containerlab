@@ -3,6 +3,13 @@
   "compilerOptions": {
     "rootDir": "..",
     "outDir": "../out/test",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "baseUrl": "..",
+    "paths": {
+      "@srl-labs/clab-ui": ["node_modules/@srl-labs/clab-ui/dist/index.d.ts"],
+      "@srl-labs/clab-ui/*": ["node_modules/@srl-labs/clab-ui/dist/*/index.d.ts"]
+    },
     "resolveJsonModule": true,
     "typeRoots": ["../src/topoViewer/webview/types", "../node_modules/@types"]
   },
