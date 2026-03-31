@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const { execSync } = require("child_process");
 
-const localClabUiRoot = path.resolve(__dirname, "../containerlab-gui/packages/ui");
+const localClabUiRoot = path.resolve(__dirname, "../clab-ui/packages/ui");
 const localClabUiDistRoot = path.join(localClabUiRoot, "dist");
 const useLocalClabUi =
   process.env.CLAB_UI_SOURCE === "local" &&

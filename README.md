@@ -205,7 +205,7 @@ By default, this repository consumes the published `@srl-labs/clab-ui` package f
 
 This is the default path for normal development, CI, and packaging.
 
-If you are working in a sibling checkout with `containerlab-gui` and want to test local unpublished UI changes, opt in explicitly:
+If you are working in a sibling checkout with `clab-ui` and want to test local unpublished UI changes, opt in explicitly:
 
 ```bash
 CLAB_UI_SOURCE=local npm run build
@@ -219,7 +219,7 @@ npm run build:local-ui
 npm run package:local-ui
 ```
 
-The local override resolves against `../containerlab-gui/packages/ui/dist`, so make sure that UI package is built before running the local override scripts.
+The local override resolves against `../clab-ui/packages/ui/dist`, so make sure that UI package is built before running the local override scripts.
 
 The local override affects only bundling/runtime resolution. The default install path remains the published npm package.
 
