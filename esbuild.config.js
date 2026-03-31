@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const { execSync } = require("child_process");
 
-const localClabUiRoot = path.resolve(__dirname, "../clab-ui/packages/ui");
+const localClabUiRoot = path.resolve(__dirname, "../clab-ui");
 const localClabUiDistRoot = path.join(localClabUiRoot, "dist");
 const useLocalClabUi =
   process.env.CLAB_UI_SOURCE === "local" &&
@@ -136,9 +136,12 @@ async function copyMapLibreWorker() {
 // Build CSS with PostCSS
 async function buildCss() {
   console.log("Building CSS with PostCSS...");
-  execSync(`npx postcss "${clabUiGlobalCss}" -o dist/reactTopoViewerStyles.css`, {
-    stdio: "inherit"
-  });
+  execSync(
+    `npx postcss "${clabUiGlobalCss}" --config "${path.join(__dirname, "postcss.config.js")}" -o dist/reactTopoViewerStyles.css`,
+    {
+      stdio: "inherit"
+    }
+  );
 
   // Fix font paths - rewrite node_modules paths to webfonts/
   const cssPath = path.join(__dirname, "dist/reactTopoViewerStyles.css");

@@ -2,16 +2,16 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@srl-labs/clab-ui": ["../clab-ui/packages/ui/dist/index.d.ts"],
-      "@srl-labs/clab-ui/host": ["../clab-ui/packages/ui/dist/host/index.d.ts"],
-      "@srl-labs/clab-ui/session": ["../clab-ui/packages/ui/dist/session/index.d.ts"],
-      "@srl-labs/clab-ui/theme": ["../clab-ui/packages/ui/dist/theme/index.d.ts"],
-      "@srl-labs/clab-ui/explorer": ["../clab-ui/packages/ui/dist/explorer/index.d.ts"],
-      "@srl-labs/clab-ui/inspect": ["../clab-ui/packages/ui/dist/inspect/index.d.ts"],
-      "@srl-labs/clab-ui/welcome": ["../clab-ui/packages/ui/dist/welcome/index.d.ts"],
-      "@srl-labs/clab-ui/node-impairments": ["../clab-ui/packages/ui/dist/node-impairments/index.d.ts"],
-      "@srl-labs/clab-ui/wireshark-vnc": ["../clab-ui/packages/ui/dist/wireshark-vnc/index.d.ts"],
-      "@srl-labs/clab-ui/styles/global.css": ["../clab-ui/packages/ui/dist/styles/global.css"]
+      "@srl-labs/clab-ui": ["../clab-ui/dist/index.d.ts"],
+      "@srl-labs/clab-ui/host": ["../clab-ui/dist/host/index.d.ts"],
+      "@srl-labs/clab-ui/session": ["../clab-ui/dist/session/index.d.ts"],
+      "@srl-labs/clab-ui/theme": ["../clab-ui/dist/theme/index.d.ts"],
+      "@srl-labs/clab-ui/explorer": ["../clab-ui/dist/explorer/index.d.ts"],
+      "@srl-labs/clab-ui/inspect": ["../clab-ui/dist/inspect/index.d.ts"],
+      "@srl-labs/clab-ui/welcome": ["../clab-ui/dist/welcome/index.d.ts"],
+      "@srl-labs/clab-ui/node-impairments": ["../clab-ui/dist/node-impairments/index.d.ts"],
+      "@srl-labs/clab-ui/wireshark-vnc": ["../clab-ui/dist/wireshark-vnc/index.d.ts"],
+      "@srl-labs/clab-ui/styles/global.css": ["../clab-ui/dist/styles/global.css"]
     }
   }
 }
