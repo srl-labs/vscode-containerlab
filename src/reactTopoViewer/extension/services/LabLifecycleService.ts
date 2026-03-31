@@ -6,6 +6,7 @@
 import * as vscode from "vscode";
 
 import type { EndpointResult } from "@srl-labs/clab-ui/core";
+import { createLifecycleCommandController } from "@srl-labs/clab-ui/host";
 
 import { log } from "./logger";
 
@@ -22,7 +23,7 @@ interface LabAction {
 /**
  * Map of available lab lifecycle actions.
  */
-const LAB_ACTIONS: Partial<Record<string, LabAction>> = {
+const LAB_ACTIONS = {
   deployLab: {
     command: "containerlab.lab.deploy",
     resultMsg: "Lab deployment initiated",
@@ -59,7 +60,14 @@ const LAB_ACTIONS: Partial<Record<string, LabAction>> = {
     errorMsg: "Error redeploying lab with cleanup",
     noLabPath: "No lab path provided for redeploy with cleanup"
   }
-};
+} satisfies Record<string, LabAction>;
+
+type LabActionName = keyof typeof LAB_ACTIONS;
+const lifecycleController = createLifecycleCommandController<LabActionName>();
+
+function isLabActionName(value: string): value is LabActionName {
+  return value in LAB_ACTIONS;
+}
 
 /**
  * Service for handling lab lifecycle operations (deploy, destroy, redeploy).
@@ -72,30 +80,34 @@ export class LabLifecycleService {
    * @param labPath The path to the lab topology file
    */
   async handleLabLifecycleEndpoint(endpointName: string, labPath: string): Promise<EndpointResult> {
-    const action = LAB_ACTIONS[endpointName];
-    if (!action) {
+    if (!isLabActionName(endpointName)) {
       const error = `Unknown endpoint "${endpointName}".`;
       log.error(error);
       return { result: null, error };
     }
+    const action = LAB_ACTIONS[endpointName];
 
     if (!labPath) {
       return { result: null, error: action.noLabPath };
     }
 
-    try {
-      const { ClabLabTreeNode } = await import("../../../treeView/common");
-      const tempNode = new ClabLabTreeNode("", vscode.TreeItemCollapsibleState.None, {
-        absolute: labPath,
-        relative: ""
-      });
-      vscode.commands.executeCommand(action.command, tempNode);
-      return { result: `${action.resultMsg} for ${labPath}`, error: null };
-    } catch (innerError) {
-      const error = `${action.errorMsg}: ${innerError}`;
-      log.error(`${action.errorMsg}: ${JSON.stringify(innerError, null, 2)}`);
-      return { result: null, error };
-    }
+    return (
+      (await lifecycleController.run(endpointName, async () => {
+        try {
+          const { ClabLabTreeNode } = await import("../../../treeView/common");
+          const tempNode = new ClabLabTreeNode("", vscode.TreeItemCollapsibleState.None, {
+            absolute: labPath,
+            relative: ""
+          });
+          vscode.commands.executeCommand(action.command, tempNode);
+          return { result: `${action.resultMsg} for ${labPath}`, error: null };
+        } catch (innerError) {
+          const error = `${action.errorMsg}: ${String(innerError)}`;
+          log.error(`${action.errorMsg}: ${JSON.stringify(innerError, null, 2)}`);
+          return { result: null, error };
+        }
+      })) ?? { result: null, error: null }
+    );
   }
 }
 

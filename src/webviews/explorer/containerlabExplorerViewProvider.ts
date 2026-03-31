@@ -1,21 +1,11 @@
 import * as vscode from "vscode";
 import {
-  buildExplorerSnapshot,
-  type ExplorerActionInvocation,
-  type ExplorerSnapshotOptions,
-  type ExplorerSnapshotProviders
-} from "@srl-labs/clab-ui/explorer/snapshot";
-import {
-  EXPLORER_SECTION_LABELS,
-  EXPLORER_SECTION_ORDER,
-  type ExplorerIncomingMessage,
-  type ExplorerInvokeActionMessage,
   type ExplorerOutgoingMessage,
-  type ExplorerPersistUiStateMessage,
-  type ExplorerSetFilterMessage,
-  type ExplorerSnapshotMessage,
+  type ExplorerSnapshotOptions,
+  type ExplorerSnapshotProviders,
   type ExplorerUiState
-} from "../shared/explorer/types";
+} from "@srl-labs/clab-ui/explorer/snapshot";
+import { createExplorerController } from "@srl-labs/clab-ui/host";
 
 import { hideNonOwnedLabsState } from "../../globals";
 import type {
@@ -41,22 +31,6 @@ interface FilterableTreeProvider {
   onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void>;
 }
 
-function isSetFilterMessage(message: ExplorerOutgoingMessage): message is ExplorerSetFilterMessage {
-  return message.command === "setFilter";
-}
-
-function isInvokeActionMessage(
-  message: ExplorerOutgoingMessage
-): message is ExplorerInvokeActionMessage {
-  return message.command === "invokeAction";
-}
-
-function isPersistUiStateMessage(
-  message: ExplorerOutgoingMessage
-): message is ExplorerPersistUiStateMessage {
-  return message.command === "persistUiState";
-}
-
 export interface ContainerlabExplorerProviderArgs {
   runningProvider: RunningLabTreeDataProvider;
   localProvider: LocalLabTreeDataProvider;
@@ -77,14 +51,10 @@ export class ContainerlabExplorerViewProvider
   };
   private readonly disposables: vscode.Disposable[] = [];
   private readonly visibilityEmitter = new vscode.EventEmitter<boolean>();
+  private readonly explorerController: ReturnType<typeof createExplorerController>;
 
   private webviewView?: vscode.WebviewView;
-  private isReady = false;
   private filterText = "";
-  private refreshTimer?: ReturnType<typeof setTimeout>;
-  private snapshotInFlight = false;
-  private snapshotPending = false;
-  private actionBindings: Map<string, ExplorerActionInvocation> = new Map();
 
   public readonly onDidChangeVisibility = this.visibilityEmitter.event;
 
@@ -103,6 +73,45 @@ export class ContainerlabExplorerViewProvider
         provider.setTreeFilter(this.filterText);
       }
     }
+    this.explorerController = createExplorerController({
+      initialFilterText: this.filterText,
+      initialUiState: context.workspaceState.get<ExplorerUiState>(UI_STATE_KEY, {}),
+      debounceMs: REFRESH_DEBOUNCE_MS,
+      buildProviders: async () => this.providers as ExplorerSnapshotProviders,
+      getSnapshotOptions: async () => {
+        this.options.hideNonOwnedLabs = hideNonOwnedLabsState;
+        this.options.commandMetadata = await getExplorerCommandMetadata();
+        return this.options;
+      },
+      executeAction: async (binding) => {
+        await vscode.commands.executeCommand(binding.commandId, ...binding.args);
+      },
+      onFilterTextChanged: async (filterText) => {
+        this.filterText = filterText;
+        for (const provider of this.filterableProviders) {
+          if (filterText.length > 0) {
+            provider.setTreeFilter(filterText);
+          } else {
+            provider.clearTreeFilter();
+          }
+        }
+        await this.context.workspaceState.update(FILTER_STATE_KEY, this.filterText);
+        await vscode.commands.executeCommand(
+          "setContext",
+          "containerlabExplorerFilterActive",
+          this.filterText.length > 0
+        );
+      },
+      onUiStateChanged: async (state) => {
+        await this.context.workspaceState.update(UI_STATE_KEY, state);
+      },
+      publish: async (message) => {
+        if (!this.webviewView) {
+          return;
+        }
+        await this.webviewView.webview.postMessage(message);
+      }
+    });
 
     this.registerDataListeners();
     this.disposables.push(
@@ -129,7 +138,6 @@ export class ContainerlabExplorerViewProvider
 
   public resolveWebviewView(webviewView: vscode.WebviewView): void {
     this.webviewView = webviewView;
-    this.isReady = false;
 
     webviewView.webview.options = {
       enableScripts: true,
@@ -142,7 +150,7 @@ export class ContainerlabExplorerViewProvider
 
     this.disposables.push(
       webviewView.webview.onDidReceiveMessage((message: ExplorerOutgoingMessage) => {
-        void this.handleMessage(message);
+        void this.explorerController.handleMessage(message);
       })
     );
     this.disposables.push(
@@ -160,7 +168,7 @@ export class ContainerlabExplorerViewProvider
     );
     this.disposables.push(
       webviewView.onDidDispose(() => {
-        this.isReady = false;
+        this.explorerController.dispose();
         this.webviewView = undefined;
         this.visibilityEmitter.fire(false);
       })
@@ -175,177 +183,19 @@ export class ContainerlabExplorerViewProvider
   }
 
   public async setFilter(filterText: string): Promise<void> {
-    const normalized = filterText.trim();
-    this.filterText = normalized;
-
-    for (const provider of this.filterableProviders) {
-      if (normalized.length > 0) {
-        provider.setTreeFilter(normalized);
-      } else {
-        provider.clearTreeFilter();
-      }
-    }
-
-    await this.context.workspaceState.update(FILTER_STATE_KEY, this.filterText);
-    await vscode.commands.executeCommand(
-      "setContext",
-      "containerlabExplorerFilterActive",
-      this.filterText.length > 0
-    );
-    this.postFilterState();
-    this.scheduleSnapshot(0);
+    await this.explorerController.setFilter(filterText);
   }
 
   public async clearFilter(): Promise<void> {
-    await this.setFilter("");
+    await this.explorerController.clearFilter();
   }
 
   public isFilterActive(): boolean {
-    return this.filterText.length > 0;
-  }
-
-  private async handleMessage(message: ExplorerOutgoingMessage): Promise<void> {
-    if (message.command === "ready") {
-      this.isReady = true;
-      this.postFilterState();
-      this.postUiState();
-      this.scheduleSnapshot(0);
-      return;
-    }
-
-    if (isSetFilterMessage(message)) {
-      await this.setFilter(message.value);
-      return;
-    }
-
-    if (isInvokeActionMessage(message)) {
-      await this.executeAction(message);
-      return;
-    }
-
-    if (isPersistUiStateMessage(message)) {
-      await this.persistUiState(message.state);
-    }
-  }
-
-  private async executeAction(message: ExplorerInvokeActionMessage): Promise<void> {
-    const binding = this.actionBindings.get(message.actionRef);
-    if (!binding) {
-      const msg = "Action is no longer available. Reopen the explorer and try again.";
-      this.postError(msg);
-      return;
-    }
-
-    try {
-      await vscode.commands.executeCommand(binding.commandId, ...binding.args);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.postError(`Failed to execute command: ${errorMessage}`);
-    }
-  }
-
-  private async persistUiState(state: ExplorerUiState): Promise<void> {
-    await this.context.workspaceState.update(UI_STATE_KEY, state);
-  }
-
-  private postUiState(): void {
-    if (!this.webviewView || !this.isReady) {
-      return;
-    }
-
-    const state = this.context.workspaceState.get<ExplorerUiState>(UI_STATE_KEY, {});
-    const message: ExplorerIncomingMessage = {
-      command: "uiState",
-      state
-    };
-    void this.webviewView.webview.postMessage(message);
-  }
-
-  private postFilterState(): void {
-    if (!this.webviewView || !this.isReady) {
-      return;
-    }
-
-    const message: ExplorerIncomingMessage = {
-      command: "filterState",
-      filterText: this.filterText
-    };
-    void this.webviewView.webview.postMessage(message);
-  }
-
-  private postError(message: string): void {
-    if (!this.webviewView || !this.isReady) {
-      return;
-    }
-
-    const payload: ExplorerIncomingMessage = { command: "error", message };
-    void this.webviewView.webview.postMessage(payload);
+    return this.explorerController.isFilterActive();
   }
 
   private scheduleSnapshot(delay: number = REFRESH_DEBOUNCE_MS): void {
-    if (this.refreshTimer) {
-      clearTimeout(this.refreshTimer);
-    }
-
-    this.refreshTimer = setTimeout(() => {
-      this.refreshTimer = undefined;
-      void this.postSnapshot();
-    }, delay);
-  }
-
-  private async postSnapshot(): Promise<void> {
-    if (!this.webviewView || !this.isReady) {
-      return;
-    }
-
-    if (this.snapshotInFlight) {
-      this.snapshotPending = true;
-      return;
-    }
-
-    this.snapshotInFlight = true;
-    try {
-      this.options.hideNonOwnedLabs = hideNonOwnedLabsState;
-      this.options.commandMetadata = await getExplorerCommandMetadata();
-      const { snapshot, actionBindings } = await buildExplorerSnapshot(
-        this.providers as ExplorerSnapshotProviders,
-        this.filterText,
-        this.options
-      );
-      this.actionBindings = actionBindings;
-      void this.webviewView.webview.postMessage(snapshot);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error("[containerlab explorer] failed to build snapshot", error);
-      this.actionBindings = new Map();
-      this.postError(`Explorer refresh failed: ${message}`);
-      this.postFallbackSnapshot();
-    } finally {
-      this.snapshotInFlight = false;
-      if (this.snapshotPending) {
-        this.snapshotPending = false;
-        this.scheduleSnapshot(0);
-      }
-    }
-  }
-
-  private postFallbackSnapshot(): void {
-    if (!this.webviewView || !this.isReady) {
-      return;
-    }
-
-    const snapshot: ExplorerSnapshotMessage = {
-      command: "snapshot",
-      filterText: this.filterText,
-      sections: EXPLORER_SECTION_ORDER.map((sectionId) => ({
-        id: sectionId,
-        label: EXPLORER_SECTION_LABELS[sectionId],
-        count: 0,
-        nodes: [],
-        toolbarActions: []
-      }))
-    };
-    void this.webviewView.webview.postMessage(snapshot);
+    this.explorerController.scheduleSnapshot(delay);
   }
 
   private getWebviewHtml(webview: vscode.Webview): string {
@@ -359,11 +209,7 @@ export class ContainerlabExplorerViewProvider
   }
 
   public dispose(): void {
-    if (this.refreshTimer) {
-      clearTimeout(this.refreshTimer);
-      this.refreshTimer = undefined;
-    }
-
+    this.explorerController.dispose();
     this.visibilityEmitter.dispose();
     for (const disposable of this.disposables) {
       disposable.dispose();
