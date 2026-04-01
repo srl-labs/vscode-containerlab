@@ -21,6 +21,51 @@ const nodeImpairmentsWebviewEntry = path.join(__dirname, "src/webviews/nodeImpai
 const wiresharkVncWebviewEntry = path.join(__dirname, "src/webviews/wiresharkVnc/entry.tsx");
 const clabUiGlobalCss = clabUiEntry("styles/global.css", "@srl-labs/clab-ui/styles/global.css");
 
+function findPackageRootFromEntry(entryPath) {
+  let current = path.dirname(entryPath);
+  while (true) {
+    const packageJsonPath = path.join(current, "package.json");
+    if (fs.existsSync(packageJsonPath)) {
+      return current;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      throw new Error(`Unable to find package root for entry: ${entryPath}`);
+    }
+    current = parent;
+  }
+}
+
+const clabUiPackageRoot = useLocalClabUi
+  ? localClabUiRoot
+  : findPackageRootFromEntry(clabUiGlobalCss);
+
+function resolveFromRoots(moduleId, roots) {
+  for (const root of roots) {
+    try {
+      return require.resolve(moduleId, { paths: [root] });
+    } catch {
+      // Try next candidate root.
+    }
+  }
+  throw new Error(`Unable to resolve '${moduleId}' from roots: ${roots.join(", ")}`);
+}
+
+const monacoPackageJsonPath = resolveFromRoots("monaco-editor/package.json", [
+  clabUiPackageRoot,
+  __dirname
+]);
+const monacoRoot = path.dirname(monacoPackageJsonPath);
+const monacoCodiconFontCandidates = [
+  "min/vs/base/browser/ui/codicons/codicon/codicon.ttf",
+  "esm/vs/base/browser/ui/codicons/codicon/codicon.ttf",
+  "dev/vs/base/browser/ui/codicons/codicon/codicon.ttf"
+].map((relativePath) => path.join(monacoRoot, relativePath));
+const monacoCodiconFontPath =
+  monacoCodiconFontCandidates.find((candidate) => fs.existsSync(candidate)) ?? null;
+const monacoEditorWorkerEntry = path.join(monacoRoot, "esm/vs/editor/editor.worker.js");
+const monacoJsonWorkerEntry = path.join(monacoRoot, "esm/vs/language/json/json.worker.js");
+
 const localClabUiEntrypoints = new Map([
   ["@srl-labs/clab-ui", path.join(localClabUiDistRoot, "index.js")],
   ["@srl-labs/clab-ui/host", path.join(localClabUiDistRoot, "host/index.js")],
@@ -116,12 +161,8 @@ async function copyFonts() {
   await fs.promises.mkdir(fontDir, { recursive: true });
 
   // Monaco codicon font (used by Monaco UI widgets)
-  const codiconSrc = path.join(
-    __dirname,
-    "node_modules/monaco-editor/min/vs/base/browser/ui/codicons/codicon/codicon.ttf"
-  );
-  if (fs.existsSync(codiconSrc)) {
-    await fs.promises.copyFile(codiconSrc, path.join(fontDir, "codicon.ttf"));
+  if (monacoCodiconFontPath) {
+    await fs.promises.copyFile(monacoCodiconFontPath, path.join(fontDir, "codicon.ttf"));
   }
 }
 
@@ -338,8 +379,8 @@ async function build() {
   const monacoWorkersBuild = esbuild.build({
     ...commonOptions,
     entryPoints: {
-      "monaco-editor-worker": "node_modules/monaco-editor/esm/vs/editor/editor.worker.js",
-      "monaco-json-worker": "node_modules/monaco-editor/esm/vs/language/json/json.worker.js"
+      "monaco-editor-worker": monacoEditorWorkerEntry,
+      "monaco-json-worker": monacoJsonWorkerEntry
     },
     platform: "browser",
     format: "iife",
@@ -509,8 +550,8 @@ async function build() {
     const monacoWorkersCtx = await esbuild.context({
       ...commonOptions,
       entryPoints: {
-        "monaco-editor-worker": "node_modules/monaco-editor/esm/vs/editor/editor.worker.js",
-        "monaco-json-worker": "node_modules/monaco-editor/esm/vs/language/json/json.worker.js"
+        "monaco-editor-worker": monacoEditorWorkerEntry,
+        "monaco-json-worker": monacoJsonWorkerEntry
       },
       platform: "browser",
       format: "iife",
