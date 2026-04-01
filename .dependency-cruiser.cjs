@@ -12,7 +12,8 @@ module.exports = {
           "\\.(test|spec)\\.tsx?$", // test files
           "__mocks__", // mock files
           "\\.d\\.ts$", // type declaration files
-          "index\\.ts$" // barrel files (may be entry points)
+          "index\\.ts$", // barrel files (may be entry points)
+          "src/webviews/explorer/quickActions\\.ts$" // test-only compatibility helper
         ]
       },
       to: {}
