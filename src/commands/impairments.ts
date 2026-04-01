@@ -31,7 +31,10 @@ export async function setImpairment(
   }
 
   const impairmentFlag = Object.entries(impairment)
-    .filter(([key, value]) => NETEM_FIELDS.includes(key) && typeof value === "string")
+    .filter(
+      (entry): entry is [string, string] =>
+        NETEM_FIELDS.includes(entry[0]) && typeof entry[1] === "string"
+    )
     .map(([key, value]) => `--${key} ${value}`)
     .join(" ");
 

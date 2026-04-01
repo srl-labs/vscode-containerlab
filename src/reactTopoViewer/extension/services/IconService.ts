@@ -20,7 +20,7 @@ import {
   isSupportedIconExtension
 } from "@srl-labs/clab-ui/session";
 
-import { log } from "./logger";
+import { formatErrorMessage, log } from "./logger";
 
 /**
  * Name of the workspace icons folder
@@ -94,7 +94,7 @@ export class IconService {
       const base64 = buffer.toString("base64");
       return `data:${mimeType};base64,${base64}`;
     } catch (err) {
-      log.warn(`Failed to load icon ${filePath}: ${err}`);
+      log.warn(`Failed to load icon ${filePath}: ${formatErrorMessage(err)}`);
       return null;
     }
   }
@@ -136,7 +136,7 @@ export class IconService {
         }
       }
     } catch (err) {
-      log.warn(`Failed to list icons from ${dirPath}: ${err}`);
+      log.warn(`Failed to list icons from ${dirPath}: ${formatErrorMessage(err)}`);
     }
 
     return icons;
@@ -294,7 +294,7 @@ export class IconService {
       log.info(`Copied icon "${iconName}" to workspace`);
       return true;
     } catch (err) {
-      log.error(`Failed to copy icon to workspace: ${err}`);
+      log.error(`Failed to copy icon to workspace: ${formatErrorMessage(err)}`);
       return false;
     }
   }
@@ -321,7 +321,7 @@ export class IconService {
 
       return false;
     } catch (err) {
-      log.error(`Failed to delete workspace icon: ${err}`);
+      log.error(`Failed to delete workspace icon: ${formatErrorMessage(err)}`);
       return false;
     }
   }
@@ -392,7 +392,7 @@ export class IconService {
         }
       }
     } catch (err) {
-      log.error(`Failed to reconcile workspace icons: ${err}`);
+      log.error(`Failed to reconcile workspace icons: ${formatErrorMessage(err)}`);
     }
   }
 
@@ -420,7 +420,7 @@ export class IconService {
       // Remove folder if empty
       await this.removeEmptyDir(workspaceDir);
     } catch (err) {
-      log.warn(`Failed to clean workspace icons folder: ${err}`);
+      log.warn(`Failed to clean workspace icons folder: ${formatErrorMessage(err)}`);
     }
   }
 

@@ -6,7 +6,7 @@
 import * as inspector from "../../../treeView/inspector";
 import type { DeploymentState } from "@srl-labs/clab-ui/session";
 
-import { log } from "./logger";
+import { formatErrorMessage, log } from "./logger";
 
 function hasNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
@@ -49,7 +49,7 @@ export class DeploymentStateChecker {
 
       return "undeployed";
     } catch (err) {
-      log.warn(`Failed to check deployment state: ${err}`);
+      log.warn(`Failed to check deployment state: ${formatErrorMessage(err)}`);
       return "unknown";
     }
   }

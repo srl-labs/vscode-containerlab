@@ -32,7 +32,8 @@ async function parseGottyLink(output: string): Promise<string | undefined> {
     const fromText = tryParseLinkFromText(output, bracketedHost);
     if (fromText !== undefined && fromText.length > 0) return fromText;
   } catch (error) {
-    outputChannel.error(`Failed to parse GoTTY link: ${error}`);
+    const message = error instanceof Error ? error.message : String(error);
+    outputChannel.error(`Failed to parse GoTTY link: ${message}`);
   }
   return undefined;
 }

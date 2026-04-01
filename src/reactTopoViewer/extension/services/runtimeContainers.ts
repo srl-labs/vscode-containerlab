@@ -59,7 +59,7 @@ export function labsToRuntimeContainers(
     for (const container of flattenContainers(lab.containers)) {
       containers.push({
         name: container.name,
-        nodeName: container.rootNodeName || container.name_short,
+        nodeName: container.rootNodeName ?? container.name_short,
         labName,
         state: container.state,
         kind: container.kind,

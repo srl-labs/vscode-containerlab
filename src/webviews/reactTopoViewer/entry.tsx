@@ -8,30 +8,47 @@ import "@srl-labs/clab-ui/styles/global.css";
 type TopoViewerWindow = Window & {
   __SCHEMA_DATA__?: unknown;
   __DOCKER_IMAGES__?: string[];
+  __INITIAL_DATA__?: unknown;
 };
 
 const topoViewerWindow = window as TopoViewerWindow;
 
 const runtime = createClabUiRuntime({ host: createWindowClabUiHost() });
 
-const initialData = (topoViewerWindow.__INITIAL_DATA__ ?? {}) as Record<string, unknown>;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
-if (initialData.schemaData) {
+function asStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  return value.every((entry) => typeof entry === "string")
+    ? value
+    : value.filter((entry): entry is string => typeof entry === "string");
+}
+
+const initialDataSource = topoViewerWindow.__INITIAL_DATA__;
+const initialData = isRecord(initialDataSource) ? initialDataSource : {};
+
+if ("schemaData" in initialData) {
   topoViewerWindow.__SCHEMA_DATA__ = initialData.schemaData;
 }
 
-if (initialData.dockerImages) {
-  topoViewerWindow.__DOCKER_IMAGES__ = initialData.dockerImages as string[];
+const bootstrapDockerImages = asStringArray(initialData.dockerImages);
+if (bootstrapDockerImages !== undefined) {
+  topoViewerWindow.__DOCKER_IMAGES__ = bootstrapDockerImages;
 }
 
 subscribeToWebviewMessages(
   (event) => {
-    const message = event.data as { type?: string; dockerImages?: string[] } | undefined;
-    if (message?.type === "docker-images-updated" && message.dockerImages) {
-      topoViewerWindow.__DOCKER_IMAGES__ = message.dockerImages;
+    const message = isRecord(event.data) ? event.data : undefined;
+    const dockerImages = asStringArray(message?.dockerImages);
+    if (message?.type === "docker-images-updated" && dockerImages !== undefined) {
+      topoViewerWindow.__DOCKER_IMAGES__ = dockerImages;
       topoViewerWindow.dispatchEvent(
         new CustomEvent("docker-images-updated", {
-          detail: message.dockerImages
+          detail: dockerImages
         })
       );
     }

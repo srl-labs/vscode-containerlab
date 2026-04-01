@@ -98,7 +98,8 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
         outputChannel.debug(`[LocalTreeDataProvider] Scan found ${this.cachedUris.size} lab files`);
         this.refresh();
       } catch (err: unknown) {
-        outputChannel.error(`[LocalTreeDataProvider] File scan failed: ${err}`);
+        const message = err instanceof Error ? err.message : String(err);
+        outputChannel.error(`[LocalTreeDataProvider] File scan failed: ${message}`);
         this.cachedUris ??= new Map();
       } finally {
         this.scanPromise = undefined;
@@ -164,7 +165,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
     const dirPath = dir ?? workspaceRoot;
     const { labNodes, folderNodes } = this.collectNodes(labs, dirPath, workspaceRoot);
 
-    labNodes.sort(this.compareLabs);
+    labNodes.sort((a, b) => LocalLabTreeDataProvider.compareLabs(a, b));
 
     const result: (c.ClabFolderTreeNode | c.ClabLabTreeNode)[] = [...labNodes, ...folderNodes];
     const isEmpty = result.length === 0 && dirPath === workspaceRoot;
@@ -236,7 +237,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
     const filter = FilterUtils.createFilter(this.treeFilter);
     for (const [p, node] of Object.entries(labs)) {
       const rel = path.relative(workspaceRoot, p);
-      const lbl = String(node.label);
+      const lbl = node.label;
       if (!filter(lbl) && !filter(rel)) {
         delete labs[p];
       }
@@ -272,7 +273,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
     return { labNodes, folderNodes };
   }
 
-  private compareLabs(a: c.ClabLabTreeNode, b: c.ClabLabTreeNode): number {
+  private static compareLabs(a: c.ClabLabTreeNode, b: c.ClabLabTreeNode): number {
     if (a.favorite && !b.favorite) {
       return -1;
     }

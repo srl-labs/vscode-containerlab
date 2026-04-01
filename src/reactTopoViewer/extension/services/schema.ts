@@ -14,7 +14,7 @@ import {
 } from "@srl-labs/clab-ui/session";
 import { nodeFsAdapter } from "../shared/io";
 
-import { log } from "./logger";
+import { formatErrorMessage, log } from "./logger";
 
 const CONFIG_SECTION = "containerlab.editor";
 
@@ -50,7 +50,7 @@ export async function loadSchemaData(extensionUri: vscode.Uri): Promise<SchemaDa
     }
     return parseSchemaData(schema);
   } catch (err) {
-    log.error(`Error loading schema data: ${err}`);
+    log.error(`Error loading schema data: ${formatErrorMessage(err)}`);
     return {
       kinds: [],
       typesByKind: {},

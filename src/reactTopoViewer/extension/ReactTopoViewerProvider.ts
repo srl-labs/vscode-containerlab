@@ -28,7 +28,7 @@ import {
 import type { HostRuntimeContainer } from "@srl-labs/clab-ui/host";
 import { nodeFsAdapter } from "./shared/io";
 
-import { log } from "./services/logger";
+import { formatErrorMessage, log } from "./services/logger";
 import { deploymentStateChecker } from "./services/DeploymentStateChecker";
 import { SplitViewManager } from "./services/SplitViewManager";
 import { labsToRuntimeContainers } from "./services/runtimeContainers";
@@ -52,6 +52,18 @@ function isClabLabTreeNodeValue(value: unknown): value is ClabLabTreeNode {
   if (!isRecord(value)) return false;
   if (!isRecord(value.labPath)) return false;
   return typeof value.labPath.absolute === "string";
+}
+
+function isTopologySnapshotValue(value: unknown): value is TopologySnapshot {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.revision === "number" &&
+    Array.isArray(value.nodes) &&
+    Array.isArray(value.edges) &&
+    typeof value.labName === "string" &&
+    typeof value.mode === "string" &&
+    typeof value.deploymentState === "string"
+  );
 }
 
 function toClabLabNodeRecord(value: unknown): Record<string, ClabLabTreeNode> | undefined {
@@ -139,7 +151,7 @@ export class ReactTopoViewer {
       const labsData = await runningLabsProvider.discoverInspectLabs();
       return labsToRuntimeContainers(toClabLabNodeRecord(labsData));
     } catch (err) {
-      log.warn(`Failed to load running lab data: ${err}`);
+      log.warn(`Failed to load running lab data: ${formatErrorMessage(err)}`);
       return [];
     }
   }
@@ -153,12 +165,10 @@ export class ReactTopoViewer {
         this.internalUpdateDepth > 0 || Date.now() < this.internalUpdateGraceUntil
     };
     const postSnapshot = (snapshot: unknown) => {
-      if (!snapshot || typeof snapshot !== "object") {
+      if (!isTopologySnapshotValue(snapshot)) {
         return;
       }
-      panel.webview.postMessage(
-        buildTopologySnapshotMessage(snapshot as TopologySnapshot, "external-change")
-      );
+      panel.webview.postMessage(buildTopologySnapshotMessage(snapshot, "external-change"));
     };
 
     this.watcherManager.setupFileWatcher(
@@ -220,7 +230,7 @@ export class ReactTopoViewer {
     try {
       this.deploymentState = await this.checkDeploymentState(labName, this.lastYamlFilePath);
     } catch (err) {
-      log.warn(`Failed to check deployment state: ${err}`);
+      log.warn(`Failed to check deployment state: ${formatErrorMessage(err)}`);
       this.deploymentState = "unknown";
     }
 
@@ -340,7 +350,7 @@ export class ReactTopoViewer {
       });
       return true;
     } catch (err) {
-      log.error(`Failed to update panel: ${err}`);
+      log.error(`Failed to update panel: ${formatErrorMessage(err)}`);
       return false;
     }
   }
@@ -390,7 +400,9 @@ export class ReactTopoViewer {
       );
       return true;
     } catch (err) {
-      log.error(`[ReactTopoViewer] Failed to refresh after external command: ${err}`);
+      log.error(
+        `[ReactTopoViewer] Failed to refresh after external command: ${formatErrorMessage(err)}`
+      );
       return false;
     }
   }
@@ -459,7 +471,7 @@ export class ReactTopoViewer {
         });
       }
     } catch (err) {
-      log.error(`[ReactTopoViewer] Failed to refresh link states: ${err}`);
+      log.error(`[ReactTopoViewer] Failed to refresh link states: ${formatErrorMessage(err)}`);
     }
   }
 

@@ -47,6 +47,10 @@ import { ContainerlabExplorerViewProvider } from "./webviews/explorer/containerl
 
 let explorerViewProvider: ContainerlabExplorerViewProvider | undefined;
 
+function getErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 function stopRealtimeBackgroundWorkers(): void {
   stopEventStream();
   stopFallbackPolling();
@@ -426,7 +430,8 @@ function setClabBinPath(): boolean {
         return true;
       }
     } catch (err) {
-      outputChannel.warn(`Could not resolve containerlab bin path from sys PATH: ${err}`);
+      const message = getErrorMessage(err);
+      outputChannel.warn(`Could not resolve containerlab bin path from sys PATH: ${message}`);
     }
     setContainerlabBinaryPath("containerlab");
     return true;
@@ -440,7 +445,8 @@ function setClabBinPath(): boolean {
     return true;
   } catch (err) {
     // Path is invalid or not executable - try to resolve from PATH as fallback
-    outputChannel.error(`Invalid containerlab.binaryPath "${configPath}": ${err}`);
+    const message = getErrorMessage(err);
+    outputChannel.error(`Invalid containerlab.binaryPath "${configPath}": ${message}`);
     vscode.window.showErrorMessage(
       `Configured containerlab binary path "${configPath}" is invalid or not executable.`
     );

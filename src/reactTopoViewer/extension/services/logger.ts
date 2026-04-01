@@ -49,29 +49,49 @@ function toLogLevel(level: string): LogLevel {
   }
 }
 
-function formatMessage(message: unknown): string {
-  if (typeof message === "string") {
-    return message;
+function objectTag(value: unknown): string {
+  return Object.prototype.toString.call(value);
+}
+
+export function formatUnknownForLog(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
   }
-  if (message instanceof Error) {
-    return message.stack ?? message.message;
+  if (value instanceof Error) {
+    return value.stack ?? value.message;
   }
-  if (message === undefined) {
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
+    return `${value}`;
+  }
+  if (typeof value === "symbol") {
+    return value.toString();
+  }
+  if (typeof value === "function") {
+    return `[function ${value.name || "anonymous"}]`;
+  }
+  if (value === undefined) {
     return "undefined";
   }
-  if (message === null) {
+  if (value === null) {
     return "null";
   }
   try {
-    return JSON.stringify(message);
+    return JSON.stringify(value);
   } catch {
-    return String(message);
+    // Fall through to the object tag fallback.
   }
+
+  return objectTag(value);
+}
+
+export function formatErrorMessage(error: unknown): string {
+  const formatted = formatUnknownForLog(error);
+  return formatted.length > 0 ? formatted : "Unknown error";
 }
 
 function getCallerFileLine(skipFrames: number = 0): string {
   const stack = new Error().stack;
-  if (!stack) {
+  if (stack == null || stack.length === 0) {
     return "";
   }
 
@@ -107,7 +127,7 @@ function createLogger(logFn: (level: LogLevel, message: unknown) => void): {
  * Core logging function that writes to VS Code output channel.
  */
 function logMessage(level: LogLevel, message: unknown): void {
-  const formatted = formatMessage(message);
+  const formatted = formatUnknownForLog(message);
   const fileLine = getCallerFileLine(1);
   const text = fileLine ? `${fileLine} - ${formatted}` : formatted;
   writeToChannel(level, text);

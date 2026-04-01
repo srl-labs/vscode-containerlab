@@ -456,7 +456,8 @@ export async function killAllWiresharkVNCCtrs() {
             });
             outputChannel.info(`Removed Wireshark VNC container: ${containerInfo.Id}`);
           } catch (err) {
-            outputChannel.warn(`Failed to remove container ${containerInfo.Id}: ${err}`);
+            const message = err instanceof Error ? err.message : String(err);
+            outputChannel.warn(`Failed to remove container ${containerInfo.Id}: ${message}`);
           }
         })
       );

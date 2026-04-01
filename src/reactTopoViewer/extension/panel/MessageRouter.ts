@@ -6,7 +6,7 @@ import * as path from "path";
 
 import * as vscode from "vscode";
 
-import { log, logWithLocation } from "../services/logger";
+import { formatErrorMessage, formatUnknownForLog, log, logWithLocation } from "../services/logger";
 import { labLifecycleService } from "../services/LabLifecycleService";
 import { nodeCommandService } from "../services/NodeCommandService";
 import type { SplitViewManager } from "../services/SplitViewManager";
@@ -106,20 +106,28 @@ export class MessageRouter {
       const level = typeof message.level === "string" ? message.level : "info";
       const logMsg = typeof message.message === "string" ? message.message : "";
       const fileLine = typeof message.fileLine === "string" ? message.fileLine : undefined;
-      logWithLocation(level || "info", logMsg || "", fileLine);
+      logWithLocation(level, logMsg, fileLine);
       return true;
     }
 
     if (command === "topoViewerLog") {
       const level = typeof message.level === "string" ? message.level : "info";
       const logMessage = typeof message.message === "string" ? message.message : "";
-      const logger =
-        (
-          { error: log.error, warn: log.warn, debug: log.debug } as Record<
-            string,
-            (m: string) => void
-          >
-        )[level] ?? log.info;
+      const loggers: Record<string, (value: string) => void> = {
+        error: (value: string) => {
+          log.error(value);
+        },
+        warn: (value: string) => {
+          log.warn(value);
+        },
+        debug: (value: string) => {
+          log.debug(value);
+        },
+        info: (value: string) => {
+          log.info(value);
+        }
+      };
+      const logger = loggers[level] ?? loggers.info;
       logger(logMessage);
       return true;
     }
@@ -175,7 +183,7 @@ export class MessageRouter {
     if (res.error != null && res.error.length > 0) {
       log.error(`[MessageRouter] ${res.error}`);
     } else if (res.result != null) {
-      log.info(`[MessageRouter] ${String(res.result)}`);
+      log.info(`[MessageRouter] ${formatUnknownForLog(res.result)}`);
     }
   }
 
@@ -189,7 +197,7 @@ export class MessageRouter {
       const isOpen = await this.context.splitViewManager.toggleSplitView(yamlFilePath, panel);
       log.info(`[MessageRouter] Split view toggled: ${isOpen ? "opened" : "closed"}`);
     } catch (err) {
-      log.error(`[MessageRouter] Failed to toggle split view: ${err}`);
+      log.error(`[MessageRouter] Failed to toggle split view: ${formatErrorMessage(err)}`);
     }
   }
 
@@ -439,7 +447,7 @@ export class MessageRouter {
     }
     const res = await nodeCommandService.handleNodeEndpoint(command, nodeName, yamlFilePath);
     if (res.error != null && res.error.length > 0) log.error(`[MessageRouter] ${res.error}`);
-    else if (res.result != null) log.info(`[MessageRouter] ${String(res.result)}`);
+    else if (res.result != null) log.info(`[MessageRouter] ${formatUnknownForLog(res.result)}`);
   }
 
   private async handleInterfaceCommand(
@@ -461,7 +469,7 @@ export class MessageRouter {
       yamlFilePath
     );
     if (res.error != null && res.error.length > 0) log.error(`[MessageRouter] ${res.error}`);
-    else if (res.result != null) log.info(`[MessageRouter] ${String(res.result)}`);
+    else if (res.result != null) log.info(`[MessageRouter] ${formatUnknownForLog(res.result)}`);
   }
 
   private async handleIconList(panel: vscode.WebviewPanel): Promise<void> {
@@ -521,7 +529,7 @@ export class MessageRouter {
       };
       await handlers[command]();
     } catch (err) {
-      log.error(`[MessageRouter] Icon command error: ${err}`);
+      log.error(`[MessageRouter] Icon command error: ${formatErrorMessage(err)}`);
     }
   }
 

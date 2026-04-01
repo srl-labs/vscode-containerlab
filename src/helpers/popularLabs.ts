@@ -2,10 +2,8 @@ import * as https from "https";
 
 import * as vscode from "vscode";
 
-function getRecordUnknown(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Object.prototype.toString.call(value) === "[object Object]";
 }
 
 export interface PopularRepo {
@@ -27,12 +25,12 @@ interface GitHubSearchResponse {
 }
 
 function parseGitHubSearchResponse(value: unknown): GitHubSearchResponse {
-  const items = (getRecordUnknown(value) ?? {}).items;
+  const items = isPlainObject(value) ? value.items : undefined;
   if (!Array.isArray(items)) {
     return {};
   }
   const parsedItems: PopularRepo[] = items
-    .map((item) => getRecordUnknown(item) ?? {})
+    .map((item) => (isPlainObject(item) ? item : {}))
     .map((item) => ({
       name: typeof item.name === "string" ? item.name : "",
       html_url: typeof item.html_url === "string" ? item.html_url : "",

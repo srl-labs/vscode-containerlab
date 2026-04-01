@@ -14,7 +14,7 @@ import {
 import { runningLabsProvider } from "../../../globals";
 import type { EndpointResult } from "@srl-labs/clab-ui/session";
 
-import { log } from "./logger";
+import { formatErrorMessage, log } from "./logger";
 
 /**
  * Type guard to check if a value is a valid ClabLabTreeNode.
@@ -222,7 +222,7 @@ export class NodeCommandService {
           await vscode.commands.executeCommand("containerlab.node.ssh", containerNode);
           result = `SSH connection executed for ${nodeName}`;
         } catch (innerError) {
-          error = `Error executing SSH connection: ${innerError}`;
+          error = `Error executing SSH connection: ${formatErrorMessage(innerError)}`;
           log.error(`Error executing SSH connection: ${JSON.stringify(innerError, null, 2)}`);
         }
         break;
@@ -236,7 +236,7 @@ export class NodeCommandService {
           await vscode.commands.executeCommand("containerlab.node.attachShell", node);
           result = `Attach shell executed for ${nodeName}`;
         } catch (innerError) {
-          error = `Error executing attach shell: ${innerError}`;
+          error = `Error executing attach shell: ${formatErrorMessage(innerError)}`;
           log.error(`Error executing attach shell: ${JSON.stringify(innerError, null, 2)}`);
         }
         break;
@@ -250,7 +250,7 @@ export class NodeCommandService {
           await vscode.commands.executeCommand("containerlab.node.showLogs", node);
           result = `Show logs executed for ${nodeName}`;
         } catch (innerError) {
-          error = `Error executing show logs: ${innerError}`;
+          error = `Error executing show logs: ${formatErrorMessage(innerError)}`;
           log.error(`Error executing show logs: ${JSON.stringify(innerError, null, 2)}`);
         }
         break;
@@ -323,7 +323,7 @@ export class NodeCommandService {
           await vscode.commands.executeCommand("containerlab.interface.capture", iface);
           return { result: `Capture executed for ${nodeName}/${actualInterfaceName}`, error: null };
         } catch (innerError) {
-          const errorMsg = `Error executing capture: ${innerError}`;
+          const errorMsg = `Error executing capture: ${formatErrorMessage(innerError)}`;
           log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
           return { result: null, error: errorMsg };
         }
@@ -347,7 +347,7 @@ export class NodeCommandService {
           await vscode.commands.executeCommand("containerlab.interface.setImpairment", iface, data);
           return { result: `Link impairment set for ${nodeName}:${interfaceName}`, error: null };
         } catch (innerError) {
-          const errorMsg = `Error executing capture: ${innerError}`;
+          const errorMsg = `Error executing capture: ${formatErrorMessage(innerError)}`;
           log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
           return { result: null, error: errorMsg };
         }

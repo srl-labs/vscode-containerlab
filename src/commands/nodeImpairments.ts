@@ -27,6 +27,16 @@ function getErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+function getTreeItemLabelText(label: string | vscode.TreeItemLabel | undefined): string {
+  if (typeof label === "string") {
+    return label;
+  }
+  if (label !== undefined && typeof label.label === "string") {
+    return label.label;
+  }
+  return "";
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -186,7 +196,9 @@ async function applyNetem(
   } else {
     try {
       await Promise.all(ops);
-      vscode.window.showInformationMessage(`Applied netem settings for ${node.label}`);
+      const labelText = getTreeItemLabelText(node.label);
+      const displayName = labelText !== "" ? labelText : node.name;
+      vscode.window.showInformationMessage(`Applied netem settings for ${displayName}`);
     } catch (err: unknown) {
       vscode.window.showErrorMessage(`Failed to apply settings: ${getErrorMessage(err)}`);
     }
@@ -226,10 +238,11 @@ export async function manageNodeImpairments(
   context: vscode.ExtensionContext
 ) {
   const netemMap = await refreshNetemSettings(node);
+  const panelLabel = getTreeItemLabelText(node.label);
 
   const panel = vscode.window.createWebviewPanel(
     "clabNodeImpairments",
-    `Link Impairments: ${node.label}`,
+    `Link Impairments: ${panelLabel !== "" ? panelLabel : node.name}`,
     vscode.ViewColumn.One,
     {
       enableScripts: true,

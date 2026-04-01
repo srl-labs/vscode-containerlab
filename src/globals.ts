@@ -7,10 +7,12 @@
 import * as vscode from "vscode";
 import type Docker from "dockerode";
 
+function isRecordUnknown(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 function getRecordUnknown(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
+  return isRecordUnknown(value) ? value : undefined;
 }
 
 /**
