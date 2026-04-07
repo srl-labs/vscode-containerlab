@@ -236,7 +236,7 @@ async function build() {
     entryPoints: [reactTopoViewerEntry],
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/reactTopoViewerWebview.js",
     plugins: [
       ignoreCssPlugin,
@@ -260,7 +260,7 @@ async function build() {
     entryPoints: [explorerWebviewEntry],
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/containerlabExplorerView.js",
     plugins: [
       ignoreCssPlugin,
@@ -284,7 +284,7 @@ async function build() {
     entryPoints: [welcomeWebviewEntry],
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/welcomePageWebview.js",
     plugins: [
       ignoreCssPlugin,
@@ -308,7 +308,7 @@ async function build() {
     entryPoints: [inspectWebviewEntry],
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/inspectWebview.js",
     plugins: [
       ignoreCssPlugin,
@@ -332,7 +332,7 @@ async function build() {
     entryPoints: [nodeImpairmentsWebviewEntry],
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/nodeImpairmentsWebview.js",
     plugins: [
       ignoreCssPlugin,
@@ -356,7 +356,7 @@ async function build() {
     entryPoints: [wiresharkVncWebviewEntry],
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/wiresharkVncWebview.js",
     plugins: [
       ignoreCssPlugin,
@@ -384,7 +384,7 @@ async function build() {
     },
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outdir: "dist",
     plugins: [ignoreCssPlugin]
   });
@@ -426,7 +426,7 @@ async function build() {
       entryPoints: [reactTopoViewerEntry],
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/reactTopoViewerWebview.js",
       plugins: [
         ignoreCssPlugin,
@@ -447,7 +447,7 @@ async function build() {
       entryPoints: [explorerWebviewEntry],
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/containerlabExplorerView.js",
       plugins: [
         ignoreCssPlugin,
@@ -468,7 +468,7 @@ async function build() {
       entryPoints: [welcomeWebviewEntry],
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/welcomePageWebview.js",
       plugins: [
         ignoreCssPlugin,
@@ -489,7 +489,7 @@ async function build() {
       entryPoints: [inspectWebviewEntry],
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/inspectWebview.js",
       plugins: [
         ignoreCssPlugin,
@@ -510,7 +510,7 @@ async function build() {
       entryPoints: [nodeImpairmentsWebviewEntry],
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/nodeImpairmentsWebview.js",
       plugins: [
         ignoreCssPlugin,
@@ -531,7 +531,7 @@ async function build() {
       entryPoints: [wiresharkVncWebviewEntry],
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/wiresharkVncWebview.js",
       plugins: [
         ignoreCssPlugin,
@@ -555,7 +555,7 @@ async function build() {
       },
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outdir: "dist",
       plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin]
     });
