@@ -531,7 +531,8 @@ export async function activate(context: vscode.ExtensionContext) {
    * CONNECT TO DOCKER SOCKET VIA DOCKERODE
    */
   try {
-    const docker = new Docker({ socketPath: "/var/run/docker.sock" });
+    const socketPath = utils.getConfig<string>("dockerSocketPath", "/var/run/docker.sock");
+    const docker = new Docker({ socketPath });
     setDockerClient(docker);
     // verify we are connected
     await docker.ping();

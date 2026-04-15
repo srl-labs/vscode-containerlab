@@ -708,6 +708,11 @@
             "default": "docker",
             "description": "Container runtime to use (docker, podman)."
           },
+          "containerlab.dockerSocketPath": {
+            "type": "string",
+            "default": "/var/run/docker.sock",
+            "description": "Path to the Docker or Podman socket (e.g., /run/user/1000/podman/podman.sock for Podman)."
+          },
           "containerlab.refreshMode": {
             "type": "string",
             "enum": [
