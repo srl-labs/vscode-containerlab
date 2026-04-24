@@ -938,7 +938,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/sinon": "^21.0.1",
-    "@types/vscode": "^1.116.0",
+    "@types/vscode": "1.99.0",
     "@vscode/vsce": "^3.9.1",
     "ajv": "^8.18.0",
     "ajv-formats": "^3.0.1",
