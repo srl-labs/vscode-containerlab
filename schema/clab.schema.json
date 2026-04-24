@@ -201,6 +201,23 @@
                     "type": "object",
                     "$ref": "#/definitions/env"
                 },
+                "credentials": {
+                    "type": "object",
+                    "description": "username and password for SSH/NETCONF/GNMI/etc. (overrides kind default)",
+                    "markdownDescription": "[credentials](https://containerlab.dev/manual/nodes/#credentials) for SSH/NETCONF/GNMI/etc. (overrides kind default)",
+                    "properties": {
+                        "username": {
+                            "type": "string",
+                            "description": "username to use when accessing the node over SSH/NETCONF/GNMI/etc.",
+                            "markdownDescription": "[username](https://containerlab.dev/manual/nodes/#credentials) to use when accessing the node over SSH/NETCONF/GNMI/etc."
+                        },
+                        "password": {
+                            "type": "string",
+                            "description": "password to use when accessing the node over SSH/NETCONF/GNMI/etc.",
+                            "markdownDescription": "[password](https://containerlab.dev/manual/nodes/#credentials) to use when accessing the node over SSH/NETCONF/GNMI/etc."
+                        }
+                    }
+                },
                 "env-files": {
                     "type": "array",
                     "description": "list of external files containing environment variables",
@@ -549,10 +566,13 @@
                                     "sxr-1x-44s",
                                     "sxr1d32d",
                                     "sxr-1d-32d",
+                                    "sxr-1-32d",
                                     "ixrx1b",
                                     "ixr-x1b",
                                     "ixrx3b",
-                                    "ixr-x3b"
+                                    "ixr-x3b",
+                                    "ixr-x4",
+                                    "ixr-x4-d"
                                 ]
                             }
                         }
@@ -2031,7 +2051,7 @@
                         "cisco_iol": {
                             "$ref": "#/definitions/node-config"
                         },
-                        "cisco_8000": {
+                        "cisco_c8000": {
                             "$ref": "#/definitions/node-config"
                         },
                         "cisco_c8000v": {
