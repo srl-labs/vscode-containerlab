@@ -2,7 +2,19 @@ import type { ClabLabTreeNode } from "../../../treeView/common";
 import { flattenContainers } from "../../../treeView/common";
 import type { HostRuntimeContainer, HostRuntimeInterface } from "@srl-labs/clab-ui/host";
 
+function treeItemLabelText(label: unknown): string | undefined {
+  if (typeof label === "string") {
+    return label;
+  }
+  if (label !== null && typeof label === "object" && "label" in label) {
+    const value = (label as { label?: unknown }).label;
+    return typeof value === "string" ? value : undefined;
+  }
+  return undefined;
+}
+
 function toRuntimeInterface(iface: {
+  label?: unknown;
   name: string;
   alias: string;
   mac: string;
@@ -21,10 +33,18 @@ function toRuntimeInterface(iface: {
     txPackets?: number;
     statsIntervalSeconds?: number;
   };
+  netemState?: {
+    delay?: string;
+    jitter?: string;
+    loss?: string;
+    rate?: string;
+    corruption?: string;
+  };
 }): HostRuntimeInterface {
   return {
     name: iface.name,
     alias: iface.alias,
+    label: treeItemLabelText(iface.label),
     mac: iface.mac,
     mtu: iface.mtu,
     state: iface.state,
@@ -41,6 +61,15 @@ function toRuntimeInterface(iface: {
           rxPackets: iface.stats.rxPackets,
           txPackets: iface.stats.txPackets,
           statsIntervalSeconds: iface.stats.statsIntervalSeconds
+        }
+      : undefined,
+    netemState: iface.netemState
+      ? {
+          delay: iface.netemState.delay,
+          jitter: iface.netemState.jitter,
+          loss: iface.netemState.loss,
+          rate: iface.netemState.rate,
+          corruption: iface.netemState.corruption
         }
       : undefined
   };
