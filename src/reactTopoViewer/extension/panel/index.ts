@@ -28,4 +28,4 @@ export {
 } from "@srl-labs/clab-ui/session";
 
 // Service adapters
-export { getCustomNodesFromConfig, loadSchemaData } from "../services/schema";
+export { getCustomNodesFromConfig } from "../services/schema";

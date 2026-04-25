@@ -13,10 +13,7 @@ import {
 import { getImageManagerWebviewHtml } from "../webviews/imageManager/imageManagerWebviewHtml";
 import { pullDockerImage } from "../utils/docker/docker";
 import { listDockerImageSummaries, removeDockerImage } from "../utils/docker/images";
-import {
-  getCustomNodesFromConfig,
-  loadSchemaData
-} from "../reactTopoViewer/extension/services/schema";
+import { getCustomNodesFromConfig } from "../reactTopoViewer/extension/services/schema";
 
 type ImageManagerRequestMessage = {
   command?: string;
@@ -216,10 +213,7 @@ export async function manageImages(context: vscode.ExtensionContext): Promise<vo
     currentPanel = undefined;
   });
 
-  const schemaData = await loadSchemaData(context.extensionUri);
-  panel.webview.html = getImageManagerWebviewHtml(panel.webview, context.extensionUri, {
-    schemaData
-  });
+  panel.webview.html = getImageManagerWebviewHtml(panel.webview, context.extensionUri, {});
   panel.webview.onDidReceiveMessage((message: unknown) => {
     void respondToImageManagerRequest(panel, message);
   });
