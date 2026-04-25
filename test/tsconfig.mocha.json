@@ -6,6 +6,9 @@
     "baseUrl": "..",
     "paths": {
       "@srl-labs/clab-ui": ["./node_modules/@srl-labs/clab-ui/dist/index.d.ts"],
+      "@srl-labs/clab-ui/image-manager/catalog": [
+        "./node_modules/@srl-labs/clab-ui/dist/image-manager/catalog.d.ts"
+      ],
       "@srl-labs/clab-ui/*": ["./node_modules/@srl-labs/clab-ui/dist/*/index.d.ts"]
     }
   }
