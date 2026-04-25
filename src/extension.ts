@@ -313,7 +313,8 @@ function registerCommands(context: vscode.ExtensionContext) {
     ["containerlab.lab.fcli.ni", cmd.fcliNi],
     ["containerlab.lab.fcli.subif", cmd.fcliSubif],
     ["containerlab.lab.fcli.sysInfo", cmd.fcliSysInfo],
-    ["containerlab.lab.fcli.custom", cmd.fcliCustom]
+    ["containerlab.lab.fcli.custom", cmd.fcliCustom],
+    ["containerlab.images.manage", () => cmd.manageImages(context)]
   ];
   commands.forEach(([name, handler]) => {
     context.subscriptions.push(vscode.commands.registerCommand(name, handler));

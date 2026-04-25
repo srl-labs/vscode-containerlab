@@ -13,7 +13,8 @@ module.exports = {
           "__mocks__", // mock files
           "\\.d\\.ts$", // type declaration files
           "index\\.ts$", // barrel files (may be entry points)
-          "src/webviews/explorer/quickActions\\.ts$" // test-only compatibility helper
+          "src/webviews/explorer/quickActions\\.ts$", // test-only compatibility helper
+          "src/webviews/imageManager/entry\\.tsx$" // esbuild webview entry point
         ]
       },
       to: {}

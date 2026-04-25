@@ -151,6 +151,12 @@
         "icon": "$(info)"
       },
       {
+        "command": "containerlab.images.manage",
+        "title": "Manage Images",
+        "category": "Containerlab",
+        "icon": "$(package)"
+      },
+      {
         "command": "containerlab.inspectOneLab",
         "title": "Inspect",
         "category": "Containerlab",

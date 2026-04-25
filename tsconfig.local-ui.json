@@ -7,6 +7,8 @@
       "@srl-labs/clab-ui/session": ["../clab-ui/dist/session/index.d.ts"],
       "@srl-labs/clab-ui/theme": ["../clab-ui/dist/theme/index.d.ts"],
       "@srl-labs/clab-ui/explorer": ["../clab-ui/dist/explorer/index.d.ts"],
+      "@srl-labs/clab-ui/image-manager": ["../clab-ui/dist/image-manager/index.d.ts"],
+      "@srl-labs/clab-ui/image-manager/catalog": ["../clab-ui/dist/image-manager/catalog.d.ts"],
       "@srl-labs/clab-ui/inspect": ["../clab-ui/dist/inspect/index.d.ts"],
       "@srl-labs/clab-ui/welcome": ["../clab-ui/dist/welcome/index.d.ts"],
       "@srl-labs/clab-ui/node-impairments": ["../clab-ui/dist/node-impairments/index.d.ts"],

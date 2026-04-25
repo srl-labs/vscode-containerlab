@@ -16,6 +16,7 @@ const clabUiEntry = (relativePath, packageSubpath) =>
 const reactTopoViewerEntry = path.join(__dirname, "src/webviews/reactTopoViewer/entry.tsx");
 const explorerWebviewEntry = path.join(__dirname, "src/webviews/explorer/entry.tsx");
 const inspectWebviewEntry = path.join(__dirname, "src/webviews/inspect/entry.tsx");
+const imageManagerWebviewEntry = path.join(__dirname, "src/webviews/imageManager/entry.tsx");
 const welcomeWebviewEntry = path.join(__dirname, "src/webviews/welcome/entry.tsx");
 const nodeImpairmentsWebviewEntry = path.join(__dirname, "src/webviews/nodeImpairments/entry.tsx");
 const wiresharkVncWebviewEntry = path.join(__dirname, "src/webviews/wiresharkVnc/entry.tsx");
@@ -72,6 +73,14 @@ const localClabUiEntrypoints = new Map([
   ["@srl-labs/clab-ui/session", path.join(localClabUiDistRoot, "session/index.js")],
   ["@srl-labs/clab-ui/theme", path.join(localClabUiDistRoot, "theme/index.js")],
   ["@srl-labs/clab-ui/explorer", path.join(localClabUiDistRoot, "explorer/index.js")],
+  [
+    "@srl-labs/clab-ui/image-manager",
+    path.join(localClabUiDistRoot, "image-manager/index.js")
+  ],
+  [
+    "@srl-labs/clab-ui/image-manager/catalog",
+    path.join(localClabUiDistRoot, "image-manager/catalog.js")
+  ],
   ["@srl-labs/clab-ui/inspect", path.join(localClabUiDistRoot, "inspect/index.js")],
   ["@srl-labs/clab-ui/welcome", path.join(localClabUiDistRoot, "welcome/index.js")],
   [
@@ -124,6 +133,17 @@ const reactSingletonAliasPlugin = {
       }
     );
   }
+};
+
+const browserAssetLoaders = {
+  ".svg": "dataurl",
+  ".png": "dataurl",
+  ".jpg": "dataurl",
+  ".gif": "dataurl",
+  ".woff": "dataurl",
+  ".woff2": "dataurl",
+  ".ttf": "dataurl",
+  ".eot": "dataurl"
 };
 
 // Plugin to stub native .node files - ssh2 has JS fallbacks
@@ -244,12 +264,7 @@ async function build() {
       reactSingletonAliasPlugin
     ],
     jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
+    loader: browserAssetLoaders,
     define: {
       "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
     }
@@ -268,12 +283,7 @@ async function build() {
       reactSingletonAliasPlugin
     ],
     jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
+    loader: browserAssetLoaders,
     define: {
       "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
     }
@@ -292,12 +302,7 @@ async function build() {
       reactSingletonAliasPlugin
     ],
     jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
+    loader: browserAssetLoaders,
     define: {
       "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
     }
@@ -316,12 +321,26 @@ async function build() {
       reactSingletonAliasPlugin
     ],
     jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
+    loader: browserAssetLoaders,
+    define: {
+      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
+    }
+  });
+
+  const imageManagerWebviewBuild = esbuild.build({
+    ...commonOptions,
+    entryPoints: [imageManagerWebviewEntry],
+    platform: "browser",
+    format: "iife",
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
+    outfile: "dist/imageManagerWebview.js",
+    plugins: [
+      ignoreCssPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
+    jsx: "automatic",
+    loader: browserAssetLoaders,
     define: {
       "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
     }
@@ -340,12 +359,7 @@ async function build() {
       reactSingletonAliasPlugin
     ],
     jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
+    loader: browserAssetLoaders,
     define: {
       "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
     }
@@ -364,12 +378,7 @@ async function build() {
       reactSingletonAliasPlugin
     ],
     jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
+    loader: browserAssetLoaders,
     define: {
       "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
     }
@@ -396,6 +405,7 @@ async function build() {
     explorerWebviewBuild,
     welcomeWebviewBuild,
     inspectWebviewBuild,
+    imageManagerWebviewBuild,
     nodeImpairmentsWebviewBuild,
     wiresharkVncWebviewBuild,
     monacoWorkersBuild,
@@ -434,12 +444,7 @@ async function build() {
         reactSingletonAliasPlugin
       ],
       jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
+      loader: browserAssetLoaders
     });
 
     const explorerWebCtx = await esbuild.context({
@@ -455,12 +460,7 @@ async function build() {
         reactSingletonAliasPlugin
       ],
       jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
+      loader: browserAssetLoaders
     });
 
     const welcomeWebCtx = await esbuild.context({
@@ -476,12 +476,7 @@ async function build() {
         reactSingletonAliasPlugin
       ],
       jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
+      loader: browserAssetLoaders
     });
 
     const inspectWebCtx = await esbuild.context({
@@ -497,12 +492,23 @@ async function build() {
         reactSingletonAliasPlugin
       ],
       jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
+      loader: browserAssetLoaders
+    });
+
+    const imageManagerWebCtx = await esbuild.context({
+      ...commonOptions,
+      entryPoints: [imageManagerWebviewEntry],
+      platform: "browser",
+      format: "iife",
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
+      outfile: "dist/imageManagerWebview.js",
+      plugins: [
+        ignoreCssPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
+      jsx: "automatic",
+      loader: browserAssetLoaders
     });
 
     const nodeImpairmentsWebCtx = await esbuild.context({
@@ -518,12 +524,7 @@ async function build() {
         reactSingletonAliasPlugin
       ],
       jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
+      loader: browserAssetLoaders
     });
 
     const wiresharkVncWebCtx = await esbuild.context({
@@ -539,12 +540,7 @@ async function build() {
         reactSingletonAliasPlugin
       ],
       jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
+      loader: browserAssetLoaders
     });
 
     const monacoWorkersCtx = await esbuild.context({
@@ -566,6 +562,7 @@ async function build() {
       explorerWebCtx.watch(),
       welcomeWebCtx.watch(),
       inspectWebCtx.watch(),
+      imageManagerWebCtx.watch(),
       nodeImpairmentsWebCtx.watch(),
       wiresharkVncWebCtx.watch(),
       monacoWorkersCtx.watch()

@@ -5,7 +5,7 @@ import { dockerClient, outputChannel } from "../../globals";
 import { ContainerAction, ImagePullPolicy } from "../consts";
 
 // Internal helper to pull the docker image using dockerode client
-async function pullDockerImage(image: string): Promise<boolean> {
+export async function pullDockerImage(image: string): Promise<boolean> {
   return vscode.window.withProgress<boolean>(
     {
       location: vscode.ProgressLocation.Notification,
