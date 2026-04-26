@@ -101,6 +101,9 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
   const monacoJsonWorkerUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "dist", "monaco-json-worker.js")
   );
+  const monacoYamlWorkerUri = webview.asWebviewUri(
+    vscode.Uri.joinPath(extensionUri, "dist", "monaco-yaml-worker.js")
+  );
 
   // CSP nonce for security
   const nonce = generateNonce();
@@ -133,6 +136,7 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
     window.maplibreWorkerSourceBase64 = "${maplibreWorkerSourceBase64}";
     window.monacoEditorWorkerUrl = "${monacoEditorWorkerUri.toString()}";
     window.monacoJsonWorkerUrl = "${monacoJsonWorkerUri.toString()}";
+    window.monacoYamlWorkerUrl = "${monacoYamlWorkerUri.toString()}";
   </script>
   <script nonce="${nonce}" src="${scriptUriString}"></script>
 </body>

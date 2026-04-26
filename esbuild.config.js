@@ -57,6 +57,11 @@ const monacoPackageJsonPath = resolveFromRoots("monaco-editor/package.json", [
   __dirname
 ]);
 const monacoRoot = path.dirname(monacoPackageJsonPath);
+const monacoYamlPackageJsonPath = resolveFromRoots("monaco-yaml/package.json", [
+  clabUiPackageRoot,
+  __dirname
+]);
+const monacoYamlRoot = path.dirname(monacoYamlPackageJsonPath);
 const monacoCodiconFontCandidates = [
   "min/vs/base/browser/ui/codicons/codicon/codicon.ttf",
   "esm/vs/base/browser/ui/codicons/codicon/codicon.ttf",
@@ -66,6 +71,7 @@ const monacoCodiconFontPath =
   monacoCodiconFontCandidates.find((candidate) => fs.existsSync(candidate)) ?? null;
 const monacoEditorWorkerEntry = path.join(monacoRoot, "esm/vs/editor/editor.worker.js");
 const monacoJsonWorkerEntry = path.join(monacoRoot, "esm/vs/language/json/json.worker.js");
+const monacoYamlWorkerEntry = path.join(monacoYamlRoot, "yaml.worker.js");
 
 const localClabUiEntrypoints = new Map([
   ["@srl-labs/clab-ui", path.join(localClabUiDistRoot, "index.js")],
@@ -389,7 +395,8 @@ async function build() {
     ...commonOptions,
     entryPoints: {
       "monaco-editor-worker": monacoEditorWorkerEntry,
-      "monaco-json-worker": monacoJsonWorkerEntry
+      "monaco-json-worker": monacoJsonWorkerEntry,
+      "monaco-yaml-worker": monacoYamlWorkerEntry
     },
     platform: "browser",
     format: "iife",
@@ -547,7 +554,8 @@ async function build() {
       ...commonOptions,
       entryPoints: {
         "monaco-editor-worker": monacoEditorWorkerEntry,
-        "monaco-json-worker": monacoJsonWorkerEntry
+        "monaco-json-worker": monacoJsonWorkerEntry,
+        "monaco-yaml-worker": monacoYamlWorkerEntry
       },
       platform: "browser",
       format: "iife",
