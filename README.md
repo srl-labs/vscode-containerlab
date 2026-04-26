@@ -199,6 +199,33 @@ See `test/README.md` for a short overview of the test setup and stub utilities.
 
 ---
 
+## UI Dependency Mode
+
+By default, this repository consumes the published `@srl-labs/clab-ui` package from GitHub Packages after `npm install`.
+
+This is the default path for normal development, CI, and packaging.
+
+If you are working in a sibling checkout with `clab-ui` and want to test local unpublished UI changes, opt in explicitly:
+
+```bash
+CLAB_UI_SOURCE=local npm run build
+CLAB_UI_SOURCE=local npm run package
+```
+
+Convenience scripts are also available:
+
+```bash
+npm run build:local-ui
+npm run package:local-ui
+```
+
+The local override resolves against `../clab-ui/dist`, so make sure that the
+package repo is built before running the local override scripts.
+
+The local override affects only bundling/runtime resolution. The default install path remains the published npm package.
+
+---
+
 ## Feedback and Contributions
 
 If you’d like to request features or report issues:

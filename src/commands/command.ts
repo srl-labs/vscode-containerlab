@@ -307,20 +307,21 @@ export class Command {
         await this.onSuccessCallback();
       }
 
-      vscode.window
-        .showInformationMessage(this.spinnerMsg?.successMsg!, "Show Logs")
-        .then((choice) => {
+      const successMsg = this.spinnerMsg?.successMsg;
+      if (successMsg !== undefined && successMsg.length > 0) {
+        vscode.window.showInformationMessage(successMsg, "Show Logs").then((choice) => {
           if (choice === "Show Logs") {
             outputChannel.show(true);
           }
         });
+      }
     } catch (err: unknown) {
       const command = cmd[1];
       const errMessage = err instanceof Error ? err.message : String(err);
       const customFailMsg = this.spinnerMsg?.failMsg;
       const failMsg =
         customFailMsg !== undefined && customFailMsg.length > 0
-          ? `${customFailMsg}. Err: ${err}`
+          ? `${customFailMsg}. Err: ${errMessage}`
           : `${utils.titleCase(command)} failed: ${errMessage}`;
       const viewOutputBtn = await vscode.window.showErrorMessage(failMsg, "View logs");
       if (viewOutputBtn === "View logs") {

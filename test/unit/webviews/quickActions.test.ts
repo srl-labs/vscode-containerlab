@@ -1,7 +1,7 @@
 /* global describe, it */
 import { expect } from "chai";
+import type { ExplorerAction } from "@srl-labs/clab-ui/explorer";
 
-import type { ExplorerAction } from "../../../src/webviews/shared/explorer/types";
 import { resolveQuickActionsForNode } from "../../../src/webviews/explorer/quickActions";
 
 function createAction(commandId: string, label?: string): ExplorerAction {

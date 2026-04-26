@@ -88,6 +88,8 @@ export {
 } from "./workspace";
 
 // External tool and repo commands
+export { manageImages } from "./images";
+
 export {
   graphDrawIOHorizontal,
   graphDrawIOVertical,

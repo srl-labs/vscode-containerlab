@@ -5,7 +5,7 @@
 
 import * as vscode from "vscode";
 
-import { log } from "./logger";
+import { formatErrorMessage, log } from "./logger";
 
 /**
  * Simple sleep utility.
@@ -49,7 +49,8 @@ export class SplitViewManager {
         panel.reveal();
       }
     } catch (error) {
-      vscode.window.showErrorMessage(`Error opening template file: ${error}`);
+      const errorMessage = formatErrorMessage(error);
+      void vscode.window.showErrorMessage(`Error opening template file: ${errorMessage}`);
     }
   }
 
@@ -74,8 +75,9 @@ export class SplitViewManager {
 
       return this.isSplitViewOpen;
     } catch (error) {
-      vscode.window.showErrorMessage(`Error toggling split view: ${error}`);
-      log.error(`Error toggling split view: ${error}`);
+      const errorMessage = formatErrorMessage(error);
+      void vscode.window.showErrorMessage(`Error toggling split view: ${errorMessage}`);
+      log.error(`Error toggling split view: ${errorMessage}`);
       return this.isSplitViewOpen;
     }
   }

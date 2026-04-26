@@ -5,7 +5,8 @@
     "esModuleInterop": true,
     "jsx": "react-jsx",
     "lib": ["ES2024", "dom"],
-    "module": "commonjs",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
     "noImplicitReturns": true,
@@ -21,6 +22,7 @@
     "strictFunctionTypes": true,
     "strictNullChecks": true,
     "target": "ES2024",
+    "preserveSymlinks": false,
     "typeRoots": ["src/topoViewer/common/types", "./node_modules/@types"],
     "types": ["mocha", "node"]
   },
@@ -29,7 +31,6 @@
     ".vscode-test",
     "test/**/*",
     "legacy-backup/**/*",
-    "labs/**/*",
-    "dev/**/*"
+    "labs/**/*"
   ]
 }

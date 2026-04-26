@@ -1,4 +1,4 @@
-import path = require("path");
+import * as path from "path";
 
 import * as vscode from "vscode";
 
@@ -60,6 +60,59 @@ type LinkTreeNode = c.ClabSshxLinkTreeNode | c.ClabGottyLinkTreeNode;
 
 function hasNonEmptyString(value: string | undefined): value is string {
   return value !== undefined && value !== "";
+}
+
+function isTreeItemLabel(value: unknown): value is vscode.TreeItemLabel {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  return typeof Reflect.get(value, "label") === "string";
+}
+
+function getTreeItemLabelText(label: vscode.TreeItemLabel | string | undefined): string {
+  if (typeof label === "string") {
+    return label;
+  }
+  if (label !== undefined && typeof label.label === "string") {
+    return label.label;
+  }
+  return "";
+}
+
+function getTooltipText(tooltip: vscode.TreeItem["tooltip"]): string {
+  if (typeof tooltip === "string") {
+    return tooltip;
+  }
+  if (tooltip instanceof vscode.MarkdownString) {
+    return tooltip.value;
+  }
+  return "";
+}
+
+function toComparableText(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
+    return String(value);
+  }
+  if (value === undefined || value === null) {
+    return "";
+  }
+  if (isTreeItemLabel(value)) {
+    return value.label;
+  }
+  if (value instanceof vscode.MarkdownString) {
+    return value.value;
+  }
+  try {
+    if (typeof value === "function" || typeof value === "symbol") {
+      return "";
+    }
+    return JSON.stringify(value);
+  } catch {
+    return "";
+  }
 }
 
 function isLinkTreeNode(item: vscode.TreeItem): item is LinkTreeNode {
@@ -283,19 +336,23 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     lab: c.ClabLabTreeNode,
     filter: ReturnType<typeof FilterUtils.createFilter>
   ): boolean {
-    if (filter(String(lab.label))) return true;
+    if (filter(lab.label)) return true;
     const containers = lab.containers ?? [];
     return containers.some((cn) => {
       if (cn instanceof c.ClabContainerGroupTreeNode) {
         return (
-          filter(String(cn.label)) ||
+          filter(getTreeItemLabelText(cn.label)) ||
           cn.children.some(
             (child) =>
-              filter(String(child.label)) || child.interfaces.some((it) => filter(String(it.label)))
+              filter(getTreeItemLabelText(child.label)) ||
+              child.interfaces.some((it) => filter(getTreeItemLabelText(it.label)))
           )
         );
       }
-      return filter(String(cn.label)) || cn.interfaces.some((it) => filter(String(it.label)));
+      return (
+        filter(getTreeItemLabelText(cn.label)) ||
+        cn.interfaces.some((it) => filter(getTreeItemLabelText(it.label)))
+      );
     });
   }
 
@@ -311,7 +368,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     if (!this.treeFilter) return containers;
 
     const filter = FilterUtils.createFilter(this.treeFilter);
-    const labMatch = filter(String(element.label));
+    const labMatch = filter(element.label);
     if (labMatch) return containers;
 
     return containers.filter((cn) => {
@@ -330,7 +387,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     group: c.ClabContainerGroupTreeNode,
     filter: ReturnType<typeof FilterUtils.createFilter>
   ): boolean {
-    if (filter(String(group.label))) return true;
+    if (filter(getTreeItemLabelText(group.label))) return true;
     return group.children.some((cn) => this.containerMatchesFilter(cn, filter));
   }
 
@@ -338,17 +395,19 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     cn: c.ClabContainerTreeNode,
     filter: ReturnType<typeof FilterUtils.createFilter>
   ): boolean {
-    if (filter(String(cn.label))) return true; // Keep entire container with all interfaces
+    if (filter(getTreeItemLabelText(cn.label))) return true; // Keep entire container with all interfaces
     const ifaces = cn.interfaces;
-    return ifaces.some((it) => filter(String(it.label)));
+    return ifaces.some((it) => filter(getTreeItemLabelText(it.label)));
   }
 
   private getContainerChildren(element: c.ClabContainerTreeNode) {
     let interfaces = element.interfaces;
     if (!this.treeFilter) return interfaces;
     const filter = FilterUtils.createFilter(this.treeFilter);
-    const containerMatches = filter(String(element.label));
-    return containerMatches ? interfaces : interfaces.filter((it) => filter(String(it.label)));
+    const containerMatches = filter(getTreeItemLabelText(element.label));
+    return containerMatches
+      ? interfaces
+      : interfaces.filter((it) => filter(getTreeItemLabelText(it.label)));
   }
 
   private async discoverLabs(): Promise<LabDiscoveryResult> {
@@ -459,7 +518,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     let branchStructureChanged = false;
     const containersToRefresh: Set<c.ClabContainerTreeNode> = new Set();
 
-    if (String(target.label) !== String(source.label)) {
+    if (target.label !== source.label) {
       target.label = source.label;
       labChanged = true;
     }
@@ -702,7 +761,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
     // Always update tooltip (VS Code fetches it lazily on hover)
     // but don't mark as changed to avoid dismissing visible tooltips
-    if (String(target.tooltip ?? "") !== String(source.tooltip ?? "")) {
+    if (getTooltipText(target.tooltip) !== getTooltipText(source.tooltip)) {
       target.tooltip = source.tooltip;
     }
 
@@ -792,7 +851,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
     // Always update tooltip (VS Code fetches it lazily on hover)
     // but don't mark as changed to avoid dismissing visible tooltips
-    if (String(target.tooltip ?? "") !== String(source.tooltip ?? "")) {
+    if (getTooltipText(target.tooltip) !== getTooltipText(source.tooltip)) {
       target.tooltip = source.tooltip;
     }
 
@@ -815,7 +874,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   }
 
   private getNodeKey(node: { name?: string; label?: vscode.TreeItemLabel | string }): string {
-    return node.name ?? String(node.label ?? "");
+    return node.name ?? getTreeItemLabelText(node.label);
   }
 
   private areObjectValuesEqual<T extends object>(a: T | undefined, b: T | undefined): boolean {
@@ -862,7 +921,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   ): boolean {
     const current = Reflect.get(target, key) as unknown;
     const equal = compareAsString
-      ? String(current ?? "") === String(value ?? "")
+      ? toComparableText(current) === toComparableText(value)
       : current === value;
     if (equal) {
       return false;
@@ -879,8 +938,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     if (!(a instanceof vscode.ThemeIcon) || !(b instanceof vscode.ThemeIcon)) {
       return false;
     }
-    const colorA = a.color?.id ?? a.color?.toString();
-    const colorB = b.color?.id ?? b.color?.toString();
+    const colorA = a.color?.id;
+    const colorB = b.color?.id;
     return a.id === b.id && colorA === colorB;
   }
 
@@ -903,7 +962,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     if (!a && !b) return true;
     if (!a || !b) return false;
 
-    if (String(a.label) !== String(b.label)) return false;
+    if (getTreeItemLabelText(a.label) !== getTreeItemLabelText(b.label)) return false;
     if (a.tooltip !== b.tooltip) return false;
     if (a.collapsibleState !== b.collapsibleState) return false;
     if (!this.iconsEqual(a.iconPath, b.iconPath)) return false;
@@ -1412,7 +1471,9 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
       result.push(groupNode);
     }
 
-    return result.sort((a, b) => String(a.label).localeCompare(String(b.label)));
+    return result.sort((a, b) =>
+      getTreeItemLabelText(a.label).localeCompare(getTreeItemLabelText(b.label))
+    );
   }
 
   private discoverContainerInterfaces(

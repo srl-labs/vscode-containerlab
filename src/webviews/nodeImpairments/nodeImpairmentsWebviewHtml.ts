@@ -1,8 +1,7 @@
 import type { Uri, Webview } from "vscode";
+import type { NodeImpairmentsInitialData } from "@srl-labs/clab-ui/node-impairments";
 
 import { createReactWebviewHtml } from "../shared/reactWebviewHtml";
-
-import type { NodeImpairmentsInitialData } from "./types";
 
 export function getNodeImpairmentsWebviewHtml(
   webview: Webview,

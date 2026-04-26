@@ -78,9 +78,11 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
   const scriptUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "dist", "reactTopoViewerWebview.js")
   );
+  const scriptUriString = scriptUri.toString();
   const styleUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "dist", "reactTopoViewerStyles.css")
   );
+  const styleUriString = styleUri.toString();
   const maplibreWorkerUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "dist", "maplibre-gl-csp-worker.js")
   );
@@ -112,21 +114,27 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}' 'unsafe-eval'; img-src ${webview.cspSource} https: data:; font-src ${webview.cspSource}; connect-src ${webview.cspSource} https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://tile.openstreetmap.org; worker-src ${webview.cspSource} blob:;">
-  <link href="${styleUri}" rel="stylesheet">
+  <link href="${styleUriString}" rel="stylesheet">
   <title>TopoViewer (React)</title>
 </head>
 <body>
   <div id="root"></div>
   <script nonce="${nonce}">
     // Acquire VS Code API for webview communication
-    window.vscode = acquireVsCodeApi();
+    if (!window.vscode) {
+      try {
+        window.vscode = acquireVsCodeApi();
+      } catch {
+        // Ignore duplicate-acquire errors and keep using the cached instance.
+      }
+    }
     window.__INITIAL_DATA__ = ${initialDataJson};
     window.maplibreWorkerUrl = "${maplibreWorkerUri.toString()}";
     window.maplibreWorkerSourceBase64 = "${maplibreWorkerSourceBase64}";
     window.monacoEditorWorkerUrl = "${monacoEditorWorkerUri.toString()}";
     window.monacoJsonWorkerUrl = "${monacoJsonWorkerUri.toString()}";
   </script>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${scriptUriString}"></script>
 </body>
 </html>`;
 }

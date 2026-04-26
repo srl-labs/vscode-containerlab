@@ -6,42 +6,39 @@ import * as path from "path";
 
 import * as vscode from "vscode";
 
-import { log, logWithLocation } from "../services/logger";
+import { formatErrorMessage, formatUnknownForLog, log, logWithLocation } from "../services/logger";
 import { labLifecycleService } from "../services/LabLifecycleService";
-import { nodeFsAdapter } from "../../shared/io";
 import { nodeCommandService } from "../services/NodeCommandService";
 import type { SplitViewManager } from "../services/SplitViewManager";
 import { customNodeConfigManager } from "../services/CustomNodeConfigManager";
 import type { CustomNodeConfig } from "../services/CustomNodeConfigManager";
 import { iconService } from "../services/IconService";
-import type { TopologyHost } from "../../shared/types/topologyHost";
-import type { TopologySnapshot, TopologyHostCommand } from "../../shared/types/messages";
-import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../../shared/types/messages";
 import {
+  MSG_CANCEL_LAB_LIFECYCLE,
   MSG_CUSTOM_NODE_ERROR,
   MSG_CUSTOM_NODE_UPDATED,
   MSG_ICON_LIST_RESPONSE,
   MSG_LAB_LIFECYCLE_STATUS,
-  MSG_SVG_EXPORT_RESULT
-} from "../../shared/messages/webview";
-import type {
-  CustomNodeCommand,
-  ExportCommand,
-  IconCommand,
-  InterfaceCommand,
-  LifecycleCommand,
-  NodeCommand
-} from "../../shared/messages/extension";
-import {
+  MSG_SVG_EXPORT_RESULT,
+  MSG_TOGGLE_SPLIT_VIEW,
   isCustomNodeCommand,
   isExportCommand,
   isIconCommand,
   isInterfaceCommand,
   isLifecycleCommand,
-  MSG_CANCEL_LAB_LIFECYCLE,
   isNodeCommand,
-  MSG_TOGGLE_SPLIT_VIEW
-} from "../../shared/messages/extension";
+  handleTopologyHostProtocolMessage,
+  type CustomNodeCommand,
+  type ExportCommand,
+  type IconCommand,
+  type InterfaceCommand,
+  type LifecycleCommand,
+  type NodeCommand,
+  type TopologyHost,
+  type TopologyHostResponseMessage,
+  type TopologySnapshot
+} from "@srl-labs/clab-ui/session";
+import { nodeFsAdapter } from "../shared/io";
 import { cancelActiveCommand } from "../../../commands/command";
 
 type WebviewMessage = Record<string, unknown> & {
@@ -59,23 +56,10 @@ interface GrafanaBundleExportPayload {
   panelYaml: string;
 }
 
-const TOPOLOGY_HOST_GET_SNAPSHOT = "topology-host:get-snapshot";
-const TOPOLOGY_HOST_COMMAND = "topology-host:command";
-const TOPOLOGY_HOST_SNAPSHOT = "topology-host:snapshot";
-const TOPOLOGY_HOST_ACK = "topology-host:ack";
-const TOPOLOGY_HOST_REJECT = "topology-host:reject";
-const TOPOLOGY_HOST_ERROR = "topology-host:error";
 const SNAPSHOT_ERROR_MODAL_COOLDOWN_MS = 5000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function isTopologyHostCommand(value: unknown): value is TopologyHostCommand {
-  if (!isRecord(value)) return false;
-  if (typeof value.command !== "string") return false;
-  if (value.command === "undo" || value.command === "redo") return true;
-  return "payload" in value;
 }
 
 function asStringArray(value: unknown): string[] {
@@ -122,20 +106,28 @@ export class MessageRouter {
       const level = typeof message.level === "string" ? message.level : "info";
       const logMsg = typeof message.message === "string" ? message.message : "";
       const fileLine = typeof message.fileLine === "string" ? message.fileLine : undefined;
-      logWithLocation(level || "info", logMsg || "", fileLine);
+      logWithLocation(level, logMsg, fileLine);
       return true;
     }
 
     if (command === "topoViewerLog") {
       const level = typeof message.level === "string" ? message.level : "info";
       const logMessage = typeof message.message === "string" ? message.message : "";
-      const logger =
-        (
-          { error: log.error, warn: log.warn, debug: log.debug } as Record<
-            string,
-            (m: string) => void
-          >
-        )[level] ?? log.info;
+      const loggers: Record<string, (value: string) => void> = {
+        error: (value: string) => {
+          log.error(value);
+        },
+        warn: (value: string) => {
+          log.warn(value);
+        },
+        debug: (value: string) => {
+          log.debug(value);
+        },
+        info: (value: string) => {
+          log.info(value);
+        }
+      };
+      const logger = loggers[level] ?? loggers.info;
       logger(logMessage);
       return true;
     }
@@ -146,61 +138,6 @@ export class MessageRouter {
   /**
    * Handle TopologyHost protocol messages (snapshot + commands)
    */
-  private postTopologyHostError(
-    panel: vscode.WebviewPanel,
-    requestId: string,
-    error: string
-  ): void {
-    panel.webview.postMessage({
-      type: TOPOLOGY_HOST_ERROR,
-      protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
-      requestId,
-      error
-    });
-  }
-
-  private getTopologyHostProtocolVersion(message: WebviewMessage): number | undefined {
-    const protocolVersion = message.protocolVersion;
-    return typeof protocolVersion === "number" ? protocolVersion : undefined;
-  }
-
-  private parseTopologyHostCommand(
-    message: WebviewMessage
-  ): { command: TopologyHostCommand; baseRevision: number } | null {
-    const baseRevisionRaw = message.baseRevision;
-    const commandPayload = message.command;
-    const baseRevision =
-      typeof baseRevisionRaw === "number" && Number.isFinite(baseRevisionRaw)
-        ? baseRevisionRaw
-        : NaN;
-    if (!isTopologyHostCommand(commandPayload) || !Number.isFinite(baseRevision)) {
-      return null;
-    }
-    return { command: commandPayload, baseRevision };
-  }
-
-  private async sendTopologySnapshot(
-    host: TopologyHost,
-    panel: vscode.WebviewPanel,
-    requestId: string
-  ): Promise<void> {
-    try {
-      const snapshot = await host.getSnapshot();
-      this.context.onHostSnapshot?.(snapshot);
-      panel.webview.postMessage({
-        type: TOPOLOGY_HOST_SNAPSHOT,
-        protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
-        requestId,
-        snapshot,
-        reason: "init"
-      });
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      this.showSnapshotLoadErrorModal(errorMessage);
-      this.postTopologyHostError(panel, requestId, errorMessage);
-    }
-  }
-
   private showSnapshotLoadErrorModal(errorMessage: string): void {
     const yamlPath = this.context.yamlFilePath || "unknown topology file";
     const modalMessage = `Failed to read topology files for:\n${yamlPath}\n\n${errorMessage}`;
@@ -221,50 +158,19 @@ export class MessageRouter {
     message: WebviewMessage,
     panel: vscode.WebviewPanel
   ): Promise<boolean> {
-    const msgType = typeof message.type === "string" ? message.type : "";
-    if (msgType !== TOPOLOGY_HOST_GET_SNAPSHOT && msgType !== TOPOLOGY_HOST_COMMAND) {
-      return false;
-    }
-
-    const requestId = typeof message.requestId === "string" ? message.requestId : "";
-    const protocolVersion = this.getTopologyHostProtocolVersion(message);
-
-    if (protocolVersion !== TOPOLOGY_HOST_PROTOCOL_VERSION) {
-      this.postTopologyHostError(
-        panel,
-        requestId,
-        `Unsupported topology host protocol version: ${protocolVersion ?? "unknown"}`
-      );
-      return true;
-    }
-
-    const host = this.context.topologyHost;
-    if (!host) {
-      this.postTopologyHostError(panel, requestId, "Topology host unavailable");
-      return true;
-    }
-
-    if (msgType === TOPOLOGY_HOST_GET_SNAPSHOT) {
-      await this.sendTopologySnapshot(host, panel, requestId);
-      return true;
-    }
-
-    const commandData = this.parseTopologyHostCommand(message);
-    if (!commandData) {
-      this.postTopologyHostError(panel, requestId, "Invalid topology host command payload");
-      return true;
-    }
-
-    const response = await host.applyCommand(commandData.command, commandData.baseRevision);
-    const responseWithId = { ...response, requestId: requestId || response.requestId };
-    if (responseWithId.type === TOPOLOGY_HOST_ACK || responseWithId.type === TOPOLOGY_HOST_REJECT) {
-      const snapshot = (responseWithId as { snapshot?: TopologySnapshot }).snapshot;
-      if (snapshot) {
+    return handleTopologyHostProtocolMessage({
+      host: this.context.topologyHost,
+      message,
+      onSnapshot: (snapshot: TopologySnapshot) => {
         this.context.onHostSnapshot?.(snapshot);
+      },
+      onSnapshotLoadError: (errorMessage: string) => {
+        this.showSnapshotLoadErrorModal(errorMessage);
+      },
+      postMessage: (response: TopologyHostResponseMessage) => {
+        panel.webview.postMessage(response);
       }
-    }
-    panel.webview.postMessage(responseWithId);
-    return true;
+    });
   }
 
   private async handleLifecycleCommand(command: LifecycleCommand): Promise<void> {
@@ -277,7 +183,7 @@ export class MessageRouter {
     if (res.error != null && res.error.length > 0) {
       log.error(`[MessageRouter] ${res.error}`);
     } else if (res.result != null) {
-      log.info(`[MessageRouter] ${String(res.result)}`);
+      log.info(`[MessageRouter] ${formatUnknownForLog(res.result)}`);
     }
   }
 
@@ -291,7 +197,7 @@ export class MessageRouter {
       const isOpen = await this.context.splitViewManager.toggleSplitView(yamlFilePath, panel);
       log.info(`[MessageRouter] Split view toggled: ${isOpen ? "opened" : "closed"}`);
     } catch (err) {
-      log.error(`[MessageRouter] Failed to toggle split view: ${err}`);
+      log.error(`[MessageRouter] Failed to toggle split view: ${formatErrorMessage(err)}`);
     }
   }
 
@@ -366,6 +272,8 @@ export class MessageRouter {
         const name = this.getCustomNodeName(message);
         return customNodeConfigManager.setDefaultCustomNode(name);
       }
+      default:
+        return undefined;
     }
   }
 
@@ -539,7 +447,7 @@ export class MessageRouter {
     }
     const res = await nodeCommandService.handleNodeEndpoint(command, nodeName, yamlFilePath);
     if (res.error != null && res.error.length > 0) log.error(`[MessageRouter] ${res.error}`);
-    else if (res.result != null) log.info(`[MessageRouter] ${String(res.result)}`);
+    else if (res.result != null) log.info(`[MessageRouter] ${formatUnknownForLog(res.result)}`);
   }
 
   private async handleInterfaceCommand(
@@ -561,7 +469,7 @@ export class MessageRouter {
       yamlFilePath
     );
     if (res.error != null && res.error.length > 0) log.error(`[MessageRouter] ${res.error}`);
-    else if (res.result != null) log.info(`[MessageRouter] ${String(res.result)}`);
+    else if (res.result != null) log.info(`[MessageRouter] ${formatUnknownForLog(res.result)}`);
   }
 
   private async handleIconList(panel: vscode.WebviewPanel): Promise<void> {
@@ -621,7 +529,7 @@ export class MessageRouter {
       };
       await handlers[command]();
     } catch (err) {
-      log.error(`[MessageRouter] Icon command error: ${err}`);
+      log.error(`[MessageRouter] Icon command error: ${formatErrorMessage(err)}`);
     }
   }
 

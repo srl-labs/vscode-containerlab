@@ -4,10 +4,9 @@
 
 import type * as vscode from "vscode";
 
-import type { CustomIconInfo } from "../../shared/types/icons";
+import type { CustomIconInfo, CustomNodeTemplate } from "@srl-labs/clab-ui/session";
 import { getDockerImages } from "../../../utils/docker/images";
-import type { CustomNodeTemplate, SchemaData } from "../../shared/schema";
-import { getCustomNodesFromConfig, loadSchemaData } from "../services/schema";
+import { getCustomNodesFromConfig } from "../services/schema";
 import { iconService } from "../services/IconService";
 
 /**
@@ -16,7 +15,6 @@ import { iconService } from "../services/IconService";
 export interface BootstrapData {
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
-  schemaData: SchemaData;
   dockerImages: string[];
   customIcons: CustomIconInfo[];
 }
@@ -33,14 +31,11 @@ export interface BootstrapDataInput {
  * Assembles bootstrap data for the webview from various sources
  */
 export async function buildBootstrapData(input: BootstrapDataInput): Promise<BootstrapData> {
-  const { extensionUri, yamlFilePath } = input;
+  const { yamlFilePath } = input;
 
   // Get custom nodes from VS Code configuration
   const customNodes = getCustomNodesFromConfig();
   const defaultNode = customNodes.find((n) => n.setDefault === true)?.name ?? "";
-
-  // Load schema data for kind/type dropdowns
-  const schemaData = await loadSchemaData(extensionUri);
 
   // Get docker images for image dropdown
   const dockerImages = getDockerImages();
@@ -51,7 +46,6 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
   return {
     customNodes,
     defaultNode,
-    schemaData,
     dockerImages,
     customIcons
   };

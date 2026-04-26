@@ -47,6 +47,10 @@ import { ContainerlabExplorerViewProvider } from "./webviews/explorer/containerl
 
 let explorerViewProvider: ContainerlabExplorerViewProvider | undefined;
 
+function getErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 function stopRealtimeBackgroundWorkers(): void {
   stopEventStream();
   stopFallbackPolling();
@@ -309,7 +313,8 @@ function registerCommands(context: vscode.ExtensionContext) {
     ["containerlab.lab.fcli.ni", cmd.fcliNi],
     ["containerlab.lab.fcli.subif", cmd.fcliSubif],
     ["containerlab.lab.fcli.sysInfo", cmd.fcliSysInfo],
-    ["containerlab.lab.fcli.custom", cmd.fcliCustom]
+    ["containerlab.lab.fcli.custom", cmd.fcliCustom],
+    ["containerlab.images.manage", () => cmd.manageImages(context)]
   ];
   commands.forEach(([name, handler]) => {
     context.subscriptions.push(vscode.commands.registerCommand(name, handler));
@@ -426,7 +431,8 @@ function setClabBinPath(): boolean {
         return true;
       }
     } catch (err) {
-      outputChannel.warn(`Could not resolve containerlab bin path from sys PATH: ${err}`);
+      const message = getErrorMessage(err);
+      outputChannel.warn(`Could not resolve containerlab bin path from sys PATH: ${message}`);
     }
     setContainerlabBinaryPath("containerlab");
     return true;
@@ -440,7 +446,8 @@ function setClabBinPath(): boolean {
     return true;
   } catch (err) {
     // Path is invalid or not executable - try to resolve from PATH as fallback
-    outputChannel.error(`Invalid containerlab.binaryPath "${configPath}": ${err}`);
+    const message = getErrorMessage(err);
+    outputChannel.error(`Invalid containerlab.binaryPath "${configPath}": ${message}`);
     vscode.window.showErrorMessage(
       `Configured containerlab binary path "${configPath}" is invalid or not executable.`
     );

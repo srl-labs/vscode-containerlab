@@ -19,30 +19,11 @@ const originalResolve = (Module as any)._resolveFilename;
 };
 
 import {
-  buildExplorerSnapshot,
+  getExplorerCommandMetadata,
   invalidateExplorerContributionCache
 } from "../../../src/webviews/explorer/explorerSnapshotAdapter";
 
 const vscodeStub = require("../../helpers/vscode-stub");
-
-function createProvider(rootItems: any[]): { getChildren: (element?: any) => any[] } {
-  return {
-    getChildren(element?: any) {
-      if (element !== undefined && element !== null && Array.isArray(element.children)) {
-        return element.children;
-      }
-      return rootItems;
-    }
-  };
-}
-
-function createContainerItem(label: string): any {
-  return {
-    label,
-    contextValue: "containerlabContainer",
-    collapsibleState: 0
-  };
-}
 
 describe("explorerSnapshotAdapter contributed container actions", () => {
   after(() => {
@@ -95,29 +76,17 @@ describe("explorerSnapshotAdapter contributed container actions", () => {
       return Promise.resolve([]);
     });
 
-    const snapshotResult = await buildExplorerSnapshot(
-      {
-        runningProvider: createProvider([createContainerItem("node1")]) as any,
-        localProvider: createProvider([]) as any,
-        helpProvider: createProvider([]) as any
-      },
-      "",
-      {
-        hideNonOwnedLabs: false,
-        isLocalCaptureAllowed: true
-      }
-    );
-
-    const actions = snapshotResult.snapshot.sections[0]?.nodes[0]?.actions ?? [];
+    const metadata = await getExplorerCommandMetadata();
+    const actions = metadata.contributedContainerActions ?? [];
     const commandIds = actions.map((action) => action.commandId);
 
-    expect(commandIds).to.include("containerlab.node.showLogs");
     expect(commandIds).to.include("acme.node.custom");
     expect(commandIds).to.include("acme.node.legacy");
     expect(commandIds).to.not.include("acme.node.ignore");
     const customAction = actions.find((action) => action.commandId === "acme.node.custom");
-    expect(customAction?.label).to.equal("ACME: Custom Action");
-    expect(customAction?.iconId).to.equal("vm-connect");
+    expect(customAction).to.not.equal(undefined);
+    expect(metadata.commandLabels?.get("acme.node.custom")).to.equal("ACME: Custom Action");
+    expect(metadata.commandIcons?.get("acme.node.custom")).to.equal("vm-connect");
   });
 
   it("falls back to extension package contributions when builtin menu query is unavailable", async () => {
@@ -150,25 +119,15 @@ describe("explorerSnapshotAdapter contributed container actions", () => {
       return Promise.resolve(undefined);
     });
 
-    const snapshotResult = await buildExplorerSnapshot(
-      {
-        runningProvider: createProvider([createContainerItem("node2")]) as any,
-        localProvider: createProvider([]) as any,
-        helpProvider: createProvider([]) as any
-      },
-      "",
-      {
-        hideNonOwnedLabs: false,
-        isLocalCaptureAllowed: true
-      }
-    );
-
-    const actions = snapshotResult.snapshot.sections[0]?.nodes[0]?.actions ?? [];
+    const metadata = await getExplorerCommandMetadata();
+    const actions = metadata.contributedContainerActions ?? [];
     const commandIds = actions.map((action) => action.commandId);
 
     expect(commandIds).to.include("acme.node.pkg");
     expect(commandIds).to.include("acme.node.pkgLegacy");
     expect(commandIds).to.not.include("acme.node.skip");
-    expect(actions.find((action) => action.commandId === "acme.node.pkg")?.iconId).to.equal("plug");
+    const packageAction = actions.find((action) => action.commandId === "acme.node.pkg");
+    expect(packageAction).to.not.equal(undefined);
+    expect(metadata.commandIcons?.get("acme.node.pkg")).to.equal("plug");
   });
 });

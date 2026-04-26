@@ -30,7 +30,9 @@ export function createReactWebviewHtml(options: ReactWebviewHtmlOptions): string
     frameSrc
   } = options;
 
-  const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "dist", scriptFile));
+  const scriptUri = webview
+    .asWebviewUri(vscode.Uri.joinPath(extensionUri, "dist", scriptFile))
+    .toString();
   const nonce = randomBytes(16).toString("hex");
 
   const connectDirective = uniqueSources([webview.cspSource, ...(connectSrc ?? [])]);

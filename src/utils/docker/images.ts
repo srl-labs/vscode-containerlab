@@ -12,24 +12,59 @@ export function getDockerImages(): string[] {
   return [...dockerImagesCache];
 }
 
+export interface DockerImageSummary {
+  id: string;
+  shortId?: string;
+  repoTags: string[];
+  repoDigests: string[];
+  created?: number;
+  size?: number;
+  virtualSize?: number;
+}
+
+function validDockerReference(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    !value.endsWith(":<none>") &&
+    !value.startsWith("<none>") &&
+    !value.includes("<none>@")
+  );
+}
+
+export async function listDockerImageSummaries(): Promise<DockerImageSummary[]> {
+  const images = await dockerClient.listImages({ all: true });
+  return images
+    .map((img) => {
+      const id = typeof img.Id === "string" ? img.Id : "";
+      const shortId = id.replace(/^sha256:/, "").slice(0, 12);
+      return {
+        id,
+        shortId,
+        repoTags: (Array.isArray(img.RepoTags) ? img.RepoTags : []).filter(validDockerReference),
+        repoDigests: (Array.isArray(img.RepoDigests) ? img.RepoDigests : []).filter(
+          validDockerReference
+        ),
+        created: typeof img.Created === "number" ? img.Created : undefined,
+        size: typeof img.Size === "number" ? img.Size : undefined,
+        virtualSize: typeof img.VirtualSize === "number" ? img.VirtualSize : undefined
+      };
+    })
+    .sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
+}
+
 // Internal func to fetch all docker images
 async function fetchDockerImages(): Promise<string[]> {
-  const images = await dockerClient.listImages();
+  const images = await listDockerImageSummaries();
   type TagEntry = { tag: string; created: number };
   const entries: TagEntry[] = [];
   const seen = new Set<string>();
 
   for (const img of images) {
-    const repoTags = Array.isArray(img.RepoTags) ? img.RepoTags : [];
-    for (const tag of repoTags) {
-      const isValid =
-        typeof tag === "string" &&
-        tag.length > 0 &&
-        !tag.endsWith(":<none>") &&
-        !tag.startsWith("<none>");
-      if (isValid && !seen.has(tag)) {
+    for (const tag of img.repoTags) {
+      if (!seen.has(tag)) {
         seen.add(tag);
-        entries.push({ tag, created: typeof img.Created === "number" ? img.Created : 0 });
+        entries.push({ tag, created: img.created ?? 0 });
       }
     }
   }
@@ -59,6 +94,11 @@ export async function refreshDockerImages() {
   } catch {
     // Leave existing cache untouched.
   }
+}
+
+export async function removeDockerImage(reference: string, force = false): Promise<void> {
+  await dockerClient.getImage(reference).remove({ force });
+  await refreshDockerImages();
 }
 
 // Create disposable handle to let the image monitor get cleaned up by VSC.

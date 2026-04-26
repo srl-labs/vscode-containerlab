@@ -1,9 +1,8 @@
 import * as vscode from "vscode";
 
-import type { EndpointResult } from "../../shared/types/endpoint";
-import type { CustomNodeTemplate } from "../../shared/types/editors";
+import type { CustomNodeTemplate, EndpointResult } from "@srl-labs/clab-ui/session";
 
-import { log } from "./logger";
+import { formatErrorMessage, log } from "./logger";
 
 const CONFIG_SECTION = "containerlab.editor";
 
@@ -59,7 +58,7 @@ export class CustomNodeConfigManager {
       log.info(`Saved custom node ${data.name}`);
       return { result: { customNodes, defaultNode: defaultCustomNode?.name ?? "" }, error: null };
     } catch (err) {
-      const error = `Error saving custom node: ${err}`;
+      const error = `Error saving custom node: ${formatErrorMessage(err)}`;
       log.error(`Error saving custom node: ${JSON.stringify(err, null, 2)}`);
       return { result: null, error };
     }
@@ -95,7 +94,7 @@ export class CustomNodeConfigManager {
         error: null
       };
     } catch (err) {
-      const error = `Error setting default custom node: ${err}`;
+      const error = `Error setting default custom node: ${formatErrorMessage(err)}`;
       log.error(`Error setting default custom node: ${JSON.stringify(err, null, 2)}`);
       return { result: null, error };
     }
@@ -117,7 +116,7 @@ export class CustomNodeConfigManager {
         error: null
       };
     } catch (err) {
-      const error = `Error deleting custom node: ${err}`;
+      const error = `Error deleting custom node: ${formatErrorMessage(err)}`;
       log.error(`Error deleting custom node: ${JSON.stringify(err, null, 2)}`);
       return { result: null, error };
     }

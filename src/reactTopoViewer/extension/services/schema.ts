@@ -1,30 +1,12 @@
 /**
- * Schema utilities (VS Code extension host)
- *
- * VS Code-specific schema loading and configuration helpers.
- * Pure schema parsing is implemented in `src/reactTopoViewer/shared/schema`.
+ * VS Code-specific configuration helpers for clab-ui bootstrap data.
  */
 
 import * as vscode from "vscode";
 
-import { nodeFsAdapter } from "../../shared/io";
-import type { CustomNodeTemplate, SchemaData } from "../../shared/schema";
-import { parseSchemaData } from "../../shared/schema";
-
-import { log } from "./logger";
+import type { CustomNodeTemplate } from "@srl-labs/clab-ui/session";
 
 const CONFIG_SECTION = "containerlab.editor";
-
-function toRecord(value: unknown): Record<string, unknown> | undefined {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return undefined;
-  }
-  const record: Record<string, unknown> = {};
-  for (const [key, entryValue] of Object.entries(value)) {
-    record[key] = entryValue;
-  }
-  return record;
-}
 
 /**
  * Get custom nodes from VS Code configuration.
@@ -32,26 +14,4 @@ function toRecord(value: unknown): Record<string, unknown> | undefined {
 export function getCustomNodesFromConfig(): CustomNodeTemplate[] {
   const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
   return config.get<CustomNodeTemplate[]>("customNodes", []);
-}
-
-/**
- * Load schema data from the extension's schema file.
- */
-export async function loadSchemaData(extensionUri: vscode.Uri): Promise<SchemaData> {
-  try {
-    const schemaUri = vscode.Uri.joinPath(extensionUri, "schema", "clab.schema.json");
-    const schemaContent = await nodeFsAdapter.readFile(schemaUri.fsPath);
-    const schema = toRecord(JSON.parse(schemaContent) as unknown);
-    if (schema === undefined) {
-      throw new Error("Invalid schema format");
-    }
-    return parseSchemaData(schema);
-  } catch (err) {
-    log.error(`Error loading schema data: ${err}`);
-    return {
-      kinds: [],
-      typesByKind: {},
-      srosComponentTypes: { sfm: [], cpm: [], card: [], mda: [], xiom: [], xiomMda: [] }
-    };
-  }
 }

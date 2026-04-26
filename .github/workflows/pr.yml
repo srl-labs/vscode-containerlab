@@ -4,9 +4,15 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -15,11 +21,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: "npm"
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Create package and run lint
         run: npm run package
@@ -70,6 +76,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-test
     timeout-minutes: 60
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -78,21 +86,32 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Check E2E support
+        id: e2e
+        run: |
+          HAS_E2E_SCRIPT="$(node -p "Boolean(require('./package.json').scripts?.['test:e2e'])")"
+          echo "has_script=${HAS_E2E_SCRIPT}" >> "$GITHUB_OUTPUT"
+          if [ "$HAS_E2E_SCRIPT" != "true" ]; then
+            echo "No test:e2e script configured; skipping E2E job."
+          fi
+
       - name: Install Playwright browsers and dependencies
+        if: steps.e2e.outputs.has_script == 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
+        if: steps.e2e.outputs.has_script == 'true'
         run: npm run test:e2e -- --workers=3
 
       - name: Upload Playwright report
+        if: ${{ !cancelled() && steps.e2e.outputs.has_script == 'true' }}
         uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
         with:
           name: playwright-report-${{ github.run_number }}
           path: playwright-report/
@@ -103,6 +122,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-test
     if: always()
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -111,11 +132,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: "npm"
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Download packaged extension
         uses: actions/download-artifact@v4

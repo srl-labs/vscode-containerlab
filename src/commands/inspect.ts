@@ -1,10 +1,10 @@
 import * as vscode from "vscode";
+import type { InspectContainerData } from "@srl-labs/clab-ui/inspect";
 
 import type { ClabLabTreeNode } from "../treeView/common";
 import { outputChannel } from "../globals";
 import * as inspector from "../treeView/inspector";
 import { getInspectWebviewHtml } from "../webviews/inspect/inspectWebviewHtml";
-import type { InspectContainerData } from "../webviews/inspect/types";
 
 // Store the current panel and context for refresh functionality
 let currentPanel: vscode.WebviewPanel | undefined;

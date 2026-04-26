@@ -11,6 +11,9 @@ jobs:
     if: github.repository == 'srl-labs/vscode-containerlab'
     permissions:
       contents: write
+      packages: read
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout repository

@@ -5,7 +5,8 @@
 import * as vscode from "vscode";
 
 import { log } from "../services/logger";
-import { nodeFsAdapter } from "../../shared/io";
+import { createTopologySyncController } from "@srl-labs/clab-ui/host";
+import { nodeFsAdapter } from "../shared/io";
 import { onDockerImagesUpdated } from "../../../utils/docker/images";
 
 /**
@@ -35,8 +36,10 @@ export class WatcherManager {
   private dockerImagesSubscription: vscode.Disposable | undefined;
   private lastYamlContent: string | undefined;
   private lastAnnotationsContent: string | undefined;
-  private isRefreshingFromFile = false;
-  private queuedRefresh = false;
+  private snapshotRefreshController = createTopologySyncController({
+    debounceMs: 0,
+    refresh: async () => {}
+  });
 
   /**
    * Dispose all watchers and listeners
@@ -58,6 +61,7 @@ export class WatcherManager {
       this.dockerImagesSubscription.dispose();
       this.dockerImagesSubscription = undefined;
     }
+    this.snapshotRefreshController.dispose();
   }
 
   /**
@@ -73,6 +77,16 @@ export class WatcherManager {
 
     this.fileWatcher?.dispose();
     this.annotationsWatcher?.dispose();
+    this.snapshotRefreshController.dispose();
+    this.snapshotRefreshController = createTopologySyncController({
+      debounceMs: 0,
+      refresh: async () => {
+        const snapshot = await loadSnapshot();
+        if (snapshot !== undefined && snapshot !== null) {
+          postSnapshot(snapshot);
+        }
+      }
+    });
     const fileUri = vscode.Uri.file(yamlFilePath);
     this.fileWatcher = vscode.workspace.createFileSystemWatcher(fileUri.fsPath);
 
@@ -171,8 +185,8 @@ export class WatcherManager {
     trigger: "change" | "save",
     yamlFilePath: string,
     updateController: InternalUpdateController,
-    loadSnapshot: SnapshotLoader,
-    postSnapshot: SnapshotPoster
+    _loadSnapshot: SnapshotLoader,
+    _postSnapshot: SnapshotPoster
   ): Promise<void> {
     if (!yamlFilePath) return;
     if (updateController.isInternalUpdate()) {
@@ -181,12 +195,6 @@ export class WatcherManager {
       return;
     }
 
-    if (this.isRefreshingFromFile) {
-      this.queuedRefresh = true;
-      return;
-    }
-
-    this.isRefreshingFromFile = true;
     try {
       const currentContent = await nodeFsAdapter.readFile(yamlFilePath);
       if (this.lastYamlContent === currentContent) {
@@ -197,26 +205,10 @@ export class WatcherManager {
       }
 
       log.info(`[ReactTopoViewer] YAML ${trigger} detected, refreshing topology`);
-
-      const snapshot = await loadSnapshot();
-      if (snapshot !== undefined && snapshot !== null) {
-        postSnapshot(snapshot);
-      }
       this.lastYamlContent = currentContent;
+      await this.snapshotRefreshController.refresh({ externalChange: true });
     } catch (err) {
-      log.error(`[ReactTopoViewer] Failed to refresh after YAML ${trigger}: ${err}`);
-    } finally {
-      this.isRefreshingFromFile = false;
-      if (this.queuedRefresh) {
-        this.queuedRefresh = false;
-        void this.handleExternalYamlChange(
-          trigger,
-          yamlFilePath,
-          updateController,
-          loadSnapshot,
-          postSnapshot
-        );
-      }
+      log.error(`[ReactTopoViewer] Failed to refresh after YAML ${trigger}: ${String(err)}`);
     }
   }
 
@@ -227,8 +219,8 @@ export class WatcherManager {
     trigger: "change" | "create" | "delete",
     annotationsPath: string,
     updateController: InternalUpdateController,
-    loadSnapshot: SnapshotLoader,
-    postSnapshot: SnapshotPoster
+    _loadSnapshot: SnapshotLoader,
+    _postSnapshot: SnapshotPoster
   ): Promise<void> {
     if (!annotationsPath) return;
     if (updateController.isInternalUpdate()) {
@@ -238,12 +230,6 @@ export class WatcherManager {
       return;
     }
 
-    if (this.isRefreshingFromFile) {
-      this.queuedRefresh = true;
-      return;
-    }
-
-    this.isRefreshingFromFile = true;
     try {
       let currentContent = "";
       try {
@@ -260,27 +246,10 @@ export class WatcherManager {
       }
 
       log.info(`[ReactTopoViewer] Annotations ${trigger} detected, refreshing topology`);
-
-      const snapshot = await loadSnapshot();
-      if (snapshot !== undefined && snapshot !== null) {
-        postSnapshot(snapshot);
-      }
-
       this.lastAnnotationsContent = currentContent;
+      await this.snapshotRefreshController.refresh({ externalChange: true });
     } catch (err) {
-      log.error(`[ReactTopoViewer] Failed to refresh after annotations ${trigger}: ${err}`);
-    } finally {
-      this.isRefreshingFromFile = false;
-      if (this.queuedRefresh) {
-        this.queuedRefresh = false;
-        void this.handleExternalAnnotationsChange(
-          trigger,
-          annotationsPath,
-          updateController,
-          loadSnapshot,
-          postSnapshot
-        );
-      }
+      log.error(`[ReactTopoViewer] Failed to refresh after annotations ${trigger}: ${String(err)}`);
     }
   }
 }

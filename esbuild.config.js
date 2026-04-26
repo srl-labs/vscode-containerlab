@@ -3,6 +3,149 @@ const path = require("path");
 const fs = require("fs");
 const { execSync } = require("child_process");
 
+const localClabUiRoot = path.resolve(__dirname, "../clab-ui");
+const localClabUiDistRoot = path.join(localClabUiRoot, "dist");
+const useLocalClabUi =
+  process.env.CLAB_UI_SOURCE === "local" &&
+  fs.existsSync(path.join(localClabUiDistRoot, "index.js"));
+const clabUiEntry = (relativePath, packageSubpath) =>
+  useLocalClabUi
+    ? path.join(localClabUiDistRoot, relativePath)
+    : require.resolve(packageSubpath);
+
+const reactTopoViewerEntry = path.join(__dirname, "src/webviews/reactTopoViewer/entry.tsx");
+const explorerWebviewEntry = path.join(__dirname, "src/webviews/explorer/entry.tsx");
+const inspectWebviewEntry = path.join(__dirname, "src/webviews/inspect/entry.tsx");
+const imageManagerWebviewEntry = path.join(__dirname, "src/webviews/imageManager/entry.tsx");
+const welcomeWebviewEntry = path.join(__dirname, "src/webviews/welcome/entry.tsx");
+const nodeImpairmentsWebviewEntry = path.join(__dirname, "src/webviews/nodeImpairments/entry.tsx");
+const wiresharkVncWebviewEntry = path.join(__dirname, "src/webviews/wiresharkVnc/entry.tsx");
+const clabUiGlobalCss = clabUiEntry("styles/global.css", "@srl-labs/clab-ui/styles/global.css");
+
+function findPackageRootFromEntry(entryPath) {
+  let current = path.dirname(entryPath);
+  while (true) {
+    const packageJsonPath = path.join(current, "package.json");
+    if (fs.existsSync(packageJsonPath)) {
+      return current;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      throw new Error(`Unable to find package root for entry: ${entryPath}`);
+    }
+    current = parent;
+  }
+}
+
+const clabUiPackageRoot = useLocalClabUi
+  ? localClabUiRoot
+  : findPackageRootFromEntry(clabUiGlobalCss);
+
+function resolveFromRoots(moduleId, roots) {
+  for (const root of roots) {
+    try {
+      return require.resolve(moduleId, { paths: [root] });
+    } catch {
+      // Try next candidate root.
+    }
+  }
+  throw new Error(`Unable to resolve '${moduleId}' from roots: ${roots.join(", ")}`);
+}
+
+const monacoPackageJsonPath = resolveFromRoots("monaco-editor/package.json", [
+  clabUiPackageRoot,
+  __dirname
+]);
+const monacoRoot = path.dirname(monacoPackageJsonPath);
+const monacoCodiconFontCandidates = [
+  "min/vs/base/browser/ui/codicons/codicon/codicon.ttf",
+  "esm/vs/base/browser/ui/codicons/codicon/codicon.ttf",
+  "dev/vs/base/browser/ui/codicons/codicon/codicon.ttf"
+].map((relativePath) => path.join(monacoRoot, relativePath));
+const monacoCodiconFontPath =
+  monacoCodiconFontCandidates.find((candidate) => fs.existsSync(candidate)) ?? null;
+const monacoEditorWorkerEntry = path.join(monacoRoot, "esm/vs/editor/editor.worker.js");
+const monacoJsonWorkerEntry = path.join(monacoRoot, "esm/vs/language/json/json.worker.js");
+
+const localClabUiEntrypoints = new Map([
+  ["@srl-labs/clab-ui", path.join(localClabUiDistRoot, "index.js")],
+  ["@srl-labs/clab-ui/host", path.join(localClabUiDistRoot, "host/index.js")],
+  ["@srl-labs/clab-ui/session", path.join(localClabUiDistRoot, "session/index.js")],
+  ["@srl-labs/clab-ui/theme", path.join(localClabUiDistRoot, "theme/index.js")],
+  ["@srl-labs/clab-ui/explorer", path.join(localClabUiDistRoot, "explorer/index.js")],
+  [
+    "@srl-labs/clab-ui/image-manager",
+    path.join(localClabUiDistRoot, "image-manager/index.js")
+  ],
+  [
+    "@srl-labs/clab-ui/image-manager/catalog",
+    path.join(localClabUiDistRoot, "image-manager/catalog.js")
+  ],
+  ["@srl-labs/clab-ui/inspect", path.join(localClabUiDistRoot, "inspect/index.js")],
+  ["@srl-labs/clab-ui/welcome", path.join(localClabUiDistRoot, "welcome/index.js")],
+  [
+    "@srl-labs/clab-ui/node-impairments",
+    path.join(localClabUiDistRoot, "node-impairments/index.js")
+  ],
+  [
+    "@srl-labs/clab-ui/wireshark-vnc",
+    path.join(localClabUiDistRoot, "wireshark-vnc/index.js")
+  ],
+  [
+    "@srl-labs/clab-ui/styles/global.css",
+    path.join(localClabUiDistRoot, "styles/global.css")
+  ]
+]);
+
+const clabUiLocalAliasPlugin = {
+  name: "clab-ui-local-alias",
+  setup(build) {
+    if (!useLocalClabUi) {
+      return;
+    }
+
+    build.onResolve({ filter: /^@srl-labs\/clab-ui(?:\/.*)?$/ }, (args) => {
+      const resolved = localClabUiEntrypoints.get(args.path) ?? null;
+      if (!resolved) {
+        return null;
+      }
+      return { path: resolved };
+    });
+  }
+};
+
+const reactSingletonAliasPlugin = {
+  name: "react-singleton-alias",
+  setup(build) {
+    const aliasTargets = new Map([
+      ["react", require.resolve("react")],
+      ["react/jsx-runtime", require.resolve("react/jsx-runtime")],
+      ["react/jsx-dev-runtime", require.resolve("react/jsx-dev-runtime")],
+      ["react-dom", require.resolve("react-dom")],
+      ["react-dom/client", require.resolve("react-dom/client")]
+    ]);
+
+    build.onResolve(
+      { filter: /^(react|react\/jsx-runtime|react\/jsx-dev-runtime|react-dom|react-dom\/client)$/ },
+      (args) => {
+        const resolved = aliasTargets.get(args.path);
+        return resolved ? { path: resolved } : null;
+      }
+    );
+  }
+};
+
+const browserAssetLoaders = {
+  ".svg": "dataurl",
+  ".png": "dataurl",
+  ".jpg": "dataurl",
+  ".gif": "dataurl",
+  ".woff": "dataurl",
+  ".woff2": "dataurl",
+  ".ttf": "dataurl",
+  ".eot": "dataurl"
+};
+
 // Plugin to stub native .node files - ssh2 has JS fallbacks
 const nativeNodeModulesPlugin = {
   name: "native-node-modules",
@@ -37,22 +180,9 @@ async function copyFonts() {
   const fontDir = path.join(__dirname, "dist/webfonts");
   await fs.promises.mkdir(fontDir, { recursive: true });
 
-  // Copy wireshark SVG
-  const wiresharkSrc = path.join(
-    __dirname,
-    "src/reactTopoViewer/webview/assets/images/wireshark_bold.svg"
-  );
-  if (fs.existsSync(wiresharkSrc)) {
-    await fs.promises.copyFile(wiresharkSrc, path.join(fontDir, "wireshark_bold.svg"));
-  }
-
   // Monaco codicon font (used by Monaco UI widgets)
-  const codiconSrc = path.join(
-    __dirname,
-    "node_modules/monaco-editor/min/vs/base/browser/ui/codicons/codicon/codicon.ttf"
-  );
-  if (fs.existsSync(codiconSrc)) {
-    await fs.promises.copyFile(codiconSrc, path.join(fontDir, "codicon.ttf"));
+  if (monacoCodiconFontPath) {
+    await fs.promises.copyFile(monacoCodiconFontPath, path.join(fontDir, "codicon.ttf"));
   }
 }
 
@@ -68,8 +198,10 @@ async function copyMapLibreWorker() {
 async function buildCss() {
   console.log("Building CSS with PostCSS...");
   execSync(
-    "npx postcss src/reactTopoViewer/webview/styles/global.css -o dist/reactTopoViewerStyles.css",
-    { stdio: "inherit" }
+    `npx postcss "${clabUiGlobalCss}" --config "${path.join(__dirname, "postcss.config.js")}" -o dist/reactTopoViewerStyles.css`,
+    {
+      stdio: "inherit"
+    }
   );
 
   // Fix font paths - rewrite node_modules paths to webfonts/
@@ -115,25 +247,24 @@ async function build() {
     format: "cjs",
     external: ["vscode"],
     outfile: "dist/extension.js",
-    plugins: [nativeNodeModulesPlugin]
+    plugins: [nativeNodeModulesPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin]
   });
 
   // Build webview (Browser) - CSS handled separately
   const webviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["src/reactTopoViewer/webview/index.tsx"],
+    entryPoints: [reactTopoViewerEntry],
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/reactTopoViewerWebview.js",
-    plugins: [ignoreCssPlugin],
+    plugins: [
+      ignoreCssPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
     jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
+    loader: browserAssetLoaders,
     define: {
       "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
     }
@@ -141,19 +272,18 @@ async function build() {
 
   const explorerWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["src/webviews/explorer/containerlabExplorerView.webview.tsx"],
+    entryPoints: [explorerWebviewEntry],
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/containerlabExplorerView.js",
-    plugins: [ignoreCssPlugin],
+    plugins: [
+      ignoreCssPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
     jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
+    loader: browserAssetLoaders,
     define: {
       "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
     }
@@ -161,19 +291,18 @@ async function build() {
 
   const welcomeWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["src/webviews/welcome/welcomePage.webview.tsx"],
+    entryPoints: [welcomeWebviewEntry],
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/welcomePageWebview.js",
-    plugins: [ignoreCssPlugin],
+    plugins: [
+      ignoreCssPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
     jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
+    loader: browserAssetLoaders,
     define: {
       "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
     }
@@ -181,19 +310,37 @@ async function build() {
 
   const inspectWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["src/webviews/inspect/inspect.webview.tsx"],
+    entryPoints: [inspectWebviewEntry],
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/inspectWebview.js",
-    plugins: [ignoreCssPlugin],
+    plugins: [
+      ignoreCssPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
     jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
+    loader: browserAssetLoaders,
+    define: {
+      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
+    }
+  });
+
+  const imageManagerWebviewBuild = esbuild.build({
+    ...commonOptions,
+    entryPoints: [imageManagerWebviewEntry],
+    platform: "browser",
+    format: "iife",
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
+    outfile: "dist/imageManagerWebview.js",
+    plugins: [
+      ignoreCssPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
+    jsx: "automatic",
+    loader: browserAssetLoaders,
     define: {
       "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
     }
@@ -201,19 +348,18 @@ async function build() {
 
   const nodeImpairmentsWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["src/webviews/nodeImpairments/nodeImpairments.webview.tsx"],
+    entryPoints: [nodeImpairmentsWebviewEntry],
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/nodeImpairmentsWebview.js",
-    plugins: [ignoreCssPlugin],
+    plugins: [
+      ignoreCssPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
     jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
+    loader: browserAssetLoaders,
     define: {
       "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
     }
@@ -221,19 +367,18 @@ async function build() {
 
   const wiresharkVncWebviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: ["src/webviews/wiresharkVnc/wiresharkVnc.webview.tsx"],
+    entryPoints: [wiresharkVncWebviewEntry],
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/wiresharkVncWebview.js",
-    plugins: [ignoreCssPlugin],
+    plugins: [
+      ignoreCssPlugin,
+      clabUiLocalAliasPlugin,
+      reactSingletonAliasPlugin
+    ],
     jsx: "automatic",
-    loader: {
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl"
-    },
+    loader: browserAssetLoaders,
     define: {
       "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
     }
@@ -243,12 +388,12 @@ async function build() {
   const monacoWorkersBuild = esbuild.build({
     ...commonOptions,
     entryPoints: {
-      "monaco-editor-worker": "node_modules/monaco-editor/esm/vs/editor/editor.worker.js",
-      "monaco-json-worker": "node_modules/monaco-editor/esm/vs/language/json/json.worker.js"
+      "monaco-editor-worker": monacoEditorWorkerEntry,
+      "monaco-json-worker": monacoJsonWorkerEntry
     },
     platform: "browser",
     format: "iife",
-    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outdir: "dist",
     plugins: [ignoreCssPlugin]
   });
@@ -260,6 +405,7 @@ async function build() {
     explorerWebviewBuild,
     welcomeWebviewBuild,
     inspectWebviewBuild,
+    imageManagerWebviewBuild,
     nodeImpairmentsWebviewBuild,
     wiresharkVncWebviewBuild,
     monacoWorkersBuild,
@@ -282,122 +428,132 @@ async function build() {
       format: "cjs",
       external: ["vscode"],
       outfile: "dist/extension.js",
-      plugins: [nativeNodeModulesPlugin]
+      plugins: [nativeNodeModulesPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin]
     });
 
     const webCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["src/reactTopoViewer/webview/index.tsx"],
+      entryPoints: [reactTopoViewerEntry],
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/reactTopoViewerWebview.js",
-      plugins: [ignoreCssPlugin],
+      plugins: [
+        ignoreCssPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
       jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
+      loader: browserAssetLoaders
     });
 
     const explorerWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["src/webviews/explorer/containerlabExplorerView.webview.tsx"],
+      entryPoints: [explorerWebviewEntry],
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/containerlabExplorerView.js",
-      plugins: [ignoreCssPlugin],
+      plugins: [
+        ignoreCssPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
       jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
+      loader: browserAssetLoaders
     });
 
     const welcomeWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["src/webviews/welcome/welcomePage.webview.tsx"],
+      entryPoints: [welcomeWebviewEntry],
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/welcomePageWebview.js",
-      plugins: [ignoreCssPlugin],
+      plugins: [
+        ignoreCssPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
       jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
+      loader: browserAssetLoaders
     });
 
     const inspectWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["src/webviews/inspect/inspect.webview.tsx"],
+      entryPoints: [inspectWebviewEntry],
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/inspectWebview.js",
-      plugins: [ignoreCssPlugin],
+      plugins: [
+        ignoreCssPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
       jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
+      loader: browserAssetLoaders
+    });
+
+    const imageManagerWebCtx = await esbuild.context({
+      ...commonOptions,
+      entryPoints: [imageManagerWebviewEntry],
+      platform: "browser",
+      format: "iife",
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
+      outfile: "dist/imageManagerWebview.js",
+      plugins: [
+        ignoreCssPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
+      jsx: "automatic",
+      loader: browserAssetLoaders
     });
 
     const nodeImpairmentsWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["src/webviews/nodeImpairments/nodeImpairments.webview.tsx"],
+      entryPoints: [nodeImpairmentsWebviewEntry],
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/nodeImpairmentsWebview.js",
-      plugins: [ignoreCssPlugin],
+      plugins: [
+        ignoreCssPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
       jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
+      loader: browserAssetLoaders
     });
 
     const wiresharkVncWebCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: ["src/webviews/wiresharkVnc/wiresharkVnc.webview.tsx"],
+      entryPoints: [wiresharkVncWebviewEntry],
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/wiresharkVncWebview.js",
-      plugins: [ignoreCssPlugin],
+      plugins: [
+        ignoreCssPlugin,
+        clabUiLocalAliasPlugin,
+        reactSingletonAliasPlugin
+      ],
       jsx: "automatic",
-      loader: {
-        ".svg": "dataurl",
-        ".png": "dataurl",
-        ".jpg": "dataurl",
-        ".gif": "dataurl"
-      }
+      loader: browserAssetLoaders
     });
 
     const monacoWorkersCtx = await esbuild.context({
       ...commonOptions,
       entryPoints: {
-        "monaco-editor-worker": "node_modules/monaco-editor/esm/vs/editor/editor.worker.js",
-        "monaco-json-worker": "node_modules/monaco-editor/esm/vs/language/json/json.worker.js"
+        "monaco-editor-worker": monacoEditorWorkerEntry,
+        "monaco-json-worker": monacoJsonWorkerEntry
       },
       platform: "browser",
       format: "iife",
-      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outdir: "dist",
-      plugins: [ignoreCssPlugin]
+      plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin]
     });
 
     await Promise.all([
@@ -406,13 +562,17 @@ async function build() {
       explorerWebCtx.watch(),
       welcomeWebCtx.watch(),
       inspectWebCtx.watch(),
+      imageManagerWebCtx.watch(),
       nodeImpairmentsWebCtx.watch(),
       wiresharkVncWebCtx.watch(),
       monacoWorkersCtx.watch()
     ]);
 
     // Watch CSS files and rebuild
-    const cssWatcher = watch("src/reactTopoViewer/webview/styles/**/*.css", {
+    const cssWatchRoot = useLocalClabUi
+      ? path.join(localClabUiDistRoot, "styles")
+      : path.dirname(clabUiGlobalCss);
+    const cssWatcher = watch(path.join(cssWatchRoot, "**/*.css"), {
       ignoreInitial: true
     });
     cssWatcher.on("change", () => {

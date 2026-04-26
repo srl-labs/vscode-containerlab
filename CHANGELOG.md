@@ -1,5 +1,14 @@
 # Change Log
 
+## [0.25.0] - 2026-04-26
+
+- TopoViewer/editor:
+  - Uses the shared published `@srl-labs/clab-ui` runtime package, keeping VS Code aligned with the standalone UI implementation.
+- Images:
+  - Added a container image manager webview.
+- Explorer and webviews:
+  - Improved explorer quick actions and endpoint tree expansion.
+
 ## [0.24.0] - 2026-03-08
 
 - TopoViewer/editor:
