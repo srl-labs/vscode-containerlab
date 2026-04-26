@@ -935,6 +935,12 @@
     "test": "npm run test:compile && mocha --exit --extension js --reporter mochawesome \"out/test/**/*.test.js\"",
     "test:compile": "rm -rf out/test && tsc -p test/tsconfig.mocha.json"
   },
+  "overrides": {
+    "diff": "8.0.4",
+    "dompurify": "3.4.1",
+    "serialize-javascript": "7.0.5",
+    "uuid": "14.0.0"
+  },
   "devDependencies": {
     "@srl-labs/clab-ui": "0.0.28",
     "@types/chai": "^5.2.3",
