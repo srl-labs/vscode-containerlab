@@ -41,37 +41,61 @@ const clabUiPackageRoot = useLocalClabUi
   ? localClabUiRoot
   : findPackageRootFromEntry(clabUiGlobalCss);
 
-function resolveFromRoots(moduleId, roots) {
-  for (const root of roots) {
-    try {
-      return require.resolve(moduleId, { paths: [root] });
-    } catch {
-      // Try next candidate root.
+const fallbackMonacoAssets = {
+  workers: {
+    "monaco-editor-worker": {
+      package: "monaco-editor",
+      path: "esm/vs/editor/editor.worker.js"
+    },
+    "monaco-json-worker": {
+      package: "monaco-editor",
+      path: "esm/vs/language/json/json.worker.js"
+    },
+    "monaco-yaml-worker": {
+      package: "monaco-yaml",
+      path: "yaml.worker.js"
     }
+  },
+  codiconFont: {
+    package: "monaco-editor",
+    candidates: [
+      "min/vs/base/browser/ui/codicons/codicon/codicon.ttf",
+      "esm/vs/base/browser/ui/codicons/codicon/codicon.ttf",
+      "dev/vs/base/browser/ui/codicons/codicon/codicon.ttf"
+    ]
   }
-  throw new Error(`Unable to resolve '${moduleId}' from roots: ${roots.join(", ")}`);
+};
+
+function loadClabUiMonacoAssets() {
+  try {
+    const manifestPath = clabUiEntry("monaco-assets.json", "@srl-labs/clab-ui/monaco-assets.json");
+    return JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  } catch {
+    return fallbackMonacoAssets;
+  }
 }
 
-const monacoPackageJsonPath = resolveFromRoots("monaco-editor/package.json", [
-  clabUiPackageRoot,
-  __dirname
-]);
-const monacoRoot = path.dirname(monacoPackageJsonPath);
-const monacoYamlPackageJsonPath = resolveFromRoots("monaco-yaml/package.json", [
-  clabUiPackageRoot,
-  __dirname
-]);
-const monacoYamlRoot = path.dirname(monacoYamlPackageJsonPath);
-const monacoCodiconFontCandidates = [
-  "min/vs/base/browser/ui/codicons/codicon/codicon.ttf",
-  "esm/vs/base/browser/ui/codicons/codicon/codicon.ttf",
-  "dev/vs/base/browser/ui/codicons/codicon/codicon.ttf"
-].map((relativePath) => path.join(monacoRoot, relativePath));
+function resolveClabUiDependencyAsset(packageName, relativePath) {
+  return require.resolve(`${packageName}/${relativePath}`, { paths: [clabUiPackageRoot] });
+}
+
+const monacoAssets = loadClabUiMonacoAssets();
+const monacoWorkerEntries = Object.fromEntries(
+  Object.entries(monacoAssets.workers).map(([name, asset]) => [
+    name,
+    resolveClabUiDependencyAsset(asset.package, asset.path)
+  ])
+);
 const monacoCodiconFontPath =
-  monacoCodiconFontCandidates.find((candidate) => fs.existsSync(candidate)) ?? null;
-const monacoEditorWorkerEntry = path.join(monacoRoot, "esm/vs/editor/editor.worker.js");
-const monacoJsonWorkerEntry = path.join(monacoRoot, "esm/vs/language/json/json.worker.js");
-const monacoYamlWorkerEntry = path.join(monacoYamlRoot, "yaml.worker.js");
+  monacoAssets.codiconFont.candidates
+    .map((candidate) => {
+      try {
+        return resolveClabUiDependencyAsset(monacoAssets.codiconFont.package, candidate);
+      } catch {
+        return null;
+      }
+    })
+    .find((candidate) => candidate !== null) ?? null;
 
 const localClabUiEntrypoints = new Map([
   ["@srl-labs/clab-ui", path.join(localClabUiDistRoot, "index.js")],
@@ -100,6 +124,10 @@ const localClabUiEntrypoints = new Map([
   [
     "@srl-labs/clab-ui/styles/global.css",
     path.join(localClabUiDistRoot, "styles/global.css")
+  ],
+  [
+    "@srl-labs/clab-ui/monaco-assets.json",
+    path.join(localClabUiDistRoot, "monaco-assets.json")
   ]
 ]);
 
@@ -393,11 +421,7 @@ async function build() {
   // Build Monaco workers for webview (separate files for CSP-friendly worker-src)
   const monacoWorkersBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: {
-      "monaco-editor-worker": monacoEditorWorkerEntry,
-      "monaco-json-worker": monacoJsonWorkerEntry,
-      "monaco-yaml-worker": monacoYamlWorkerEntry
-    },
+    entryPoints: monacoWorkerEntries,
     platform: "browser",
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14.1"],
@@ -552,11 +576,7 @@ async function build() {
 
     const monacoWorkersCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: {
-        "monaco-editor-worker": monacoEditorWorkerEntry,
-        "monaco-json-worker": monacoJsonWorkerEntry,
-        "monaco-yaml-worker": monacoYamlWorkerEntry
-      },
+      entryPoints: monacoWorkerEntries,
       platform: "browser",
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14.1"],
