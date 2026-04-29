@@ -2,7 +2,7 @@
  * Node-related commands - actions, shell, ssh, impairments, logs, sharing
  */
 
-export { startNode, stopNode, pauseNode, unpauseNode } from "../nodeActions";
+export { startNode, stopNode, restartNode, pauseNode, unpauseNode } from "../nodeActions";
 export { attachShell, telnetToNode } from "../nodeExec";
 export { sshToNode, sshToLab } from "../ssh";
 export { manageNodeImpairments } from "../nodeImpairments";

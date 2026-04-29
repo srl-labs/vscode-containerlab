@@ -59,6 +59,24 @@ const LAB_ACTIONS = {
     resultMsg: "Lab redeploy with cleanup initiated",
     errorMsg: "Error redeploying lab with cleanup",
     noLabPath: "No lab path provided for redeploy with cleanup"
+  },
+  startLab: {
+    command: "containerlab.lab.start",
+    resultMsg: "Lab node start initiated",
+    errorMsg: "Error starting lab nodes",
+    noLabPath: "No lab path provided for node start"
+  },
+  stopLab: {
+    command: "containerlab.lab.stop",
+    resultMsg: "Lab node stop initiated",
+    errorMsg: "Error stopping lab nodes",
+    noLabPath: "No lab path provided for node stop"
+  },
+  restartLab: {
+    command: "containerlab.lab.restart",
+    resultMsg: "Lab node restart initiated",
+    errorMsg: "Error restarting lab nodes",
+    noLabPath: "No lab path provided for node restart"
   }
 } satisfies Record<string, LabAction>;
 

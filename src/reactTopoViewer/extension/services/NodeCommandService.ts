@@ -256,6 +256,24 @@ export class NodeCommandService {
         break;
       }
 
+      case "clab-node-start":
+      case "clab-node-stop":
+      case "clab-node-restart": {
+        const action = endpointName.replace("clab-node-", "");
+        try {
+          const node = await this.getContainerNode(nodeName, yamlFilePath);
+          if (node === undefined) {
+            throw new Error(`Node "${nodeName}" was not found in the running lab.`);
+          }
+          await vscode.commands.executeCommand(`containerlab.node.${action}`, node);
+          result = `${action} executed for ${nodeName}`;
+        } catch (innerError) {
+          error = `Error executing ${action}: ${formatErrorMessage(innerError)}`;
+          log.error(`Error executing ${action}: ${JSON.stringify(innerError, null, 2)}`);
+        }
+        break;
+      }
+
       default: {
         error = `Unknown endpoint "${endpointName}".`;
         log.error(error);

@@ -19,6 +19,9 @@ export {
   deploySpecificFile,
   destroy,
   destroyCleanup,
+  startLab,
+  stopLab,
+  restartLab,
   redeploy,
   redeployCleanup,
   saveLab,
@@ -30,6 +33,7 @@ export {
 export {
   startNode,
   stopNode,
+  restartNode,
   pauseNode,
   unpauseNode,
   attachShell,
