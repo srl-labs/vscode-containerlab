@@ -5,13 +5,15 @@ import { getSelectedLabNode } from "../utils/utils";
 
 import { ClabCommand } from "./clabCommand";
 import {
-  notifyCurrentTopoViewerOfCommandLog,
+  createTopoViewerLifecycleHandlers,
   notifyCurrentTopoViewerOfCommandFailure,
-  notifyCurrentTopoViewerOfCommandSuccess
+  type LifecycleCommandType
 } from "./graph";
 
+export type LabLifecycleAction = LifecycleCommandType;
+
 export async function runClabAction(
-  action: "deploy" | "redeploy" | "destroy",
+  action: LabLifecycleAction,
   node?: ClabLabTreeNode,
   cleanup = false
 ): Promise<void> {
@@ -22,21 +24,16 @@ export async function runClabAction(
   }
 
   const execute = async () => {
+    const handlers = createTopoViewerLifecycleHandlers(action);
     const cmd = new ClabCommand(
       action,
       node,
       undefined,
       undefined,
       undefined,
-      async () => {
-        await notifyCurrentTopoViewerOfCommandSuccess(action);
-      },
-      async (error) => {
-        await notifyCurrentTopoViewerOfCommandFailure(action, error);
-      },
-      (line, stream) => {
-        void notifyCurrentTopoViewerOfCommandLog(action, line, stream);
-      }
+      handlers.onSuccess,
+      handlers.onFailure,
+      handlers.onOutputLine
     );
     if (cleanup) {
       await cmd.run(["-c"]);

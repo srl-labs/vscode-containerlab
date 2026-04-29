@@ -140,6 +140,24 @@
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.lab.start",
+        "title": "Start nodes",
+        "icon": "$(play)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.stop",
+        "title": "Stop nodes",
+        "icon": "$(stop)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.restart",
+        "title": "Restart nodes",
+        "icon": "$(refresh)",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.lab.save",
         "title": "Save configs",
         "category": "Containerlab"
@@ -223,6 +241,10 @@
       {
         "command": "containerlab.node.stop",
         "title": "Stop"
+      },
+      {
+        "command": "containerlab.node.restart",
+        "title": "Restart"
       },
       {
         "command": "containerlab.node.pause",
@@ -490,6 +512,21 @@
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.lab.destroy.cleanup",
           "group": "navigation@6"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.start",
+          "group": "navigation@7"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.stop",
+          "group": "navigation@8"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.restart",
+          "group": "navigation@9"
         }
       ],
       "editor/title/context": [
@@ -522,6 +559,21 @@
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.lab.destroy.cleanup",
           "group": "clabLabActions@6"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.start",
+          "group": "clabLabActions@7"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.stop",
+          "group": "clabLabActions@8"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.restart",
+          "group": "clabLabActions@9"
         },
         {
           "submenu": "containerlab.submenu.lab.graph.drawio",
@@ -566,6 +618,21 @@
           "group": "clabLabActions@6"
         },
         {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.start",
+          "group": "clabLabActions@7"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.stop",
+          "group": "clabLabActions@8"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.restart",
+          "group": "clabLabActions@9"
+        },
+        {
           "submenu": "containerlab.submenu.lab.graph.drawio",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "group": "graph@0"
@@ -599,6 +666,18 @@
         },
         {
           "command": "containerlab.lab.destroy.cleanup",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.start",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.stop",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.restart",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
@@ -942,7 +1021,7 @@
     "uuid": "14.0.0"
   },
   "devDependencies": {
-    "@srl-labs/clab-ui": "0.0.30",
+    "@srl-labs/clab-ui": "0.0.31",
     "@types/chai": "^5.2.3",
     "@types/dockerode": "^4.0.1",
     "@types/mocha": "^10.0.10",

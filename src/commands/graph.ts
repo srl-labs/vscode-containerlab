@@ -83,8 +83,13 @@ export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
 
 let currentTopoViewer: ReactTopoViewer | undefined;
 
-type LifecycleCommandType = "deploy" | "destroy" | "redeploy";
+export type LifecycleCommandType = "deploy" | "destroy" | "redeploy" | "start" | "stop" | "restart";
 type LifecycleCommandStream = "stdout" | "stderr";
+type TopoViewerLifecycleHandlers = {
+  onSuccess: () => Promise<void>;
+  onFailure: (error: unknown) => Promise<void>;
+  onOutputLine: (line: string, stream: LifecycleCommandStream) => void;
+};
 
 /**
  * Check if a lab is running by looking up its path in the inspector data.
@@ -259,4 +264,20 @@ export async function notifyCurrentTopoViewerOfCommandLog(
   stream: LifecycleCommandStream
 ): Promise<void> {
   await postLifecycleLog(commandType, line, stream);
+}
+
+export function createTopoViewerLifecycleHandlers(
+  commandType: LifecycleCommandType
+): TopoViewerLifecycleHandlers {
+  return {
+    onSuccess: async () => {
+      await notifyCurrentTopoViewerOfCommandSuccess(commandType);
+    },
+    onFailure: async (error) => {
+      await notifyCurrentTopoViewerOfCommandFailure(commandType, error);
+    },
+    onOutputLine: (line, stream) => {
+      void notifyCurrentTopoViewerOfCommandLog(commandType, line, stream);
+    }
+  };
 }
