@@ -29,6 +29,7 @@ async function main(): Promise<void> {
   const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "vscode-containerlab-e2e-"));
   const topologyPath = writeSmokeTopology(workspacePath);
 
+  process.env.VSCODE_CONTAINERLAB_E2E = "1";
   process.env.VSCODE_CONTAINERLAB_E2E_WORKSPACE = workspacePath;
   process.env.VSCODE_CONTAINERLAB_E2E_TOPOLOGY = topologyPath;
 

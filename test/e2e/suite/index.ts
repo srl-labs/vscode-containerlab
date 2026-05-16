@@ -9,9 +9,9 @@ function collectTestFiles(root: string): string[] {
 
   for (const entry of entries) {
     const entryPath = path.join(root, entry.name);
-    if (entry.isDirectory()) {
+    if (entry.isDirectory() === true) {
       files.push(...collectTestFiles(entryPath));
-    } else if (entry.name.endsWith(".test.js")) {
+    } else if (entry.name.endsWith(".test.js") === true) {
       files.push(entryPath);
     }
   }
