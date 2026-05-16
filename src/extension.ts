@@ -47,6 +47,120 @@ import { ContainerlabExplorerViewProvider } from "./webviews/explorer/containerl
 
 let explorerViewProvider: ContainerlabExplorerViewProvider | undefined;
 
+function isE2ESmokeTest(): boolean {
+  return process.env.VSCODE_CONTAINERLAB_E2E === "1";
+}
+
+async function promptToInstallContainerlab(): Promise<void> {
+  const installChoice = await vscode.window.showWarningMessage(
+    "Containerlab is not installed. Would you like to install it?",
+    "Install",
+    "Cancel"
+  );
+  if (installChoice === "Install") {
+    utils.installContainerlab();
+    vscode.window
+      .showInformationMessage(
+        "Please complete the installation in the terminal, then reload the window.",
+        "Reload Window"
+      )
+      .then((choice) => {
+        if (choice === "Reload Window") {
+          vscode.commands.executeCommand("workbench.action.reloadWindow");
+        }
+      });
+  }
+}
+
+async function ensureContainerlabBinary(e2eSmokeTest: boolean): Promise<boolean> {
+  if (containerlabBinaryPath !== "containerlab") {
+    return true;
+  }
+
+  if (e2eSmokeTest) {
+    outputChannel.warn("Containerlab binary not found; continuing in E2E smoke mode.");
+    return true;
+  }
+
+  await promptToInstallContainerlab();
+  return false;
+}
+
+function validateUserPermissions(e2eSmokeTest: boolean): boolean {
+  outputChannel.debug(`Starting user permissions check`);
+  const userInfo = utils.getUserInfo();
+  setUsername(userInfo.username);
+  if (userInfo.hasPermission) {
+    outputChannel.debug(
+      `Permission check success for user '${userInfo.username}' (id:${userInfo.uid})`
+    );
+    return true;
+  }
+
+  outputChannel.error(
+    `User '${userInfo.username}' (id:${userInfo.uid}) has insufficient permissions`
+  );
+
+  if (e2eSmokeTest) {
+    outputChannel.warn("Continuing despite insufficient permissions in E2E smoke mode.");
+    return true;
+  }
+
+  vscode.window.showErrorMessage(
+    `Extension activation failed. Insufficient permissions.\nEnsure ${userInfo.username} is in the 'clab_admins' and 'docker' groups.`
+  );
+  return false;
+}
+
+async function connectDockerSocket(e2eSmokeTest: boolean): Promise<boolean | undefined> {
+  try {
+    const docker = new Docker({ socketPath: "/var/run/docker.sock" });
+    setDockerClient(docker);
+    await docker.ping();
+    outputChannel.info("Successfully connected to Docker socket");
+    return true;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    outputChannel.error(`Failed to connect to Docker socket: ${message}`);
+    if (e2eSmokeTest) {
+      outputChannel.warn("Continuing without Docker in E2E smoke mode.");
+      return false;
+    }
+    vscode.window.showErrorMessage(
+      `Failed to connect to Docker. Ensure Docker is running and you have proper permissions.`
+    );
+    return undefined;
+  }
+}
+
+async function runFullStartupTasks(
+  context: vscode.ExtensionContext,
+  config: vscode.WorkspaceConfiguration,
+  dockerAvailable: boolean,
+  e2eSmokeTest: boolean
+): Promise<void> {
+  const skipUpdateCheck = config.get<boolean>("skipUpdateCheck", false);
+  if (!skipUpdateCheck && !e2eSmokeTest) {
+    utils.checkAndUpdateClabIfNeeded(outputChannel, context).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      outputChannel.error(`Update check error: ${message}`);
+    });
+  }
+
+  if (dockerAvailable) {
+    void utils.refreshDockerImages();
+    utils.startDockerImageEventMonitor(context);
+  }
+
+  if (e2eSmokeTest) {
+    return;
+  }
+
+  const welcomePage = new WelcomePage(context);
+  await welcomePage.show();
+  void ins.update();
+}
+
 function getErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
@@ -467,6 +581,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const channel = vscode.window.createOutputChannel("Containerlab", { log: true });
   setOutputChannel(channel);
   context.subscriptions.push(channel);
+  const e2eSmokeTest = isE2ESmokeTest();
   outputChannel.info("Registered output channel sucessfully.");
   outputChannel.info(`Detected platform: ${process.platform}`);
 
@@ -486,91 +601,21 @@ export async function activate(context: vscode.ExtensionContext) {
     return;
   }
 
-  // Ensure clab is installed if the binpath was unable to be set.
-  if (containerlabBinaryPath === "containerlab") {
-    const installChoice = await vscode.window.showWarningMessage(
-      "Containerlab is not installed. Would you like to install it?",
-      "Install",
-      "Cancel"
-    );
-    if (installChoice === "Install") {
-      utils.installContainerlab();
-      vscode.window
-        .showInformationMessage(
-          "Please complete the installation in the terminal, then reload the window.",
-          "Reload Window"
-        )
-        .then((choice) => {
-          if (choice === "Reload Window") {
-            vscode.commands.executeCommand("workbench.action.reloadWindow");
-          }
-        });
-    }
+  if (!(await ensureContainerlabBinary(e2eSmokeTest))) {
     return;
   }
 
   outputChannel.info("Containerlab extension activated.");
 
-  outputChannel.debug(`Starting user permissions check`);
-  // 1) Check if user has required permissions
-  const userInfo = utils.getUserInfo();
-  setUsername(userInfo.username);
-  if (!userInfo.hasPermission) {
-    outputChannel.error(
-      `User '${userInfo.username}' (id:${userInfo.uid}) has insufficient permissions`
-    );
-
-    vscode.window.showErrorMessage(
-      `Extension activation failed. Insufficient permissions.\nEnsure ${userInfo.username} is in the 'clab_admins' and 'docker' groups.`
-    );
-    return;
-  }
-  outputChannel.debug(
-    `Permission check success for user '${userInfo.username}' (id:${userInfo.uid})`
-  );
-
-  // 2) Check for updates
-  const skipUpdateCheck = config.get<boolean>("skipUpdateCheck", false);
-  if (!skipUpdateCheck) {
-    utils.checkAndUpdateClabIfNeeded(outputChannel, context).catch((err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err);
-      outputChannel.error(`Update check error: ${message}`);
-    });
-  }
-
-  /**
-   * CONNECT TO DOCKER SOCKET VIA DOCKERODE
-   */
-  try {
-    const docker = new Docker({ socketPath: "/var/run/docker.sock" });
-    setDockerClient(docker);
-    // verify we are connected
-    await docker.ping();
-    outputChannel.info("Successfully connected to Docker socket");
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    outputChannel.error(`Failed to connect to Docker socket: ${message}`);
-    vscode.window.showErrorMessage(
-      `Failed to connect to Docker. Ensure Docker is running and you have proper permissions.`
-    );
+  if (!validateUserPermissions(e2eSmokeTest)) {
     return;
   }
 
-  /**
-   * At this stage we should have successfully connected to the docker socket.
-   * now we can:
-   *  - Initially load docker images cache
-   *  - Start the docker images listener
-   */
-  void utils.refreshDockerImages();
-  utils.startDockerImageEventMonitor(context);
-
-  // Show welcome page
-  const welcomePage = new WelcomePage(context);
-  await welcomePage.show();
-
-  // Initial pull of inspect data
-  void ins.update();
+  const dockerAvailable = await connectDockerSocket(e2eSmokeTest);
+  if (dockerAvailable === undefined) {
+    return;
+  }
+  await runFullStartupTasks(context, config, dockerAvailable, e2eSmokeTest);
 
   // Explorer data providers (backing model for React explorer)
   setExtensionContext(context);
@@ -616,10 +661,14 @@ export async function activate(context: vscode.ExtensionContext) {
       void updateActivityBadgeProxy();
     })
   );
-  void updateActivityBadgeProxy();
+  if (!e2eSmokeTest) {
+    void updateActivityBadgeProxy();
+  }
 
-  await refreshSshxSessions();
-  await refreshGottySessions();
+  if (!e2eSmokeTest) {
+    await refreshSshxSessions();
+    await refreshGottySessions();
+  }
   // Docker images are refreshed on TopoViewer open to avoid unnecessary calls
 
   // Determine if local capture is allowed.
