@@ -167,7 +167,12 @@ function assignNetemAttributes(
   mappings: Array<[keyof InterfaceRecord, string, string]>
 ): void {
   for (const [targetKey, attributeKey, defaultValue] of mappings) {
-    record[targetKey as string] = attributes[attributeKey] ?? defaultValue;
+    const value = attributes[attributeKey];
+    if (value !== undefined && value !== null) {
+      record[targetKey as string] = value;
+    } else if (record[targetKey as string] === undefined) {
+      record[targetKey as string] = defaultValue;
+    }
   }
 }
 
@@ -1382,6 +1387,10 @@ export function estimateStartedAtFromStatusForTests(
   eventTimestamp?: number
 ): number | undefined {
   return estimateStartedAtFromStatus(status, eventTimestamp);
+}
+
+export function handleEventLineForTests(line: string): void {
+  handleEventLine(line);
 }
 
 export function onDataChanged(listener: DataListener): () => void {
