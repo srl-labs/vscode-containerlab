@@ -116,9 +116,23 @@ export function getUserInfo(): {
     }
 
     const isMemberOfClabAdmins = userGroups.includes("clab_admins");
+
+    const runtime = getConfig<string>("runtime", "docker");
     const isMemberOfDocker = userGroups.includes("docker");
 
-    if (isMemberOfClabAdmins && isMemberOfDocker) {
+    const noPermission = {
+      hasPermission: false,
+      isRoot: false,
+      userGroups,
+      username,
+      uid
+    };
+
+    if (!isMemberOfClabAdmins) {
+      return noPermission;
+    }
+
+    if (runtime === "docker" && isMemberOfDocker) {
       return {
         hasPermission: true,
         isRoot: false,
@@ -126,15 +140,19 @@ export function getUserInfo(): {
         username,
         uid
       };
-    } else {
+    }
+
+    if (runtime === "podman") {
       return {
-        hasPermission: false,
+        hasPermission: true,
         isRoot: false,
         userGroups,
         username,
         uid
       };
     }
+
+    return noPermission;
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     outputChannel.error(`User info check failed: ${errorMessage}`);
@@ -180,8 +198,8 @@ export async function getFreePort(): Promise<number> {
 }
 
 // Get the config, set the default to undefined as all defaults **SHOULD** be set in package.json
-export function getConfig(relCfgPath: string): unknown {
-  return vscode.workspace.getConfiguration("containerlab").get(relCfgPath, undefined);
+export function getConfig<T = unknown>(relCfgPath: string, defaultValue?: T): T {
+  return vscode.workspace.getConfiguration("containerlab").get(relCfgPath, defaultValue) as T;
 }
 
 // ----------------------------------------------------------
