@@ -92,29 +92,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check E2E support
-        id: e2e
-        run: |
-          HAS_E2E_SCRIPT="$(node -p "Boolean(require('./package.json').scripts?.['test:e2e'])")"
-          echo "has_script=${HAS_E2E_SCRIPT}" >> "$GITHUB_OUTPUT"
-          if [ "$HAS_E2E_SCRIPT" != "true" ]; then
-            echo "No test:e2e script configured; skipping E2E job."
-          fi
+      - name: Run VS Code smoke E2E tests
+        run: xvfb-run -a npm run test:e2e
 
-      - name: Install Playwright browsers and dependencies
-        if: steps.e2e.outputs.has_script == 'true'
-        run: npx playwright install --with-deps chromium
-
-      - name: Run E2E tests
-        if: steps.e2e.outputs.has_script == 'true'
-        run: npm run test:e2e -- --workers=3
-
-      - name: Upload Playwright report
-        if: ${{ !cancelled() && steps.e2e.outputs.has_script == 'true' }}
+      - name: Upload VS Code E2E output
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ github.run_number }}
-          path: playwright-report/
+          name: vscode-e2e-output-${{ github.run_number }}
+          path: |
+            .vscode-test/
+            out/e2e/
           retention-days: 30
 
   # Optional: Add a job to test the packaged extension

@@ -1012,7 +1012,9 @@
     "lint:cpd": "jscpd src/",
     "lint:barrels": "node scripts/check-barrel-exports.js",
     "test": "npm run test:compile && mocha --exit --extension js --reporter mochawesome \"out/test/**/*.test.js\"",
-    "test:compile": "rm -rf out/test && tsc -p test/tsconfig.mocha.json"
+    "test:compile": "rm -rf out/test && tsc -p test/tsconfig.mocha.json",
+    "test:e2e": "npm run build && npm run test:e2e:compile && node ./out/e2e/run.js",
+    "test:e2e:compile": "rm -rf out/e2e && tsc -p test/tsconfig.e2e.json"
   },
   "overrides": {
     "diff": "8.0.4",
@@ -1030,6 +1032,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/sinon": "^21.0.1",
     "@types/vscode": "1.99.0",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.9.1",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
