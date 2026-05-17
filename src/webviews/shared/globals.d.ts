@@ -18,6 +18,8 @@ declare module "*.gif" {
   export default src;
 }
 
+declare module "*.css";
+
 interface Window {
   __INITIAL_DATA__?: unknown;
   vscode?: {

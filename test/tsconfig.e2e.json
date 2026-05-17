@@ -2,7 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "commonjs",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "outDir": "../out/e2e",
     "rootDir": "e2e",
     "typeRoots": ["../node_modules/@types"],

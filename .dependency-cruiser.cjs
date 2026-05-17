@@ -32,7 +32,7 @@ module.exports = {
       }
     },
 
-    // ─── Circular dependencies (complementing madge) ───
+    // ─── Circular dependencies ───
     {
       name: "no-circular",
       comment: "Circular dependencies are problematic for maintainability",
