@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.25.2",
+  "version": "0.25.3",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.99.0",
@@ -974,6 +974,11 @@
             "type": "boolean",
             "default": "true",
             "description": "Keep Wireshark VNC sessions alive, even when the capture tab is not active. Enabling this will consume more memory on both the client and remote containerlab host system."
+          },
+          "containerlab.capture.wireshark.vncCaptureHostname": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "Override the hostname used in the generation for packetflix URI for VNC captures only."
           },
           "containerlab.capture.edgeshark.extraEnvironmentVars": {
             "type": "string",
