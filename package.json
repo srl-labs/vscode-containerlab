@@ -825,7 +825,7 @@
               {
                 "name": "SRLinux Latest",
                 "kind": "nokia_srlinux",
-                "type": "ixrd1",
+                "type": "ixr-d1",
                 "image": "ghcr.io/nokia/srlinux:latest",
                 "icon": "router",
                 "baseName": "srl",
