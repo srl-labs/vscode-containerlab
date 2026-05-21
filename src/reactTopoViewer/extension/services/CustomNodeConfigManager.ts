@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import type { CustomNodeTemplate, EndpointResult } from "@srl-labs/clab-ui/session";
 
 import { formatErrorMessage, log } from "./logger";
+import { normalizeCustomNodeTemplate, normalizeCustomNodeTemplates } from "./customNodeTypes";
 
 const CONFIG_SECTION = "containerlab.editor";
 
@@ -30,8 +31,11 @@ export class CustomNodeConfigManager {
   async saveCustomNode(data: CustomNodeData): Promise<EndpointResult> {
     try {
       const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-      let customNodes = config.get<CustomNodeConfig[]>("customNodes", []);
+      let customNodes = normalizeCustomNodeTemplates(
+        config.get<CustomNodeConfig[]>("customNodes", [])
+      );
       const { oldName, ...nodeData } = data;
+      const normalizedNodeData = normalizeCustomNodeTemplate(nodeData);
 
       if (data.setDefault === true) {
         customNodes = customNodes.map((n) => ({ ...n, setDefault: false }));
@@ -40,16 +44,16 @@ export class CustomNodeConfigManager {
       if (oldName !== undefined && oldName.length > 0) {
         const oldIndex = customNodes.findIndex((n) => n.name === oldName);
         if (oldIndex >= 0) {
-          customNodes[oldIndex] = nodeData;
+          customNodes[oldIndex] = normalizedNodeData;
         } else {
-          customNodes.push(nodeData);
+          customNodes.push(normalizedNodeData);
         }
       } else {
         const existingIndex = customNodes.findIndex((n) => n.name === data.name);
         if (existingIndex >= 0) {
-          customNodes[existingIndex] = nodeData;
+          customNodes[existingIndex] = normalizedNodeData;
         } else {
-          customNodes.push(nodeData);
+          customNodes.push(normalizedNodeData);
         }
       }
 
@@ -74,7 +78,9 @@ export class CustomNodeConfigManager {
       }
 
       const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-      const customNodes = config.get<CustomNodeConfig[]>("customNodes", []);
+      const customNodes = normalizeCustomNodeTemplates(
+        config.get<CustomNodeConfig[]>("customNodes", [])
+      );
 
       const targetIndex = customNodes.findIndex((node) => node.name === name);
       if (targetIndex < 0) {
@@ -106,7 +112,9 @@ export class CustomNodeConfigManager {
   async deleteCustomNode(name: string): Promise<EndpointResult> {
     try {
       const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-      const customNodes = config.get<CustomNodeConfig[]>("customNodes", []);
+      const customNodes = normalizeCustomNodeTemplates(
+        config.get<CustomNodeConfig[]>("customNodes", [])
+      );
       const filteredNodes = customNodes.filter((n) => n.name !== name);
       await config.update("customNodes", filteredNodes, vscode.ConfigurationTarget.Global);
       const defaultCustomNode = filteredNodes.find((n) => n.setDefault === true);
@@ -130,7 +138,9 @@ export class CustomNodeConfigManager {
     defaultKind: string;
     defaultType: string;
   } {
-    const defaultCustomNode = customNodes.find((node) => node.setDefault === true);
+    const defaultCustomNode = normalizeCustomNodeTemplates(customNodes).find(
+      (node) => node.setDefault === true
+    );
     return {
       defaultNode: defaultCustomNode?.name ?? "",
       defaultKind: defaultCustomNode?.kind ?? "nokia_srlinux",

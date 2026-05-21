@@ -5,6 +5,7 @@
 import * as vscode from "vscode";
 
 import type { CustomNodeTemplate } from "@srl-labs/clab-ui/session";
+import { normalizeCustomNodeTemplates } from "./customNodeTypes";
 
 const CONFIG_SECTION = "containerlab.editor";
 
@@ -13,5 +14,5 @@ const CONFIG_SECTION = "containerlab.editor";
  */
 export function getCustomNodesFromConfig(): CustomNodeTemplate[] {
   const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-  return config.get<CustomNodeTemplate[]>("customNodes", []);
+  return normalizeCustomNodeTemplates(config.get<CustomNodeTemplate[]>("customNodes", []));
 }
