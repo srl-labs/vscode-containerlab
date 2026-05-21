@@ -1010,8 +1010,8 @@
     "lint:prettier": "prettier --check \"src/**/*.{ts,tsx}\"",
     "lint:prettier:fix": "prettier --write \"src/**/*.{ts,tsx}\"",
     "lint:fix": "npm run lint:ts:fix && npm run lint:prettier:fix",
-    "lint:circular": "madge --circular --extensions ts,tsx src/",
-    "lint:circular:local-ui": "madge --circular --extensions ts,tsx src/ --ts-config tsconfig.local-ui.json",
+    "lint:circular": "depcruise src --config .dependency-cruiser.cjs --output-type err",
+    "lint:circular:local-ui": "depcruise src --config .dependency-cruiser.local-ui.cjs --output-type err",
     "lint:deps": "depcruise src --config .dependency-cruiser.cjs",
     "lint:deps:local-ui": "depcruise src --config .dependency-cruiser.local-ui.cjs",
     "lint:cpd": "jscpd src/",
@@ -1047,7 +1047,6 @@
     "dockerode": "^4.0.12",
     "esbuild": "^0.28.0",
     "jscpd": "^4.0.9",
-    "madge": "^8.0.0",
     "mocha": "^11.7.5",
     "mochawesome": "^7.1.4",
     "oxlint": "^1.61.0",
@@ -1059,7 +1058,7 @@
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "sinon": "^21.1.2",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "yaml": "^2.8.3"
   }
 }
