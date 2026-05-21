@@ -168,6 +168,14 @@ async function getVolumeMount(nodeName: string): Promise<string> {
 
 function adjustPacketflixHost(uri: string, edgesharkNetwork: string): string {
   if (uri.includes("localhost") || uri.includes("127.0.0.1")) {
+    const vncCaptureHostname = vscode.workspace
+      .getConfiguration("containerlab")
+      .get<string>("capture.wireshark.vncCaptureHostname", "");
+
+    if (vncCaptureHostname) {
+      return uri.replace(/localhost|127\.0\.0\.1/g, vncCaptureHostname);
+    }
+
     return edgesharkNetwork
       ? uri.replace(/localhost|127\.0\.0\.1/g, "edgeshark-edgeshark-1")
       : uri.replace(/localhost|127\.0\.0\.1/g, "host.docker.internal");
