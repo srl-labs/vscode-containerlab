@@ -5,14 +5,19 @@
 import * as vscode from "vscode";
 
 import { log } from "../services/logger";
-import { createTopologySyncController } from "@srl-labs/clab-ui/host";
+import {
+  createTopologySyncController,
+  type TopologySyncRefreshOptions
+} from "@srl-labs/clab-ui/host";
 import { nodeFsAdapter } from "../shared/io";
 import { onDockerImagesUpdated } from "../../../utils/docker/images";
 
 /**
  * Callback for loading topology data
  */
-export type SnapshotLoader = () => Promise<unknown>;
+export type SnapshotLoader = (
+  externalChangeKind?: TopologySyncRefreshOptions["externalChangeKind"]
+) => Promise<unknown>;
 
 /**
  * Callback for posting topology data to webview
@@ -80,8 +85,8 @@ export class WatcherManager {
     this.snapshotRefreshController.dispose();
     this.snapshotRefreshController = createTopologySyncController({
       debounceMs: 0,
-      refresh: async () => {
-        const snapshot = await loadSnapshot();
+      refresh: async (options) => {
+        const snapshot = await loadSnapshot(options?.externalChangeKind);
         if (snapshot !== undefined && snapshot !== null) {
           postSnapshot(snapshot);
         }
@@ -206,7 +211,10 @@ export class WatcherManager {
 
       log.info(`[ReactTopoViewer] YAML ${trigger} detected, refreshing topology`);
       this.lastYamlContent = currentContent;
-      await this.snapshotRefreshController.refresh({ externalChange: true });
+      await this.snapshotRefreshController.refresh({
+        externalChange: true,
+        externalChangeKind: "topology"
+      });
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to refresh after YAML ${trigger}: ${String(err)}`);
     }
@@ -247,7 +255,10 @@ export class WatcherManager {
 
       log.info(`[ReactTopoViewer] Annotations ${trigger} detected, refreshing topology`);
       this.lastAnnotationsContent = currentContent;
-      await this.snapshotRefreshController.refresh({ externalChange: true });
+      await this.snapshotRefreshController.refresh({
+        externalChange: true,
+        externalChangeKind: "annotations"
+      });
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to refresh after annotations ${trigger}: ${String(err)}`);
     }

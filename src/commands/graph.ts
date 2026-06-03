@@ -83,7 +83,14 @@ export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
 
 let currentTopoViewer: ReactTopoViewer | undefined;
 
-export type LifecycleCommandType = "deploy" | "destroy" | "redeploy" | "start" | "stop" | "restart";
+export type LifecycleCommandType =
+  | "deploy"
+  | "apply"
+  | "destroy"
+  | "redeploy"
+  | "start"
+  | "stop"
+  | "restart";
 type LifecycleCommandStream = "stdout" | "stderr";
 type TopoViewerLifecycleHandlers = {
   onSuccess: () => Promise<void>;
@@ -241,7 +248,10 @@ export async function notifyCurrentTopoViewerOfCommandSuccess(commandType: Lifec
 
   try {
     if (typeof currentTopoViewer.refreshAfterExternalCommand === "function") {
-      await currentTopoViewer.refreshAfterExternalCommand(newDeploymentState);
+      await currentTopoViewer.refreshAfterExternalCommand(newDeploymentState, {
+        clearPendingTopologyApply:
+          commandType === "apply" || commandType === "deploy" || commandType === "redeploy"
+      });
     }
   } catch (error) {
     console.error(`Failed to update TopoViewer after ${commandType}:`, error);

@@ -1,8 +1,13 @@
-type LifecycleCommandType = "deploy" | "destroy" | "redeploy" | "start" | "stop" | "restart";
+type LifecycleCommandType =
+  | "deploy"
+  | "apply"
+  | "destroy"
+  | "redeploy"
+  | "start"
+  | "stop"
+  | "restart";
 
-export async function notifyCurrentTopoViewerOfCommandSuccess(
-  _commandType: LifecycleCommandType
-) {
+export async function notifyCurrentTopoViewerOfCommandSuccess(_commandType: LifecycleCommandType) {
   // no-op stub
 }
 

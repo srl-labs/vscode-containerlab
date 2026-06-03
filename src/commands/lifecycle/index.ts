@@ -3,6 +3,7 @@
  */
 
 export { deploy, deployCleanup, deploySpecificFile } from "../deploy";
+export { applyLab } from "../apply";
 export { destroy, destroyCleanup } from "../destroy";
 export { startLab, stopLab, restartLab } from "../labNodeLifecycle";
 export { redeploy, redeployCleanup } from "../redeploy";

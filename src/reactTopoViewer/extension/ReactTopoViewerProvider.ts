@@ -44,6 +44,10 @@ import {
 const INTERNAL_UPDATE_GRACE_MS = 250;
 const INTERNAL_UPDATE_CACHE_SYNC_DELAY_MS = 50;
 
+type LiveApplyTopologyHost = TopologyHostCore & {
+  markTopologyApplied(): Promise<TopologySnapshot>;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -81,7 +85,7 @@ function toClabLabNodeRecord(value: unknown): Record<string, ClabLabTreeNode> | 
 export class ReactTopoViewer {
   public currentPanel: vscode.WebviewPanel | undefined;
   private readonly viewType = "reactTopoViewer";
-  private topologyHost: TopologyHostCore | undefined;
+  private topologyHost: LiveApplyTopologyHost | undefined;
   public context: vscode.ExtensionContext;
   public lastYamlFilePath: string = "";
   public currentLabName: string = "";
@@ -174,13 +178,19 @@ export class ReactTopoViewer {
     this.watcherManager.setupFileWatcher(
       this.lastYamlFilePath,
       updateController,
-      () => this.topologyHost?.onExternalChange() ?? Promise.resolve(null),
+      (externalChangeKind) =>
+        this.topologyHost?.onExternalChange({
+          topologyChanged: externalChangeKind === "topology"
+        }) ?? Promise.resolve(null),
       postSnapshot
     );
     this.watcherManager.setupSaveListener(
       this.lastYamlFilePath,
       updateController,
-      () => this.topologyHost?.onExternalChange() ?? Promise.resolve(null),
+      (externalChangeKind) =>
+        this.topologyHost?.onExternalChange({
+          topologyChanged: externalChangeKind === "topology"
+        }) ?? Promise.resolve(null),
       postSnapshot
     );
     this.watcherManager.setupDockerImagesSubscription(panel);
@@ -278,6 +288,7 @@ export class ReactTopoViewer {
       yamlFilePath: this.lastYamlFilePath,
       mode: this.isViewMode ? "view" : "edit",
       deploymentState: this.deploymentState,
+      liveApplyEnabled: true,
       containerDataProvider: this.isViewMode
         ? createRuntimeContainerDataProvider(this.runtimeContainers)
         : undefined,
@@ -360,7 +371,8 @@ export class ReactTopoViewer {
    * This is called by the command system after a lifecycle operation finishes.
    */
   public async refreshAfterExternalCommand(
-    newDeploymentState: "deployed" | "undeployed"
+    newDeploymentState: "deployed" | "undeployed",
+    options: { clearPendingTopologyApply?: boolean } = {}
   ): Promise<boolean> {
     if (!this.currentPanel) {
       return false;
@@ -383,11 +395,15 @@ export class ReactTopoViewer {
         this.topologyHost.updateContext({
           mode: this.isViewMode ? "view" : "edit",
           deploymentState: this.deploymentState,
+          liveApplyEnabled: true,
           containerDataProvider: this.isViewMode
             ? createRuntimeContainerDataProvider(this.runtimeContainers)
             : undefined
         });
-        const snapshot = await this.topologyHost.getSnapshot();
+        const snapshot =
+          options.clearPendingTopologyApply === true
+            ? await this.topologyHost.markTopologyApplied()
+            : await this.topologyHost.getSnapshot();
         this.lastTopologyEdges = snapshot.edges;
         this.currentPanel.webview.postMessage(buildTopologySnapshotMessage(snapshot, "resync"));
       }

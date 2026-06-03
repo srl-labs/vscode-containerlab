@@ -15,6 +15,7 @@ export type {
 // Lifecycle commands (deploy, destroy, redeploy, save)
 export {
   deploy,
+  applyLab,
   deployCleanup,
   deploySpecificFile,
   destroy,

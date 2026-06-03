@@ -368,6 +368,7 @@ function registerCommands(context: vscode.ExtensionContext) {
     ["containerlab.lab.toggleFavorite", cmd.toggleFavorite],
     ["containerlab.lab.delete", cmd.deleteLab],
     ["containerlab.lab.deploy", cmd.deploy],
+    ["containerlab.lab.apply", cmd.applyLab],
     ["containerlab.lab.deploy.cleanup", cmd.deployCleanup],
     ["containerlab.lab.deploy.specificFile", cmd.deploySpecificFile],
     ["containerlab.lab.deployPopular", cmd.deployPopularLab],

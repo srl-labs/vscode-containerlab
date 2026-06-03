@@ -30,6 +30,12 @@ const LAB_ACTIONS = {
     errorMsg: "Error deploying lab",
     noLabPath: "No lab path provided for deployment"
   },
+  applyLab: {
+    command: "containerlab.lab.apply",
+    resultMsg: "Lab apply initiated",
+    errorMsg: "Error applying lab",
+    noLabPath: "No lab path provided for apply"
+  },
   destroyLab: {
     command: "containerlab.lab.destroy",
     resultMsg: "Lab destruction initiated",
