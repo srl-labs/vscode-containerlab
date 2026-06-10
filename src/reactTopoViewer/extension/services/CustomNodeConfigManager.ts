@@ -1,6 +1,11 @@
 import * as vscode from "vscode";
 
-import type { CustomNodeTemplate, EndpointResult } from "@srl-labs/clab-ui/session";
+import {
+  mergeCustomNodeTemplates,
+  parseCustomNodeTemplatesExport,
+  type CustomNodeTemplate,
+  type EndpointResult
+} from "@srl-labs/clab-ui/session";
 
 import { formatErrorMessage, log } from "./logger";
 import { normalizeCustomNodeTemplate, normalizeCustomNodeTemplates } from "./customNodeTypes";
@@ -64,6 +69,52 @@ export class CustomNodeConfigManager {
     } catch (err) {
       const error = `Error saving custom node: ${formatErrorMessage(err)}`;
       log.error(`Error saving custom node: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
+  }
+
+  /**
+   * Imports custom node templates from a JSON file picked by the user.
+   * Imported templates replace same-named existing ones; the rest are appended.
+   */
+  async importCustomNodes(): Promise<EndpointResult> {
+    try {
+      const selection = await vscode.window.showOpenDialog({
+        title: "Import Node Templates",
+        openLabel: "Import",
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: false,
+        filters: { JSON: ["json"] }
+      });
+      const fileUri = selection?.[0];
+      if (!fileUri) {
+        return { result: null, error: null };
+      }
+
+      const content = await vscode.workspace.fs.readFile(fileUri);
+      const imported = normalizeCustomNodeTemplates(
+        parseCustomNodeTemplatesExport(Buffer.from(content).toString("utf8"))
+      );
+
+      const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+      const existing = normalizeCustomNodeTemplates(
+        config.get<CustomNodeConfig[]>("customNodes", [])
+      );
+      const { customNodes, added, replaced } = mergeCustomNodeTemplates(existing, imported);
+
+      await config.update("customNodes", customNodes, vscode.ConfigurationTarget.Global);
+      const defaultCustomNode = customNodes.find((n) => n.setDefault === true);
+      log.info(
+        `Imported node templates from ${fileUri.fsPath}: ${added} added, ${replaced} updated`
+      );
+      void vscode.window.showInformationMessage(
+        `Imported node templates: ${added} added, ${replaced} updated`
+      );
+      return { result: { customNodes, defaultNode: defaultCustomNode?.name ?? "" }, error: null };
+    } catch (err) {
+      const error = `Error importing node templates: ${formatErrorMessage(err)}`;
+      log.error(error);
       return { result: null, error };
     }
   }
