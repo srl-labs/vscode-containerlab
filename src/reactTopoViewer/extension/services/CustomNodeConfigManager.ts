@@ -2,13 +2,14 @@ import * as vscode from "vscode";
 
 import {
   mergeCustomNodeTemplates,
-  parseCustomNodeTemplatesExport,
+  parseCustomNodeTemplatesExportFile,
   type CustomNodeTemplate,
   type EndpointResult
 } from "@srl-labs/clab-ui/session";
 
 import { formatErrorMessage, log } from "./logger";
 import { normalizeCustomNodeTemplate, normalizeCustomNodeTemplates } from "./customNodeTypes";
+import { iconService } from "./IconService";
 
 const CONFIG_SECTION = "containerlab.editor";
 
@@ -93,9 +94,9 @@ export class CustomNodeConfigManager {
       }
 
       const content = await vscode.workspace.fs.readFile(fileUri);
-      const imported = normalizeCustomNodeTemplates(
-        parseCustomNodeTemplatesExport(Buffer.from(content).toString("utf8"))
-      );
+      const parsed = parseCustomNodeTemplatesExportFile(Buffer.from(content).toString("utf8"));
+      const imported = normalizeCustomNodeTemplates(parsed.templates);
+      const importedIcons = await iconService.importIcons(parsed.icons);
 
       const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
       const existing = normalizeCustomNodeTemplates(
@@ -106,10 +107,10 @@ export class CustomNodeConfigManager {
       await config.update("customNodes", customNodes, vscode.ConfigurationTarget.Global);
       const defaultCustomNode = customNodes.find((n) => n.setDefault === true);
       log.info(
-        `Imported node templates from ${fileUri.fsPath}: ${added} added, ${replaced} updated`
+        `Imported node templates from ${fileUri.fsPath}: ${added} added, ${replaced} updated, ${importedIcons.added} icons added, ${importedIcons.replaced} icons updated`
       );
       void vscode.window.showInformationMessage(
-        `Imported node templates: ${added} added, ${replaced} updated`
+        `Imported node templates: ${added} added, ${replaced} updated, ${importedIcons.added} icons added, ${importedIcons.replaced} icons updated`
       );
       return { result: { customNodes, defaultNode: defaultCustomNode?.name ?? "" }, error: null };
     } catch (err) {
