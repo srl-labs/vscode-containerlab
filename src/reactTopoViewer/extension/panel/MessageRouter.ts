@@ -41,10 +41,6 @@ import {
 import { nodeFsAdapter } from "../shared/io";
 import { cancelActiveCommand } from "../../../commands/command";
 
-const IMPORT_CUSTOM_NODES_COMMAND = "import-custom-nodes";
-
-type SupportedCustomNodeCommand = CustomNodeCommand | typeof IMPORT_CUSTOM_NODES_COMMAND;
-
 type WebviewMessage = Record<string, unknown> & {
   type?: unknown;
   command?: unknown;
@@ -229,7 +225,7 @@ export class MessageRouter {
   }
 
   private async handleCustomNodeCommand(
-    command: SupportedCustomNodeCommand,
+    command: CustomNodeCommand,
     message: WebviewMessage,
     panel: vscode.WebviewPanel
   ): Promise<void> {
@@ -259,7 +255,7 @@ export class MessageRouter {
   }
 
   private async executeCustomNodeCommand(
-    command: SupportedCustomNodeCommand,
+    command: CustomNodeCommand,
     message: WebviewMessage
   ): Promise<{ result?: unknown; error?: string | null } | undefined> {
     switch (command) {
@@ -276,7 +272,7 @@ export class MessageRouter {
         const name = this.getCustomNodeName(message);
         return customNodeConfigManager.setDefaultCustomNode(name);
       }
-      case IMPORT_CUSTOM_NODES_COMMAND: {
+      case "import-custom-nodes": {
         return customNodeConfigManager.importCustomNodes();
       }
       default:
@@ -579,7 +575,7 @@ export class MessageRouter {
       return true;
     }
 
-    if (isCustomNodeCommand(command) || command === IMPORT_CUSTOM_NODES_COMMAND) {
+    if (isCustomNodeCommand(command)) {
       await this.handleCustomNodeCommand(command, message, panel);
       return true;
     }
