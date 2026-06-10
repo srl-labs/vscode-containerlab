@@ -1,12 +1,8 @@
 import * as vscode from "vscode";
 
-import {
-  mergeCustomNodeTemplates,
-  parseCustomNodeTemplatesExport,
-  type CustomNodeTemplate,
-  type EndpointResult
-} from "@srl-labs/clab-ui/session";
+import type { CustomNodeTemplate, EndpointResult } from "@srl-labs/clab-ui/session";
 
+import { mergeCustomNodeTemplates, parseCustomNodeTemplatesExport } from "./customNodeImportExport";
 import { formatErrorMessage, log } from "./logger";
 import { normalizeCustomNodeTemplate, normalizeCustomNodeTemplates } from "./customNodeTypes";
 
