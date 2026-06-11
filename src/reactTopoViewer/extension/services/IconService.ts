@@ -12,7 +12,7 @@ import * as path from "path";
 
 import * as vscode from "vscode";
 
-import type { CustomIconInfo } from "@srl-labs/clab-ui/session";
+import type { CustomIconInfo, CustomNodeTemplateExportIcon } from "@srl-labs/clab-ui/session";
 import {
   getIconFormat,
   getIconMimeType,
@@ -39,6 +39,11 @@ export interface IconOperationResult {
   success: boolean;
   error?: string;
   icons?: CustomIconInfo[];
+}
+
+export interface IconImportResult {
+  added: number;
+  replaced: number;
 }
 
 /**
@@ -223,6 +228,68 @@ export class IconService {
       void vscode.window.showErrorMessage(error);
       return { success: false, error };
     }
+  }
+
+  private isSafeImportedIconName(iconName: string): boolean {
+    return iconName.length > 0 && !iconName.includes("/") && !iconName.includes("\\");
+  }
+
+  private decodeImportedIcon(icon: CustomNodeTemplateExportIcon): Buffer {
+    const match = /^data:([^;,]+);base64,([\s\S]*)$/.exec(icon.dataUri);
+    if (!match) {
+      throw new Error(`Icon "${icon.name}" is not a base64 data URI`);
+    }
+
+    const expectedMimeType = getIconMimeType(`.${icon.format}`);
+    if (match[1].toLowerCase() !== expectedMimeType) {
+      throw new Error(
+        `Icon "${icon.name}" has MIME type ${match[1]}, expected ${expectedMimeType}`
+      );
+    }
+
+    return Buffer.from(match[2], "base64");
+  }
+
+  /**
+   * Import embedded icons from a node-template export into the global icon library.
+   * Names are preserved so imported templates resolve their icon references.
+   */
+  async importIcons(icons: CustomNodeTemplateExportIcon[]): Promise<IconImportResult> {
+    if (icons.length === 0) {
+      return { added: 0, replaced: 0 };
+    }
+
+    const globalDir = this.getGlobalIconDir();
+    await this.ensureDir(globalDir);
+
+    let added = 0;
+    let replaced = 0;
+    for (const icon of icons) {
+      if (!this.isSafeImportedIconName(icon.name)) {
+        throw new Error(`Invalid icon name "${icon.name}"`);
+      }
+
+      const ext = `.${icon.format}`;
+      const existed = await this.iconExistsInDir(globalDir, icon.name);
+      const content = this.decodeImportedIcon(icon);
+      await fs.promises.writeFile(path.join(globalDir, `${icon.name}${ext}`), content);
+
+      for (const staleExt of [".svg", ".png"]) {
+        if (staleExt === ext) continue;
+        const stalePath = path.join(globalDir, `${icon.name}${staleExt}`);
+        if (await this.pathExists(stalePath)) {
+          await fs.promises.unlink(stalePath);
+        }
+      }
+
+      if (existed) {
+        replaced += 1;
+      } else {
+        added += 1;
+      }
+    }
+
+    return { added, replaced };
   }
 
   /**

@@ -272,6 +272,9 @@ export class MessageRouter {
         const name = this.getCustomNodeName(message);
         return customNodeConfigManager.setDefaultCustomNode(name);
       }
+      case "import-custom-nodes": {
+        return customNodeConfigManager.importCustomNodes();
+      }
       default:
         return undefined;
     }
