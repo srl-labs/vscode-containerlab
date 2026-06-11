@@ -242,7 +242,9 @@ export class IconService {
 
     const expectedMimeType = getIconMimeType(`.${icon.format}`);
     if (match[1].toLowerCase() !== expectedMimeType) {
-      throw new Error(`Icon "${icon.name}" has MIME type ${match[1]}, expected ${expectedMimeType}`);
+      throw new Error(
+        `Icon "${icon.name}" has MIME type ${match[1]}, expected ${expectedMimeType}`
+      );
     }
 
     return Buffer.from(match[2], "base64");
