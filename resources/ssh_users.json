@@ -2,7 +2,9 @@
   "nokia_srlinux": "admin",
   "nokia_sros": "admin",
   "cisco_xrd": "clab",
-  "cisco_xr9vk": "clab",
+  "cisco_xrv9k": "clab",
+  "cisco_xrd_vrouter": "clab",
+  "cisco_xrv": "clab",
   "arista_ceos": "admin",
   "juniper_crpd": "root"
 }
