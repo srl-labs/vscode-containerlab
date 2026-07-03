@@ -2,6 +2,7 @@
  * Lifecycle commands - deploy, destroy, redeploy, save
  */
 
+export { apply } from "../apply";
 export { deploy, deployCleanup, deploySpecificFile } from "../deploy";
 export { destroy, destroyCleanup } from "../destroy";
 export { startLab, stopLab, restartLab } from "../labNodeLifecycle";

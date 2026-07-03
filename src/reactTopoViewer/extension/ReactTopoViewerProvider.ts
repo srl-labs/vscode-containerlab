@@ -8,6 +8,9 @@
  * - Topology data loading (via TopologyHost)
  */
 
+import * as fs from "fs";
+import * as path from "path";
+
 import * as vscode from "vscode";
 
 import { runningLabsProvider } from "../../globals";
@@ -85,8 +88,9 @@ export class ReactTopoViewer {
   public context: vscode.ExtensionContext;
   public lastYamlFilePath: string = "";
   public currentLabName: string = "";
-  public isViewMode: boolean = false;
   public deploymentState: "deployed" | "undeployed" | "unknown" = "unknown";
+  /** Whether the on-disk topology diverged from the deployed runtime (apply pending). */
+  private dirtyState: boolean | undefined;
   private runtimeContainers: HostRuntimeContainer[] = [];
   private lastTopologyEdges: TopoEdge[] = [];
   private watcherManager: WatcherManager;
@@ -233,9 +237,45 @@ export class ReactTopoViewer {
       log.warn(`Failed to check deployment state: ${formatErrorMessage(err)}`);
       this.deploymentState = "unknown";
     }
+    this.dirtyState = this.computeDirtyState();
 
-    if (this.isViewMode) {
+    if (this.isDeployed) {
       this.runtimeContainers = await this.loadRunningLabRuntimeContainers();
+    }
+  }
+
+  /** Whether the lab is running, i.e. runtime data should be attached. */
+  public get isDeployed(): boolean {
+    return this.deploymentState === "deployed";
+  }
+
+  /**
+   * Compare the topology file against the lab state file containerlab writes on
+   * deploy/apply (`clab-<lab>/.state.clab.yaml`, containerlab >= 0.77). A newer
+   * topology file means `containerlab apply` has pending changes. Returns
+   * `undefined` (unknown) when the lab is not running or the state file is
+   * unavailable.
+   */
+  private computeDirtyState(): boolean | undefined {
+    if (this.deploymentState !== "deployed") {
+      return undefined;
+    }
+    const yamlPath = this.lastYamlFilePath;
+    const labName = this.currentLabName;
+    if (!yamlPath || !labName) {
+      return undefined;
+    }
+    try {
+      const stateFilePath = path.join(
+        path.dirname(yamlPath),
+        `clab-${labName}`,
+        ".state.clab.yaml"
+      );
+      const yamlStat = fs.statSync(yamlPath);
+      const stateStat = fs.statSync(stateFilePath);
+      return yamlStat.mtimeMs > stateStat.mtimeMs;
+    } catch {
+      return undefined;
     }
   }
 
@@ -245,11 +285,9 @@ export class ReactTopoViewer {
   public async createWebviewPanel(
     context: vscode.ExtensionContext,
     fileUri: vscode.Uri,
-    labName: string,
-    viewMode: boolean = false
+    labName: string
   ): Promise<void> {
     this.currentLabName = labName;
-    this.isViewMode = viewMode;
 
     if (fileUri.fsPath.length > 0) {
       this.lastYamlFilePath = fileUri.fsPath;
@@ -273,12 +311,14 @@ export class ReactTopoViewer {
 
     await this.initializeLabState(labName);
 
+    // The topology is always editable; runtime data attaches when deployed.
     this.topologyHost = new TopologyHostCore({
       fs: nodeFsAdapter,
       yamlFilePath: this.lastYamlFilePath,
-      mode: this.isViewMode ? "view" : "edit",
+      mode: "edit",
       deploymentState: this.deploymentState,
-      containerDataProvider: this.isViewMode
+      dirty: this.dirtyState,
+      containerDataProvider: this.isDeployed
         ? createRuntimeContainerDataProvider(this.runtimeContainers)
         : undefined,
       setInternalUpdate: (updating: boolean) => this.setInternalUpdate(updating),
@@ -287,7 +327,6 @@ export class ReactTopoViewer {
 
     this.messageRouter = new MessageRouter({
       yamlFilePath: this.lastYamlFilePath,
-      isViewMode: this.isViewMode,
       splitViewManager: this.splitViewManager,
       topologyHost: this.topologyHost,
       setInternalUpdate: (updating: boolean) => this.setInternalUpdate(updating),
@@ -369,21 +408,18 @@ export class ReactTopoViewer {
     try {
       // Update internal state
       this.deploymentState = newDeploymentState;
-      this.isViewMode = newDeploymentState === "deployed";
+      // Deploy/apply/redeploy refresh the containerlab state file, so the mtime
+      // comparison reflects the new baseline right after a lifecycle command.
+      this.dirtyState = this.computeDirtyState();
 
-      // Update message router context
-      if (this.messageRouter) {
-        this.messageRouter.updateContext({ isViewMode: this.isViewMode });
-      }
-
-      // Reload running lab data if switching to view mode
-      this.runtimeContainers = this.isViewMode ? await this.loadRunningLabRuntimeContainers() : [];
+      // Reload running lab data when the lab is (still) deployed
+      this.runtimeContainers = this.isDeployed ? await this.loadRunningLabRuntimeContainers() : [];
 
       if (this.topologyHost) {
         this.topologyHost.updateContext({
-          mode: this.isViewMode ? "view" : "edit",
           deploymentState: this.deploymentState,
-          containerDataProvider: this.isViewMode
+          dirty: this.dirtyState,
+          containerDataProvider: this.isDeployed
             ? createRuntimeContainerDataProvider(this.runtimeContainers)
             : undefined
         });
@@ -415,17 +451,16 @@ export class ReactTopoViewer {
       return;
     }
 
-    const mode = this.isViewMode ? "viewer" : "editor";
-
     this.currentPanel.webview.postMessage({
       type: MSG_TOPO_MODE_CHANGE,
       data: {
-        mode,
-        deploymentState: this.deploymentState
+        mode: "editor",
+        deploymentState: this.deploymentState,
+        ...(this.dirtyState !== undefined ? { dirty: this.dirtyState } : {})
       }
     });
 
-    log.info(`[ReactTopoViewer] Mode changed to: ${mode}`);
+    log.info(`[ReactTopoViewer] Deployment state changed to: ${this.deploymentState}`);
   }
 
   /**
@@ -437,7 +472,7 @@ export class ReactTopoViewer {
   public async refreshLinkStatesFromInspect(
     labsData?: Record<string, ClabLabTreeNode>
   ): Promise<void> {
-    if (!this.currentPanel || !this.isViewMode) {
+    if (!this.currentPanel || !this.isDeployed) {
       return;
     }
 
@@ -503,11 +538,7 @@ export class ReactTopoViewerProvider {
   /**
    * Open or create a React TopoViewer for the given lab
    */
-  public async openViewer(
-    labPath: string,
-    labName: string,
-    isViewMode: boolean
-  ): Promise<ReactTopoViewer> {
+  public async openViewer(labPath: string, labName: string): Promise<ReactTopoViewer> {
     // Check for existing viewer
     const existingViewer = this.viewers.get(labPath);
     if (existingViewer?.currentPanel) {
@@ -520,8 +551,7 @@ export class ReactTopoViewerProvider {
     await viewer.createWebviewPanel(
       this.context,
       labPath ? vscode.Uri.file(labPath) : vscode.Uri.parse(""),
-      labName,
-      isViewMode
+      labName
     );
 
     // Track the viewer

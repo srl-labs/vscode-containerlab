@@ -128,6 +128,12 @@
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.lab.apply",
+        "title": "Apply topology",
+        "icon": "$(play)",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.lab.destroy",
         "title": "Destroy",
         "icon": "$(trash)",
@@ -485,6 +491,11 @@
       "editor/title/run": [
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.apply",
+          "group": "navigation@0"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.lab.deploy",
           "group": "navigation@1"
         },
@@ -530,6 +541,11 @@
         }
       ],
       "editor/title/context": [
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.apply",
+          "group": "clabLabActions@0"
+        },
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.lab.deploy",
@@ -587,6 +603,11 @@
         }
       ],
       "explorer/context": [
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.apply",
+          "group": "clabLabActions@0"
+        },
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.lab.deploy",
@@ -661,6 +682,10 @@
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
+          "command": "containerlab.lab.apply",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
           "command": "containerlab.lab.destroy",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
@@ -726,6 +751,11 @@
         "key": "ctrl+alt+r",
         "mac": "cmd+alt+r",
         "command": "containerlab.lab.redeploy"
+      },
+      {
+        "key": "ctrl+alt+a",
+        "mac": "cmd+alt+a",
+        "command": "containerlab.lab.apply"
       },
       {
         "key": "ctrl+alt+k",

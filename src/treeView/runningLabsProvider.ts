@@ -266,7 +266,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
    */
   private async refreshTopoViewerIfOpen(): Promise<void> {
     const viewer = getCurrentTopoViewer();
-    if (viewer?.currentPanel && viewer.isViewMode) {
+    if (viewer?.currentPanel && viewer.isDeployed) {
       try {
         const labsForViewer = this.getLabsSnapshotForViewer();
         await viewer.refreshLinkStatesFromInspect(labsForViewer);

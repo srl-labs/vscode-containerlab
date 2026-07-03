@@ -12,8 +12,9 @@ export type {
   CommandFailureHandler
 } from "./base";
 
-// Lifecycle commands (deploy, destroy, redeploy, save)
+// Lifecycle commands (deploy, destroy, redeploy, apply, save)
 export {
+  apply,
   deploy,
   deployCleanup,
   deploySpecificFile,

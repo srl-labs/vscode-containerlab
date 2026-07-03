@@ -71,7 +71,6 @@ function asStringArray(value: unknown): string[] {
  */
 export interface MessageRouterContext {
   yamlFilePath: string;
-  isViewMode: boolean;
   splitViewManager: SplitViewManager;
   topologyHost?: TopologyHost;
   setInternalUpdate: (updating: boolean) => void;
