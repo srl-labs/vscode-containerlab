@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.25.4",
+  "version": "0.26.0",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.105.1",
@@ -125,6 +125,12 @@
         "command": "containerlab.lab.redeploy.cleanup",
         "title": "Redeploy (cleanup)",
         "icon": "$(refresh)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.apply",
+        "title": "Apply topology",
+        "icon": "$(play)",
         "category": "Containerlab"
       },
       {
@@ -485,6 +491,11 @@
       "editor/title/run": [
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.apply",
+          "group": "navigation@0"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.lab.deploy",
           "group": "navigation@1"
         },
@@ -530,6 +541,11 @@
         }
       ],
       "editor/title/context": [
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.apply",
+          "group": "clabLabActions@0"
+        },
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.lab.deploy",
@@ -587,6 +603,11 @@
         }
       ],
       "explorer/context": [
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.apply",
+          "group": "clabLabActions@0"
+        },
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.lab.deploy",
@@ -661,6 +682,10 @@
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
+          "command": "containerlab.lab.apply",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
           "command": "containerlab.lab.destroy",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
@@ -726,6 +751,11 @@
         "key": "ctrl+alt+r",
         "mac": "cmd+alt+r",
         "command": "containerlab.lab.redeploy"
+      },
+      {
+        "key": "ctrl+alt+a",
+        "mac": "cmd+alt+a",
+        "command": "containerlab.lab.apply"
       },
       {
         "key": "ctrl+alt+k",
@@ -1028,7 +1058,7 @@
     "uuid": "14.0.0"
   },
   "devDependencies": {
-    "@srl-labs/clab-ui": "0.1.0",
+    "@srl-labs/clab-ui": "0.2.0",
     "@types/chai": "^5.2.3",
     "@types/dockerode": "^4.0.1",
     "@types/mocha": "^10.0.10",

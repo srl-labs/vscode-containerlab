@@ -60,6 +60,12 @@ const LAB_ACTIONS = {
     errorMsg: "Error redeploying lab with cleanup",
     noLabPath: "No lab path provided for redeploy with cleanup"
   },
+  applyLab: {
+    command: "containerlab.lab.apply",
+    resultMsg: "Lab apply initiated",
+    errorMsg: "Error applying lab topology",
+    noLabPath: "No lab path provided for apply"
+  },
   startLab: {
     command: "containerlab.lab.start",
     resultMsg: "Lab node start initiated",

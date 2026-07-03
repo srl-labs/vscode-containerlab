@@ -373,6 +373,7 @@ function registerCommands(context: vscode.ExtensionContext) {
     ["containerlab.lab.deployPopular", cmd.deployPopularLab],
     ["containerlab.lab.redeploy", cmd.redeploy],
     ["containerlab.lab.redeploy.cleanup", cmd.redeployCleanup],
+    ["containerlab.lab.apply", cmd.apply],
     ["containerlab.lab.destroy", cmd.destroy],
     ["containerlab.lab.destroy.cleanup", cmd.destroyCleanup],
     ["containerlab.lab.start", cmd.startLab],

@@ -65,7 +65,6 @@ describe("MessageRouter topology-host command parsing", () => {
 
       const router = new MessageRouter({
         yamlFilePath: "/tmp/test.clab.yml",
-        isViewMode: false,
         splitViewManager: { toggleSplitView: async () => false } as never,
         topologyHost: { applyCommand } as never,
         setInternalUpdate: () => {}

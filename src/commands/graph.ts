@@ -7,7 +7,6 @@ import type { ClabLabTreeNode } from "../treeView/common";
 import type { ReactTopoViewer } from "../reactTopoViewer";
 import { ReactTopoViewerProvider } from "../reactTopoViewer";
 import { getSelectedLabNode } from "../utils/utils";
-import * as ins from "../treeView/inspector";
 import { MSG_LAB_LIFECYCLE_LOG, MSG_LAB_LIFECYCLE_STATUS } from "@srl-labs/clab-ui/session";
 
 import { ClabCommand } from "./clabCommand";
@@ -83,7 +82,14 @@ export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
 
 let currentTopoViewer: ReactTopoViewer | undefined;
 
-export type LifecycleCommandType = "deploy" | "destroy" | "redeploy" | "start" | "stop" | "restart";
+export type LifecycleCommandType =
+  | "deploy"
+  | "destroy"
+  | "redeploy"
+  | "apply"
+  | "start"
+  | "stop"
+  | "restart";
 type LifecycleCommandStream = "stdout" | "stderr";
 type TopoViewerLifecycleHandlers = {
   onSuccess: () => Promise<void>;
@@ -91,55 +97,15 @@ type TopoViewerLifecycleHandlers = {
   onOutputLine: (line: string, stream: LifecycleCommandStream) => void;
 };
 
-/**
- * Check if a lab is running by looking up its path in the inspector data.
- */
-function isLabRunning(labPath: string): boolean {
-  const inspectData = ins.rawInspectData;
-  if (!inspectData) {
-    return false;
-  }
-
-  // Check each lab's containers to see if any have a matching lab path
-  for (const labName in inspectData) {
-    const containers = inspectData[labName];
-    if (Array.isArray(containers) && containers.length > 0) {
-      // Check the first container's lab path (all containers in a lab share the same path)
-      const container = containers[0];
-      const containerLabPath = container.Labels["clab-topo-file"];
-      if (containerLabPath === labPath) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function resolveLabInfo(
-  node?: ClabLabTreeNode
-): { labPath: string; isViewMode: boolean } | undefined {
-  if (
-    node !== undefined &&
-    node.contextValue !== undefined &&
-    node.contextValue.length > 0 &&
-    (node.contextValue === "containerlabLabDeployed" ||
-      node.contextValue === "containerlabLabDeployedFavorite")
-  ) {
-    return { labPath: node.labPath.absolute, isViewMode: true };
-  }
-
+function resolveLabPath(node?: ClabLabTreeNode): string | undefined {
   if (node !== undefined && node.labPath.absolute.length > 0) {
-    // Check if this lab is actually running
-    const isRunning = isLabRunning(node.labPath.absolute);
-    return { labPath: node.labPath.absolute, isViewMode: isRunning };
+    return node.labPath.absolute;
   }
 
   const editor = vscode.window.activeTextEditor;
   const topoFileRegex = /\.clab\.(yaml|yml)$/;
   if (editor && topoFileRegex.test(editor.document.uri.fsPath)) {
-    // Check if this lab is actually running
-    const isRunning = isLabRunning(editor.document.uri.fsPath);
-    return { labPath: editor.document.uri.fsPath, isViewMode: isRunning };
+    return editor.document.uri.fsPath;
   }
 
   vscode.window.showErrorMessage("No lab node or topology file selected");
@@ -150,11 +116,10 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
   // Get node if not provided
   node = await getSelectedLabNode(node);
 
-  const labInfo = resolveLabInfo(node);
-  if (!labInfo) {
+  const labPath = resolveLabPath(node);
+  if (labPath === undefined) {
     return;
   }
-  const { labPath, isViewMode } = labInfo;
 
   if (!context) {
     vscode.window.showErrorMessage("Extension context not available");
@@ -166,9 +131,10 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
     node?.name ??
     (labPath ? path.basename(labPath).replace(/\.clab\.(yml|yaml)$/i, "") : "Unknown Lab");
 
-  // Use the provider to create/get the viewer
+  // Use the provider to create/get the viewer. The viewer is always editable;
+  // it attaches runtime data on its own when the lab is deployed.
   const provider = ReactTopoViewerProvider.getInstance(context);
-  const viewer = await provider.openViewer(labPath, labName, isViewMode);
+  const viewer = await provider.openViewer(labPath, labName);
 
   currentTopoViewer = viewer;
   viewer.requestFitViewport();
