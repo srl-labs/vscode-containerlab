@@ -309,7 +309,18 @@ export class ReactTopoViewer {
     const panel = createPanel(config);
     this.currentPanel = panel;
 
-    await this.initializeLabState(labName);
+    // Seed the deployment state synchronously from cached inspect data so the
+    // webview can boot without waiting on containerlab; a background refresh
+    // corrects it and attaches runtime containers once inspect data is fresh.
+    this.deploymentState = deploymentStateChecker.resolveFromCache(
+      labName,
+      this.lastYamlFilePath,
+      (newName: string) => {
+        this.currentLabName = newName;
+      }
+    );
+    this.dirtyState = this.computeDirtyState();
+    this.runtimeContainers = [];
 
     // The topology is always editable; runtime data attaches when deployed.
     this.topologyHost = new TopologyHostCore({
@@ -355,6 +366,41 @@ export class ReactTopoViewer {
     });
 
     this.setupPanelHandlers(panel, context);
+
+    // Refresh inspect data and attach runtime containers while the webview
+    // loads its bundle; push the corrected state once both are ready.
+    void this.refreshLabStateInBackground(panel, labName);
+  }
+
+  /**
+   * Re-resolve the deployment state with fresh inspect data and push the
+   * result to the webview. Runs in the background so panel creation never
+   * blocks on containerlab.
+   */
+  private async refreshLabStateInBackground(
+    panel: vscode.WebviewPanel,
+    labName: string
+  ): Promise<void> {
+    try {
+      await this.initializeLabState(labName);
+      if (this.currentPanel !== panel || !this.topologyHost) {
+        return;
+      }
+
+      this.topologyHost.updateContext({
+        deploymentState: this.deploymentState,
+        dirty: this.dirtyState,
+        containerDataProvider: this.isDeployed
+          ? createRuntimeContainerDataProvider(this.runtimeContainers)
+          : undefined
+      });
+      const snapshot = await this.topologyHost.getSnapshot();
+      this.lastTopologyEdges = snapshot.edges;
+      panel.webview.postMessage(buildTopologySnapshotMessage(snapshot, "resync"));
+      await this.notifyWebviewModeChanged();
+    } catch (err) {
+      log.warn(`[ReactTopoViewer] Background lab state refresh failed: ${formatErrorMessage(err)}`);
+    }
   }
 
   /**

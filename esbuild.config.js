@@ -284,14 +284,18 @@ async function build() {
     plugins: [nativeNodeModulesPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin]
   });
 
-  // Build webview (Browser) - CSS handled separately
+  // Build webview (Browser) - CSS handled separately.
+  // ESM + code splitting keeps lazy imports (Monaco, MapLibre, modals) out of
+  // the entry bundle so the TopoViewer boots fast; chunks load on demand.
   const webviewBuild = esbuild.build({
     ...commonOptions,
-    entryPoints: [reactTopoViewerEntry],
+    entryPoints: { reactTopoViewerWebview: reactTopoViewerEntry },
     platform: "browser",
-    format: "iife",
+    format: "esm",
+    splitting: true,
     target: ["es2020", "chrome90", "firefox90", "safari14.1"],
-    outfile: "dist/reactTopoViewerWebview.js",
+    outdir: "dist",
+    chunkNames: "topoviewer-chunks/[name]-[hash]",
     plugins: [
       ignoreCssPlugin,
       clabUiLocalAliasPlugin,
@@ -464,11 +468,13 @@ async function build() {
 
     const webCtx = await esbuild.context({
       ...commonOptions,
-      entryPoints: [reactTopoViewerEntry],
+      entryPoints: { reactTopoViewerWebview: reactTopoViewerEntry },
       platform: "browser",
-      format: "iife",
+      format: "esm",
+      splitting: true,
       target: ["es2020", "chrome90", "firefox90", "safari14.1"],
-      outfile: "dist/reactTopoViewerWebview.js",
+      outdir: "dist",
+      chunkNames: "topoviewer-chunks/[name]-[hash]",
       plugins: [
         ignoreCssPlugin,
         clabUiLocalAliasPlugin,

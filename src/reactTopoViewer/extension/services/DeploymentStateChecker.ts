@@ -26,32 +26,45 @@ export class DeploymentStateChecker {
   ): Promise<DeploymentState> {
     try {
       await inspector.update();
-      if (!inspector.rawInspectData) {
-        return "unknown";
-      }
-
-      if (this.labExistsByName(labName)) {
-        return "deployed";
-      }
-
-      if (topoFilePath !== undefined && topoFilePath.length > 0) {
-        const matchedLabName = this.findLabByTopoFile(topoFilePath);
-        if (matchedLabName !== null && matchedLabName.length > 0) {
-          if (updateLabName !== undefined && matchedLabName !== labName) {
-            log.info(
-              `Updating lab name from '${labName}' to '${matchedLabName}' based on topo-file match`
-            );
-            updateLabName(matchedLabName);
-          }
-          return "deployed";
-        }
-      }
-
-      return "undeployed";
+      return this.resolveFromCache(labName, topoFilePath, updateLabName);
     } catch (err) {
       log.warn(`Failed to check deployment state: ${formatErrorMessage(err)}`);
       return "unknown";
     }
+  }
+
+  /**
+   * Resolve deployment state from already-fetched inspect data without
+   * triggering a refresh. Returns "unknown" when no inspect data is cached
+   * yet (e.g. right after activation).
+   */
+  resolveFromCache(
+    labName: string,
+    topoFilePath: string | undefined,
+    updateLabName?: (newLabName: string) => void
+  ): DeploymentState {
+    if (!inspector.rawInspectData) {
+      return "unknown";
+    }
+
+    if (this.labExistsByName(labName)) {
+      return "deployed";
+    }
+
+    if (topoFilePath !== undefined && topoFilePath.length > 0) {
+      const matchedLabName = this.findLabByTopoFile(topoFilePath);
+      if (matchedLabName !== null && matchedLabName.length > 0) {
+        if (updateLabName !== undefined && matchedLabName !== labName) {
+          log.info(
+            `Updating lab name from '${labName}' to '${matchedLabName}' based on topo-file match`
+          );
+          updateLabName(matchedLabName);
+        }
+        return "deployed";
+      }
+    }
+
+    return "undeployed";
   }
 
   /**
