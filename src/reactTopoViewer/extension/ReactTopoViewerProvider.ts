@@ -8,9 +8,6 @@
  * - Topology data loading (via TopologyHost)
  */
 
-import * as fs from "fs";
-import * as path from "path";
-
 import * as vscode from "vscode";
 
 import { runningLabsProvider } from "../../globals";
@@ -33,6 +30,7 @@ import { nodeFsAdapter } from "./shared/io";
 
 import { formatErrorMessage, log } from "./services/logger";
 import { deploymentStateChecker } from "./services/DeploymentStateChecker";
+import { computeDeployedTopologyDirtyState } from "./services/DirtyState";
 import { SplitViewManager } from "./services/SplitViewManager";
 import { labsToRuntimeContainers } from "./services/runtimeContainers";
 import {
@@ -251,8 +249,7 @@ export class ReactTopoViewer {
 
   /**
    * Compare the topology file against the lab state file containerlab writes on
-   * deploy/apply (`clab-<lab>/.state.clab.yaml`, containerlab >= 0.77). A newer
-   * topology file means `containerlab apply` has pending changes. Returns
+   * deploy/apply (`clab-<lab>/.state.clab.yaml`, containerlab >= 0.77). Returns
    * `undefined` (unknown) when the lab is not running or the state file is
    * unavailable.
    */
@@ -260,23 +257,7 @@ export class ReactTopoViewer {
     if (this.deploymentState !== "deployed") {
       return undefined;
     }
-    const yamlPath = this.lastYamlFilePath;
-    const labName = this.currentLabName;
-    if (!yamlPath || !labName) {
-      return undefined;
-    }
-    try {
-      const stateFilePath = path.join(
-        path.dirname(yamlPath),
-        `clab-${labName}`,
-        ".state.clab.yaml"
-      );
-      const yamlStat = fs.statSync(yamlPath);
-      const stateStat = fs.statSync(stateFilePath);
-      return yamlStat.mtimeMs > stateStat.mtimeMs;
-    } catch {
-      return undefined;
-    }
+    return computeDeployedTopologyDirtyState(this.lastYamlFilePath, this.currentLabName);
   }
 
   /**
