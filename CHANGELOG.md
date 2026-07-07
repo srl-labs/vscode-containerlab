@@ -1,5 +1,21 @@
 # Change Log
 
+## [0.26.0] - 2026-07-07
+
+- Deploy/runtime:
+  - Added `containerlab apply` support from TopoViewer so topology changes can be applied to running labs without a full redeploy workflow.
+- TopoViewer/editor:
+  - Free-text annotations can now be edited directly on the canvas, including inline formatting controls and markdown preview while editing.
+  - Text, shape, group, and traffic annotation edits apply immediately instead of requiring a separate visual-apply step.
+  - Dragging nodes and annotations from the palette now shows a canvas-style preview before dropping.
+  - Improved dirty-state detection so Apply is only needed when the topology content actually changed.
+  - Better edit-mode behavior for deployed labs, including text annotation double-click handling after unlocking.
+- SVG and Grafana export:
+  - Reworked SVG export so exported topology geometry matches the canvas much more closely.
+  - Improved rendering of node icons, endpoint bubbles, links, labels, free-shape annotations, and free-text annotations in exports.
+- Explorer/runtime:
+  - Container logs remain available for exited containers.
+
 ## [0.25.0] - 2026-04-26
 
 - TopoViewer/editor:
