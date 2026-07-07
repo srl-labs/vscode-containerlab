@@ -158,6 +158,23 @@ export class ReactTopoViewer {
     }
   }
 
+  private async postTopologyResync(panel: vscode.WebviewPanel): Promise<void> {
+    if (!this.topologyHost) {
+      return;
+    }
+
+    this.topologyHost.updateContext({
+      deploymentState: this.deploymentState,
+      dirty: this.dirtyState,
+      containerDataProvider: this.isDeployed
+        ? createRuntimeContainerDataProvider(this.runtimeContainers)
+        : undefined
+    });
+    const snapshot = await this.topologyHost.getSnapshot();
+    this.lastTopologyEdges = snapshot.edges;
+    panel.webview.postMessage(buildTopologySnapshotMessage(snapshot, "resync"));
+  }
+
   /**
    * Initialize watchers for file changes and docker images
    */
@@ -368,16 +385,7 @@ export class ReactTopoViewer {
         return;
       }
 
-      this.topologyHost.updateContext({
-        deploymentState: this.deploymentState,
-        dirty: this.dirtyState,
-        containerDataProvider: this.isDeployed
-          ? createRuntimeContainerDataProvider(this.runtimeContainers)
-          : undefined
-      });
-      const snapshot = await this.topologyHost.getSnapshot();
-      this.lastTopologyEdges = snapshot.edges;
-      panel.webview.postMessage(buildTopologySnapshotMessage(snapshot, "resync"));
+      await this.postTopologyResync(panel);
       await this.notifyWebviewModeChanged();
     } catch (err) {
       log.warn(`[ReactTopoViewer] Background lab state refresh failed: ${formatErrorMessage(err)}`);
@@ -428,7 +436,8 @@ export class ReactTopoViewer {
   public async refreshAfterExternalCommand(
     newDeploymentState: "deployed" | "undeployed"
   ): Promise<boolean> {
-    if (!this.currentPanel) {
+    const panel = this.currentPanel;
+    if (!panel) {
       return false;
     }
 
@@ -442,18 +451,7 @@ export class ReactTopoViewer {
       // Reload running lab data when the lab is (still) deployed
       this.runtimeContainers = this.isDeployed ? await this.loadRunningLabRuntimeContainers() : [];
 
-      if (this.topologyHost) {
-        this.topologyHost.updateContext({
-          deploymentState: this.deploymentState,
-          dirty: this.dirtyState,
-          containerDataProvider: this.isDeployed
-            ? createRuntimeContainerDataProvider(this.runtimeContainers)
-            : undefined
-        });
-        const snapshot = await this.topologyHost.getSnapshot();
-        this.lastTopologyEdges = snapshot.edges;
-        this.currentPanel.webview.postMessage(buildTopologySnapshotMessage(snapshot, "resync"));
-      }
+      await this.postTopologyResync(panel);
 
       // Notify webview of mode change
       await this.notifyWebviewModeChanged();
