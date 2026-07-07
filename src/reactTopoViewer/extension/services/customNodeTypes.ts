@@ -1,6 +1,6 @@
 import type { CustomNodeTemplate } from "@srl-labs/clab-ui/session";
 
-const DEPRECATED_SRLINUX_TYPE_ALIASES: Record<string, string> = {
+const DEPRECATED_SRLINUX_TYPE_ALIASES: Readonly<Partial<Record<string, string>>> = {
   ixsa1: "ixs-a1",
   ixrd1: "ixr-d1",
   ixrd2: "ixr-d2",
