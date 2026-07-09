@@ -54,7 +54,7 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
 ## Requirements
 
 - **containerlab** must be installed. The extension will offer to install it if not found.
-- You must be in the `clab_admins` and `docker` group. Podman is not supported for runtime features.
+- You must be in the `clab_admins` (and `docker` group if you're using Docker). Podman is also supported for runtime features.
 - (Optional) **Edgeshark** for packet capture features - can be installed directly from the extension using the "Install Edgeshark" command.
 
   ### Edgeshark Integration

@@ -106,15 +106,18 @@ function validateUserPermissions(e2eSmokeTest: boolean): boolean {
     return true;
   }
 
+  const runtime = utils.getConfig<string>("runtime", "docker");
+  const requiredGroups = runtime === "podman" ? "'clab_admins'" : "'clab_admins' and 'docker'";
   vscode.window.showErrorMessage(
-    `Extension activation failed. Insufficient permissions.\nEnsure ${userInfo.username} is in the 'clab_admins' and 'docker' groups.`
+    `Extension activation failed. Insufficient permissions.\nEnsure ${userInfo.username} is in the ${requiredGroups} group(s).`
   );
   return false;
 }
 
 async function connectDockerSocket(e2eSmokeTest: boolean): Promise<boolean | undefined> {
   try {
-    const docker = new Docker({ socketPath: "/var/run/docker.sock" });
+    const socketPath = utils.getConfig<string>("dockerSocketPath", "/var/run/docker.sock");
+    const docker = new Docker({ socketPath });
     setDockerClient(docker);
     await docker.ping();
     outputChannel.info("Successfully connected to Docker socket");
