@@ -1,3 +1,5 @@
+import * as path from "path";
+
 import * as vscode from "vscode";
 
 import type { ClabInterfaceStats } from "../types/containerlab";
@@ -14,6 +16,18 @@ export interface NetemState {
 export interface LabPath {
   absolute: string;
   relative: string;
+}
+
+/** Stable operational identity; remote API paths must never be treated as local files. */
+export interface LabRef {
+  backendId: string;
+  labName?: string;
+  localPath?: string;
+  remotePath?: string;
+  /** API-managed topology scope, which may differ from the runtime YAML name. */
+  sourceLabName?: string;
+  /** Relative file path inside sourceLabName's API-managed lab directory. */
+  sourcePath?: string;
 }
 
 /** Strip CIDR mask from an IP address, returning empty string for "N/A". */
@@ -47,6 +61,7 @@ export class ClabLabTreeNode extends vscode.TreeItem {
   public readonly labPath: LabPath;
   public readonly name?: string;
   public readonly owner?: string;
+  public readonly labRef: LabRef;
   public containers?: (ClabContainerTreeNode | ClabContainerGroupTreeNode)[];
   public favorite: boolean;
   public sshxLink?: string;
@@ -64,7 +79,8 @@ export class ClabLabTreeNode extends vscode.TreeItem {
     contextValue?: string,
     favorite: boolean = false,
     sshxLink?: string,
-    gottyLink?: string
+    gottyLink?: string,
+    labRef?: LabRef
   ) {
     super(label, collapsibleState);
     this.labPath = labPath;
@@ -75,12 +91,28 @@ export class ClabLabTreeNode extends vscode.TreeItem {
     this.favorite = favorite;
     this.sshxLink = sshxLink;
     this.gottyLink = gottyLink;
+    this.labRef =
+      labRef ??
+      ({
+        backendId: "local",
+        ...(name === undefined ? {} : { labName: name }),
+        ...(labPath.absolute.length === 0 ? {} : { localPath: labPath.absolute })
+      } satisfies LabRef);
     this.iconPath = favorite
       ? new vscode.ThemeIcon("star-full", new vscode.ThemeColor("charts.yellow"))
       : vscode.ThemeIcon.File;
 
     // Set stable ID to help VS Code track this item across refreshes
-    this.id = `lab:${labPath.absolute}`;
+    const localIdentityPath = this.labRef.localPath ?? labPath.absolute;
+    const normalizedLocalIdentity =
+      process.platform === "win32"
+        ? path.resolve(localIdentityPath).toLowerCase()
+        : path.resolve(localIdentityPath);
+    const identity =
+      this.labRef.backendId === "local"
+        ? normalizedLocalIdentity
+        : (this.labRef.labName ?? this.labRef.remotePath ?? labPath.absolute);
+    this.id = `lab:${this.labRef.backendId}:${identity}`;
   }
 }
 
@@ -99,6 +131,7 @@ export class ClabFolderTreeNode extends vscode.TreeItem {
  * Tree node for containers (children of ClabLabTreeNode)
  */
 export class ClabContainerTreeNode extends vscode.TreeItem {
+  public readonly backendId: string;
   public readonly name: string;
   public readonly name_short: string; // Added short name from clab-node-name
   public cID: string;
@@ -131,7 +164,8 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
     nodeType?: string, // Added node type from clab-node-type
     nodeGroup?: string, // Added node group from clab-node-group
     status?: string,
-    contextValue?: string
+    contextValue?: string,
+    backendId: string = "local"
   ) {
     super(label, collapsibleState);
     this.name = name;
@@ -148,9 +182,10 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
     this.nodeGroup = nodeGroup;
     this.status = status;
     this.contextValue = contextValue;
+    this.backendId = backendId;
 
     // Set stable ID to help VS Code track this item across refreshes
-    this.id = `container:${labPath.absolute}:${name}`;
+    this.id = `container:${backendId}:${labPath.absolute}:${name}`;
   }
 
   public get IPv4Address() {
@@ -168,6 +203,7 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
  * Inherits IP details and identity from the primary (0th) sub-container.
  */
 export class ClabContainerGroupTreeNode extends vscode.TreeItem {
+  public readonly backendId: string;
   public readonly rootNodeName: string;
   public readonly labPath: LabPath;
   public children: ClabContainerTreeNode[];
@@ -185,14 +221,20 @@ export class ClabContainerGroupTreeNode extends vscode.TreeItem {
   public nodeGroup?: string;
   public status?: string;
 
-  constructor(rootNodeName: string, labPath: LabPath, children: ClabContainerTreeNode[]) {
+  constructor(
+    rootNodeName: string,
+    labPath: LabPath,
+    children: ClabContainerTreeNode[],
+    backendId: string = "local"
+  ) {
     super(rootNodeName, vscode.TreeItemCollapsibleState.Collapsed);
     this.rootNodeName = rootNodeName;
     this.labPath = labPath;
     this.children = children;
+    this.backendId = backendId;
     this.contextValue = "containerlabContainerGroup";
     this.iconPath = new vscode.ThemeIcon("symbol-class");
-    this.id = `containerGroup:${labPath.absolute}:${rootNodeName}`;
+    this.id = `containerGroup:${backendId}:${labPath.absolute}:${rootNodeName}`;
   }
 
   public get IPv4Address() {
@@ -208,6 +250,7 @@ export class ClabContainerGroupTreeNode extends vscode.TreeItem {
  * Tree node to store information about a container interface.
  */
 export class ClabInterfaceTreeNode extends vscode.TreeItem {
+  public readonly backendId: string;
   public readonly parentName: string; // name of the parent container/node
   public cID: string; // parent container ID
   public readonly name: string; // the interface name itself
@@ -235,7 +278,8 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
     state: string,
     contextValue?: string,
     stats?: ClabInterfaceStats,
-    netemState?: NetemState
+    netemState?: NetemState,
+    backendId: string = "local"
   ) {
     super(label, collapsibleState);
     this.parentName = parentName;
@@ -250,9 +294,10 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
     this.contextValue = contextValue;
     this.stats = stats;
     this.netemState = netemState;
+    this.backendId = backendId;
 
     // Set stable ID to help VS Code track this item across refreshes
-    this.id = `interface:${cID}:${name}`;
+    this.id = `interface:${backendId}:${cID}:${name}`;
   }
 }
 
@@ -352,6 +397,7 @@ export interface ClabJSON {
   root_node_name?: string; // Root node short name (for sub-containers)
   network_name?: string; // Management network name
   startedAt?: number;
+  backend_id?: string;
 }
 
 /**

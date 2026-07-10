@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
 import { ClabLabTreeNode } from "../treeView/common";
+import { getDefaultBackend } from "../backends/manager";
 
 import { runClabAction } from "./runClabAction";
 
@@ -54,9 +55,18 @@ export async function deploySpecificFile() {
     return;
   }
 
-  const tempNode = new ClabLabTreeNode("", vscode.TreeItemCollapsibleState.None, {
-    absolute: labRef,
-    relative: ""
-  });
+  const tempNode = new ClabLabTreeNode(
+    "",
+    vscode.TreeItemCollapsibleState.None,
+    { absolute: labRef, relative: "" },
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    false,
+    undefined,
+    undefined,
+    { backendId: getDefaultBackend().id }
+  );
   void deploy(tempNode);
 }

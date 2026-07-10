@@ -48,9 +48,9 @@ describe("openLabFile command", () => {
   });
 
   // Opens the topology file in the current VS Code window.
-  it("opens the lab file with vscode.open", () => {
+  it("opens the lab file with vscode.open", async () => {
     const node = { labPath: { absolute: "/home/user/lab.yml" } } as any;
-    openLabFile(node);
+    await openLabFile(node);
 
     const spy = vscodeStub.commands.executeCommand as sinon.SinonSpy;
     expect(spy.calledOnce).to.be.true;
@@ -59,15 +59,15 @@ describe("openLabFile command", () => {
   });
 
   // Should show an error message when no node is provided.
-  it("shows an error when node is undefined", () => {
-    openLabFile(undefined as any);
+  it("shows an error when node is undefined", async () => {
+    await openLabFile(undefined as any);
     const spy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;
     expect(spy.calledOnceWith("No lab node selected.")).to.be.true;
   });
 
   // Should show an error if the selected node has no labPath.
-  it("shows an error when labPath is missing", () => {
-    openLabFile({ labPath: { absolute: "" } } as any);
+  it("shows an error when labPath is missing", async () => {
+    await openLabFile({ labPath: { absolute: "" } } as any);
     const spy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;
     expect(spy.calledOnceWith("No labPath found.")).to.be.true;
   });

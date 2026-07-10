@@ -5,6 +5,7 @@ import type { ClabContainerTreeNode } from "../treeView/common";
 import { outputChannel, containerlabBinaryPath } from "../globals";
 import { runCommand } from "../utils/utils";
 import { getNodeImpairmentsWebviewHtml } from "../webviews/nodeImpairments/nodeImpairmentsWebviewHtml";
+import { resolveApiNodeTarget } from "./backendGuards";
 
 /**
  * Raw netem item from CLI JSON output
@@ -115,6 +116,23 @@ function ensureDefaults(map: Record<string, NetemFields>, node: ClabContainerTre
 async function refreshNetemSettings(
   node: ClabContainerTreeNode
 ): Promise<Record<string, NetemFields>> {
+  const apiTarget = resolveApiNodeTarget(node);
+  if (apiTarget) {
+    let netemMap: Record<string, NetemFields> = {};
+    try {
+      const rawData = toNetemRawData(await apiTarget.backend.operations.showNetem(node.name));
+      for (const item of rawData[node.name] ?? []) {
+        const parsed = parseNetemItem(item);
+        if (parsed) netemMap[parsed[0]] = parsed[1];
+      }
+    } catch (error) {
+      vscode.window.showWarningMessage(
+        `Failed to retrieve API netem settings: ${getErrorMessage(error)}`
+      );
+    }
+    ensureDefaults(netemMap, node);
+    return netemMap;
+  }
   const config = vscode.workspace.getConfiguration("containerlab");
   const runtime = config.get<string>("runtime", "docker");
   const showCmd = `${containerlabBinaryPath} tools -r ${runtime} netem show -n ${node.name} --format json`;
@@ -183,6 +201,30 @@ async function applyNetem(
   panel: vscode.WebviewPanel,
   netemData: Record<string, NetemFields>
 ) {
+  const apiTarget = resolveApiNodeTarget(node);
+  if (apiTarget) {
+    try {
+      await Promise.all(
+        Object.entries(netemData).map(async ([interfaceName, fields]) =>
+          apiTarget.backend.operations.setNetem({
+            containerName: node.name,
+            interface: interfaceName,
+            delay: fields.delay,
+            jitter: fields.jitter,
+            loss: Number(stripPercentage(fields.loss || "0")),
+            rate: Number(fields.rate || "0"),
+            corruption: Number(stripPercentage(fields.corruption || "0"))
+          })
+        )
+      );
+      vscode.window.showInformationMessage(`Applied netem settings for ${node.name}`);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to apply API settings: ${getErrorMessage(error)}`);
+    }
+    const updated = await refreshNetemSettings(node);
+    await panel.webview.postMessage({ command: "updateFields", data: updated });
+    return;
+  }
   const ops: Promise<unknown>[] = [];
   for (const [intfName, fields] of Object.entries(netemData)) {
     const netemArgs = buildNetemArgs(fields);
@@ -208,6 +250,24 @@ async function applyNetem(
 }
 
 async function clearNetem(node: ClabContainerTreeNode, panel: vscode.WebviewPanel) {
+  const apiTarget = resolveApiNodeTarget(node);
+  if (apiTarget) {
+    try {
+      await Promise.all(
+        node.interfaces
+          .filter((ifNode) => normalizeInterfaceName(ifNode.name) !== "lo")
+          .map(async (ifNode) =>
+            apiTarget.backend.operations.resetNetem(node.name, normalizeInterfaceName(ifNode.name))
+          )
+      );
+      vscode.window.showInformationMessage(`Cleared netem settings for ${node.name}`);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to clear API settings: ${getErrorMessage(error)}`);
+    }
+    const updated = await refreshNetemSettings(node);
+    await panel.webview.postMessage({ command: "updateFields", data: updated });
+    return;
+  }
   const ops: Promise<unknown>[] = [];
   for (const ifNode of node.interfaces) {
     const norm = normalizeInterfaceName(ifNode.name);

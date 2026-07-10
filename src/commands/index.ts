@@ -94,6 +94,14 @@ export {
 
 // External tool and repo commands
 export { manageImages } from "./images";
+export {
+  openApiWorkspaceFile,
+  newApiWorkspaceFile,
+  newApiWorkspaceFolder,
+  renameApiWorkspacePath,
+  deleteApiWorkspacePath,
+  copyApiWorkspacePath
+} from "./apiWorkspaceFiles";
 
 export {
   graphDrawIOHorizontal,

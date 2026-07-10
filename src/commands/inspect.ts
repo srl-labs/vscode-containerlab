@@ -3,6 +3,8 @@ import type { InspectContainerData } from "@srl-labs/clab-ui/inspect";
 
 import type { ClabLabTreeNode } from "../treeView/common";
 import { outputChannel } from "../globals";
+import { getBackendForResource } from "../backends/manager";
+import { ApiContainerlabBackend } from "../backends/api/apiContainerlabBackend";
 import * as inspector from "../treeView/inspector";
 import { getInspectWebviewHtml } from "../webviews/inspect/inspectWebviewHtml";
 
@@ -92,11 +94,6 @@ export async function inspectAllLabs(context: InspectCommandContext) {
 }
 
 export async function inspectOneLab(node: ClabLabTreeNode, context: InspectCommandContext) {
-  if (!node.labPath.absolute) {
-    vscode.window.showErrorMessage("No lab path found for this lab.");
-    return;
-  }
-
   try {
     outputChannel.appendLine(`[Inspect Command]: Refreshing lab ${node.label} via events cache`);
 
@@ -104,14 +101,28 @@ export async function inspectOneLab(node: ClabLabTreeNode, context: InspectComma
 
     const parsed = inspector.rawInspectData ?? {};
     const filtered: InspectDataGrouped = {};
+    const backend = getBackendForResource(node);
+    const resolvedLabName =
+      backend instanceof ApiContainerlabBackend
+        ? backend.resolveLabNameForResource(node)
+        : node.name;
+    const topologyPath = node.labRef.remotePath ?? node.labPath.absolute;
 
     for (const [labName, containers] of Object.entries(parsed)) {
       const containersList = toInspectContainers(containers);
       if (containersList.length === 0) continue;
       const topoFile = containersList[0]?.["topo-file"];
+      const labels = containersList[0]?.Labels;
+      const backendId =
+        labels && typeof labels === "object" ? Reflect.get(labels, "clab-backend-id") : undefined;
+      const containerLabName =
+        labels && typeof labels === "object" ? Reflect.get(labels, "containerlab") : undefined;
       if (
-        (node.name !== undefined && node.name.length > 0 && labName === node.name) ||
-        topoFile === node.labPath.absolute
+        (resolvedLabName !== undefined &&
+          resolvedLabName.length > 0 &&
+          (labName === resolvedLabName || containerLabName === resolvedLabName) &&
+          (typeof backendId !== "string" || backendId === node.labRef.backendId)) ||
+        topoFile === topologyPath
       ) {
         filtered[labName] = containersList;
         break;

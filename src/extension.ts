@@ -18,6 +18,7 @@ import {
   setDockerClient,
   setContainerlabBinaryPath,
   setExtensionContext,
+  setFavoriteApiLabs,
   setFavoriteLabs,
   setLocalLabsProvider,
   setRunningLabsProvider,
@@ -34,18 +35,26 @@ import {
   HelpFeedbackProvider,
   isPollingMode
 } from "./treeView";
-import {
-  refreshSshxSessions,
-  refreshGottySessions,
-  onEventsDataChanged,
-  onContainerStateChanged,
-  onFallbackDataChanged,
-  stopFallbackPolling,
-  stopEventStream
-} from "./services";
+import { refreshSshxSessions, refreshGottySessions } from "./services";
 import { ContainerlabExplorerViewProvider } from "./webviews/explorer/containerlabExplorerViewProvider";
+import {
+  createWorkspaceBackend,
+  getActiveBackend,
+  getBackendForResource,
+  getWorkspaceBackend,
+  registerBackend,
+  setActiveBackend
+} from "./backends/manager";
+import { assertNoWorkspaceApiTrustOverrides } from "./backends/api/apiConfigurationTrust";
+import { ApiEndpointController } from "./apiEndpoints/apiEndpointController";
+import { showApiEndpointManager } from "./apiEndpoints/apiEndpointPanel";
+import { backendHasCapability, type BackendCapability } from "./backends/types";
+import { LocalContainerlabBackend } from "./backends/localContainerlabBackend";
+import { ApiContainerlabBackend } from "./backends/api/apiContainerlabBackend";
+import { registerApiWorkspaceFileSync } from "./commands/apiWorkspaceFiles";
 
 let explorerViewProvider: ContainerlabExplorerViewProvider | undefined;
+let providersReady = false;
 
 function isE2ESmokeTest(): boolean {
   return process.env.VSCODE_CONTAINERLAB_E2E === "1";
@@ -109,7 +118,7 @@ function validateUserPermissions(e2eSmokeTest: boolean): boolean {
   const runtime = utils.getConfig<string>("runtime", "docker");
   const requiredGroups = runtime === "podman" ? "'clab_admins'" : "'clab_admins' and 'docker'";
   vscode.window.showErrorMessage(
-    `Extension activation failed. Insufficient permissions.\nEnsure ${userInfo.username} is in the ${requiredGroups} group(s).`
+    `Local containerlab features are unavailable. Ensure ${userInfo.username} is in the ${requiredGroups} group(s). API endpoints remain available.`
   );
   return false;
 }
@@ -130,7 +139,7 @@ async function connectDockerSocket(e2eSmokeTest: boolean): Promise<boolean | und
       return false;
     }
     vscode.window.showErrorMessage(
-      `Failed to connect to Docker. Ensure Docker is running and you have proper permissions.`
+      `Local containerlab features are unavailable. Ensure Docker is running and you have proper permissions. API endpoints remain available.`
     );
     return undefined;
   }
@@ -143,14 +152,18 @@ async function runFullStartupTasks(
   e2eSmokeTest: boolean
 ): Promise<void> {
   const skipUpdateCheck = config.get<boolean>("skipUpdateCheck", false);
-  if (!skipUpdateCheck && !e2eSmokeTest) {
+  if (
+    backendHasCapability(getActiveBackend(), "local-runtime") &&
+    !skipUpdateCheck &&
+    !e2eSmokeTest
+  ) {
     utils.checkAndUpdateClabIfNeeded(outputChannel, context).catch((err: unknown) => {
       const message = err instanceof Error ? err.message : String(err);
       outputChannel.error(`Update check error: ${message}`);
     });
   }
 
-  if (dockerAvailable) {
+  if (backendHasCapability(getActiveBackend(), "local-runtime") && dockerAvailable) {
     void utils.refreshDockerImages();
     utils.startDockerImageEventMonitor(context);
   }
@@ -169,8 +182,7 @@ function getErrorMessage(err: unknown): string {
 }
 
 function stopRealtimeBackgroundWorkers(): void {
-  stopEventStream();
-  stopFallbackPolling();
+  ins.stop();
 }
 
 function registerProcessShutdownHooks(context: vscode.ExtensionContext): void {
@@ -201,72 +213,6 @@ function registerProcessShutdownHooks(context: vscode.ExtensionContext): void {
   });
 }
 
-function registerUnsupportedViews(context: vscode.ExtensionContext) {
-  let warningShown = false;
-  const showWarningOnce = () => {
-    if (warningShown) {
-      return;
-    }
-    warningShown = true;
-    vscode.window.showWarningMessage(
-      "The Containerlab extension is only supported on Linux or WSL. Features are disabled on this platform."
-    );
-  };
-
-  const unsupportedProvider: vscode.WebviewViewProvider = {
-    resolveWebviewView(webviewView) {
-      webviewView.webview.options = {
-        enableScripts: false
-      };
-      webviewView.webview.html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      font-family: sans-serif;
-      color: inherit;
-      background: transparent;
-    }
-    .wrap {
-      padding: 12px;
-    }
-    a {
-      color: inherit;
-      text-decoration: underline;
-    }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <h3>Containerlab Requires Linux or WSL</h3>
-    <p>Features are disabled on this platform.</p>
-    <p><a href="https://containerlab.dev/manual/vsc-extension/">Open documentation</a></p>
-  </div>
-</body>
-</html>`;
-
-      context.subscriptions.push(
-        webviewView.onDidChangeVisibility(() => {
-          if (webviewView.visible) {
-            showWarningOnce();
-          }
-        })
-      );
-    }
-  };
-
-  context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      ContainerlabExplorerViewProvider.viewType,
-      unsupportedProvider
-    )
-  );
-}
-
 // Session refresh functions are available from ./services/sessionRefresh directly
 
 function showOutputChannel() {
@@ -286,7 +232,61 @@ async function openTopoViewerEditorCommand(node?: c.ClabLabTreeNode) {
   return graphTopoViewer(node);
 }
 
-async function createTopoViewerTemplateFileCommand() {
+function starterTopology(labName: string): string {
+  return `name: ${labName}
+
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      type: ixr-d1
+      image: ghcr.io/nokia/srlinux:latest
+    client1:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+
+  links:
+    - endpoints: [ "srl1:e1-1", "client1:eth1" ]
+`;
+}
+
+async function createTopoViewerTemplateFileCommand(target?: unknown) {
+  const targetBackend = getBackendForResource(target);
+  if (targetBackend instanceof ApiContainerlabBackend) {
+    const requestedName = await vscode.window.showInputBox({
+      title: "New API topology",
+      prompt: `File name on ${targetBackend.getConnectionInfo().url}`,
+      value: "new-lab.clab.yml",
+      validateInput: (value) =>
+        value.trim().length === 0 ? "A topology file name is required." : undefined
+    });
+    if (requestedName === undefined) return;
+    const fileName = /\.clab\.(?:yml|yaml)$/iu.test(requestedName.trim())
+      ? path.basename(requestedName.trim())
+      : `${path.basename(requestedName.trim()).replace(/\.(?:yml|yaml)$/iu, "")}.clab.yml`;
+    const labName = fileName.replace(/\.clab\.(?:yml|yaml)$/iu, "");
+    try {
+      await targetBackend.operations.writeTopologyYaml(labName, starterTopology(labName));
+      const node = new c.ClabLabTreeNode(
+        fileName,
+        vscode.TreeItemCollapsibleState.None,
+        { absolute: "", relative: fileName },
+        labName,
+        undefined,
+        undefined,
+        "containerlabLabUndeployed",
+        false,
+        undefined,
+        undefined,
+        { backendId: targetBackend.id, labName, remotePath: fileName }
+      );
+      return await graphTopoViewer(node);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Could not create API topology: ${getErrorMessage(error)}`);
+      return;
+    }
+  }
+
   const uri = await vscode.window.showSaveDialog({
     title: "Enter containerlab topology template file name",
     defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
@@ -308,21 +308,7 @@ async function createTopoViewerTemplateFileCommand() {
   // Create a starter template file with example nodes
   const baseName = path.basename(filePath);
   const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, "").replace(/\.(yml|yaml)$/i, "");
-  const template = `name: ${labName}
-
-topology:
-  nodes:
-    srl1:
-      kind: nokia_srlinux
-      type: ixr-d1
-      image: ghcr.io/nokia/srlinux:latest
-    client1:
-      kind: linux
-      image: ghcr.io/srl-labs/network-multitool:latest
-
-  links:
-    - endpoints: [ "srl1:e1-1", "client1:eth1" ]
-`;
+  const template = starterTopology(labName);
   fs.writeFileSync(filePath, template);
 
   // Open the file in the editor
@@ -354,14 +340,114 @@ function showNonOwnedLabsCommand() {
 }
 
 function onDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
-  if (e.affectsConfiguration("containerlab.autoSync")) {
-    // Setting changed; no action required here
+  if (e.affectsConfiguration("containerlab.api.tls")) {
+    void vscode.window
+      .showInformationMessage(
+        "Containerlab backend settings changed. Reload the window to reconnect safely.",
+        "Reload Window"
+      )
+      .then((choice) => {
+        if (choice === "Reload Window") {
+          void vscode.commands.executeCommand("workbench.action.reloadWindow");
+        }
+      });
   }
+}
+
+async function signOutFromApi(): Promise<void> {
+  const apiBackends =
+    getWorkspaceBackend()
+      ?.listBackends()
+      .filter((backend) => backend.kind === "api") ?? [];
+  if (apiBackends.length === 0) {
+    vscode.window.showInformationMessage("No clab-api-server endpoint is connected.");
+    return;
+  }
+  if (apiBackends.length > 1) {
+    vscode.window.showInformationMessage(
+      "Multiple clab-api-server endpoints are connected. Open the endpoint manager to remove a specific session."
+    );
+    await vscode.commands.executeCommand("containerlab.api.manageEndpoints");
+    return;
+  }
+  await apiBackends[0].signOut?.();
+  getWorkspaceBackend()?.removeBackend(apiBackends[0].id);
+  await refreshProvidersAfterAuthenticationChange();
+  vscode.window.showInformationMessage("Signed out of clab-api-server.");
+}
+
+async function refreshProvidersAfterAuthenticationChange(): Promise<void> {
+  if (!providersReady) return;
+  await runningLabsProvider.refresh();
+  localLabsProvider.forceRefresh();
+}
+
+function registerApiAuthenticationCommands(
+  context: vscode.ExtensionContext,
+  controller: ApiEndpointController
+): void {
+  const endpointIdFrom = (value: unknown): string | undefined => {
+    if (typeof value !== "object" || value === null) return undefined;
+    const endpointId = Reflect.get(value, "endpointId");
+    return typeof endpointId === "string" && endpointId.trim().length > 0
+      ? endpointId.trim()
+      : undefined;
+  };
+  context.subscriptions.push(
+    vscode.commands.registerCommand("containerlab.api.manageEndpoints", () =>
+      showApiEndpointManager(context, controller)
+    ),
+    vscode.commands.registerCommand("containerlab.api.login", () =>
+      showApiEndpointManager(context, controller)
+    ),
+    vscode.commands.registerCommand("containerlab.api.logout", signOutFromApi),
+    vscode.commands.registerCommand("containerlab.endpoint.reconnect", async (value: unknown) => {
+      const endpointId = endpointIdFrom(value);
+      if (!endpointId) return await showApiEndpointManager(context, controller);
+      const password = await vscode.window.showInputBox({
+        title: "Reconnect clab-api-server endpoint",
+        prompt: "Password",
+        password: true,
+        ignoreFocusOut: true
+      });
+      if (password === undefined) return;
+      try {
+        await controller.reconnectEndpoint({ endpointId, password });
+      } catch (error) {
+        vscode.window.showErrorMessage(`Could not reconnect endpoint: ${getErrorMessage(error)}`);
+      }
+    }),
+    vscode.commands.registerCommand("containerlab.endpoint.remove", async (value: unknown) => {
+      const endpointId = endpointIdFrom(value);
+      if (!endpointId) return await showApiEndpointManager(context, controller);
+      const endpoint = (await controller.getState(false)).endpoints.find(
+        (candidate) => candidate.id === endpointId
+      );
+      const confirmation = await vscode.window.showWarningMessage(
+        `Remove API endpoint "${endpoint?.label ?? endpointId}"?`,
+        { modal: true },
+        "Remove"
+      );
+      if (confirmation === "Remove") await controller.removeEndpoint(endpointId);
+    }),
+    vscode.commands.registerCommand("containerlab.endpoint.copyUrl", async (value: unknown) => {
+      const endpointId = endpointIdFrom(value);
+      const endpoint = (await controller.getState(false)).endpoints.find(
+        (candidate) => candidate.id === endpointId
+      );
+      if (!endpoint) {
+        vscode.window.showErrorMessage("API endpoint metadata is unavailable.");
+        return;
+      }
+      await vscode.env.clipboard.writeText(endpoint.url);
+      vscode.window.showInformationMessage(`Copied ${endpoint.url}`);
+    })
+  );
 }
 
 function registerCommands(context: vscode.ExtensionContext) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const commands: Array<[string, (...args: any[]) => unknown]> = [
+  const commands: Array<[string, (...args: any[]) => unknown, BackendCapability?]> = [
     ["containerlab.lab.openFile", cmd.openLabFile],
     ["containerlab.lab.addToWorkspace", cmd.addLabFolderToWorkspace],
     ["containerlab.lab.openFolderInNewWindow", cmd.openFolderInNewWindow],
@@ -370,18 +456,18 @@ function registerCommands(context: vscode.ExtensionContext) {
     ["containerlab.lab.clonePopularRepo", cmd.clonePopularRepo],
     ["containerlab.lab.toggleFavorite", cmd.toggleFavorite],
     ["containerlab.lab.delete", cmd.deleteLab],
-    ["containerlab.lab.deploy", cmd.deploy],
-    ["containerlab.lab.deploy.cleanup", cmd.deployCleanup],
-    ["containerlab.lab.deploy.specificFile", cmd.deploySpecificFile],
-    ["containerlab.lab.deployPopular", cmd.deployPopularLab],
-    ["containerlab.lab.redeploy", cmd.redeploy],
-    ["containerlab.lab.redeploy.cleanup", cmd.redeployCleanup],
-    ["containerlab.lab.apply", cmd.apply],
-    ["containerlab.lab.destroy", cmd.destroy],
-    ["containerlab.lab.destroy.cleanup", cmd.destroyCleanup],
-    ["containerlab.lab.start", cmd.startLab],
-    ["containerlab.lab.stop", cmd.stopLab],
-    ["containerlab.lab.restart", cmd.restartLab],
+    ["containerlab.lab.deploy", cmd.deploy, "lab-lifecycle"],
+    ["containerlab.lab.deploy.cleanup", cmd.deployCleanup, "lab-lifecycle"],
+    ["containerlab.lab.deploy.specificFile", cmd.deploySpecificFile, "lab-lifecycle"],
+    ["containerlab.lab.deployPopular", cmd.deployPopularLab, "lab-lifecycle"],
+    ["containerlab.lab.redeploy", cmd.redeploy, "lab-lifecycle"],
+    ["containerlab.lab.redeploy.cleanup", cmd.redeployCleanup, "lab-lifecycle"],
+    ["containerlab.lab.apply", cmd.apply, "lab-lifecycle"],
+    ["containerlab.lab.destroy", cmd.destroy, "lab-lifecycle"],
+    ["containerlab.lab.destroy.cleanup", cmd.destroyCleanup, "lab-lifecycle"],
+    ["containerlab.lab.start", cmd.startLab, "lab-lifecycle"],
+    ["containerlab.lab.stop", cmd.stopLab, "lab-lifecycle"],
+    ["containerlab.lab.restart", cmd.restartLab, "lab-lifecycle"],
     ["containerlab.lab.save", cmd.saveLab],
     ["containerlab.lab.sshx.attach", cmd.sshxAttach],
     ["containerlab.lab.sshx.detach", cmd.sshxDetach],
@@ -436,16 +522,38 @@ function registerCommands(context: vscode.ExtensionContext) {
     ["containerlab.lab.fcli.subif", cmd.fcliSubif],
     ["containerlab.lab.fcli.sysInfo", cmd.fcliSysInfo],
     ["containerlab.lab.fcli.custom", cmd.fcliCustom],
-    ["containerlab.images.manage", () => cmd.manageImages(context)]
+    ["containerlab.images.manage", (resource: unknown) => cmd.manageImages(context, resource)],
+    ["containerlab.file.open", cmd.openApiWorkspaceFile],
+    ["containerlab.file.openTopology", cmd.openApiWorkspaceFile],
+    ["containerlab.file.newFile", cmd.newApiWorkspaceFile],
+    ["containerlab.file.newFolder", cmd.newApiWorkspaceFolder],
+    ["containerlab.file.rename", cmd.renameApiWorkspacePath],
+    ["containerlab.file.delete", cmd.deleteApiWorkspacePath],
+    ["containerlab.file.copyPath", cmd.copyApiWorkspacePath],
+    ["containerlab.file.refresh", () => undefined]
   ];
-  commands.forEach(([name, handler]) => {
-    context.subscriptions.push(vscode.commands.registerCommand(name, handler));
+  commands.forEach(([name, handler, requiredCapability]) => {
+    const guardedHandler = (...args: unknown[]) => {
+      const backend = getBackendForResource(args[0]);
+      if (requiredCapability && !backendHasCapability(backend, requiredCapability)) {
+        return vscode.window.showInformationMessage(
+          `${name} is not available through the selected ${backend.kind} backend.`
+        );
+      }
+      return handler(...args);
+    };
+    context.subscriptions.push(vscode.commands.registerCommand(name, guardedHandler));
   });
   context.subscriptions.push(
     vscode.commands.registerCommand("containerlab.viewLogs", showOutputChannel)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand("containerlab.node.manageImpairments", manageImpairments)
+    vscode.commands.registerCommand(
+      "containerlab.node.manageImpairments",
+      (node: c.ClabContainerTreeNode) => {
+        return manageImpairments(node);
+      }
+    )
   );
   context.subscriptions.push(
     vscode.commands.registerCommand("containerlab.lab.graph.topoViewer", graphTopoViewer)
@@ -463,14 +571,14 @@ function registerCommands(context: vscode.ExtensionContext) {
     )
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand("containerlab.inspectAll", () =>
-      cmd.inspectAllLabs(extensionContext)
-    )
+    vscode.commands.registerCommand("containerlab.inspectAll", () => {
+      return cmd.inspectAllLabs(extensionContext);
+    })
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand("containerlab.inspectOneLab", (node: c.ClabLabTreeNode) =>
-      cmd.inspectOneLab(node, extensionContext)
-    )
+    vscode.commands.registerCommand("containerlab.inspectOneLab", (node: c.ClabLabTreeNode) => {
+      return cmd.inspectOneLab(node, extensionContext);
+    })
   );
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -490,6 +598,7 @@ function registerRealtimeUpdates(context: vscode.ExtensionContext) {
   // Common handler for data changes (used by both events and fallback)
   const handleDataChanged = () => {
     ins.refreshFromEventStream();
+    if (providersReady) localLabsProvider.forceRefresh();
     runningLabsProvider.softRefresh().catch((err: unknown) => {
       console.error("[containerlab extension]: realtime refresh failed", err);
     });
@@ -499,31 +608,23 @@ function registerRealtimeUpdates(context: vscode.ExtensionContext) {
   // This handles the case where events fail and we fall back to polling mid-session
 
   // Events listener (only fires if events mode is active)
-  const disposeEventsRealtime = onEventsDataChanged(() => {
-    if (!isPollingMode()) {
-      handleDataChanged();
-    }
-  });
-  context.subscriptions.push({ dispose: disposeEventsRealtime });
-
-  // Fallback polling listener (only fires if polling mode is active)
-  const disposeFallbackRealtime = onFallbackDataChanged(() => {
-    if (isPollingMode()) {
-      handleDataChanged();
-    }
-  });
-  context.subscriptions.push({ dispose: disposeFallbackRealtime });
+  const disposeRuntimeData = ins.onDataChanged(handleDataChanged);
+  context.subscriptions.push({ dispose: disposeRuntimeData });
 
   // Register listener for container state changes (only relevant in events mode)
-  const disposeStateChange = onContainerStateChanged((containerShortId, newState) => {
-    if (!isPollingMode()) {
-      runningLabsProvider.refreshContainer(containerShortId, newState).catch((err: unknown) => {
-        outputChannel.debug(
-          `Failed to refresh container ${containerShortId}: ${err instanceof Error ? err.message : String(err)}`
-        );
-      });
+  const disposeStateChange = ins.onContainerStateChanged(
+    (containerShortId, newState, backendId) => {
+      if (!isPollingMode()) {
+        runningLabsProvider
+          .refreshContainer(containerShortId, newState, backendId)
+          .catch((err: unknown) => {
+            outputChannel.debug(
+              `Failed to refresh container ${containerShortId}: ${err instanceof Error ? err.message : String(err)}`
+            );
+          });
+      }
     }
-  });
+  );
   context.subscriptions.push({ dispose: disposeStateChange });
 
   // Stop realtime background workers on deactivate
@@ -590,40 +691,51 @@ export async function activate(context: vscode.ExtensionContext) {
   outputChannel.info(`Detected platform: ${process.platform}`);
 
   const config = vscode.workspace.getConfiguration("containerlab");
+  setExtensionContext(context);
+  registerApiWorkspaceFileSync(context);
+  const workspaceBackend = createWorkspaceBackend();
+  setActiveBackend(workspaceBackend);
+  const apiEndpointController = new ApiEndpointController(context, {
+    providersReady: () => providersReady,
+    refreshProviders: refreshProvidersAfterAuthenticationChange
+  });
+  registerApiAuthenticationCommands(context, apiEndpointController);
+  try {
+    assertNoWorkspaceApiTrustOverrides(config);
+  } catch (error) {
+    const message = getErrorMessage(error);
+    outputChannel.error(message);
+    void vscode.window.showErrorMessage(message, "Open User Settings").then((choice) => {
+      if (choice === "Open User Settings") {
+        void vscode.commands.executeCommand(
+          "workbench.action.openSettings",
+          "@ext:srl-labs.vscode-containerlab containerlab.api"
+        );
+      }
+    });
+  }
   const isSupportedPlatform = process.platform === "linux" || vscode.env.remoteName === "wsl";
-
-  // Allow activation only on Linux or when connected via WSL.
-  // If unsupported, stay silent until the user opens the Containerlab view, then show a warning.
-  if (!isSupportedPlatform) {
-    registerUnsupportedViews(context);
-    return;
+  let dockerAvailable = false;
+  if (isSupportedPlatform && setClabBinPath() && (await ensureContainerlabBinary(e2eSmokeTest))) {
+    if (validateUserPermissions(e2eSmokeTest)) {
+      const localDockerAvailable = await connectDockerSocket(e2eSmokeTest);
+      if (localDockerAvailable !== undefined) {
+        dockerAvailable = localDockerAvailable;
+        registerBackend(new LocalContainerlabBackend());
+      }
+    }
   }
 
-  if (!setClabBinPath()) {
-    // don't activate
-    outputChannel.error(`Error setting containerlab binary. Exiting activation.`);
-    return;
-  }
-
-  if (!(await ensureContainerlabBinary(e2eSmokeTest))) {
-    return;
-  }
+  await apiEndpointController.restoreSavedEndpoints().catch((error: unknown) => {
+    outputChannel.warn(`Could not restore clab-api-server endpoints: ${getErrorMessage(error)}`);
+  });
 
   outputChannel.info("Containerlab extension activated.");
-
-  if (!validateUserPermissions(e2eSmokeTest)) {
-    return;
-  }
-
-  const dockerAvailable = await connectDockerSocket(e2eSmokeTest);
-  if (dockerAvailable === undefined) {
-    return;
-  }
   await runFullStartupTasks(context, config, dockerAvailable, e2eSmokeTest);
 
   // Explorer data providers (backing model for React explorer)
-  setExtensionContext(context);
   setFavoriteLabs(new Set(context.globalState.get<string[]>("favoriteLabs", [])));
+  setFavoriteApiLabs(new Set(context.globalState.get<string[]>("favoriteApiLabs", [])));
 
   const newLocalProvider = new LocalLabTreeDataProvider();
   const newRunningProvider = new RunningLabTreeDataProvider(context);
@@ -631,6 +743,7 @@ export async function activate(context: vscode.ExtensionContext) {
   setLocalLabsProvider(newLocalProvider);
   setRunningLabsProvider(newRunningProvider);
   setHelpFeedbackProvider(newHelpProvider);
+  providersReady = true;
 
   // Webview views are resolved lazily, so we keep a hidden tree view badge proxy
   // to show running lab count on the activity icon before the explorer is opened.
@@ -669,14 +782,17 @@ export async function activate(context: vscode.ExtensionContext) {
     void updateActivityBadgeProxy();
   }
 
-  if (!e2eSmokeTest) {
+  if (!e2eSmokeTest && backendHasCapability(getActiveBackend(), "local-runtime")) {
     await refreshSshxSessions();
     await refreshGottySessions();
   }
   // Docker images are refreshed on TopoViewer open to avoid unnecessary calls
 
   // Determine if local capture is allowed.
-  const isLocalCaptureAllowed = vscode.env.remoteName !== "ssh-remote" && !utils.isOrbstack();
+  const isLocalCaptureAllowed =
+    backendHasCapability(getActiveBackend(), "local-runtime") &&
+    vscode.env.remoteName !== "ssh-remote" &&
+    !utils.isOrbstack();
   void vscode.commands.executeCommand(
     "setContext",
     "containerlab:isLocalCaptureAllowed",
@@ -685,6 +801,7 @@ export async function activate(context: vscode.ExtensionContext) {
   void vscode.commands.executeCommand("setContext", "containerlabExplorerVisible", false);
 
   explorerViewProvider = new ContainerlabExplorerViewProvider(context, {
+    getEndpointState: async () => await apiEndpointController.getState(false),
     runningProvider: newRunningProvider,
     localProvider: newLocalProvider,
     helpProvider: newHelpProvider,
@@ -727,6 +844,7 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
+  providersReady = false;
   explorerViewProvider = undefined;
   stopRealtimeBackgroundWorkers();
   outputChannel.info("Deactivating Containerlab extension.");

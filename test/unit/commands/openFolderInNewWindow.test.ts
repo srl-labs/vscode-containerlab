@@ -42,6 +42,7 @@ describe("openFolderInNewWindow command", () => {
     vscodeStub.commands.executed = [];
     sinon.spy(vscodeStub.commands, "executeCommand");
     sinon.spy(vscodeStub.window, "showErrorMessage");
+    sinon.spy(vscodeStub.window, "showInformationMessage");
   });
 
   afterEach(() => {
@@ -65,5 +66,24 @@ describe("openFolderInNewWindow command", () => {
     await openFolderInNewWindow({ labPath: { absolute: "" } } as any);
     const spy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;
     expect(spy.calledOnceWith("No lab path found for this lab.")).to.be.true;
+  });
+
+  it("does not open a materialized API cache as though it were a workspace folder", async () => {
+    await openFolderInNewWindow({
+      labPath: { absolute: "/tmp/api-topologies/demo/vlan.clab.yml" },
+      labRef: {
+        backendId: "api:https://api.example.test#alice",
+        labName: "demo",
+        localPath: "/tmp/api-topologies/demo/vlan.clab.yml",
+        remotePath: "vlan.clab.yml"
+      }
+    } as any);
+
+    expect((vscodeStub.commands.executeCommand as sinon.SinonSpy).notCalled).to.equal(true);
+    expect(
+      (vscodeStub.window.showInformationMessage as sinon.SinonSpy).calledWithMatch(
+        "This lab is managed by clab-api-server"
+      )
+    ).to.equal(true);
   });
 });

@@ -60,7 +60,10 @@ describe("copyLabPath command", () => {
 
   // Copies the absolute path of the lab file and notifies the user.
   it("copies the lab path to the clipboard and shows info message", async () => {
-    const node = { labPath: { absolute: "/home/user/lab.clab.yml" } } as any;
+    const node = {
+      labPath: { absolute: "/home/user/lab.clab.yml" },
+      labRef: { backendId: "local", localPath: "/home/user/lab.clab.yml" }
+    } as any;
     copyLabPath(node);
 
     const clipSpy = vscodeStub.env.clipboard.writeText as sinon.SinonSpy;
@@ -69,6 +72,39 @@ describe("copyLabPath command", () => {
     expect(clipSpy.calledOnceWith("/home/user/lab.clab.yml")).to.be.true;
     expect(msgSpy.calledOnceWith("Copied file path of /home/user/lab.clab.yml to clipboard.")).to.be
       .true;
+  });
+
+  it("copies an opaque API remote path when no local source mapping exists", async () => {
+    const node = {
+      labPath: { absolute: "" },
+      labRef: {
+        backendId: "api:https://api.example.test#alice",
+        labName: "demo",
+        remotePath: "/srv/containerlab/alice/demo.clab.yml"
+      }
+    } as any;
+    copyLabPath(node);
+
+    const clipSpy = vscodeStub.env.clipboard.writeText as sinon.SinonSpy;
+    await clipSpy.returnValues[0];
+    expect(clipSpy.calledOnceWith("/srv/containerlab/alice/demo.clab.yml")).to.equal(true);
+  });
+
+  it("copies the API source path instead of its materialized editor cache", async () => {
+    const node = {
+      labPath: { absolute: "/tmp/api-topologies/demo/vlan.clab.yml" },
+      labRef: {
+        backendId: "api:https://api.example.test#alice",
+        labName: "demo",
+        localPath: "/tmp/api-topologies/demo/vlan.clab.yml",
+        remotePath: "vlan.clab.yml"
+      }
+    } as any;
+    copyLabPath(node);
+
+    const clipSpy = vscodeStub.env.clipboard.writeText as sinon.SinonSpy;
+    await clipSpy.returnValues[0];
+    expect(clipSpy.calledOnceWith("vlan.clab.yml")).to.equal(true);
   });
 
   // Should error when no node is provided.
@@ -80,7 +116,7 @@ describe("copyLabPath command", () => {
 
   // Should error when the node does not contain a labPath.
   it("shows an error when labPath is missing", () => {
-    copyLabPath({ labPath: { absolute: "" } } as any);
+    copyLabPath({ labPath: { absolute: "" }, labRef: { backendId: "local" } } as any);
     const spy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;
     expect(spy.calledOnceWith("No labPath found.")).to.be.true;
   });

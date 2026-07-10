@@ -1,11 +1,32 @@
 import * as vscode from "vscode";
 
+import { apiLabFavoriteKey } from "../backends/labIdentity";
 import type { ClabLabTreeNode } from "../treeView/common";
-import { favoriteLabs, extensionContext, localLabsProvider } from "../globals";
+import {
+  favoriteApiLabs,
+  favoriteLabs,
+  extensionContext,
+  localLabsProvider,
+  runningLabsProvider
+} from "../globals";
+
+import { localLabPath } from "./backendGuards";
 
 export async function toggleFavorite(node: ClabLabTreeNode) {
-  const absPath = node.labPath.absolute;
-  if (absPath.length === 0) {
+  const apiKey = apiLabFavoriteKey(node.labRef);
+  if (apiKey !== undefined) {
+    const wasFavorite = favoriteApiLabs.delete(apiKey);
+    if (!wasFavorite) favoriteApiLabs.add(apiKey);
+    await extensionContext.globalState.update("favoriteApiLabs", Array.from(favoriteApiLabs));
+    vscode.window.showInformationMessage(
+      wasFavorite ? "Removed favorite API lab" : "Marked API lab as favorite"
+    );
+    runningLabsProvider.refreshWithoutDiscovery();
+    return;
+  }
+
+  const absPath = localLabPath(node, "Favorite topology");
+  if (!absPath) {
     return;
   }
 

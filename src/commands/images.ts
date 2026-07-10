@@ -14,6 +14,8 @@ import { getImageManagerWebviewHtml } from "../webviews/imageManager/imageManage
 import { pullDockerImage } from "../utils/docker/docker";
 import { listDockerImageSummaries, removeDockerImage } from "../utils/docker/images";
 import { getCustomNodesFromConfig } from "../reactTopoViewer/extension/services/schema";
+import { getBackendById, getBackendForResource, listConnectedBackends } from "../backends/manager";
+import { ApiContainerlabBackend } from "../backends/api/apiContainerlabBackend";
 
 type ImageManagerRequestMessage = {
   command?: string;
@@ -91,6 +93,28 @@ function referenceOptions(
 async function collectWorkspaceImageReferences(
   options: ImageManagerTargetOptions
 ): Promise<KindImageReference[]> {
+  const targetBackend = options.endpointId ? getBackendById(options.endpointId) : undefined;
+  if (targetBackend instanceof ApiContainerlabBackend) {
+    const entries = await targetBackend.operations.listTopologies();
+    const documents = await Promise.allSettled(
+      entries.map(async (entry) => ({
+        entry,
+        yaml: await targetBackend.operations.readTopologyFile(entry.labName, entry.yamlFileName)
+      }))
+    );
+    return documents.flatMap((result) =>
+      result.status === "fulfilled"
+        ? collectKindImageReferencesFromYaml(
+            result.value.yaml,
+            referenceOptions(options, {
+              label: result.value.entry.yamlFileName,
+              path: result.value.entry.yamlFileName
+            })
+          )
+        : []
+    );
+  }
+
   const yamlFiles = await vscode.workspace.findFiles(
     "**/*.clab.{yml,yaml}",
     "**/{node_modules,.git,out,dist}/**",
@@ -128,8 +152,13 @@ async function collectWorkspaceImageReferences(
 async function handleImageManagerRequest(
   message: Required<ImageManagerRequestMessage>
 ): Promise<unknown> {
+  const target = asTargetOptions(message.payload);
+  const backend = target.endpointId ? getBackendById(target.endpointId) : undefined;
   switch (message.action) {
     case "listImages":
+      if (backend instanceof ApiContainerlabBackend) {
+        return (await backend.operations.listRuntimeImages()).images;
+      }
       return listDockerImageSummaries();
     case "listImageReferences":
       return collectWorkspaceImageReferences(asTargetOptions(message.payload));
@@ -138,6 +167,9 @@ async function handleImageManagerRequest(
       const image = request.image.trim();
       if (image.length === 0) {
         throw new Error("Image reference is required.");
+      }
+      if (backend instanceof ApiContainerlabBackend) {
+        return await backend.operations.pullRuntimeImage(image);
       }
       const success = await pullDockerImage(image);
       return {
@@ -151,6 +183,9 @@ async function handleImageManagerRequest(
       const reference = request.reference.trim();
       if (reference.length === 0) {
         throw new Error("Image reference is required.");
+      }
+      if (backend instanceof ApiContainerlabBackend) {
+        return await backend.operations.removeRuntimeImage(reference, request.force === true);
       }
       await removeDockerImage(reference, request.force === true);
       return {
@@ -189,7 +224,10 @@ async function respondToImageManagerRequest(
   }
 }
 
-export async function manageImages(context: vscode.ExtensionContext): Promise<void> {
+export async function manageImages(
+  context: vscode.ExtensionContext,
+  resource?: unknown
+): Promise<void> {
   if (currentPanel) {
     currentPanel.reveal(vscode.ViewColumn.One);
     return;
@@ -213,7 +251,18 @@ export async function manageImages(context: vscode.ExtensionContext): Promise<vo
     currentPanel = undefined;
   });
 
-  panel.webview.html = getImageManagerWebviewHtml(panel.webview, context.extensionUri, {});
+  const selectedBackend = getBackendForResource(resource);
+  const endpointOptions = listConnectedBackends().map((backend) => ({
+    id: backend.id,
+    label:
+      backend instanceof ApiContainerlabBackend
+        ? new URL(backend.getConnectionInfo().url).host
+        : "Local runtime"
+  }));
+  panel.webview.html = getImageManagerWebviewHtml(panel.webview, context.extensionUri, {
+    endpointOptions,
+    selectedEndpointId: selectedBackend.id
+  });
   panel.webview.onDidReceiveMessage((message: unknown) => {
     void respondToImageManagerRequest(panel, message);
   });

@@ -8,6 +8,18 @@ export interface ExplorerContributedMenuItem {
 
 export interface ExplorerCommandMetadata {
   contributedContainerActions?: readonly ExplorerContributedMenuItem[];
+  contributedSectionContextActions?: Partial<
+    Record<
+      "runningLabs" | "localLabs" | "fileExplorer" | "helpFeedback",
+      readonly ExplorerContributedMenuItem[]
+    >
+  >;
+  contributedToolbarActions?: Partial<
+    Record<
+      "runningLabs" | "localLabs" | "fileExplorer" | "helpFeedback",
+      readonly ExplorerContributedMenuItem[]
+    >
+  >;
   commandLabels?: ReadonlyMap<string, string>;
   commandIcons?: ReadonlyMap<string, string>;
 }
@@ -278,6 +290,15 @@ async function computeExplorerCommandMetadata(): Promise<ExplorerCommandMetadata
 
   return {
     contributedContainerActions,
+    contributedToolbarActions: {
+      runningLabs: [
+        {
+          commandId: "containerlab.api.manageEndpoints",
+          label: "Manage API Endpoints",
+          iconId: "server-environment"
+        }
+      ]
+    },
     commandLabels,
     commandIcons
   };

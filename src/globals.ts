@@ -28,7 +28,7 @@ export interface LocalLabsProviderInterface {
 export interface RunningLabsProviderInterface {
   refresh(): Promise<void>;
   softRefresh(): Promise<void>;
-  refreshContainer(containerShortId: string, newState: string): Promise<void>;
+  refreshContainer(containerShortId: string, newState: string, backendId?: string): Promise<void>;
   refreshWithoutDiscovery(): void;
   setTreeFilter(filter: string): void;
   clearTreeFilter(): void;
@@ -42,6 +42,7 @@ export let outputChannel: vscode.LogOutputChannel;
 export let username: string;
 export let hideNonOwnedLabsState: boolean = false;
 export let favoriteLabs: Set<string> = new Set();
+export let favoriteApiLabs: Set<string> = new Set();
 export let extensionContext: vscode.ExtensionContext;
 // Provider types use minimal interfaces to avoid circular imports
 export let localLabsProvider: LocalLabsProviderInterface;
@@ -92,6 +93,10 @@ export function setExtensionContext(context: vscode.ExtensionContext) {
 
 export function setFavoriteLabs(labs: Set<string>) {
   favoriteLabs = labs;
+}
+
+export function setFavoriteApiLabs(labs: Set<string>) {
+  favoriteApiLabs = labs;
 }
 
 export function setLocalLabsProvider(provider: LocalLabsProviderInterface) {

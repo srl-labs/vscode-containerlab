@@ -8,6 +8,11 @@ import type { CustomIconInfo, CustomNodeTemplate } from "@srl-labs/clab-ui/sessi
 import { getDockerImages } from "../../../utils/docker/images";
 import { getCustomNodesFromConfig } from "../services/schema";
 import { iconService } from "../services/IconService";
+import { getBackendForLocalSource } from "../../../backends/manager";
+import {
+  buildClabUiHostCapabilities,
+  type ClabUiHostCapabilitiesBootstrap
+} from "../../../backends/hostCapabilities";
 
 /**
  * Bootstrap data sent to the webview on initialization
@@ -17,6 +22,7 @@ export interface BootstrapData {
   defaultNode: string;
   dockerImages: string[];
   customIcons: CustomIconInfo[];
+  hostCapabilities: ClabUiHostCapabilitiesBootstrap;
 }
 
 /**
@@ -47,6 +53,7 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
     customNodes,
     defaultNode,
     dockerImages,
-    customIcons
+    customIcons,
+    hostCapabilities: buildClabUiHostCapabilities(getBackendForLocalSource(yamlFilePath))
   };
 }

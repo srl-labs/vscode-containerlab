@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
 
-import * as utils from "../utils";
 import type {
   ClabContainerTreeNode,
   ClabInterfaceTreeNode,
@@ -16,13 +15,16 @@ export function copyLabPath(node: ClabLabTreeNode | undefined) {
     return;
   }
 
-  const labPath = node.labPath.absolute;
+  const labPath =
+    node.labRef.backendId === "local"
+      ? (node.labRef.localPath ?? node.labPath.absolute)
+      : (node.labRef.remotePath ?? node.labRef.localPath);
   if (!labPath) {
     vscode.window.showErrorMessage("No labPath found.");
     return;
   }
 
-  const labName = node.labPath.absolute || utils.getRelativeFolderPath(labPath);
+  const labName = (node.labRef.labName ?? node.labPath.absolute) || labPath;
 
   vscode.env.clipboard.writeText(labPath).then(() => {
     vscode.window.showInformationMessage(`Copied file path of ${labName} to clipboard.`);

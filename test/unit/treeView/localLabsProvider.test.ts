@@ -36,6 +36,8 @@ import { LocalLabTreeDataProvider } from "../../../src/treeView/localLabsProvide
 import type { ClabLabTreeNode } from "../../../src/treeView/common";
 import * as ins from "../../../src/treeView/inspector";
 import * as globals from "../../../src/globals";
+import { resetActiveBackendForTests, setActiveBackend } from "../../../src/backends/manager";
+import type { ContainerlabBackend } from "../../../src/backends/types";
 
 const vscodeStub = require("../../helpers/vscode-stub");
 
@@ -88,6 +90,7 @@ describe("LocalLabTreeDataProvider", () => {
   });
 
   afterEach(() => {
+    resetActiveBackendForTests();
     sinon.restore();
   });
 
@@ -119,6 +122,44 @@ describe("LocalLabTreeDataProvider", () => {
     expect(node.label).to.equal("lab1.clab.yml");
     expect(node.labPath.absolute).to.equal(LAB_A);
     expect(node.description).to.equal("a");
+  });
+
+  it("filters an API-deployed local source through its backend-scoped mapping", async () => {
+    sinon
+      .stub(vscodeStub.workspace, "findFiles")
+      .resolves([vscodeStub.Uri.file(LAB_B), vscodeStub.Uri.file(LAB_A)]);
+    (ins as any).rawInspectData = {
+      demo: [
+        {
+          Labels: {
+            "clab-topo-file": "/srv/alice/demo.clab.yml",
+            "clab-backend-id": "api:https://api.example.test#alice",
+            containerlab: "demo"
+          }
+        }
+      ]
+    };
+    const backend = {
+      id: "api:https://api.example.test#alice",
+      kind: "api",
+      capabilities: new Set(),
+      dispose() {},
+      onRuntimeDataChanged: () => () => {},
+      onContainerStateChanged: () => () => {},
+      resolveLabRef: (labName: string, remotePath?: string) => ({
+        backendId: "api:https://api.example.test#alice",
+        labName,
+        localPath: LAB_B,
+        remotePath
+      })
+    } as unknown as ContainerlabBackend;
+    setActiveBackend(backend);
+
+    const provider = new LocalLabTreeDataProvider();
+    const nodes = await provider.getChildren(undefined);
+
+    expect(nodes).to.have.lengthOf(1);
+    expect(nodes![0].label).to.equal("a");
   });
 
   it("lists root-level labs before folders", async () => {

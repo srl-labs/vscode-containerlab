@@ -8,6 +8,7 @@ import {
   createTopoViewerLifecycleHandlers,
   notifyCurrentTopoViewerOfCommandFailure
 } from "./graph";
+import { resolveApiNodeTarget } from "./backendGuards";
 
 type TopologyNodeLifecycleAction = "start" | "stop" | "restart";
 
@@ -17,6 +18,22 @@ async function runNodeAction(
 ): Promise<void> {
   if (node === undefined) {
     vscode.window.showErrorMessage("No container node selected.");
+    return;
+  }
+
+  const apiTarget = resolveApiNodeTarget(node);
+  if (apiTarget) {
+    try {
+      await apiTarget.backend.operations.controlNodeLifecycle(
+        apiTarget.labName,
+        apiTarget.nodeName,
+        action === utils.ContainerAction.Pause ? "pause" : "unpause"
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Node ${String(action).toLowerCase()} failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
     return;
   }
 
@@ -69,6 +86,28 @@ async function runTopologyNodeLifecycleAction(
     const error = new Error("No container node selected.");
     vscode.window.showErrorMessage(error.message);
     await notifyCurrentTopoViewerOfCommandFailure(action, error);
+    return;
+  }
+
+  const apiTarget = resolveApiNodeTarget(node);
+  if (apiTarget) {
+    const handlers = createTopoViewerLifecycleHandlers(action);
+    try {
+      await apiTarget.backend.operations.controlNodeLifecycle(
+        apiTarget.labName,
+        apiTarget.nodeName,
+        action
+      );
+      await handlers.onSuccess();
+      vscode.window.showInformationMessage(
+        `${action[0].toUpperCase()}${action.slice(1)} completed for ${node.label}.`
+      );
+    } catch (error) {
+      await handlers.onFailure(error);
+      vscode.window.showErrorMessage(
+        `${action} failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
     return;
   }
 

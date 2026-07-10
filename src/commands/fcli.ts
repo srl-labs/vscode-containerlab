@@ -6,6 +6,7 @@ import * as YAML from "yaml";
 import type { ClabLabTreeNode } from "../treeView/common";
 
 import { execCommandInTerminal } from "./command";
+import { resolveApiLabTarget } from "./backendGuards";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -32,9 +33,26 @@ function buildNetworkFromYaml(topoPath: string): string {
   return "clab";
 }
 
-function runFcli(node: ClabLabTreeNode | undefined, cmd: string) {
+async function runFcli(node: ClabLabTreeNode | undefined, cmd: string) {
   if (!node) {
     vscode.window.showErrorMessage("No lab node selected.");
+    return;
+  }
+
+  const apiTarget = resolveApiLabTarget(node);
+  if (apiTarget) {
+    try {
+      const result = await apiTarget.backend.operations.runFcliCommand(apiTarget.labName, cmd);
+      const document = await vscode.workspace.openTextDocument({
+        content: result.output,
+        language: "plaintext"
+      });
+      await vscode.window.showTextDocument(document, { preview: true });
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `fcli failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
     return;
   }
 
@@ -72,5 +90,5 @@ export async function fcliCustom(node: ClabLabTreeNode) {
   if (val === undefined || val.trim().length === 0) {
     return;
   }
-  runFcli(node, val.trim());
+  await runFcli(node, val.trim());
 }

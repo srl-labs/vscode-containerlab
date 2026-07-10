@@ -7,7 +7,6 @@ import { promisify } from "util";
 
 import * as vscode from "vscode";
 
-import { ClabLabTreeNode } from "../treeView/common";
 import { containerlabBinaryPath, outputChannel } from "../globals";
 
 const execAsync = promisify(exec);
@@ -331,37 +330,6 @@ export async function checkAndUpdateClabIfNeeded(
       "Unable to detect containerlab version. Please check your installation."
     );
   }
-}
-
-// ----------------------------------------------------------
-// Command helper functions
-// ----------------------------------------------------------
-
-export async function getSelectedLabNode(
-  node?: ClabLabTreeNode | vscode.Uri
-): Promise<ClabLabTreeNode | undefined> {
-  if (node instanceof ClabLabTreeNode) {
-    return node;
-  }
-
-  // Editor title buttons and explorer/context menus pass the resource Uri
-  // instead of a tree node. Fall back to the active editor when no Uri is given.
-  let labPath: string | undefined;
-  if (node instanceof vscode.Uri) {
-    labPath = node.fsPath;
-  } else {
-    labPath = vscode.window.activeTextEditor?.document.uri.fsPath;
-  }
-
-  if (labPath === undefined || labPath === "" || !/\.clab\.(yml|yaml)$/i.test(labPath)) {
-    return undefined;
-  }
-
-  const fileName = path.basename(labPath);
-  return new ClabLabTreeNode(fileName, vscode.TreeItemCollapsibleState.None, {
-    absolute: labPath,
-    relative: fileName
-  });
 }
 
 // Sanitizes a string to a Docker-safe container name.

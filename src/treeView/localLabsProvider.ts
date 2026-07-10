@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import * as utils from "../utils/utils";
 import { favoriteLabs, outputChannel } from "../globals";
 import { FilterUtils } from "../helpers/filterUtils";
+import { getBackendById } from "../backends/manager";
 
 import * as c from "./common";
 import * as ins from "./inspector";
@@ -307,9 +308,13 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<
       // New format: object with lab names as keys
       Object.values(data).forEach((containers: c.ClabDetailedJSON[]) => {
         if (Array.isArray(containers) && containers.length > 0) {
-          const p = containers[0].Labels["clab-topo-file"];
-          if (typeof p === "string" && p.length > 0) {
-            labPaths.add(p);
+          const first = containers[0];
+          const runtimePath = first.Labels["clab-topo-file"];
+          const backendId = first.Labels["clab-backend-id"] ?? "local";
+          const labName = first.Labels.containerlab ?? "";
+          const ref = getBackendById(backendId)?.resolveLabRef(labName, runtimePath);
+          if (ref?.localPath) {
+            labPaths.add(utils.normalizeLabPath(ref.localPath));
           }
         }
       });

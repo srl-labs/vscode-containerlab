@@ -40,6 +40,7 @@ import {
 } from "@srl-labs/clab-ui/session";
 import { nodeFsAdapter } from "../shared/io";
 import { cancelActiveCommand } from "../../../commands/command";
+import { cancelActiveBackendOperation } from "../../../backends/manager";
 
 type WebviewMessage = Record<string, unknown> & {
   type?: unknown;
@@ -201,7 +202,7 @@ export class MessageRouter {
   }
 
   private handleCancelLabLifecycle(panel: vscode.WebviewPanel): void {
-    const cancelled = cancelActiveCommand();
+    const cancelled = cancelActiveCommand() || cancelActiveBackendOperation();
     if (!cancelled) {
       log.warn("[MessageRouter] No active lifecycle command to cancel");
       panel.webview.postMessage({

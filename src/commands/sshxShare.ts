@@ -9,6 +9,7 @@ import {
 } from "../globals";
 import { refreshSshxSessions, refreshRunningLabsProvider } from "../services/sessionRefresh";
 import { runCommand } from "../utils/utils";
+import { resolveApiLabTarget } from "./backendGuards";
 
 function parseLink(output: string): string | undefined {
   const re = /(https?:\/\/\S+)/;
@@ -19,6 +20,31 @@ function parseLink(output: string): string | undefined {
 async function sshxStart(action: "attach" | "reattach", node: ClabLabTreeNode) {
   if (node.name === undefined || node.name.length === 0) {
     vscode.window.showErrorMessage(`No lab selected for SSHX ${action}.`);
+    return;
+  }
+  const apiTarget = resolveApiLabTarget(node);
+  if (apiTarget) {
+    try {
+      const response = await apiTarget.backend.operations.runShareAction(
+        "sshx",
+        apiTarget.labName,
+        action
+      );
+      if (response.link) {
+        await vscode.env.clipboard.writeText(response.link);
+        const choice = await vscode.window.showInformationMessage(
+          "SSHX link copied to clipboard.",
+          "Open Link"
+        );
+        if (choice === "Open Link") await vscode.env.openExternal(vscode.Uri.parse(response.link));
+      } else {
+        vscode.window.showInformationMessage(response.message || `SSHX ${action} completed.`);
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to ${action} SSHX: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
     return;
   }
   try {
@@ -61,6 +87,22 @@ export async function sshxAttach(node: ClabLabTreeNode) {
 export async function sshxDetach(node: ClabLabTreeNode) {
   if (node.name === undefined || node.name.length === 0) {
     vscode.window.showErrorMessage("No lab selected for SSHX detach.");
+    return;
+  }
+  const apiTarget = resolveApiLabTarget(node);
+  if (apiTarget) {
+    try {
+      const response = await apiTarget.backend.operations.runShareAction(
+        "sshx",
+        apiTarget.labName,
+        "detach"
+      );
+      vscode.window.showInformationMessage(response.message || "SSHX session detached");
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to detach SSHX: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
     return;
   }
   try {

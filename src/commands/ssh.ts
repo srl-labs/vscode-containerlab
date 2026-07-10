@@ -8,6 +8,7 @@ import {
 import { sshUserMapping } from "../globals";
 
 import { execCommandInTerminal } from "./command";
+import { resolveApiNodeTarget } from "./backendGuards";
 
 function resolveDistributedSrosSshTarget(node: ClabContainerTreeNode): string | undefined {
   if (node.kind !== "nokia_srsim") {
@@ -53,9 +54,29 @@ function resolveSshTarget(node: ClabContainerTreeNode): string | undefined {
   return undefined;
 }
 
-export function sshToNode(node: ClabContainerTreeNode | undefined): void {
+export async function sshToNode(node: ClabContainerTreeNode | undefined): Promise<void> {
   if (!node) {
     vscode.window.showErrorMessage("No container node selected.");
+    return;
+  }
+
+  const apiTarget = resolveApiNodeTarget(node);
+  if (apiTarget) {
+    try {
+      const access = await apiTarget.backend.operations.requestSshAccess(
+        apiTarget.labName,
+        apiTarget.nodeName
+      );
+      execCommandInTerminal(
+        access.command || `ssh -p ${access.port} ${access.username}@${access.host}`,
+        `SSH - ${apiTarget.nodeName}`,
+        true
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Could not open API SSH access: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
     return;
   }
 
@@ -76,7 +97,7 @@ export function sshToNode(node: ClabContainerTreeNode | undefined): void {
   execCommandInTerminal(`ssh ${sshUser}@${sshTarget}`, `SSH - ${sshTarget}`, true);
 }
 
-export function sshToLab(node: ClabLabTreeNode | undefined): void {
+export async function sshToLab(node: ClabLabTreeNode | undefined): Promise<void> {
   if (!node) {
     vscode.window.showErrorMessage("No lab node selected.");
     return;
@@ -87,7 +108,7 @@ export function sshToLab(node: ClabLabTreeNode | undefined): void {
     return;
   }
 
-  flattenContainers(node.containers).forEach((c) => {
-    sshToNode(c);
-  });
+  await Promise.all(
+    flattenContainers(node.containers).map(async (container) => sshToNode(container))
+  );
 }

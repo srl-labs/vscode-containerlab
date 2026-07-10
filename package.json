@@ -472,6 +472,22 @@
       {
         "command": "containerlab.treeView.runningLabs.showNonOwnedLabs",
         "title": "Show non-owned"
+      },
+      {
+        "command": "containerlab.api.manageEndpoints",
+        "title": "Manage clab-api-server endpoints",
+        "category": "Containerlab",
+        "icon": "$(server)"
+      },
+      {
+        "command": "containerlab.api.login",
+        "title": "Sign in to clab-api-server",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.api.logout",
+        "title": "Sign out of clab-api-server",
+        "category": "Containerlab"
       }
     ],
     "submenus": [
@@ -481,6 +497,13 @@
       }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "containerlab.api.manageEndpoints",
+          "when": "view == containerlabExplorerWebview",
+          "group": "navigation@9"
+        }
+      ],
       "editor/title": [
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
@@ -778,6 +801,18 @@
             "default": true,
             "description": "Show the welcome page when the extension activates."
           },
+          "containerlab.api.tls.verify": {
+            "type": "boolean",
+            "scope": "machine",
+            "default": true,
+            "markdownDescription": "Verify the clab-api-server TLS certificate. Keep enabled. The endpoint manager can pin a self-signed server certificate after explicit approval; managed private CAs can use `containerlab.api.tls.caPath`."
+          },
+          "containerlab.api.tls.caPath": {
+            "type": "string",
+            "scope": "machine",
+            "default": "",
+            "markdownDescription": "Optional local PEM CA bundle used to verify clab-api-server. Not required for a self-signed certificate approved through the endpoint manager."
+          },
           "containerlab.skipUpdateCheck": {
             "type": "boolean",
             "default": false,
@@ -1063,6 +1098,10 @@
     "uuid": "14.0.0"
   },
   "devDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.10",
+    "@mui/material": "^7.3.10",
     "@srl-labs/clab-ui": "0.3.0",
     "@types/chai": "^5.2.3",
     "@types/dockerode": "^4.0.1",
@@ -1072,6 +1111,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/sinon": "^21.0.1",
     "@types/vscode": "1.105.0",
+    "@types/ws": "^8.18.1",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.9.2",
     "ajv": "^8.20.0",
@@ -1095,5 +1135,8 @@
     "sinon": "^21.1.2",
     "typescript": "^6.0.3",
     "yaml": "^2.9.0"
+  },
+  "dependencies": {
+    "ws": "^8.21.0"
   }
 }

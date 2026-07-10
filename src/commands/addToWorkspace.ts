@@ -4,14 +4,17 @@ import * as vscode from "vscode";
 
 import type { ClabLabTreeNode } from "../treeView/common";
 
+import { localLabPath } from "./backendGuards";
+
 export async function addLabFolderToWorkspace(node: ClabLabTreeNode): Promise<void> {
-  if (!node.labPath.absolute) {
+  const labPath = localLabPath(node, "Add lab folder to workspace");
+  if (!labPath) {
     vscode.window.showErrorMessage("No lab path found for this lab");
     return;
   }
 
   // Get the folder that contains the .clab.yaml
-  const folderPath = path.dirname(node.labPath.absolute);
+  const folderPath = path.dirname(labPath);
 
   // Add it to the current workspace
   const existingCount = vscode.workspace.workspaceFolders

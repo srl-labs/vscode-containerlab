@@ -53,7 +53,7 @@ describe("sshToNode command", () => {
     sinon.restore();
   });
 
-  it("uses base hostname for distributed nokia_srsim container nodes", () => {
+  it("uses base hostname for distributed nokia_srsim container nodes", async () => {
     const node = {
       name: "clab-SRv6_lab-R1-a",
       name_short: "R1-a",
@@ -64,14 +64,14 @@ describe("sshToNode command", () => {
       v6Address: ""
     } as any;
 
-    sshToNode(node);
+    await sshToNode(node);
 
     expect(commandStub.calls).to.have.lengthOf(1);
     expect(commandStub.calls[0].command).to.equal("ssh admin@clab-SRv6_lab-R1");
     expect(commandStub.calls[0].terminalName).to.equal("SSH - clab-SRv6_lab-R1");
   });
 
-  it("keeps direct container hostname for non-distributed nodes", () => {
+  it("keeps direct container hostname for non-distributed nodes", async () => {
     const node = {
       name: "clab-testlab-r2",
       name_short: "r2",
@@ -81,15 +81,15 @@ describe("sshToNode command", () => {
       v6Address: ""
     } as any;
 
-    sshToNode(node);
+    await sshToNode(node);
 
     expect(commandStub.calls).to.have.lengthOf(1);
     expect(commandStub.calls[0].command).to.equal("ssh admin@clab-testlab-r2");
     expect(commandStub.calls[0].terminalName).to.equal("SSH - clab-testlab-r2");
   });
 
-  it("shows an error when no node is provided", () => {
-    sshToNode(undefined);
+  it("shows an error when no node is provided", async () => {
+    await sshToNode(undefined);
 
     expect(commandStub.calls).to.have.lengthOf(0);
     const msgSpy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;

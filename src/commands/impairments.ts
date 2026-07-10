@@ -5,6 +5,7 @@ import { ClabInterfaceTreeNode } from "../treeView/common";
 import { containerlabBinaryPath } from "../globals";
 
 import { execCommandInOutput } from "./command";
+import { resolveApiLabTarget } from "./backendGuards";
 
 // Common validation messages and patterns
 const ERR_EMPTY = "Input should not be empty";
@@ -39,6 +40,34 @@ export async function setImpairment(
     .join(" ");
 
   if (impairmentFlag === "") {
+    return;
+  }
+  const apiTarget = resolveApiLabTarget(node);
+  if (apiTarget) {
+    const numeric = (key: string): number | undefined => {
+      const value = impairment[key];
+      if (typeof value !== "string" || value.trim() === "") return undefined;
+      const parsed = Number(value.replace(/%$/u, ""));
+      return Number.isFinite(parsed) ? parsed : undefined;
+    };
+    try {
+      await apiTarget.backend.operations.setNetem({
+        containerName: node.parentName,
+        interface: node.name,
+        ...(typeof impairment.delay === "string" ? { delay: impairment.delay } : {}),
+        ...(typeof impairment.jitter === "string" ? { jitter: impairment.jitter } : {}),
+        ...(numeric("loss") !== undefined ? { loss: numeric("loss") } : {}),
+        ...(numeric("rate") !== undefined ? { rate: numeric("rate") } : {}),
+        ...(numeric("corruption") !== undefined ? { corruption: numeric("corruption") } : {})
+      });
+      vscode.window.showInformationMessage(
+        `Applied link impairment to ${node.name} on ${node.parentName}.`
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to set link impairment: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
     return;
   }
   const cmd = `${containerlabBinaryPath} tools netem set --node ${node.parentName} --interface ${node.name} ${impairmentFlag}`;

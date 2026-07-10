@@ -26,7 +26,9 @@ import {
   type TopologySnapshot
 } from "@srl-labs/clab-ui/session";
 import type { HostRuntimeContainer } from "@srl-labs/clab-ui/host";
-import { nodeFsAdapter } from "./shared/io";
+import { ApiSynchronizedFsAdapter, nodeFsAdapter } from "./shared/io";
+import { getBackendForLocalSource } from "../../backends/manager";
+import { ApiContainerlabBackend } from "../../backends/api/apiContainerlabBackend";
 
 import { formatErrorMessage, log } from "./services/logger";
 import { deploymentStateChecker } from "./services/DeploymentStateChecker";
@@ -83,6 +85,7 @@ export class ReactTopoViewer {
   public currentPanel: vscode.WebviewPanel | undefined;
   private readonly viewType = "reactTopoViewer";
   private topologyHost: TopologyHostCore | undefined;
+  private apiBackend: ApiContainerlabBackend | undefined;
   public context: vscode.ExtensionContext;
   public lastYamlFilePath: string = "";
   public currentLabName: string = "";
@@ -190,19 +193,51 @@ export class ReactTopoViewer {
       panel.webview.postMessage(buildTopologySnapshotMessage(snapshot, "external-change"));
     };
 
+    const handleExternalChange = async () => {
+      await this.synchronizeApiWorkingCopy();
+      return this.topologyHost?.onExternalChange() ?? null;
+    };
     this.watcherManager.setupFileWatcher(
       this.lastYamlFilePath,
       updateController,
-      () => this.topologyHost?.onExternalChange() ?? Promise.resolve(null),
+      handleExternalChange,
       postSnapshot
     );
     this.watcherManager.setupSaveListener(
       this.lastYamlFilePath,
       updateController,
-      () => this.topologyHost?.onExternalChange() ?? Promise.resolve(null),
+      handleExternalChange,
       postSnapshot
     );
     this.watcherManager.setupDockerImagesSubscription(panel);
+  }
+
+  private async synchronizeApiWorkingCopy(): Promise<void> {
+    if (!this.apiBackend || !this.currentLabName || !this.lastYamlFilePath) return;
+    const annotationsPath = `${this.lastYamlFilePath}.annotations.json`;
+    const [yaml, annotationsExists] = await Promise.all([
+      nodeFsAdapter.readFile(this.lastYamlFilePath),
+      nodeFsAdapter.exists(annotationsPath)
+    ]);
+    const annotations = annotationsExists
+      ? await nodeFsAdapter.readFile(annotationsPath)
+      : undefined;
+    await Promise.all([
+      this.apiBackend.writeMaterializedTopologyDocument(
+        this.currentLabName,
+        this.lastYamlFilePath,
+        "yaml",
+        yaml
+      ),
+      annotations === undefined
+        ? Promise.resolve()
+        : this.apiBackend.writeMaterializedTopologyDocument(
+            this.currentLabName,
+            this.lastYamlFilePath,
+            "annotations",
+            annotations
+          )
+    ]);
   }
 
   /**
@@ -224,6 +259,7 @@ export class ReactTopoViewer {
         }
         this.topologyHost?.dispose();
         this.topologyHost = undefined;
+        this.apiBackend = undefined;
         this.runtimeContainers = [];
         this.watcherManager.dispose();
       },
@@ -321,8 +357,13 @@ export class ReactTopoViewer {
     this.runtimeContainers = [];
 
     // The topology is always editable; runtime data attaches when deployed.
+    const owningBackend = getBackendForLocalSource(this.lastYamlFilePath, labName);
+    this.apiBackend = owningBackend instanceof ApiContainerlabBackend ? owningBackend : undefined;
+    const topologyFileSystem = this.apiBackend
+      ? new ApiSynchronizedFsAdapter(nodeFsAdapter, this.apiBackend, labName, this.lastYamlFilePath)
+      : nodeFsAdapter;
     this.topologyHost = new TopologyHostCore({
-      fs: nodeFsAdapter,
+      fs: topologyFileSystem,
       yamlFilePath: this.lastYamlFilePath,
       mode: "edit",
       deploymentState: this.deploymentState,

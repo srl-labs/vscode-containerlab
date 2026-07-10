@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import type { FileSystemAdapter } from "@srl-labs/clab-ui/session";
+import type { ApiContainerlabBackend } from "../../../backends/api/apiContainerlabBackend";
 
 function isErrnoException(value: unknown): value is NodeJS.ErrnoException {
   return value instanceof Error && "code" in value;
@@ -53,3 +54,74 @@ export class NodeFsAdapter implements FileSystemAdapter {
 }
 
 export const nodeFsAdapter = new NodeFsAdapter();
+
+export class ApiSynchronizedFsAdapter implements FileSystemAdapter {
+  private readonly annotationsPath: string;
+
+  constructor(
+    private readonly delegate: FileSystemAdapter,
+    private readonly backend: ApiContainerlabBackend,
+    private readonly labName: string,
+    private readonly yamlPath: string
+  ) {
+    this.annotationsPath = `${yamlPath}.annotations.json`;
+  }
+
+  readFile(filePath: string): Promise<string> {
+    return this.delegate.readFile(filePath);
+  }
+
+  async writeFile(filePath: string, content: string): Promise<void> {
+    await this.delegate.writeFile(filePath, content);
+    if (filePath === this.yamlPath) {
+      await this.backend.writeMaterializedTopologyDocument(
+        this.labName,
+        this.yamlPath,
+        "yaml",
+        content
+      );
+    } else if (filePath === this.annotationsPath) {
+      await this.backend.writeMaterializedTopologyDocument(
+        this.labName,
+        this.yamlPath,
+        "annotations",
+        content
+      );
+    }
+  }
+
+  async unlink(filePath: string): Promise<void> {
+    await this.delegate.unlink(filePath);
+    if (filePath === this.annotationsPath) {
+      await this.backend.writeMaterializedTopologyDocument(
+        this.labName,
+        this.yamlPath,
+        "annotations",
+        "{}"
+      );
+    }
+  }
+
+  async rename(oldPath: string, newPath: string): Promise<void> {
+    await this.delegate.rename(oldPath, newPath);
+    if (newPath === this.yamlPath || newPath === this.annotationsPath) {
+      await this.writeFile(newPath, await this.delegate.readFile(newPath));
+    }
+  }
+
+  exists(filePath: string): Promise<boolean> {
+    return this.delegate.exists(filePath);
+  }
+
+  dirname(filePath: string): string {
+    return this.delegate.dirname(filePath);
+  }
+
+  basename(filePath: string): string {
+    return this.delegate.basename(filePath);
+  }
+
+  join(...segments: string[]): string {
+    return this.delegate.join(...segments);
+  }
+}

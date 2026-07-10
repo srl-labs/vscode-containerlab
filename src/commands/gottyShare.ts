@@ -11,6 +11,7 @@ import { refreshGottySessions, refreshRunningLabsProvider } from "../services/se
 import { runCommand } from "../utils/utils";
 
 import { getHostname } from "./capture";
+import { resolveApiLabTarget } from "./backendGuards";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -79,6 +80,35 @@ async function gottyStart(action: "attach" | "reattach", node: ClabLabTreeNode |
     return;
   }
   const labName = node.name;
+  const apiTarget = resolveApiLabTarget(node);
+  if (apiTarget) {
+    try {
+      const port = vscode.workspace
+        .getConfiguration("containerlab")
+        .get<number>("gotty.port", 8080);
+      const response = await apiTarget.backend.operations.runShareAction(
+        "gotty",
+        apiTarget.labName,
+        action,
+        port
+      );
+      if (response.link) {
+        await vscode.env.clipboard.writeText(response.link);
+        const choice = await vscode.window.showInformationMessage(
+          "GoTTY link copied to clipboard.",
+          "Open Link"
+        );
+        if (choice === "Open Link") await vscode.env.openExternal(vscode.Uri.parse(response.link));
+      } else {
+        vscode.window.showInformationMessage(response.message || `GoTTY ${action} completed.`);
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to ${action} GoTTY: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+    return;
+  }
   try {
     const port = vscode.workspace.getConfiguration("containerlab").get<number>("gotty.port", 8080);
     const command = `${containerlabBinaryPath} tools gotty ${action} -l ${labName} --port ${port}`;
@@ -120,6 +150,22 @@ export async function gottyDetach(node: ClabLabTreeNode | undefined) {
     return;
   }
   const labName = node.name;
+  const apiTarget = resolveApiLabTarget(node);
+  if (apiTarget) {
+    try {
+      const response = await apiTarget.backend.operations.runShareAction(
+        "gotty",
+        apiTarget.labName,
+        "detach"
+      );
+      vscode.window.showInformationMessage(response.message || "GoTTY session detached");
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to detach GoTTY: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+    return;
+  }
   try {
     const command = `${containerlabBinaryPath} tools gotty detach -l ${labName}`;
     await runCommand(command, "GoTTY detach", outputChannel, false, false);

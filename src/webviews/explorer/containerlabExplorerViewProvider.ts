@@ -13,6 +13,9 @@ import type {
   LocalLabTreeDataProvider,
   RunningLabTreeDataProvider
 } from "../../treeView";
+import type { ApiEndpointManagerState } from "../../apiEndpoints/protocol";
+import { WorkspaceExplorerTreeDataProvider } from "../../treeView/workspaceExplorerProvider";
+import { ApiWorkspaceFileTreeDataProvider } from "../../treeView/apiWorkspaceFileProvider";
 
 import {
   type ExplorerCommandMetadata,
@@ -32,6 +35,7 @@ interface FilterableTreeProvider {
 }
 
 export interface ContainerlabExplorerProviderArgs {
+  getEndpointState: () => Promise<ApiEndpointManagerState>;
   runningProvider: RunningLabTreeDataProvider;
   localProvider: LocalLabTreeDataProvider;
   helpProvider: HelpFeedbackProvider;
@@ -45,6 +49,8 @@ export class ContainerlabExplorerViewProvider
 
   private readonly context: vscode.ExtensionContext;
   private readonly providers: ContainerlabExplorerProviderArgs;
+  private readonly workspaceProvider: WorkspaceExplorerTreeDataProvider;
+  private readonly fileProvider: ApiWorkspaceFileTreeDataProvider;
   private readonly filterableProviders: FilterableTreeProvider[];
   private readonly options: ExplorerSnapshotOptions & {
     commandMetadata?: ExplorerCommandMetadata;
@@ -61,11 +67,20 @@ export class ContainerlabExplorerViewProvider
   constructor(context: vscode.ExtensionContext, args: ContainerlabExplorerProviderArgs) {
     this.context = context;
     this.providers = args;
+    this.workspaceProvider = new WorkspaceExplorerTreeDataProvider({
+      getEndpointState: args.getEndpointState,
+      localProvider: args.localProvider,
+      runningProvider: args.runningProvider
+    });
+    this.fileProvider = new ApiWorkspaceFileTreeDataProvider();
+    const initialUiState = context.workspaceState.get<ExplorerUiState>(UI_STATE_KEY, {});
     this.options = {
       hideNonOwnedLabs: hideNonOwnedLabsState,
-      isLocalCaptureAllowed: args.isLocalCaptureAllowed
+      isLocalCaptureAllowed: args.isLocalCaptureAllowed,
+      sectionOrder: ["runningLabs", "fileExplorer", "helpFeedback"],
+      expandedBySection: initialUiState.expandedBySection
     };
-    this.filterableProviders = [args.runningProvider, args.localProvider];
+    this.filterableProviders = [this.workspaceProvider, this.fileProvider];
     const savedFilter = context.workspaceState.get<string>(FILTER_STATE_KEY, "");
     this.filterText = savedFilter.trim();
     if (this.filterText.length > 0) {
@@ -75,9 +90,15 @@ export class ContainerlabExplorerViewProvider
     }
     this.explorerController = createExplorerController({
       initialFilterText: this.filterText,
-      initialUiState: context.workspaceState.get<ExplorerUiState>(UI_STATE_KEY, {}),
+      initialUiState,
       debounceMs: REFRESH_DEBOUNCE_MS,
-      buildProviders: async () => this.providers as ExplorerSnapshotProviders,
+      buildProviders: async () =>
+        ({
+          runningProvider: this.workspaceProvider,
+          localProvider: this.providers.localProvider,
+          fileProvider: this.fileProvider,
+          helpProvider: this.providers.helpProvider
+        }) as ExplorerSnapshotProviders,
       getSnapshotOptions: async () => {
         this.options.hideNonOwnedLabs = hideNonOwnedLabsState;
         this.options.commandMetadata = await getExplorerCommandMetadata();
@@ -103,13 +124,33 @@ export class ContainerlabExplorerViewProvider
         );
       },
       onUiStateChanged: async (state) => {
+        this.options.expandedBySection = state.expandedBySection;
         await this.context.workspaceState.update(UI_STATE_KEY, state);
       },
+      refreshOnUiStateChanged: (previous, next) =>
+        JSON.stringify(previous.expandedBySection?.fileExplorer ?? []) !==
+        JSON.stringify(next.expandedBySection?.fileExplorer ?? []),
       publish: async (message) => {
         if (!this.webviewView) {
           return;
         }
-        await this.webviewView.webview.postMessage(message);
+        const outgoing =
+          message.command === "snapshot"
+            ? {
+                ...message,
+                sections: message.sections.map((section) =>
+                  section.id === "runningLabs"
+                    ? {
+                        ...section,
+                        label: "Backends",
+                        count: section.nodes.length,
+                        appearance: "bareTree" as const
+                      }
+                    : section
+                )
+              }
+            : message;
+        await this.webviewView.webview.postMessage(outgoing);
       }
     });
 
@@ -124,8 +165,8 @@ export class ContainerlabExplorerViewProvider
 
   private registerDataListeners(): void {
     const allProviders: Array<{ onDidChangeTreeData: vscode.Event<unknown> }> = [
-      this.providers.runningProvider,
-      this.providers.localProvider,
+      this.workspaceProvider,
+      this.fileProvider,
       this.providers.helpProvider
     ];
     for (const provider of allProviders) {
@@ -210,6 +251,8 @@ export class ContainerlabExplorerViewProvider
 
   public dispose(): void {
     this.explorerController.dispose();
+    this.workspaceProvider.dispose();
+    this.fileProvider.dispose();
     this.visibilityEmitter.dispose();
     for (const disposable of this.disposables) {
       disposable.dispose();

@@ -75,4 +75,26 @@ describe("addLabFolderToWorkspace command", () => {
     const addSpy = vscodeStub.workspace.updateWorkspaceFolders as sinon.SinonSpy;
     expect(addSpy.notCalled).to.be.true;
   });
+
+  it("does not add a materialized API cache to the workspace", async () => {
+    await addLabFolderToWorkspace({
+      label: "vlan.clab.yml",
+      labPath: { absolute: "/tmp/api-topologies/demo/vlan.clab.yml" },
+      labRef: {
+        backendId: "api:https://api.example.test#alice",
+        labName: "demo",
+        localPath: "/tmp/api-topologies/demo/vlan.clab.yml",
+        remotePath: "vlan.clab.yml"
+      }
+    } as any);
+
+    expect((vscodeStub.workspace.updateWorkspaceFolders as sinon.SinonSpy).notCalled).to.equal(
+      true
+    );
+    expect(
+      (vscodeStub.window.showInformationMessage as sinon.SinonSpy).calledWithMatch(
+        "This lab is managed by clab-api-server"
+      )
+    ).to.equal(true);
+  });
 });

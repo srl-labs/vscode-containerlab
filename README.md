@@ -53,16 +53,21 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
 
 ## Requirements
 
+The following requirements apply only to local containerlab integration:
+
 - **containerlab** must be installed. The extension will offer to install it if not found.
 - You must be in the `clab_admins` (and `docker` group if you're using Docker). Podman is also supported for runtime features.
 - (Optional) **Edgeshark** for packet capture features - can be installed directly from the extension using the "Install Edgeshark" command.
 
-  ### Edgeshark Integration
-  - **Install Edgeshark**: installs Edgeshark using docker compose
-  - **Uninstall Edgeshark**: removes Edgeshark containers
-  - **Configure session hostname**: set hostname for remote connections (packet capture)
+A connected `clab-api-server` only requires network access to that server. Local and API-managed labs can be used in the same VS Code window; containerlab, a local container runtime, and Linux group membership are not required for the API-managed labs.
 
-  - If you want to live capture traffic using Wireshark, please [download the cshargextcap plugin](https://github.com/siemens/cshargextcap/releases) for the OS/distribution and install it.
+### Edgeshark Integration
+
+- **Install Edgeshark**: installs Edgeshark using docker compose
+- **Uninstall Edgeshark**: removes Edgeshark containers
+- **Configure session hostname**: set hostname for remote connections (packet capture)
+
+- If you want to live capture traffic using Wireshark, please [download the cshargextcap plugin](https://github.com/siemens/cshargextcap/releases) for the OS/distribution and install it.
 
 Note: The extension will automatically prompt to add your user to the `clab_admins` group during setup to enable running containerlab commands without sudo.
 
@@ -89,8 +94,30 @@ Configure the extension behavior through VS Code settings (`containerlab.*`):
 | `showWelcomePage`    | boolean | `true`  | Show welcome page on activation                                       |
 | `skipUpdateCheck`    | boolean | `false` | Skip extension update check                                           |
 | `skipCleanupWarning` | boolean | `false` | Skip warning popups for cleanup commands                              |
+| `api.tls.verify`     | boolean | `true`  | Verify server TLS certificates                                        |
+| `api.tls.caPath`     | string  | `""`    | Optional PEM CA bundle for a private CA                               |
 
 The Containerlab Explorer listens to the containerlab event stream, so running labs update live without manual refresh intervals.
+
+### clab-api-server endpoints
+
+Run **Containerlab: Manage clab-api-server endpoints** from the command palette, or use the server button in the Containerlab Explorer title bar. The manager can add, reconnect, rename, connect, and remove saved endpoint profiles. Endpoint selection is profile state, not workspace configuration, so connecting a server never rewrites VS Code settings or disables local mode.
+
+The Explorer presents **Local Workspace** and every saved API endpoint as peer roots. Each root has independent **Running** and **Undeployed** groups, so same-name labs on different machines remain distinct and local and API operations can be used in parallel. Disconnected profiles remain visible and can be reconnected in place. The API File Explorer provides lazy access to the selected server's workspace; text edits are synchronized back through the authenticated API.
+
+Passwords are sent from the endpoint-manager webview to the extension host only for the requested login and are never persisted. Returned JWTs are scoped by API origin and Linux username in VS Code SecretStorage; non-secret profile metadata is stored in VS Code global state. The legacy **Containerlab: Sign in to clab-api-server** command opens the same manager.
+
+API-owned Explorer resources route through their owning endpoint for lifecycle and node actions, topology editing, logs, authenticated shell/SSH/telnet sessions, browser ports, save, inspect, fcli, draw.io, sharing, images, packet capture, EdgeShark, and network impairments. The extension reads the authenticated `/api/v1/session` identity and server-advertised `/api/v1/capabilities`; older servers receive a conservative compatibility fallback. A `401` clears only the JWT scoped to that server and username and offers sign-in again.
+
+The first deploy (including **Apply** on an undeployed topology) streams the directory containing the selected topology as a tar archive after a modal confirmation. `.git`, `node_modules`, `dist`, and `out` directories and all symlinks are excluded; everything else below that directory is included, up to 10,000 entries and 256 MiB. Files are reopened without following symlinks and must still match the confirmed inventory. The confirmation shows the upload root and explicitly lists sensitive-looking files such as `.env`, private keys, and certificates.
+
+Archive deploy and reconfigure use a staged, atomic filesystem swap on the server; the previous workspace is restored when containerlab returns a deployment error. This is not a crash-recovery journal. What is still missing is a standalone atomic workspace-sync contract with explicit Apply/Redeploy semantics. After initial import, Apply/Redeploy can therefore synchronize YAML-only labs, but is deliberately blocked when sibling startup configs, binds, icons, or other deploy dependencies exist. The clab-ui `<topology>.annotations.json` sidecar is not treated as a containerlab dependency. This prevents a successful-looking YAML update from drifting from the uploaded workspace bundle.
+
+The local working-copy mapping used by TopoViewer is persisted by API origin, account, and lab name. YAML and annotations are synchronized through the API while the server remains the authoritative topology store. Local CLI-only `deploy.extraArgs` and `destroy.extraArgs` are not forwarded to the API.
+
+TLS verification is enabled by default. The extension explicitly combines Node's bundled roots with the operating-system trust store, so a separate `--use-system-ca` flag is not required. When the default API server presents its self-signed certificate, the endpoint manager shows its origin, identity, validity, and SHA-256 fingerprint before offering **Trust and Connect**. Approval pins that exact leaf certificate to the endpoint in VS Code global state; it does not modify the operating-system trust store, and a later certificate change is blocked until the replacement is explicitly approved. No password or stored JWT is sent before this check completes. For a managed private CA, `containerlab.api.tls.caPath` remains available and is added to the normal roots rather than replacing them. Disabling `containerlab.api.tls.verify` is intended only for isolated development systems and requires a modal confirmation before either a password or stored JWT is used. TLS policy remains machine-scoped and workspace overrides are rejected. Endpoint origin, account, and cleartext approval live in the explicitly created endpoint profile instead of settings. The API URL must be a credential-free HTTP(S) origin without a path, query, or fragment. Cleartext HTTP is accepted automatically only for loopback; a remote HTTP login requires a modal warning and stores that approval only on the endpoint profile.
+
+The TopoViewer bootstrap already sends transport-neutral host capability data. The extension-host guards remain authoritative while consumers use `@srl-labs/clab-ui` 0.3.0; publish clab-ui 0.3.1 capability support before updating this consumer dependency.
 
 ### 🎯 Command Options
 

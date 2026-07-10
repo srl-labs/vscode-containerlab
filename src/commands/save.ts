@@ -7,12 +7,27 @@ import type { ClabContainerTreeNode } from "../treeView/common";
 import { ClabLabTreeNode } from "../treeView/common";
 
 import { ClabCommand } from "./clabCommand";
+import { resolveApiLabTarget, resolveApiNodeTarget } from "./backendGuards";
 
 /**
  * Save the entire lab configuration.
  * Executes: containerlab -t <labPath> save
  */
 export async function saveLab(node: ClabLabTreeNode) {
+  const apiTarget = resolveApiLabTarget(node);
+  if (apiTarget) {
+    try {
+      const result = await apiTarget.backend.operations.saveLabConfig(apiTarget.labName);
+      vscode.window.showInformationMessage(
+        result.message || `Saved configs for ${apiTarget.labName}.`
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Save failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+    return;
+  }
   const labPath = node.labPath.absolute;
   if (labPath.length === 0) {
     vscode.window.showErrorMessage("No labPath found for the lab.");
@@ -30,6 +45,23 @@ export async function saveLab(node: ClabLabTreeNode) {
  * Executes: containerlab -t <labPath> save --node-filter <shortNodeName>
  */
 export async function saveNode(node: ClabContainerTreeNode) {
+  const apiTarget = resolveApiNodeTarget(node);
+  if (apiTarget) {
+    try {
+      const result = await apiTarget.backend.operations.saveLabConfig(
+        apiTarget.labName,
+        apiTarget.nodeName
+      );
+      vscode.window.showInformationMessage(
+        result.message || `Saved config for ${apiTarget.nodeName}.`
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Save failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+    return;
+  }
   if (node.labPath.absolute.length === 0) {
     vscode.window.showErrorMessage("Error: Could not determine lab path for this node.");
     return;

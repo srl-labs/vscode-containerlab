@@ -54,7 +54,6 @@ export {
   runCommand,
   installContainerlab,
   checkAndUpdateClabIfNeeded,
-  getSelectedLabNode,
   sanitize
 } from "./utils";
 

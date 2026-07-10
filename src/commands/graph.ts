@@ -1,15 +1,47 @@
 import * as fs from "fs";
 import * as path from "path";
+import * as os from "os";
 
 import * as vscode from "vscode";
 
 import type { ClabLabTreeNode } from "../treeView/common";
 import type { ReactTopoViewer } from "../reactTopoViewer";
 import { ReactTopoViewerProvider } from "../reactTopoViewer";
-import { getSelectedLabNode } from "../utils/utils";
+import { getSelectedLabNode } from "./selectedLabNode";
 import { MSG_LAB_LIFECYCLE_LOG, MSG_LAB_LIFECYCLE_STATUS } from "@srl-labs/clab-ui/session";
 
 import { ClabCommand } from "./clabCommand";
+import { editableLabPath, resolveApiLabTarget } from "./backendGuards";
+
+async function runApiDrawio(
+  node: ClabLabTreeNode,
+  layout: "horizontal" | "vertical" | "interactive"
+): Promise<boolean> {
+  const target = resolveApiLabTarget(node);
+  if (!target) return false;
+  try {
+    const theme = vscode.workspace
+      .getConfiguration("containerlab")
+      .get<string>("drawioDefaultTheme", "nokia_modern");
+    const response = await target.backend.operations.generateDrawioGraph(
+      target.labName,
+      layout,
+      theme
+    );
+    const baseDirectory = node.labRef.localPath
+      ? path.dirname(node.labRef.localPath)
+      : path.join(os.tmpdir(), "vscode-containerlab-drawio");
+    await fs.promises.mkdir(baseDirectory, { recursive: true });
+    const outputPath = path.join(baseDirectory, path.basename(response.fileName));
+    await fs.promises.writeFile(outputPath, response.content, "utf8");
+    await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(outputPath));
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `API draw.io generation failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+  return true;
+}
 
 /**
  * Core routine for generating draw.io graphs.
@@ -22,6 +54,8 @@ async function runGraphDrawIO(
   if (!node) {
     return;
   }
+
+  if (await runApiDrawio(node, layout)) return;
 
   const graphCmd = new ClabCommand("graph", node);
 
@@ -71,6 +105,8 @@ export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
     return;
   }
 
+  if (await runApiDrawio(node, "interactive")) return;
+
   const graphCmd = new ClabCommand("graph", node, undefined, true, "Containerlab Graph");
 
   void graphCmd.run(["--drawio", "--drawio-args", `"-I"`]);
@@ -97,9 +133,9 @@ type TopoViewerLifecycleHandlers = {
   onOutputLine: (line: string, stream: LifecycleCommandStream) => void;
 };
 
-function resolveLabPath(node?: ClabLabTreeNode): string | undefined {
-  if (node !== undefined && node.labPath.absolute.length > 0) {
-    return node.labPath.absolute;
+async function resolveLabPath(node?: ClabLabTreeNode): Promise<string | undefined> {
+  if (node !== undefined) {
+    return await editableLabPath(node, "Open TopoViewer");
   }
 
   const editor = vscode.window.activeTextEditor;
@@ -116,7 +152,7 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
   // Get node if not provided
   node = await getSelectedLabNode(node);
 
-  const labPath = resolveLabPath(node);
+  const labPath = await resolveLabPath(node);
   if (labPath === undefined) {
     return;
   }

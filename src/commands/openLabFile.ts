@@ -2,14 +2,16 @@ import * as vscode from "vscode";
 
 import type { ClabLabTreeNode } from "../treeView/common";
 
-export function openLabFile(node?: ClabLabTreeNode) {
+import { editableLabPath } from "./backendGuards";
+
+export async function openLabFile(node?: ClabLabTreeNode) {
   if (node === undefined) {
     vscode.window.showErrorMessage("No lab node selected.");
     return;
   }
 
-  const labPath = node.labPath.absolute;
-  if (labPath.length === 0) {
+  const labPath = await editableLabPath(node, "Open topology");
+  if (!labPath) {
     vscode.window.showErrorMessage("No labPath found.");
     return;
   }

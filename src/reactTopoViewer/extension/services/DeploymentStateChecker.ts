@@ -4,6 +4,8 @@
  */
 
 import * as inspector from "../../../treeView/inspector";
+import { getBackendById } from "../../../backends/manager";
+import { labRefMatchesLocalSource } from "../../../backends/labIdentity";
 import type { DeploymentState } from "@srl-labs/clab-ui/session";
 
 import { formatErrorMessage, log } from "./logger";
@@ -47,12 +49,8 @@ export class DeploymentStateChecker {
       return "unknown";
     }
 
-    if (this.labExistsByName(labName)) {
-      return "deployed";
-    }
-
     if (topoFilePath !== undefined && topoFilePath.length > 0) {
-      const matchedLabName = this.findLabByTopoFile(topoFilePath);
+      const matchedLabName = this.findLabByLocalSource(labName, topoFilePath);
       if (matchedLabName !== null && matchedLabName.length > 0) {
         if (updateLabName !== undefined && matchedLabName !== labName) {
           log.info(
@@ -62,9 +60,10 @@ export class DeploymentStateChecker {
         }
         return "deployed";
       }
+      return "undeployed";
     }
 
-    return "undeployed";
+    return this.labExistsByName(labName) ? "deployed" : "undeployed";
   }
 
   /**
@@ -75,27 +74,35 @@ export class DeploymentStateChecker {
     if (inspectData === undefined) {
       return false;
     }
-    return labName in inspectData;
+    return Object.values(inspectData).some(
+      (containers) => containers[0]?.Labels.containerlab === labName
+    );
   }
 
   /**
    * Find a lab by its topo-file path and return the lab name if found.
    */
-  private findLabByTopoFile(topoFilePath: string): string | null {
+  private findLabByLocalSource(expectedLabName: string, topoFilePath: string): string | null {
     const inspectData = inspector.rawInspectData;
     if (inspectData === undefined) {
       return null;
     }
 
-    const normalizedYamlPath = topoFilePath.replace(/\\/g, "/");
-
-    for (const [deployedLabName, labData] of Object.entries(inspectData)) {
-      const topo: unknown = Reflect.get(labData, "topo-file");
-      if (!hasNonEmptyString(topo)) {
-        continue;
+    for (const labData of Object.values(inspectData)) {
+      const deployedLabName = labData[0]?.Labels.containerlab ?? "";
+      const backendId = labData[0]?.Labels["clab-backend-id"] ?? "local";
+      const backend = getBackendById(backendId);
+      if (backend === undefined) continue;
+      const arrayTopology = labData[0]?.Labels["clab-topo-file"];
+      const legacyTopology: unknown = Reflect.get(labData, "topo-file");
+      let runtimePath: string | undefined;
+      if (hasNonEmptyString(arrayTopology)) {
+        runtimePath = arrayTopology;
+      } else if (hasNonEmptyString(legacyTopology)) {
+        runtimePath = legacyTopology;
       }
-      const normalizedTopoFile = topo.replace(/\\/g, "/");
-      if (normalizedTopoFile === normalizedYamlPath) {
+      const ref = backend.resolveLabRef(deployedLabName, runtimePath);
+      if (labRefMatchesLocalSource(ref, backendId, topoFilePath, expectedLabName)) {
         return deployedLabName;
       }
     }

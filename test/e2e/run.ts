@@ -26,6 +26,7 @@ function writeSmokeTopology(workspacePath: string): string {
 async function main(): Promise<void> {
   const extensionDevelopmentPath = path.resolve(__dirname, "../..");
   const extensionTestsPath = path.resolve(__dirname, "suite");
+  const configuredExecutable = process.env.VSCODE_TEST_EXECUTABLE_PATH?.trim();
   const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "vscode-containerlab-e2e-"));
   const topologyPath = writeSmokeTopology(workspacePath);
 
@@ -36,6 +37,9 @@ async function main(): Promise<void> {
   await runTests({
     extensionDevelopmentPath,
     extensionTestsPath,
+    ...(configuredExecutable !== undefined && configuredExecutable.length > 0
+      ? { vscodeExecutablePath: path.resolve(configuredExecutable) }
+      : {}),
     launchArgs: [
       workspacePath,
       "--disable-extensions",

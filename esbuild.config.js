@@ -9,14 +9,13 @@ const useLocalClabUi =
   process.env.CLAB_UI_SOURCE === "local" &&
   fs.existsSync(path.join(localClabUiDistRoot, "index.js"));
 const clabUiEntry = (relativePath, packageSubpath) =>
-  useLocalClabUi
-    ? path.join(localClabUiDistRoot, relativePath)
-    : require.resolve(packageSubpath);
+  useLocalClabUi ? path.join(localClabUiDistRoot, relativePath) : require.resolve(packageSubpath);
 
 const reactTopoViewerEntry = path.join(__dirname, "src/webviews/reactTopoViewer/entry.tsx");
 const explorerWebviewEntry = path.join(__dirname, "src/webviews/explorer/entry.tsx");
 const inspectWebviewEntry = path.join(__dirname, "src/webviews/inspect/entry.tsx");
 const imageManagerWebviewEntry = path.join(__dirname, "src/webviews/imageManager/entry.tsx");
+const apiEndpointManagerWebviewEntry = path.join(__dirname, "src/webviews/apiEndpoints/entry.tsx");
 const welcomeWebviewEntry = path.join(__dirname, "src/webviews/welcome/entry.tsx");
 const nodeImpairmentsWebviewEntry = path.join(__dirname, "src/webviews/nodeImpairments/entry.tsx");
 const wiresharkVncWebviewEntry = path.join(__dirname, "src/webviews/wiresharkVnc/entry.tsx");
@@ -103,10 +102,7 @@ const localClabUiEntrypoints = new Map([
   ["@srl-labs/clab-ui/session", path.join(localClabUiDistRoot, "session/index.js")],
   ["@srl-labs/clab-ui/theme", path.join(localClabUiDistRoot, "theme/index.js")],
   ["@srl-labs/clab-ui/explorer", path.join(localClabUiDistRoot, "explorer/index.js")],
-  [
-    "@srl-labs/clab-ui/image-manager",
-    path.join(localClabUiDistRoot, "image-manager/index.js")
-  ],
+  ["@srl-labs/clab-ui/image-manager", path.join(localClabUiDistRoot, "image-manager/index.js")],
   [
     "@srl-labs/clab-ui/image-manager/catalog",
     path.join(localClabUiDistRoot, "image-manager/catalog.js")
@@ -117,18 +113,9 @@ const localClabUiEntrypoints = new Map([
     "@srl-labs/clab-ui/node-impairments",
     path.join(localClabUiDistRoot, "node-impairments/index.js")
   ],
-  [
-    "@srl-labs/clab-ui/wireshark-vnc",
-    path.join(localClabUiDistRoot, "wireshark-vnc/index.js")
-  ],
-  [
-    "@srl-labs/clab-ui/styles/global.css",
-    path.join(localClabUiDistRoot, "styles/global.css")
-  ],
-  [
-    "@srl-labs/clab-ui/monaco-assets.json",
-    path.join(localClabUiDistRoot, "monaco-assets.json")
-  ]
+  ["@srl-labs/clab-ui/wireshark-vnc", path.join(localClabUiDistRoot, "wireshark-vnc/index.js")],
+  ["@srl-labs/clab-ui/styles/global.css", path.join(localClabUiDistRoot, "styles/global.css")],
+  ["@srl-labs/clab-ui/monaco-assets.json", path.join(localClabUiDistRoot, "monaco-assets.json")]
 ]);
 
 const clabUiLocalAliasPlugin = {
@@ -296,11 +283,7 @@ async function build() {
     target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outdir: "dist",
     chunkNames: "topoviewer-chunks/[name]-[hash]",
-    plugins: [
-      ignoreCssPlugin,
-      clabUiLocalAliasPlugin,
-      reactSingletonAliasPlugin
-    ],
+    plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
     jsx: "automatic",
     loader: browserAssetLoaders,
     define: {
@@ -315,11 +298,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/containerlabExplorerView.js",
-    plugins: [
-      ignoreCssPlugin,
-      clabUiLocalAliasPlugin,
-      reactSingletonAliasPlugin
-    ],
+    plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
     jsx: "automatic",
     loader: browserAssetLoaders,
     define: {
@@ -334,11 +313,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/welcomePageWebview.js",
-    plugins: [
-      ignoreCssPlugin,
-      clabUiLocalAliasPlugin,
-      reactSingletonAliasPlugin
-    ],
+    plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
     jsx: "automatic",
     loader: browserAssetLoaders,
     define: {
@@ -353,11 +328,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/inspectWebview.js",
-    plugins: [
-      ignoreCssPlugin,
-      clabUiLocalAliasPlugin,
-      reactSingletonAliasPlugin
-    ],
+    plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
     jsx: "automatic",
     loader: browserAssetLoaders,
     define: {
@@ -372,11 +343,22 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/imageManagerWebview.js",
-    plugins: [
-      ignoreCssPlugin,
-      clabUiLocalAliasPlugin,
-      reactSingletonAliasPlugin
-    ],
+    plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
+    jsx: "automatic",
+    loader: browserAssetLoaders,
+    define: {
+      "process.env.NODE_ENV": isDev ? '"development"' : '"production"'
+    }
+  });
+
+  const apiEndpointManagerWebviewBuild = esbuild.build({
+    ...commonOptions,
+    entryPoints: [apiEndpointManagerWebviewEntry],
+    platform: "browser",
+    format: "iife",
+    target: ["es2020", "chrome90", "firefox90", "safari14.1"],
+    outfile: "dist/apiEndpointManagerWebview.js",
+    plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
     jsx: "automatic",
     loader: browserAssetLoaders,
     define: {
@@ -391,11 +373,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/nodeImpairmentsWebview.js",
-    plugins: [
-      ignoreCssPlugin,
-      clabUiLocalAliasPlugin,
-      reactSingletonAliasPlugin
-    ],
+    plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
     jsx: "automatic",
     loader: browserAssetLoaders,
     define: {
@@ -410,11 +388,7 @@ async function build() {
     format: "iife",
     target: ["es2020", "chrome90", "firefox90", "safari14.1"],
     outfile: "dist/wiresharkVncWebview.js",
-    plugins: [
-      ignoreCssPlugin,
-      clabUiLocalAliasPlugin,
-      reactSingletonAliasPlugin
-    ],
+    plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
     jsx: "automatic",
     loader: browserAssetLoaders,
     define: {
@@ -441,6 +415,7 @@ async function build() {
     welcomeWebviewBuild,
     inspectWebviewBuild,
     imageManagerWebviewBuild,
+    apiEndpointManagerWebviewBuild,
     nodeImpairmentsWebviewBuild,
     wiresharkVncWebviewBuild,
     monacoWorkersBuild,
@@ -475,11 +450,7 @@ async function build() {
       target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outdir: "dist",
       chunkNames: "topoviewer-chunks/[name]-[hash]",
-      plugins: [
-        ignoreCssPlugin,
-        clabUiLocalAliasPlugin,
-        reactSingletonAliasPlugin
-      ],
+      plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
       jsx: "automatic",
       loader: browserAssetLoaders
     });
@@ -491,11 +462,7 @@ async function build() {
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/containerlabExplorerView.js",
-      plugins: [
-        ignoreCssPlugin,
-        clabUiLocalAliasPlugin,
-        reactSingletonAliasPlugin
-      ],
+      plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
       jsx: "automatic",
       loader: browserAssetLoaders
     });
@@ -507,11 +474,7 @@ async function build() {
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/welcomePageWebview.js",
-      plugins: [
-        ignoreCssPlugin,
-        clabUiLocalAliasPlugin,
-        reactSingletonAliasPlugin
-      ],
+      plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
       jsx: "automatic",
       loader: browserAssetLoaders
     });
@@ -523,11 +486,7 @@ async function build() {
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/inspectWebview.js",
-      plugins: [
-        ignoreCssPlugin,
-        clabUiLocalAliasPlugin,
-        reactSingletonAliasPlugin
-      ],
+      plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
       jsx: "automatic",
       loader: browserAssetLoaders
     });
@@ -539,11 +498,19 @@ async function build() {
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/imageManagerWebview.js",
-      plugins: [
-        ignoreCssPlugin,
-        clabUiLocalAliasPlugin,
-        reactSingletonAliasPlugin
-      ],
+      plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
+      jsx: "automatic",
+      loader: browserAssetLoaders
+    });
+
+    const apiEndpointManagerWebCtx = await esbuild.context({
+      ...commonOptions,
+      entryPoints: [apiEndpointManagerWebviewEntry],
+      platform: "browser",
+      format: "iife",
+      target: ["es2020", "chrome90", "firefox90", "safari14.1"],
+      outfile: "dist/apiEndpointManagerWebview.js",
+      plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
       jsx: "automatic",
       loader: browserAssetLoaders
     });
@@ -555,11 +522,7 @@ async function build() {
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/nodeImpairmentsWebview.js",
-      plugins: [
-        ignoreCssPlugin,
-        clabUiLocalAliasPlugin,
-        reactSingletonAliasPlugin
-      ],
+      plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
       jsx: "automatic",
       loader: browserAssetLoaders
     });
@@ -571,11 +534,7 @@ async function build() {
       format: "iife",
       target: ["es2020", "chrome90", "firefox90", "safari14.1"],
       outfile: "dist/wiresharkVncWebview.js",
-      plugins: [
-        ignoreCssPlugin,
-        clabUiLocalAliasPlugin,
-        reactSingletonAliasPlugin
-      ],
+      plugins: [ignoreCssPlugin, clabUiLocalAliasPlugin, reactSingletonAliasPlugin],
       jsx: "automatic",
       loader: browserAssetLoaders
     });
@@ -597,6 +556,7 @@ async function build() {
       welcomeWebCtx.watch(),
       inspectWebCtx.watch(),
       imageManagerWebCtx.watch(),
+      apiEndpointManagerWebCtx.watch(),
       nodeImpairmentsWebCtx.watch(),
       wiresharkVncWebCtx.watch(),
       monacoWorkersCtx.watch()

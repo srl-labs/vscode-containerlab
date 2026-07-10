@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 
 import { outputChannel, dockerClient } from "../globals";
 import type { ClabContainerTreeNode } from "../treeView/common";
+import { resolveApiNodeTarget } from "./backendGuards";
 
 interface PortMapping {
   containerPort: string;
@@ -15,6 +16,42 @@ interface PortMapping {
  * If multiple ports are exposed, presents a quick pick to select which one.
  */
 export async function openBrowser(node: ClabContainerTreeNode) {
+  const apiTarget = resolveApiNodeTarget(node);
+  if (apiTarget) {
+    try {
+      const response = await apiTarget.backend.operations.getNodeBrowserPorts(
+        apiTarget.labName,
+        apiTarget.nodeName
+      );
+      if (response.ports.length === 0) {
+        vscode.window.showInformationMessage(`No exposed ports found for ${apiTarget.nodeName}.`);
+        return;
+      }
+      const selected =
+        response.ports.length === 1
+          ? response.ports[0]
+          : (
+              await vscode.window.showQuickPick(
+                response.ports.map((port) => ({
+                  label: `${port.hostPort}:${port.containerPort}/${port.protocol ?? "tcp"}`,
+                  description: port.description ?? "",
+                  port
+                })),
+                { placeHolder: "Select a port to open in browser" }
+              )
+            )?.port;
+      if (!selected) return;
+      const endpointUrl = new URL(apiTarget.backend.getConnectionInfo().url);
+      const protocol = selected.containerPort === 443 ? "https:" : "http:";
+      const url = `${protocol}//${endpointUrl.hostname}:${selected.hostPort}`;
+      await vscode.env.openExternal(vscode.Uri.parse(url));
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Could not load API browser ports: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+    return;
+  }
   const containerId = resolveContainerId(node);
   if (containerId === undefined || containerId.length === 0) {
     return;

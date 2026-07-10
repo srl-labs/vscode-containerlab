@@ -12,6 +12,8 @@ import {
   flattenContainers
 } from "../../../treeView/common";
 import { runningLabsProvider } from "../../../globals";
+import { getBackendForLocalSource, getBackendForResource } from "../../../backends/manager";
+import { labRefMatchesLocalSource } from "../../../backends/labIdentity";
 import type { EndpointResult } from "@srl-labs/clab-ui/session";
 
 import { formatErrorMessage, log } from "./logger";
@@ -37,7 +39,17 @@ function isClabLabTreeNode(value: unknown): value is ClabLabTreeNode {
     return false;
   }
   const labPathRecord = asRecord(labPath);
-  return typeof labPathRecord.absolute === "string" && labPathRecord.absolute.length > 0;
+  return typeof labPathRecord.absolute === "string";
+}
+
+function findLabByLocalSource(
+  labsData: Record<string, unknown>,
+  yamlFilePath: string
+): ClabLabTreeNode | undefined {
+  return Object.values(labsData).find((lab): lab is ClabLabTreeNode => {
+    if (!isClabLabTreeNode(lab)) return false;
+    return labRefMatchesLocalSource(lab.labRef, lab.labRef.backendId, yamlFilePath);
+  });
 }
 
 function labelToString(label: vscode.TreeItemLabel | string | undefined): string {
@@ -58,6 +70,7 @@ function createDefaultContainerNode(nodeName: string): ClabContainerTreeNode {
     state: "",
     kind: "",
     image: "",
+    backendId: "local",
     interfaces: [],
     labPath: { absolute: "", relative: "" },
     IPv4Address: "",
@@ -71,7 +84,8 @@ function createDefaultContainerNode(nodeName: string): ClabContainerTreeNode {
 function createInterfaceObject(
   nodeName: string,
   interfaceName: string,
-  alias?: string
+  alias?: string,
+  backendId: string = "local"
 ): ClabInterfaceTreeNode {
   return {
     label: interfaceName,
@@ -83,7 +97,8 @@ function createInterfaceObject(
     mac: "",
     mtu: 0,
     ifIndex: 0,
-    state: ""
+    state: "",
+    backendId
   } as ClabInterfaceTreeNode;
 }
 
@@ -105,12 +120,7 @@ export class NodeCommandService {
     }
 
     // Only search in the current lab
-    const currentLab = Object.values(labsData).find((lab) => {
-      if (!isClabLabTreeNode(lab)) {
-        return false;
-      }
-      return lab.labPath.absolute === yamlFilePath;
-    });
+    const currentLab = findLabByLocalSource(labsData, yamlFilePath);
 
     if (currentLab === undefined || !isClabLabTreeNode(currentLab)) {
       return undefined;
@@ -210,15 +220,14 @@ export class NodeCommandService {
     nodeName: string,
     yamlFilePath: string
   ): Promise<EndpointResult> {
+    const matchedContainer = await this.getContainerNode(nodeName, yamlFilePath);
     let result: unknown = null;
     let error: string | null = null;
 
     switch (endpointName) {
       case "clab-node-connect-ssh": {
         try {
-          const containerNode =
-            (await this.getContainerNode(nodeName, yamlFilePath)) ??
-            createDefaultContainerNode(nodeName);
+          const containerNode = matchedContainer ?? createDefaultContainerNode(nodeName);
           await vscode.commands.executeCommand("containerlab.node.ssh", containerNode);
           result = `SSH connection executed for ${nodeName}`;
         } catch (innerError) {
@@ -294,12 +303,7 @@ export class NodeCommandService {
     const treeData = await runningLabsProvider.discoverInspectLabs();
     if (!treeData) return interfaceName;
 
-    const currentLab = Object.values(treeData).find((lab) => {
-      if (!isClabLabTreeNode(lab)) {
-        return false;
-      }
-      return lab.labPath.absolute === yamlFilePath;
-    });
+    const currentLab = findLabByLocalSource(treeData, yamlFilePath);
 
     if (currentLab === undefined || !isClabLabTreeNode(currentLab)) {
       return interfaceName;
@@ -316,6 +320,28 @@ export class NodeCommandService {
     return interfaceName;
   }
 
+  private async createCommandInterface(
+    nodeName: string,
+    interfaceName: string,
+    yamlFilePath: string,
+    backendId: string
+  ): Promise<{ actualInterfaceName: string; iface: ClabInterfaceTreeNode }> {
+    const actualInterfaceName = await this.resolveInterfaceName(
+      nodeName,
+      interfaceName,
+      yamlFilePath
+    );
+    return {
+      actualInterfaceName,
+      iface: createInterfaceObject(
+        nodeName,
+        actualInterfaceName,
+        interfaceName !== actualInterfaceName ? interfaceName : "",
+        backendId
+      )
+    };
+  }
+
   /**
    * Handles interface-related endpoint commands (capture).
    */
@@ -324,19 +350,19 @@ export class NodeCommandService {
     payloadObj: { nodeName: string; interfaceName: string; data?: Record<string, unknown> },
     yamlFilePath: string
   ): Promise<EndpointResult> {
+    const matchedContainer = await this.getContainerNode(payloadObj.nodeName, yamlFilePath);
+    const backend = matchedContainer
+      ? getBackendForResource(matchedContainer)
+      : getBackendForLocalSource(yamlFilePath);
     switch (endpointName) {
       case "clab-interface-capture": {
         try {
           const { nodeName, interfaceName } = payloadObj;
-          const actualInterfaceName = await this.resolveInterfaceName(
+          const { actualInterfaceName, iface } = await this.createCommandInterface(
             nodeName,
             interfaceName,
-            yamlFilePath
-          );
-          const iface = createInterfaceObject(
-            nodeName,
-            actualInterfaceName,
-            interfaceName !== actualInterfaceName ? interfaceName : ""
+            yamlFilePath,
+            matchedContainer?.backendId ?? backend.id
           );
           await vscode.commands.executeCommand("containerlab.interface.capture", iface);
           return { result: `Capture executed for ${nodeName}/${actualInterfaceName}`, error: null };
@@ -352,15 +378,11 @@ export class NodeCommandService {
           if (!data || !(data instanceof Object))
             return { result: null, error: `Invalid netem data: ${data}` };
 
-          const actualInterfaceName = await this.resolveInterfaceName(
+          const { iface } = await this.createCommandInterface(
             nodeName,
             interfaceName,
-            yamlFilePath
-          );
-          const iface = createInterfaceObject(
-            nodeName,
-            actualInterfaceName,
-            interfaceName !== actualInterfaceName ? interfaceName : ""
+            yamlFilePath,
+            matchedContainer?.backendId ?? backend.id
           );
           await vscode.commands.executeCommand("containerlab.interface.setImpairment", iface, data);
           return { result: `Link impairment set for ${nodeName}:${interfaceName}`, error: null };

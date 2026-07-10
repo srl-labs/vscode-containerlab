@@ -11,8 +11,41 @@ import {
   DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY,
   WIRESHARK_VNC_CTR_NAME_PREFIX
 } from "../utils/consts";
+import { resolveApiBackend, resolveApiLabTarget } from "./backendGuards";
 
 export { getHostname, setSessionHostname };
+
+async function captureWithApiPacketflix(
+  node: ClabInterfaceTreeNode,
+  allSelectedNodes?: ClabInterfaceTreeNode[]
+): Promise<boolean> {
+  const target = resolveApiLabTarget(node);
+  if (!target) return false;
+  const selected = (allSelectedNodes?.length ? allSelectedNodes : [node]).filter(
+    (candidate) => candidate.backendId === node.backendId
+  );
+  try {
+    const response = await target.backend.operations.buildPacketflixCapture(
+      target.labName,
+      selected.map((candidate) => ({
+        containerName: candidate.parentName,
+        interfaceName: candidate.name
+      })),
+      vscode.workspace.getConfiguration("containerlab").get<string>("capture.remoteHostname", "") ||
+        undefined
+    );
+    await Promise.all(
+      response.captures.map(async (capture) =>
+        vscode.env.openExternal(vscode.Uri.parse(capture.packetflixUri))
+      )
+    );
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `API capture failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+  return true;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -82,6 +115,7 @@ export async function captureInterfaceWithPacketflix(
   node: ClabInterfaceTreeNode,
   allSelectedNodes?: ClabInterfaceTreeNode[] // [CHANGED]
 ) {
+  if (await captureWithApiPacketflix(node, allSelectedNodes)) return;
   const packetflixUri = await buildPacketflixUri(node, allSelectedNodes);
   if (!packetflixUri) {
     return;
@@ -250,6 +284,12 @@ export async function captureEdgesharkVNC(
   node: ClabInterfaceTreeNode,
   allSelectedNodes?: ClabInterfaceTreeNode[]
 ) {
+  if (await captureWithApiPacketflix(node, allSelectedNodes)) {
+    vscode.window.showInformationMessage(
+      "The API endpoint opened the capture through its Packetflix handler."
+    );
+    return;
+  }
   // Handle settings
   const wsConfig = vscode.workspace.getConfiguration("containerlab");
   const dockerImage = wsConfig.get<string>(
@@ -438,7 +478,19 @@ async function runVncReadinessLoop(
   }
 }
 
-export async function killAllWiresharkVNCCtrs() {
+export async function killAllWiresharkVNCCtrs(resource?: unknown) {
+  const apiBackend = resolveApiBackend(resource);
+  if (apiBackend) {
+    try {
+      const result = await apiBackend.operations.closeAllWiresharkVncSessions();
+      vscode.window.showInformationMessage(result.message || `Closed ${result.closed} sessions.`);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to close API capture sessions: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+    return;
+  }
   const dockerImage = vscode.workspace
     .getConfiguration("containerlab")
     .get<string>("capture.wireshark.dockerImage", DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE);

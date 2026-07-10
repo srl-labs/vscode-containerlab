@@ -7,6 +7,7 @@ import * as vscode from "vscode";
 
 import type { EndpointResult } from "@srl-labs/clab-ui/session";
 import { createLifecycleCommandController } from "@srl-labs/clab-ui/host";
+import { getBackendForLocalSource } from "../../../backends/manager";
 
 import { log } from "./logger";
 
@@ -119,10 +120,25 @@ export class LabLifecycleService {
       (await lifecycleController.run(endpointName, async () => {
         try {
           const { ClabLabTreeNode } = await import("../../../treeView/common");
-          const tempNode = new ClabLabTreeNode("", vscode.TreeItemCollapsibleState.None, {
-            absolute: labPath,
-            relative: ""
-          });
+          const isDeploy = endpointName === "deployLab" || endpointName === "deployLabCleanup";
+          const backend = getBackendForLocalSource(labPath);
+          const labRef = backend.resolveLocalSourceRef?.(labPath) ?? {
+            backendId: backend.id,
+            localPath: labPath
+          };
+          const tempNode = new ClabLabTreeNode(
+            "",
+            vscode.TreeItemCollapsibleState.None,
+            { absolute: labPath, relative: "" },
+            undefined,
+            undefined,
+            undefined,
+            isDeploy ? "containerlabLabUndeployed" : undefined,
+            false,
+            undefined,
+            undefined,
+            labRef
+          );
           vscode.commands.executeCommand(action.command, tempNode);
           return { result: `${action.resultMsg} for ${labPath}`, error: null };
         } catch (innerError) {

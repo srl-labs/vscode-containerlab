@@ -7,6 +7,7 @@ import * as utils from "../utils/utils";
 import {
   hideNonOwnedLabsState,
   username,
+  favoriteApiLabs,
   favoriteLabs,
   sshxSessions,
   gottySessions,
@@ -19,9 +20,13 @@ import type {
   ClabInterfaceSnapshotEntry,
   ClabInterfaceStats
 } from "../types/containerlab";
+import { getActiveBackend, getBackendById } from "../backends/manager";
+import { apiLabFavoriteKey, labIdentityKey } from "../backends/labIdentity";
+import { backendHasCapability } from "../backends/types";
 
 import * as ins from "./inspector";
 import * as c from "./common";
+import { resolveLabSessionSharingLinks } from "./sessionSharing";
 
 /**
  * Type for VS Code TreeItem iconPath property
@@ -187,11 +192,11 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
    * Refresh a specific container by its short ID.
    * Rebuilds the interface list from scratch based on current inspection data.
    */
-  async refreshContainer(containerShortId: string, newState: string) {
+  async refreshContainer(containerShortId: string, newState: string, backendId?: string) {
     outputChannel.info(`Container state change detected: ${containerShortId} → ${newState}`);
 
     // Find the container node in our tree
-    const containerNode = this.findContainerNode(containerShortId);
+    const containerNode = this.findContainerNode(containerShortId, backendId);
     if (!containerNode) {
       outputChannel.warn(`Container ${containerShortId} not found in tree for refresh`);
       return;
@@ -206,6 +211,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     const newInterfaces = this.discoverContainerInterfaces(
       containerNode.name,
       containerShortId,
+      containerNode.backendId,
       true // Log to output channel
     ).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -235,11 +241,16 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   /**
    * Find a container node by its short ID
    */
-  private findContainerNode(containerShortId: string): c.ClabContainerTreeNode | undefined {
+  private findContainerNode(
+    containerShortId: string,
+    backendId?: string
+  ): c.ClabContainerTreeNode | undefined {
     for (const lab of this.treeItems) {
       const entries = lab.containers ?? [];
       const found = this.flattenContainerNodes(entries).find(
-        (container) => container.cID === containerShortId
+        (container) =>
+          container.cID === containerShortId &&
+          (backendId === undefined || container.backendId === backendId)
       );
       if (found) {
         return found;
@@ -288,7 +299,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
       return this.labsSnapshot;
     }
     return this.treeItems.reduce<Record<string, c.ClabLabTreeNode>>((acc, lab) => {
-      acc[lab.labPath.absolute] = lab;
+      acc[labIdentityKey(lab.labRef)] = lab;
       return acc;
     }, {});
   }
@@ -321,7 +332,11 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
   private getRootChildren(): RunningTreeNode[] {
     const labs = hideNonOwnedLabsState
-      ? this.treeItems.filter((labNode) => labNode.owner == username)
+      ? this.treeItems.filter((labNode) => {
+          const backend = getBackendById(labNode.labRef.backendId);
+          const owner = backend?.getAuthenticatedSession()?.username ?? username;
+          return labNode.owner === owner;
+        })
       : this.treeItems;
 
     return this.treeFilter ? this.filterLabs(labs, this.treeFilter) : labs;
@@ -448,8 +463,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         return 1;
       }
 
-      const aPath = a.labPath.absolute;
-      const bPath = b.labPath.absolute;
+      const aPath = a.labRef.localPath ?? labIdentityKey(a.labRef);
+      const bPath = b.labRef.localPath ?? labIdentityKey(b.labRef);
       return aPath.localeCompare(bPath);
     });
   }
@@ -464,7 +479,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     let rootChanged = false;
 
     sortedLabs.forEach((lab) => {
-      const key = lab.labPath.absolute;
+      const key = labIdentityKey(lab.labRef);
       const existing = previousCache.get(key);
 
       if (existing) {
@@ -517,6 +532,21 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     let labChanged = false;
     let branchStructureChanged = false;
     const containersToRefresh: Set<c.ClabContainerTreeNode> = new Set();
+
+    if (
+      target.labRef.localPath !== source.labRef.localPath ||
+      target.labRef.remotePath !== source.labRef.remotePath ||
+      target.labRef.sourceLabName !== source.labRef.sourceLabName ||
+      target.labRef.sourcePath !== source.labRef.sourcePath
+    ) {
+      target.labRef.localPath = source.labRef.localPath;
+      target.labRef.remotePath = source.labRef.remotePath;
+      target.labRef.sourceLabName = source.labRef.sourceLabName;
+      target.labRef.sourcePath = source.labRef.sourcePath;
+      target.labPath.absolute = source.labPath.absolute;
+      target.labPath.relative = source.labPath.relative;
+      labChanged = true;
+    }
 
     if (target.label !== source.label) {
       target.label = source.label;
@@ -987,10 +1017,10 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
     const result: Record<string, c.ClabJSON[]> = {};
 
     // Process each lab
-    for (const labName in detailedData) {
-      if (!Array.isArray(detailedData[labName])) continue;
+    for (const labKey in detailedData) {
+      if (!Array.isArray(detailedData[labKey])) continue;
 
-      result[labName] = detailedData[labName].map((container) => {
+      result[labKey] = detailedData[labKey].map((container) => {
         const status = this.computeContainerStatus(container);
 
         // Construct IPv4 and IPv6 addresses with prefix length
@@ -1018,7 +1048,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
           ipv4_address: ipv4Address,
           ipv6_address: ipv6Address,
           kind: container.Labels["clab-node-kind"],
-          lab_name: labName,
+          lab_name: container.Labels.containerlab ?? labKey,
           labPath: absLabPath,
           absLabPath: absLabPath,
           name: name,
@@ -1030,7 +1060,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
           node_group: container.Labels["clab-node-group"] ?? undefined,
           root_node_name: container.Labels["clab-root-node-name"] ?? undefined,
           network_name: container.NetworkName ?? undefined,
-          startedAt: container.StartedAt
+          startedAt: container.StartedAt,
+          backend_id: container.Labels["clab-backend-id"] ?? "local"
         };
       });
     }
@@ -1170,14 +1201,25 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   }
 
   private async refreshSessionLists(allContainers: c.ClabJSON[]) {
+    if (!backendHasCapability(getActiveBackend(), "local-runtime")) return;
     const sshxLabs = new Set(
-      allContainers.filter((container) => container.name.includes("sshx")).map((c) => c.lab_name)
+      allContainers
+        .filter(
+          (container) =>
+            (container.backend_id ?? "local") === "local" && container.name.includes("sshx")
+        )
+        .map((container) => container.lab_name)
     );
     const missingSessions = Array.from(sshxLabs).filter((lab) => !sshxSessions.has(lab));
     if (missingSessions.length > 0) await refreshSshxSessions();
 
     const gottyLabs = new Set(
-      allContainers.filter((container) => container.name.includes("gotty")).map((c) => c.lab_name)
+      allContainers
+        .filter(
+          (container) =>
+            (container.backend_id ?? "local") === "local" && container.name.includes("gotty")
+        )
+        .map((container) => container.lab_name)
     );
     const missingGottySessions = Array.from(gottyLabs).filter((lab) => !gottySessions.has(lab));
     if (missingGottySessions.length > 0) await refreshGottySessions();
@@ -1186,9 +1228,14 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   private buildLabsFromContainers(allContainers: c.ClabJSON[]): Record<string, c.ClabLabTreeNode> {
     const labs: Record<string, c.ClabLabTreeNode> = {};
     allContainers.forEach((container: c.ClabJSON) => {
-      const normPath = container.absLabPath ?? utils.normalizeLabPath(container.labPath);
-      if (!(normPath in labs)) {
-        labs[normPath] = this.createLabNode(container, allContainers, normPath);
+      const runtimePath = container.absLabPath ?? container.labPath;
+      const backendId = container.backend_id ?? "local";
+      const key =
+        backendId === "local"
+          ? `${backendId}\n${utils.normalizeLabPath(runtimePath)}`
+          : `${backendId}\n${container.lab_name}`;
+      if (!(key in labs)) {
+        labs[key] = this.createLabNode(container, allContainers, runtimePath);
       }
     });
     return labs;
@@ -1197,24 +1244,45 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   private createLabNode(
     container: c.ClabJSON,
     allContainers: c.ClabJSON[],
-    normPath: string
+    runtimePath: string
   ): c.ClabLabTreeNode {
+    const backendId = container.backend_id ?? "local";
+    const backend = getBackendById(backendId);
+    const labRef = backend?.resolveLabRef(container.lab_name, runtimePath) ?? {
+      backendId,
+      labName: container.lab_name,
+      ...(backendId === "local" ? { localPath: runtimePath } : { remotePath: runtimePath })
+    };
+    const localPath = labRef.localPath ?? "";
     const label = `${container.lab_name} (${container.owner})`;
     const labPathObj: c.LabPath = {
-      absolute: normPath,
-      relative: utils.getRelativeFolderPath(normPath)
+      absolute: localPath,
+      relative: localPath ? utils.getRelativeFolderPath(localPath) : ""
     };
     const containersForThisLab = allContainers.filter(
-      (c: c.ClabJSON) => (c.absLabPath ?? utils.normalizeLabPath(c.labPath)) === normPath
+      (entry: c.ClabJSON) =>
+        (entry.backend_id ?? "local") === backendId &&
+        (backendId === "local"
+          ? utils.normalizeLabPath(entry.absLabPath ?? entry.labPath) ===
+            utils.normalizeLabPath(runtimePath)
+          : entry.lab_name === container.lab_name)
     );
     const discoveredContainers = this.discoverContainers(containersForThisLab, labPathObj.absolute);
     const flatContainers = this.flattenContainerNodes(discoveredContainers);
     const { running, unhealthy } = this.getContainerHealthFromNodes(flatContainers);
     const icon = this.determineIcon(flatContainers.length, running, unhealthy);
-    const isFav = favoriteLabs.has(normPath);
+    const apiFavoriteKey = apiLabFavoriteKey(labRef);
+    const isFav =
+      backendId === "local"
+        ? localPath.length > 0 && favoriteLabs.has(localPath)
+        : apiFavoriteKey !== undefined && favoriteApiLabs.has(apiFavoriteKey);
     const contextVal = isFav ? "containerlabLabDeployedFavorite" : "containerlabLabDeployed";
-    const sshxLink = sshxSessions.get(container.lab_name);
-    const gottyLink = gottySessions.get(container.lab_name);
+    const { sshxLink, gottyLink } = resolveLabSessionSharingLinks(
+      backend ?? getActiveBackend(),
+      container.lab_name,
+      sshxSessions,
+      gottySessions
+    );
     let labLabel = label;
     if (hasNonEmptyString(sshxLink) || hasNonEmptyString(gottyLink)) {
       labLabel = `🔗 ${label}`;
@@ -1229,7 +1297,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
       contextVal,
       isFav,
       sshxLink,
-      gottyLink
+      gottyLink,
+      labRef
     );
     this.decorateSharing(labNode, labPathObj.relative, sshxLink, gottyLink);
     const iconUri = this.getResourceUri(icon);
@@ -1364,7 +1433,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
       const interfaces = this.discoverContainerInterfaces(
         container.name,
-        container.container_id
+        container.container_id,
+        container.backend_id ?? "local"
       ).sort((a, b) => a.name.localeCompare(b.name));
 
       const collapsible =
@@ -1390,7 +1460,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         container.node_type,
         container.node_group,
         container.status,
-        "containerlabContainer"
+        "containerlabContainer",
+        container.backend_id ?? "local"
       );
 
       node.rootNodeName = container.root_node_name;
@@ -1438,7 +1509,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         absolute: absLabPath,
         relative: utils.getRelLabFolderPath(absLabPath)
       };
-      const groupNode = new c.ClabContainerGroupTreeNode(rootName, labPath, children);
+      const groupNode = new c.ClabContainerGroupTreeNode(
+        rootName,
+        labPath,
+        children,
+        children[0]?.backendId ?? "local"
+      );
 
       // Only show interfaces on the primary (0th) sub-container
       for (let i = 1; i < children.length; i++) {
@@ -1479,13 +1555,14 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   private discoverContainerInterfaces(
     cName: string,
     cID: string,
+    backendId: string = "local",
     logToOutput: boolean = false
   ): c.ClabInterfaceTreeNode[] {
     if (logToOutput) {
       outputChannel.debug(`Inspecting interfaces for container: ${cName} (${cID})`);
     }
-    const snapshot = ins.getInterfacesSnapshot(cID, cName);
-    const interfaces = this.buildInterfaceNodes(snapshot, cName, cID);
+    const snapshot = ins.getInterfacesSnapshot(cID, cName, backendId);
+    const interfaces = this.buildInterfaceNodes(snapshot, cName, cID, backendId);
     if (logToOutput) {
       outputChannel.debug(
         `Interface snapshot retrieved: ${cName} - ${interfaces.length} interfaces`
@@ -1497,7 +1574,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
   private buildInterfaceNodes(
     clabInsJSON: ClabInterfaceSnapshot[],
     cName: string,
-    cID: string
+    cID: string,
+    backendId: string
   ): c.ClabInterfaceTreeNode[] {
     const interfaces: c.ClabInterfaceTreeNode[] = [];
 
@@ -1571,7 +1649,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         intf.state,
         contextValue,
         stats,
-        netemState
+        netemState,
+        backendId
       );
 
       // Note: Interface stats are not shown in tooltip because tooltips are

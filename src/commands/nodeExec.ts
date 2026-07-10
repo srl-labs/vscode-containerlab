@@ -5,6 +5,7 @@ import type { ClabContainerTreeNode } from "../treeView/common";
 import { DEFAULT_ATTACH_SHELL_CMD, DEFAULT_ATTACH_TELNET_PORT } from "../utils";
 
 import { execCommandInTerminal } from "./command";
+import { openApiTerminal } from "./apiTerminal";
 
 interface NodeContext {
   containerId: string;
@@ -32,6 +33,7 @@ function getNodeContext(node: ClabContainerTreeNode | undefined): NodeContext | 
 }
 
 export function attachShell(node: ClabContainerTreeNode | undefined): void {
+  if (openApiTerminal(node, "shell")) return;
   const ctx = getNodeContext(node);
   if (!ctx) return;
 
@@ -51,6 +53,7 @@ export function attachShell(node: ClabContainerTreeNode | undefined): void {
 }
 
 export function telnetToNode(node: ClabContainerTreeNode | undefined): void {
+  if (openApiTerminal(node, "telnet")) return;
   const ctx = getNodeContext(node);
   if (!ctx) return;
   const config = vscode.workspace.getConfiguration("containerlab");

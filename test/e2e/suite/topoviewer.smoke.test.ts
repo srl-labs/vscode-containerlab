@@ -5,7 +5,6 @@ import path from "node:path";
 import * as vscode from "vscode";
 
 const EXTENSION_ID = "srl-labs.vscode-containerlab";
-const WEBVIEW_VIEW_TYPE = "reactTopoViewer";
 
 function assertEnvPath(name: string): string {
   const value = process.env[name];
@@ -37,11 +36,12 @@ async function waitForWebviewTab(label: string): Promise<vscode.Tab> {
       })
     )
     .join(", ");
-  throw new Error(`Timed out waiting for ${WEBVIEW_VIEW_TYPE} tab "${label}". Open tabs: ${openTabs}`);
+  throw new Error(`Timed out waiting for webview tab "${label}". Open tabs: ${openTabs}`);
 }
 
 function assertBuiltWebviewAssets(extensionPath: string): void {
   const requiredAssets = [
+    "apiEndpointManagerWebview.js",
     "reactTopoViewerWebview.js",
     "reactTopoViewerStyles.css",
     "maplibre-gl-csp-worker.js",
@@ -56,7 +56,20 @@ function assertBuiltWebviewAssets(extensionPath: string): void {
   }
 }
 
-suite("TopoViewer VS Code smoke", () => {
+suite("VS Code webview smoke", () => {
+  test("opens the clab-api-server endpoint manager", async () => {
+    const extension = vscode.extensions.getExtension(EXTENSION_ID);
+    assert.ok(extension, `Expected extension ${EXTENSION_ID} to be installed in test host`);
+
+    await extension.activate();
+    assertBuiltWebviewAssets(extension.extensionPath);
+
+    await vscode.commands.executeCommand("containerlab.api.manageEndpoints");
+    const webviewTab = await waitForWebviewTab("Containerlab API Endpoints");
+    assert.equal(webviewTab.isActive, true);
+    assert.ok(webviewTab.input instanceof vscode.TabInputWebview);
+  });
+
   test("opens a topology file in the packaged webview without throwing", async () => {
     const topologyPath = assertEnvPath("VSCODE_CONTAINERLAB_E2E_TOPOLOGY");
     assert.ok(fs.existsSync(topologyPath), `Expected topology fixture: ${topologyPath}`);

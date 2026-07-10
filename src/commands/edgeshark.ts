@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
 import { execCommandInTerminal } from "./command";
+import { resolveApiBackend } from "./backendGuards";
 
 export function getEdgesharkInstallCmd(): string {
   const config = vscode.workspace.getConfiguration("containerlab");
@@ -43,10 +44,34 @@ https://github.com/siemens/edgeshark/raw/main/deployments/wget/docker-compose.ya
 export const EDGESHARK_INSTALL_CMD = getEdgesharkInstallCmd();
 export const EDGESHARK_UNINSTALL_CMD = getEdgesharkUninstallCmd();
 
-export async function installEdgeshark() {
+export async function installEdgeshark(resource?: unknown) {
+  const apiBackend = resolveApiBackend(resource);
+  if (apiBackend) {
+    try {
+      await apiBackend.operations.setEdgeSharkInstalled(true);
+      vscode.window.showInformationMessage("EdgeShark installed on the API endpoint.");
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `EdgeShark installation failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+    return;
+  }
   execCommandInTerminal(getEdgesharkInstallCmd(), "Edgeshark Installation");
 }
 
-export async function uninstallEdgeshark() {
+export async function uninstallEdgeshark(resource?: unknown) {
+  const apiBackend = resolveApiBackend(resource);
+  if (apiBackend) {
+    try {
+      await apiBackend.operations.setEdgeSharkInstalled(false);
+      vscode.window.showInformationMessage("EdgeShark uninstalled from the API endpoint.");
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `EdgeShark removal failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+    return;
+  }
   execCommandInTerminal(getEdgesharkUninstallCmd(), "Edgeshark Uninstallation");
 }
