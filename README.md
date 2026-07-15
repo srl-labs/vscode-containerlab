@@ -124,7 +124,7 @@ The Containerlab Explorer listens to the containerlab event stream, so running l
 | Setting                                  | Type    | Default                                              | Description                                             |
 | ---------------------------------------- | ------- | ---------------------------------------------------- | ------------------------------------------------------- |
 | `capture.preferredAction`                | string  | `Wireshark VNC`                                      | Preferred capture method (`Edgeshark`, `Wireshark VNC`) |
-| `capture.wireshark.dockerImage`          | string  | `ghcr.io/kaelemc/`<br/>`wireshark-vnc-docker:latest` | Docker image for Wireshark VNC                          |
+| `capture.wireshark.dockerImage`          | string  | `ghcr.io/srl-labs/`<br/>`wireshark-vnc-docker:latest` | Docker image for Wireshark VNC                          |
 | `capture.wireshark.pullPolicy`           | string  | `always`                                             | Image pull policy (`always`, `missing`, `never`)        |
 | `capture.wireshark.theme`                | string  | `Follow VS Code theme`                               | Wireshark theme                                         |
 | `capture.wireshark.stayOpenInBackground` | boolean | `true`                                               | Keep sessions alive in background                       |
