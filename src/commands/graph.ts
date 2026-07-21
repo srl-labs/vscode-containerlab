@@ -83,13 +83,7 @@ export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
 let currentTopoViewer: ReactTopoViewer | undefined;
 
 export type LifecycleCommandType =
-  | "deploy"
-  | "destroy"
-  | "redeploy"
-  | "apply"
-  | "start"
-  | "stop"
-  | "restart";
+  "deploy" | "destroy" | "redeploy" | "apply" | "start" | "stop" | "restart";
 type LifecycleCommandStream = "stdout" | "stderr";
 type TopoViewerLifecycleHandlers = {
   onSuccess: () => Promise<void>;

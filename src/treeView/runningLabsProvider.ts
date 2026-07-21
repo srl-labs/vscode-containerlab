@@ -1138,10 +1138,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
   private normalizeInspectData(
     inspectData:
-      | c.ClabJSON[]
-      | Record<string, c.ClabJSON[]>
-      | { containers: c.ClabJSON[] }
-      | undefined
+      c.ClabJSON[] | Record<string, c.ClabJSON[]> | { containers: c.ClabJSON[] } | undefined
   ): c.ClabJSON[] | undefined {
     if (inspectData === undefined) {
       outputChannel.info(
