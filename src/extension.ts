@@ -543,18 +543,20 @@ function setClabBinPath(): boolean {
 
   // if empty fall back to resolving from PATH
   if (!configPath || configPath.trim() === "") {
-    try {
-      // eslint-disable-next-line sonarjs/no-os-command-from-path
-      const stdout = execSync("which containerlab", { encoding: "utf-8" });
-      const resolvedPath = stdout.trim();
-      if (resolvedPath) {
-        setContainerlabBinaryPath(resolvedPath);
-        outputChannel.info(`Resolved containerlab binary from sys PATH as: ${resolvedPath}`);
-        return true;
+    for (const lookup of ["which containerlab", "command -v containerlab"]) {
+      try {
+        // eslint-disable-next-line sonarjs/no-os-command-from-path
+        const stdout = execSync(lookup, { encoding: "utf-8" });
+        const resolvedPath = stdout.trim();
+        if (resolvedPath) {
+          setContainerlabBinaryPath(resolvedPath);
+          outputChannel.info(`Resolved containerlab binary from sys PATH as: ${resolvedPath}`);
+          return true;
+        }
+      } catch (err) {
+        const message = getErrorMessage(err);
+        outputChannel.warn(`Could not resolve containerlab bin path via '${lookup}': ${message}`);
       }
-    } catch (err) {
-      const message = getErrorMessage(err);
-      outputChannel.warn(`Could not resolve containerlab bin path from sys PATH: ${message}`);
     }
     setContainerlabBinaryPath("containerlab");
     return true;
