@@ -394,10 +394,11 @@ function toInterfaceSnapshot(raw: ClabInspectInterfaceJSON[]): ClabInterfaceSnap
  */
 export function getInterfaceSnapshot(
   _containerShortId: string,
-  containerName: string
+  containerName: string,
+  labPathOverride?: string
 ): ClabInterfaceSnapshot[] {
   // Find the lab path for this container
-  const labPath = findLabPathForContainer(containerName);
+  const labPath = labPathOverride ?? findLabPathForContainer(containerName);
   if (labPath === undefined || labPath.length === 0) {
     console.warn(
       `[containerlabInspectFallback]: Could not find lab path for container ${containerName}`

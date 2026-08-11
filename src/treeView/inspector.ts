@@ -4,6 +4,7 @@ import * as events from "../services/containerlabEvents";
 import * as fallback from "../services/containerlabInspectFallback";
 import { outputChannel } from "../globals";
 import type { ClabInterfaceSnapshot } from "../types/containerlab";
+import { mergeInterfaceSnapshots } from "../services/interfaceSnapshots";
 
 import type * as c from "./common";
 
@@ -97,7 +98,25 @@ export function getInterfacesSnapshot(
     // Use fallback's interface fetching via containerlab inspect interfaces
     return fallback.getInterfaceSnapshot(containerShortId, containerName);
   }
-  return events.getInterfaceSnapshot(containerShortId, containerName);
+  const liveSnapshot = events.getInterfaceSnapshot(containerShortId, containerName);
+  const inspectedSnapshot = fallback.getInterfaceSnapshot(
+    containerShortId,
+    containerName,
+    findLabPath(containerName)
+  );
+  return mergeInterfaceSnapshots(inspectedSnapshot, liveSnapshot);
+}
+
+function findLabPath(containerName: string): string | undefined {
+  for (const containers of Object.values(rawInspectData ?? {})) {
+    const container = containers.find((entry) => entry.Names[0] === containerName);
+    if (container) {
+      const labelPath = container.Labels["clab-topo-file"];
+      const metadataPath: unknown = Reflect.get(containers, "topo-file");
+      return labelPath || (typeof metadataPath === "string" ? metadataPath : undefined);
+    }
+  }
+  return undefined;
 }
 
 export function getInterfaceVersion(containerShortId: string): number {

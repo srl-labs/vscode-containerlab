@@ -5,6 +5,7 @@ import * as utils from "../utils";
 import type { ClabInterfaceTreeNode } from "../treeView/common";
 import { genPacketflixURI, getHostname, setSessionHostname } from "../utils/packetflix";
 import type { ImagePullPolicy } from "../utils/consts";
+import { captureScopeKey } from "../utils/packetflixTarget";
 import { getWiresharkVncWebviewHtml } from "../webviews/wiresharkVnc/wiresharkVncWebviewHtml";
 import {
   DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE,
@@ -55,16 +56,17 @@ async function buildPacketflixUri(
   const selected = allSelectedNodes && allSelectedNodes.length > 0 ? allSelectedNodes : [node];
 
   if (selected.length > 1) {
-    const uniqueContainers = new Set(selected.map((i) => i.parentName));
-    if (uniqueContainers.size > 1) {
+    const captureGroups = Map.groupBy(selected, captureScopeKey);
+    if (captureGroups.size > 1) {
       outputChannel.debug(
-        "Edgeshark multi selection => multiple containers => launching individually"
+        "Edgeshark multi selection => multiple capture namespaces => launching separately"
       );
-      for (const nd of selected) {
+      for (const group of captureGroups.values()) {
+        const nd = group[0];
         if (forVNC === true) {
-          await captureEdgesharkVNC(nd);
+          await captureEdgesharkVNC(nd, group);
         } else {
-          await captureInterfaceWithPacketflix(nd);
+          await captureInterfaceWithPacketflix(nd, group);
         }
       }
       return undefined;

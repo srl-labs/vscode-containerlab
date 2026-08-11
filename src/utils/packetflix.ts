@@ -1,4 +1,5 @@
 import * as os from "os";
+import { stat } from "fs/promises";
 
 import * as vscode from "vscode";
 
@@ -6,6 +7,7 @@ import type * as c from "../treeView/common";
 import { outputChannel } from "../globals";
 
 import * as utils from "./utils";
+import { buildPacketflixTarget, isHostCaptureInterface } from "./packetflixTarget";
 
 let sessionHostname = "";
 
@@ -48,7 +50,12 @@ export async function genPacketflixURI(
   const packetflixPort = config.get<number>("capture.packetflixPort", 5001);
 
   const containerStr = encodeURIComponent(
-    `{"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}`
+    JSON.stringify(
+      buildPacketflixTarget(
+        selectedNodes,
+        isHostCaptureInterface(node) ? await getHostNetworkNamespaceId() : undefined
+      )
+    )
   );
 
   const uri = `packetflix:ws://${bracketed}:${packetflixPort}/capture?container=${containerStr}&nif=${node.name}`;
@@ -113,16 +120,10 @@ async function captureMultipleEdgeshark(
     `multi-interface edgeshark for container=${base.parentName} ifaces=[${ifNames.join(", ")}]`
   );
 
-  // Type guard: netns property may exist on runtime objects but isn't in the type definition
-  const baseWithNetns = base as c.ClabInterfaceTreeNode & { netns?: number };
-  const netnsVal = baseWithNetns.netns ?? 4026532270;
-  const containerObj = {
-    netns: netnsVal,
-    "network-interfaces": ifNames,
-    name: base.parentName,
-    type: "docker",
-    prefix: ""
-  };
+  const containerObj = buildPacketflixTarget(
+    nodes,
+    isHostCaptureInterface(base) ? await getHostNetworkNamespaceId() : undefined
+  );
 
   const containerStr = encodeURIComponent(JSON.stringify(containerObj));
   const nifParam = encodeURIComponent(ifNames.join("/"));
@@ -140,6 +141,11 @@ async function captureMultipleEdgeshark(
   outputChannel.debug(`multi-edgeShark => ${packetflixUri}`);
 
   return [packetflixUri, bracketed];
+}
+
+async function getHostNetworkNamespaceId(): Promise<number> {
+  const namespace = await stat("/proc/self/ns/net");
+  return namespace.ino;
 }
 
 /**
