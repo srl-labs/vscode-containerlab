@@ -41,7 +41,9 @@ export async function setImpairment(
   if (impairmentFlag === "") {
     return;
   }
-  const cmd = `${containerlabBinaryPath} tools netem set --node ${node.parentName} --interface ${node.name} ${impairmentFlag}`;
+
+  const netemInterface = node.name.startsWith("clab-s-") && node.alias ? node.alias : node.name;
+  const cmd = `${containerlabBinaryPath} tools netem set --node ${node.parentName} --interface ${netemInterface} ${impairmentFlag}`;
   const msg = `set link impairment to ${JSON.stringify(impairment)} for ${node.name} on ${node.parentName}.`;
   vscode.window.showInformationMessage(`Attempting to ${msg}`);
 

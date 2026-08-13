@@ -8,6 +8,12 @@ import { outputChannel } from "../globals";
 import * as utils from "./utils";
 
 let sessionHostname = "";
+const HOST_NETNS_INTERFACE_PREFIX = "clab-s-";
+const HOST_NETNS_CONTAINER_NAME = "systemd(1)";
+
+function isHostNetnsInterface(interfaceName: string): boolean {
+  return interfaceName.startsWith(HOST_NETNS_INTERFACE_PREFIX);
+}
 
 /**
  * Generate a packetflix URI for one or more interfaces. Assumes all nodes belong
@@ -48,7 +54,9 @@ export async function genPacketflixURI(
   const packetflixPort = config.get<number>("capture.packetflixPort", 5001);
 
   const containerStr = encodeURIComponent(
-    `{"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}`
+    isHostNetnsInterface(node.name)
+      ? `{"network-interfaces":["${node.name}"],"name":"${HOST_NETNS_CONTAINER_NAME}","prefix":""}`
+      : `{"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}`
   );
 
   const uri = `packetflix:ws://${bracketed}:${packetflixPort}/capture?container=${containerStr}&nif=${node.name}`;
@@ -116,13 +124,19 @@ async function captureMultipleEdgeshark(
   // Type guard: netns property may exist on runtime objects but isn't in the type definition
   const baseWithNetns = base as c.ClabInterfaceTreeNode & { netns?: number };
   const netnsVal = baseWithNetns.netns ?? 4026532270;
-  const containerObj = {
-    netns: netnsVal,
-    "network-interfaces": ifNames,
-    name: base.parentName,
-    type: "docker",
-    prefix: ""
-  };
+  const containerObj = isHostNetnsInterface(base.name)
+    ? {
+        "network-interfaces": ifNames,
+        name: HOST_NETNS_CONTAINER_NAME,
+        prefix: ""
+      }
+    : {
+        netns: netnsVal,
+        "network-interfaces": ifNames,
+        name: base.parentName,
+        type: "docker",
+        prefix: ""
+      };
 
   const containerStr = encodeURIComponent(JSON.stringify(containerObj));
   const nifParam = encodeURIComponent(ifNames.join("/"));
