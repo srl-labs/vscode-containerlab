@@ -1128,7 +1128,8 @@ function applyInterfaceEvent(event: ContainerlabEvent): void {
     return;
   }
 
-  if (ifaceName.startsWith("clab-")) {
+  // allow the veth-stitch interfaces to live
+  if (ifaceName.startsWith("clab-") && !ifaceName.startsWith("clab-s-")) {
     removeInterfaceRecord(containerId, ifaceName);
     return;
   }
