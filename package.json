@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.26.2",
+  "version": "0.26.3",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.105.1",
@@ -1057,10 +1057,10 @@
     "test:e2e:compile": "rm -rf out/e2e && tsc -p test/tsconfig.e2e.json"
   },
   "overrides": {
-    "diff": "8.0.4",
+    "diff": "9.0.0",
     "dompurify": "3.4.13",
-    "serialize-javascript": "7.0.5",
-    "uuid": "14.0.0"
+    "serialize-javascript": "7.1.0",
+    "uuid": "14.0.1"
   },
   "devDependencies": {
     "@srl-labs/clab-ui": "0.3.1",
@@ -1078,17 +1078,17 @@
     "ajv-formats": "^3.0.1",
     "autoprefixer": "^10.5.4",
     "chai": "^6.2.2",
-    "dependency-cruiser": "^18.1.1",
+    "dependency-cruiser": "^18.2.0",
     "dockerode": "^5.0.1",
     "esbuild": "^0.28.2",
-    "jscpd": "^5.0.14",
+    "jscpd": "^5.0.15",
     "mocha": "^11.8.0",
     "mochawesome": "^8.0.1",
-    "oxlint": "^1.77.0",
+    "oxlint": "^1.78.0",
     "oxlint-tsgolint": "^7.0.2001",
     "postcss": "^8.5.26",
     "postcss-cli": "^11.0.1",
-    "postcss-import": "^16.1.1",
+    "postcss-import": "^17.0.0",
     "prettier": "^3.9.6",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
