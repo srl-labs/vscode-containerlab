@@ -6,7 +6,7 @@
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
   "version": "0.26.3",
-  "homepage": "https://containerlab.dev/manual/vsc-extension/",
+  "homepage": "https://containerlab.dev/manual/gui/vsc-extension/",
   "engines": {
     "vscode": "^1.105.1",
     "node": ">=24.0.0"

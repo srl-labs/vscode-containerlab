@@ -22,7 +22,7 @@ export class HelpFeedbackProvider implements vscode.TreeDataProvider<vscode.Tree
     { label: "Containerlab Documentation", url: "https://containerlab.dev/" },
     {
       label: "VS Code Extension Documentation",
-      url: "https://containerlab.dev/manual/vsc-extension/"
+      url: "https://containerlab.dev/manual/gui/vsc-extension/"
     },
     { label: "Browse Labs on GitHub (srl-labs)", url: "https://github.com/srl-labs/" },
     {

@@ -1,5 +1,9 @@
 # Change Log
 
+## Unreleased
+
+- Fixed the VS Code extension documentation links, which pointed to a page that returns 404.
+
 ## [0.26.0] - 2026-07-07
 
 - Deploy/runtime:

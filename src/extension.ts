@@ -244,7 +244,7 @@ function registerUnsupportedViews(context: vscode.ExtensionContext) {
   <div class="wrap">
     <h3>Containerlab Requires Linux or WSL</h3>
     <p>Features are disabled on this platform.</p>
-    <p><a href="https://containerlab.dev/manual/vsc-extension/">Open documentation</a></p>
+    <p><a href="https://containerlab.dev/manual/gui/vsc-extension/">Open documentation</a></p>
   </div>
 </body>
 </html>`;
